@@ -6,7 +6,7 @@ import { Fruit } from "./Fruit.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
-import { atRest, fruitGlossary, moment, startingRun, poolRows, scoringLabel } from "./layout.ts";
+import { atRest, chipColor, fruitGlossary, moment, startingRun, poolRows, scoringLabel } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { Peg } from "./Peg.tsx";
 import { RuleText } from "./RuleText.tsx";
@@ -32,7 +32,6 @@ import {
   LIGHT,
   LINK,
   PLAQUE,
-  SCORING,
   SELECT,
   SHADE,
   WELL,
@@ -196,6 +195,7 @@ export function Play() {
           y0={f.y0}
           rotten={f.rotten}
           honeyed={f.honeyed}
+          pickled={f.pickled}
           lit={f.lit && Math.floor(f.fuse * 20) % 2 === 0}
           glow={f.pulseDelay > 0 ? 0 : f.pulse / PULSE}
           kicks={f.kicks}
@@ -312,7 +312,7 @@ export function Play() {
                 {FRUITS[kind].name}
               </Text>
               <Flex y={116} width={OFFER_W} justifyContent="center">
-                <Flex height={22} paddingX={8} paddingTop={4} background={SCORING[FRUITS[kind].scoring].color} alignItems="center">
+                <Flex height={22} paddingX={8} paddingTop={4} background={chipColor(kind)} alignItems="center">
                   <Text color={LIGHT}>{scoringLabel(kind)}</Text>
                 </Flex>
               </Flex>

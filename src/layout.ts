@@ -2,6 +2,7 @@ import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { ITEMS, type ItemKind } from "./rules/items.ts";
 import { newRun, type Run } from "./rules/jar.ts";
 import { glossary, keywordsIn } from "./rules/terms.ts";
+import { LEGENDARY_CHIP, SCORING } from "./theme.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
 export interface PoolRow {
@@ -22,6 +23,7 @@ export function poolRows(pool: readonly FruitKind[]): PoolRow[] {
 /** A fruit's chip: how it scores, and for a Fresh fruit how much ("Fresh 3"). */
 export function scoringLabel(kind: FruitKind): string {
   const def = FRUITS[kind];
+  if (def.legendary === true) return "Legendary";
   return def.scoring === "fresh" ? `Fresh ${def.points}` : def.scoring === "simmer" ? "Simmer" : "Booster";
 }
 
@@ -51,4 +53,9 @@ export function moment(run: Run): string {
 /** The run the play screen starts with: the one read from the player's files (a copy: the game state's is not to be changed), or a new one. */
 export function startingRun(saved: unknown, seed: number): Run {
   return saved === null || saved === undefined ? newRun(seed) : (JSON.parse(JSON.stringify(saved)) as Run);
+}
+
+/** The colour of a fruit's chip: its scoring type's, or a Legendary's own. */
+export function chipColor(kind: FruitKind): string {
+  return FRUITS[kind].legendary === true ? LEGENDARY_CHIP : SCORING[FRUITS[kind].scoring].color;
 }

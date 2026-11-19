@@ -11,6 +11,7 @@ import {
   FRUIT_PRICE,
   JAR,
   JUICER_BONUS,
+  keeps,
   newRun,
   NO_KEYS,
   POINTS_PER_COIN,
@@ -29,7 +30,7 @@ import {
   type Keys,
   type Run,
 } from "../src/rules/jar.ts";
-import { ITEMS } from "../src/rules/items.ts";
+import { ITEMS, offerable } from "../src/rules/items.ts";
 import { Rng } from "../src/rules/rng.ts";
 import { keywordOf, KEYWORDS, keywordsIn, ruleWords } from "../src/rules/terms.ts";
 
@@ -60,6 +61,7 @@ function fruit(id: number, kind: Fruit["kind"], x: number, y: number, touching: 
     pulse: 0,
     pulseDelay: 0,
     honeyed: kind === "honeydew",
+    pickled: false,
     lit: false,
     fuse: 0,
   };
@@ -694,4 +696,72 @@ test("a hand drops a fruit at a time: the next waits for the last to land and th
   for (; frames < 400 && run.fruits.length === 2; frames++) run = press(run, {});
   assert.equal(run.fruits.length, 3);
   assert.ok(frames > 150 && frames < 200, `${frames} frames`);
+});
+
+test("a Merge that touches a Dragonfruit skips a size: two Cherries make an Orange, two Melons a Watermelon all the same", () => {
+  const y = JAR.floor - 14;
+  const run = jarWith([fruit(1, "cherry", 300, y, [2, 3]), fruit(2, "cherry", 326, y, [1]), fruit(3, "dragonfruit", 270, y, [1])]);
+  simulate(run, DT);
+  assert.deepEqual(run.fruits.map((f) => f.kind).sort(), ["dragonfruit", "orange"]);
+  assert.equal(run.cycleScore, FRUITS.orange.points);
+
+  const top = jarWith([fruit(1, "melon", 300, y, [2, 3]), fruit(2, "melon", 350, y, [1]), fruit(3, "dragonfruit", 260, y, [1])]);
+  simulate(top, DT);
+  assert.ok(top.fruits.some((f) => f.kind === "watermelon"), "there is no size past a Watermelon to skip to");
+});
+
+test("a Legendary is offered now and then, in the last place of a pick", () => {
+  let seen = 0;
+  for (let seed = 1; seed <= 400; seed++) {
+    const run = jarWith([]);
+    run.seed = seed * 7919;
+    run.turn = 1;
+    resolve(run);
+    assert.ok(!run.offers.slice(0, 2).includes("dragonfruit"));
+    if (run.offers[2] === "dragonfruit") seen += 1;
+  }
+  assert.ok(seen > 10 && seen < 70, `${seen} in 400 picks`);
+});
+
+test("the Preserves Jar's upgrades: offered only to its owner, they take its place, and each keeps its own number", () => {
+  assert.ok(!offerable([]).includes("bigpreserves") && !offerable([]).includes("pickling"));
+  assert.ok(offerable(["preserves"]).includes("bigpreserves") && offerable(["preserves"]).includes("pickling"));
+  assert.ok(!offerable(["bigpreserves"]).includes("preserves"), "not the jar it was upgraded from");
+  assert.ok(!offerable(["bigpreserves"]).includes("pickling"), "nor the other upgrade: that needs the plain jar");
+
+  let run = inShop(ITEMS.bigpreserves.price);
+  run.items = ["lid", "preserves"];
+  run.shop!.item = "bigpreserves";
+  run.shop!.cursor = SHOP_ITEM;
+  run = press(run, { confirm: true });
+  assert.deepEqual(run.items, ["lid", "bigpreserves"]);
+  assert.equal(keeps(run), 3);
+});
+
+test("the Pickling Jar keeps one fruit, Pickled: it does not age, rot it had is gone, and rot does not spread to it", () => {
+  let run = inShop(0);
+  run.items = ["pickling"];
+  run.fruits = [{ ...fruit(1, "banana", 300, JAR.floor - 18), age: 2 }, fruit(2, "cherry", 340, JAR.floor - 14)];
+  run = press(run, { drop: true });
+  assert.equal(run.phase, "preserve");
+  run = press(run, { confirm: true });
+  run = press(run, { right: true });
+  run = press(run, { confirm: true });
+  assert.deepEqual(run.kept, [1], "it holds one");
+  run = press(run, { drop: true });
+  const banana = run.fruits[0]!;
+  assert.equal(banana.pickled, true);
+
+  // Three more turns beside a rotten fruit: still a Banana of age 2, scoring 4 a turn.
+  run.fruits.push({ ...fruit(9, "fig", 336, JAR.floor - 18, [1]), rotten: true });
+  run.fruits[0]!.touching = [9];
+  for (let turn = 0; turn < 3; turn++) {
+    const before = run.cycleScore;
+    run.turn = 1;
+    run.phase = "settle";
+    resolve(run);
+    assert.equal(run.cycleScore - before, 4);
+  }
+  assert.equal(run.fruits[0]!.age, 2);
+  assert.equal(run.fruits[0]!.rotten, false);
 });

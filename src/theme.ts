@@ -47,6 +47,10 @@ export const BUTTON_SLICE = CARD_SLICE;
 
 /** A rotten fruit is tinted this brown. */
 export const ROTTEN = "#ad7757";
+/** A Pickled one is tinted this green. */
+export const PICKLED = "#a8ca58";
+/** The chip of a Legendary fruit. */
+export const LEGENDARY_CHIP = "#be772b";
 /** A honeyed one is tinted this gold. */
 export const HONEYED = "#e8c170";
 
