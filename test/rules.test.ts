@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { fruitGlossary, poolRows, scoringLabel } from "../src/layout.ts";
+import { fruitGlossary, motes, poolRows, scoringLabel } from "../src/layout.ts";
+import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { FRUITS } from "../src/rules/fruits.ts";
 import {
   advance,
@@ -764,4 +765,34 @@ test("the Pickling Jar keeps one fruit, Pickled: it does not age, rot it had is 
   }
   assert.equal(run.fruits[0]!.age, 2);
   assert.equal(run.fruits[0]!.rotten, false);
+});
+
+test("the title's demo: it drops each hand, skips each pick, and starts a new run a while after the rent comes due", () => {
+  let run = newRun(11);
+  assert.equal(demoKeys(run).drop, true, "a hand to order: dropped as dealt");
+  run = demoStep(run, DT, [], 0);
+  assert.equal(run.phase, "drop");
+  assert.equal(demoKeys(run).drop, false);
+  run.phase = "pick";
+  run.offers = ["apple", "lemon", "seed"];
+  const pool = run.pool.length;
+  run = demoStep(run, DT, [], 0);
+  assert.equal(run.phase, "order");
+  assert.equal(run.pool.length, pool, "skipped: nothing joined the pool");
+
+  run.phase = "rent";
+  assert.equal(demoOver(run), true);
+  assert.equal(demoStep(run, DT, [], DEMO_HOLD - 0.1).phase, "rent", "the full jar is left on show");
+  const next = demoStep(run, DT, [], DEMO_HOLD);
+  assert.equal(next.phase, "order");
+  assert.equal(next.cycle, 1);
+  assert.equal(next.fruits.length, 0, "a new run, an empty jar");
+});
+
+test("the backdrop's motes are worked out from the time alone, stay on the wall, and move slowly", () => {
+  assert.deepEqual(motes(12.5), motes(12.5));
+  for (const time of [0, 3.7, 100, 4321]) for (const m of motes(time)) assert.ok(m.x >= -8 && m.x < 648 && m.y >= 0 && m.y <= 316, `${m.x}, ${m.y}`);
+  const a = motes(10);
+  const b = motes(10 + 1 / 60);
+  assert.ok(a.every((m, i) => Math.abs(m.x - b[i]!.x) <= 1 && Math.abs(m.y - b[i]!.y) <= 1 || Math.abs(m.y - b[i]!.y) > 300), "a pixel a step at most, but for wrapping");
 });

@@ -59,3 +59,31 @@ export function startingRun(saved: unknown, seed: number): Run {
 export function chipColor(kind: FruitKind): string {
   return FRUITS[kind].legendary === true ? LEGENDARY_CHIP : SCORING[FRUITS[kind].scoring].color;
 }
+
+/** A mote of dust in the kitchen's air: where it is, and which of the two shades it is drawn in. */
+export interface Mote {
+  id: number;
+  x: number;
+  y: number;
+  shade: 0 | 1;
+}
+
+/** How many motes, and the height of the wall they rise through before starting again at the bottom. */
+const MOTES = 14;
+const MOTE_FIELD = 316;
+
+/**
+ * The motes at a time, in seconds: each rises at its own slow speed, swaying a little, and wraps to the bottom of the wall. They
+ * are worked out from the time alone (no state, nothing random), so a replay shows the same air.
+ */
+export function motes(time: number): Mote[] {
+  const out: Mote[] = [];
+  for (let id = 0; id < MOTES; id++) {
+    const speed = 5 + ((id * 7) % 6);
+    const start = (id * 97) % MOTE_FIELD;
+    const sway = Math.sin(time * (0.3 + (id % 5) * 0.07) + id * 1.7) * 6;
+    const rise = (start + time * speed) % MOTE_FIELD;
+    out.push({ id, x: Math.round(((id * 151 + 23) % 640) + sway), y: Math.round(MOTE_FIELD - rise), shade: id % 3 === 0 ? 1 : 0 });
+  }
+  return out;
+}

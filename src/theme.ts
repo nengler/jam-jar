@@ -91,3 +91,6 @@ export function fruitImageSize(kind: FruitKind, look: FruitLook): number {
 
 /** Where the counter's top is on the screen: what stands on it (the jar, the title's fruit) has its foot here. */
 export const COUNTER_Y = 342;
+
+/** The motes of dust in the kitchen's air: two blues a little lighter than the wall. */
+export const MOTE: readonly [string, string] = ["#253a5e", "#3c5e8b"];

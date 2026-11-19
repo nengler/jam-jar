@@ -176,16 +176,24 @@ MOUTH = 4
 COUNTER_TOP, COUNTER_FRONT = 162, 173
 
 
-def kitchen() -> Image.Image:
-    """The backdrop of every screen: trellis wallpaper in two navy blues, a skirting shadow, and a wooden counter seen a
-    little from above (its top, then its front)."""
+def wallpaper() -> Image.Image:
+    """The kitchen's wall: trellis wallpaper in two navy blues, a tile bigger than the screen each way, so the game can let it
+    drift by less than a tile and wrap with no seam."""
     sheet = Image.open(KENNEY / "pattern-pack-pixel-grayscale.png").convert("RGBA")
     tile = recolor(sheet.crop((WALLPAPER[0] * 16, WALLPAPER[1] * 16, WALLPAPER[0] * 16 + 16, WALLPAPER[1] * 16 + 16)), RAMPS["wallpaper"])
-    w, h = WIDTH // PX, HEIGHT // PX
+    w, h = WIDTH // PX + 16, HEIGHT // PX + 16
     out = Image.new("RGBA", (w, h))
     for y in range(0, h, 16):
         for x in range(0, w, 16):
             out.paste(tile, (x, y))
+    return doubled(out)
+
+
+def counter() -> Image.Image:
+    """The kitchen's counter, drawn over the wall: a skirting shadow, then wood seen a little from above (its top, then its
+    front). The size of the screen, and clear above the shadow."""
+    w, h = WIDTH // PX, HEIGHT // PX
+    out = Image.new("RGBA", (w, h))
     draw = ImageDraw.Draw(out)
     # The wall darkens to the counter: a dithered row, then two dark ones.
     for x in range(0, w, 2):
@@ -448,7 +456,8 @@ def main() -> None:
         picture().save(ASSETS / f"item-{name}.png")
     pointer().save(ASSETS / "pointer.png")
     peg().save(ASSETS / "peg.png")
-    kitchen().save(ASSETS / "kitchen.png")
+    wallpaper().save(ASSETS / "wall.png")
+    counter().save(ASSETS / "counter.png")
     back, front = jar_pictures()
     back.save(ASSETS / "jar-back.png")
     front.save(ASSETS / "jar-front.png")

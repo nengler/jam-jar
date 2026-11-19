@@ -2,7 +2,7 @@ import { useBall, useMutable, useUpdate } from "@tsengine/runtime/jsx";
 
 import { FruitBall } from "./FruitBall.tsx";
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
-import { GRAVITY, type FruitReport } from "./rules/jar.ts";
+import { GRAVITY, JAR, type FruitReport } from "./rules/jar.ts";
 
 interface FruitProps {
   id: number;
@@ -26,10 +26,12 @@ interface FruitProps {
 /**
  * A fruit in the jar: a ball the engine moves with every other fruit (`useBall`), stopped by the jar's solid walls. Each step it
  * tells the run where it is, how fast it moves and which fruit it touches; the run decides what that means (landing, merging,
- * blowing up). A blast reaches it as a kick through its props.
+ * blowing up). A blast reaches it as a kick through its props. The ball has no angle of its own, so the fruit's turning is
+ * drawn from how it moves: it rolls along what it touches.
  */
 export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
-  const s = useMutable({ kicked: 0 });
+  // `turn` is how far it has rolled, in degrees; `lastX` where it was a step ago.
+  const s = useMutable({ kicked: 0, turn: 0, lastX: x0 });
   const { x, y, contacts, push, speed } = useBall({
     x: x0,
     y: y0,
@@ -44,7 +46,11 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, lit, glow, k
       s.kicked = kicks;
       push(kickX, kickY);
     }
-    onReport({ id: id, x: x, y: y, speed: speed(), touching: contacts("fruit").map((c) => c.data.id) });
+    const touching = contacts("fruit").map((c) => c.data.id);
+    // It rolls: while it touches a fruit or the floor, it turns by how far it moved across, as a wheel of its size would.
+    if (touching.length > 0 || y + FRUITS[kind].radius >= JAR.floor - 2) s.turn += (((x - s.lastX) / FRUITS[kind].radius) * 180) / Math.PI;
+    s.lastX = x;
+    onReport({ id: id, x: x, y: y, speed: speed(), touching: touching });
   });
-  return <FruitBall kind={kind} x={x} y={y} rotten={rotten} honeyed={honeyed} pickled={pickled} lit={lit} glow={glow} />;
+  return <FruitBall kind={kind} x={x} y={y} turn={s.turn} rotten={rotten} honeyed={honeyed} pickled={pickled} lit={lit} glow={glow} />;
 }

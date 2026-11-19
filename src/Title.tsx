@@ -1,24 +1,17 @@
 import { Button, Entity, Flex, Menu, Text } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
-import { FruitBall } from "./FruitBall.tsx";
+import { DemoJar } from "./DemoJar.tsx";
 import { save, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
-import type { FruitKind } from "./rules/fruits.ts";
-import { FRUIT_ART } from "./rules/sizes.ts";
-import { BUTTON, BUTTON_GREY, BUTTON_SLICE, COUNTER_Y, DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT_SOFT } from "./theme.ts";
+import { BUTTON, BUTTON_GREY, BUTTON_SLICE, DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT_SOFT } from "./theme.ts";
 
-/** The fruit standing on the counter, either side of the menu: each kind and where its centre is across the screen. */
-const ON_COUNTER: readonly (readonly [FruitKind, number])[] = [
-  ["cherry", 40],
-  ["watermelon", 92],
-  ["orange", 150],
-  ["lemon", 490],
-  ["melon", 540],
-  ["apple", 592],
-];
+/** The title's two halves: the name and the menu are centred in the left `MENU_W` pixels, and the jar stands this far right of
+ * where the play screen's does, in the middle of what is left. */
+const MENU_W = 352;
+const JAR_SHIFT = 176;
 
-/** The title: the name on the kitchen wall, fruit on the counter either side, and Play / Settings. */
+/** The title: the name on the kitchen wall and the menu on the left, and on the right a jar filling up as it does in play. */
 export function Title({ name }: { name: string }) {
   const learned = useGame((g) => g.learned);
   const hasSave = useGame((g) => g.hasSave);
@@ -26,12 +19,8 @@ export function Title({ name }: { name: string }) {
   return (
     <Entity>
       <Backdrop />
-      {ON_COUNTER.map((fruit) => (
-        <FruitBall key={fruit[0]} kind={fruit[0]} x={fruit[1]} y={COUNTER_Y - FRUIT_ART[fruit[0]].size / 2 + 2} />
-      ))}
-      <FruitBall kind="grape" x={124} y={COUNTER_Y - 62} />
-      <FruitBall kind="banana" x={568} y={COUNTER_Y - 56} />
-      <Flex direction="column" width={640} height={324} alignItems="center" justifyContent="center" gap={hasSave ? 6 : 12}>
+      <DemoJar x={JAR_SHIFT} />
+      <Flex direction="column" width={MENU_W} height={324} alignItems="center" justifyContent="center" gap={hasSave ? 6 : 12}>
         <Text font={DISPLAY} size={DISPLAY_SIZE * 3} color={GOLD} shadow={INK} shadowX={4} shadowY={4}>
           {name}
         </Text>
