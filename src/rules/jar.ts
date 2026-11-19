@@ -403,7 +403,7 @@ export function newRun(seed: number): Run {
     popups: [],
     links: [],
     effects: [],
-    message: "Order your hand, then Space to drop",
+    message: "Order your hand, then drop it in the jar",
     sounds: [],
   };
   deal(run);
@@ -1382,7 +1382,7 @@ function leaveShop(run: Run): void {
   }
   run.preserveCursor = 0;
   run.phase = "preserve";
-  run.message = `${ITEMS[keepingJar(run.items) as ItemKind].name}: keep up to ${keeps(run)} fruit`;
+  run.message = `${ITEMS[keepingJar(run.items) as ItemKind].name}: choose up to ${keeps(run)} fruit to keep, then Done`;
 }
 
 function preserveStep(run: Run, keys: Keys): void {
