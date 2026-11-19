@@ -1,7 +1,7 @@
 import { Entity, Flex, Line, Shape, Sprite, Text, Tooltip, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
-import { Board, Heading, Panel } from "./Board.tsx";
+import { Letters, Panel } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
@@ -65,6 +65,7 @@ const HURRY_SPEED = 3;
 const OFFER_W = 184;
 const OFFER_H = 232;
 const OFFER_GAP = 12;
+const OFFER_LIFT = 8;
 
 /**
  * A run. The rules live in rules/jar.ts; each step this hands them the time, the keys and the fruit's reports, and keeps the run
@@ -181,7 +182,6 @@ export function Play() {
   // The board shows what is still to be dealt this shuffle: the hand is on the shelf, and the rest has been played.
   const pool = poolRows(run.draw);
   const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
-  const offersLeft = 320 - (3 * OFFER_W + 2 * OFFER_GAP) / 2;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
 
   return (
@@ -320,29 +320,38 @@ export function Play() {
         </Flex>
       )}
 
-      {/* The pick: three cards over a dimmed kitchen. */}
+      {/* The pick: three cards in a row in the middle of a dimmed kitchen, under their heading. Each place is a little taller
+          than its card, and the chosen card stands at the top of its place. */}
       {picking && (
         <Entity>
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
-          <Heading x={320} y={12} width={240} text="Pick a fruit" />
-          {placed(run.offers).map((offer) => (
-            <Entity key={offer.at} x={offersLeft + offer.at * (OFFER_W + OFFER_GAP)} y={offer.at === run.offerCursor ? 52 : 60}>
-              {/* What a card's keywords mean shows beside it while it is the chosen one or the mouse is over it; the mouse over a
-                  card chooses it, and a click takes it. */}
-              <Flex width={OFFER_W} height={OFFER_H} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => point(offer.at)} onPress={() => click(offer.at)}>
-                <Tooltip show={!paused && offer.at === run.offerCursor ? true : undefined} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                  <Terms text={FRUITS[offer.card].text} />
-                </Tooltip>
-              </Flex>
-              <FruitBall kind={offer.card} x={OFFER_W / 2} y={50} look="big" />
-              <Text x={0} y={84} width={OFFER_W} maxWidth={OFFER_W} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
-                {FRUITS[offer.card].name}
-              </Text>
-              <RuleText x={12} y={122} width={OFFER_W - 24} text={FRUITS[offer.card].text} color={INK_SOFT} accent={KEYWORD} />
-            </Entity>
-          ))}
+          <Flex left={0} right={0} top={12} bottom={0} direction="column" alignItems="center" gap={8}>
+            <Flex direction="row" justifyContent="center" height={32}>
+              <Letters text="Pick a fruit" seed={5} />
+            </Flex>
+            <Flex direction="row" gap={OFFER_GAP}>
+              {placed(run.offers).map((offer) => (
+                <Flex key={offer.at} height={OFFER_H + OFFER_LIFT} direction="column" justifyContent={offer.at === run.offerCursor ? "start" : "end"}>
+                  {/* What a card's keywords mean shows beside it while it is the chosen one or the mouse is over it; the mouse over
+                      a card chooses it, and a click takes it. */}
+                  <Flex width={OFFER_W} height={OFFER_H} direction="column" alignItems="center" paddingTop={18} gap={4} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => point(offer.at)} onPress={() => click(offer.at)}>
+                    <Tooltip show={!paused && offer.at === run.offerCursor ? true : undefined} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                      <Terms text={FRUITS[offer.card].text} />
+                    </Tooltip>
+                    <Flex width={64} height={64}>
+                      <FruitBall kind={offer.card} x={32} y={32} look="big" />
+                    </Flex>
+                    <Text width={OFFER_W} maxWidth={OFFER_W} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
+                      {FRUITS[offer.card].name}
+                    </Text>
+                    <RuleText x={0} y={0} width={OFFER_W - 24} text={FRUITS[offer.card].text} color={INK_SOFT} accent={KEYWORD} />
+                  </Flex>
+                </Flex>
+              ))}
+            </Flex>
+          </Flex>
           {hints && (
-            <Flex y={334} width={640} direction="row" justifyContent="center" gap={20}>
+            <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center" gap={20}>
               <KeyHint name="arrows" label="Choose" />
               <KeyHint name="Enter" label="Take" />
               <KeyHint name="Space" label="Skip for 1 coin" />
@@ -351,16 +360,24 @@ export function Play() {
         </Entity>
       )}
 
+      {/* The end of a cycle or of the run: a board in the middle of the screen, as tall as what it says. */}
       {ended && (
         <Entity>
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
-          <Board x={192} y={106} width={256} height={142} heading={run.phase === "rent" ? "Rent paid" : run.phase === "won" ? "The jar is yours" : "Evicted"} />
-          <Text x={204} y={148} width={232} maxWidth={232} align="center" color={INK_SOFT}>
-            {`Scored ${run.cycleScore} of ${rent}`}
-          </Text>
-          <Text x={320} y={166} font={DISPLAY} size={DISPLAY_SIZE} align="center" color={INK}>{`Total ${run.total}`}</Text>
-          <Flex x={192} y={202} width={256} direction="row" justifyContent="center">
-            <KeyHint name="Enter" label={run.phase === "rent" ? (run.cycle >= RENT.length ? "Go on" : "Shop") : "Title"} color={INK} />
+          <Flex left={0} right={0} top={0} bottom={0} direction="column" alignItems="center" justifyContent="center">
+            <Flex width={256} direction="column" alignItems="stretch">
+              <Panel heading={run.phase === "rent" ? "Rent paid" : run.phase === "won" ? "The jar is yours" : "Evicted"} gap={2}>
+                <Text width={224} maxWidth={224} align="center" color={INK_SOFT}>
+                  {`Scored ${run.cycleScore} of ${rent}`}
+                </Text>
+                <Flex direction="row" justifyContent="center">
+                  <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`Total ${run.total}`}</Text>
+                </Flex>
+                <Flex direction="row" justifyContent="center" paddingTop={6}>
+                  <KeyHint name="Enter" label={run.phase === "rent" ? (run.cycle >= RENT.length ? "Go on" : "Shop") : "Title"} color={INK} />
+                </Flex>
+              </Panel>
+            </Flex>
           </Flex>
         </Entity>
       )}
