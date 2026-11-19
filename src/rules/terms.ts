@@ -38,6 +38,7 @@ export type Keyword =
   | "shake"
   | "preserve"
   | "pickled"
+  | "frozen"
   | "once"
   | "spill";
 
@@ -80,6 +81,7 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   crush: { name: "Crush", text: "Destroys a fruit for its points +3." },
   shake: { name: "Shake", text: "Throws every fruit about." },
   preserve: { name: "Preserve", text: "Keeps this many fruit past the rent." },
+  frozen: { name: "Frozen", text: "Held in place. Explosions can't destroy it." },
   pickled: { name: "Pickled", text: "Never ages, never Rotten." },
   once: { name: "Once", text: "Used up the first time it works." },
   spill: { name: "Spill", text: "Fruit over the rim are lost: -5 each." },

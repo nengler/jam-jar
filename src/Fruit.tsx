@@ -13,6 +13,8 @@ interface FruitProps {
   rotten: boolean;
   honeyed: boolean;
   pickled: boolean;
+  /** Held where it is: its ball is pinned while this is on. */
+  frozen: boolean;
   lit: boolean;
   /** How lit up it is, 0 to 1: something just happened to it or because of it. */
   glow: number;
@@ -29,10 +31,10 @@ interface FruitProps {
  * blowing up). A blast reaches it as a kick through its props. The ball has no angle of its own, so the fruit's turning is
  * drawn from how it moves: it rolls along what it touches.
  */
-export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
+export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
   // `turn` is how far it has rolled, in degrees; `lastX` where it was a step ago.
   const s = useMutable({ kicked: 0, turn: 0, lastX: x0 });
-  const { x, y, contacts, push, speed } = useBall({
+  const { x, y, contacts, push, speed, pin } = useBall({
     x: x0,
     y: y0,
     radius: FRUITS[kind].radius,
@@ -40,8 +42,11 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, lit, glow, k
     gravity: GRAVITY,
     tag: "fruit",
     data: { id: id },
+    // A fruit that comes back from a save frozen is held from its first step.
+    pinned: frozen,
   });
   useUpdate(() => {
+    pin(frozen);
     if (kicks !== s.kicked) {
       s.kicked = kicks;
       push(kickX, kickY);
@@ -52,5 +57,5 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, lit, glow, k
     s.lastX = x;
     onReport({ id: id, x: x, y: y, speed: speed(), touching: touching });
   });
-  return <FruitBall kind={kind} x={x} y={y} turn={s.turn} rotten={rotten} honeyed={honeyed} pickled={pickled} lit={lit} glow={glow} />;
+  return <FruitBall kind={kind} x={x} y={y} turn={s.turn} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} />;
 }

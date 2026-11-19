@@ -140,6 +140,8 @@ export interface Fruit {
   pulseDelay: number;
   /** Kept by a Pickling Jar: it does not age and cannot rot. */
   pickled: boolean;
+  /** Frozen by a Snow Pear: its component pins its ball, so it is held where it is, and an explosion does not destroy it. */
+  frozen: boolean;
   /** Coated in honey (a Honeydew, or a fruit one has honeyed): it scores at every Resolve. */
   honeyed: boolean;
   /** A Chili or Durian about to go off, and the seconds left. */
@@ -163,8 +165,8 @@ export interface Popup {
 /** A line drawn for a moment between two fruit, from the one that did something to the one it did it to. */
 export interface Link {
   id: number;
-  /** What it shows: a Booster doubling a score, rot or honey spreading, a fruit being eaten, or rot a Prune scores for. */
-  kind: "boost" | "rot" | "honey" | "eat";
+  /** What it shows: a Booster doubling a score, rot, honey or frost spreading, a fruit being eaten, or rot a Prune scores for. */
+  kind: "boost" | "rot" | "honey" | "eat" | "freeze";
   x1: number;
   y1: number;
   x2: number;
@@ -484,6 +486,7 @@ function makeFruit(run: Run, kind: FruitKind, x: number, y: number): Fruit {
     pulseDelay: 0,
     honeyed: kind === "honeydew",
     pickled: false,
+    frozen: false,
     lit: false,
     fuse: 0,
   };
@@ -859,6 +862,11 @@ function explode(run: Run, bomb: Fruit): void {
       kept.push(f);
       continue;
     }
+    if (f.frozen) {
+      // Ice holds: it is not destroyed, and being pinned it is not thrown either.
+      kept.push(f);
+      continue;
+    }
     if (f.kind === "chili" || f.kind === "durian") {
       // Caught in the blast: it goes off a moment later (a chain).
       if (!f.lit) ignite(f, 0.15);
@@ -880,6 +888,7 @@ function explode(run: Run, bomb: Fruit): void {
   }
   // The blast pushes what is left away from it.
   for (const f of kept) {
+    if (f.frozen) continue;
     const dx = f.x - bomb.x;
     const dy = f.y - bomb.y;
     const d = Math.max(1, Math.sqrt(dx * dx + dy * dy));
@@ -1001,6 +1010,16 @@ export function resolve(run: Run): void {
     run.message = "A Coconut cracked";
     return shell;
   });
+
+  // Each Snow Pear freezes itself and every fruit it touches, where they are.
+  for (const f of run.fruits) {
+    if (f.kind !== "snowpear") continue;
+    const fresh = [f, ...run.fruits.filter((o) => f.touching.includes(o.id))].filter((o) => !o.frozen);
+    if (fresh.length === 0) continue;
+    for (const o of fresh) o.frozen = true;
+    slot += 1;
+    staged.push({ popup: null, fruits: fresh, links: fresh.filter((o) => o !== f).map((o) => link(run, "freeze", f, o)), slot });
+  }
 
   // Each Honeydew honeys one fruit it touches.
   for (const f of run.fruits) {

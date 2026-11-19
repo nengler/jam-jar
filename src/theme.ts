@@ -47,6 +47,8 @@ export const BUTTON_SLICE = CARD_SLICE;
 
 /** A rotten fruit is tinted this brown. */
 export const ROTTEN = "#ad7757";
+/** A Frozen one is tinted this ice blue. */
+export const FROZEN = "#73bed3";
 /** A Pickled one is tinted this green. */
 export const PICKLED = "#a8ca58";
 /** A honeyed one is tinted this gold. */
@@ -58,11 +60,12 @@ export const BAR_FILL = "#be772b";
 export const RULE = "#d7b594";
 
 /** The line drawn between two fruit when one does something to the other, by what it did (rules/jar.ts, `Link`). */
-export const LINK: Readonly<Record<"boost" | "rot" | "honey" | "eat", string>> = {
+export const LINK: Readonly<Record<"boost" | "rot" | "honey" | "eat" | "freeze", string>> = {
   boost: "#e8c170",
   honey: "#de9e41",
   rot: "#ad7757",
   eat: "#ebede9",
+  freeze: "#a4dddb",
 };
 
 /** A keyword in card text: on parchment, and on the dark shade under a card. */

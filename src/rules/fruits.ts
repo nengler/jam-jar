@@ -31,7 +31,8 @@ export type FruitKind =
   | "pitaya"
   | "coconut"
   | "cracked"
-  | "dragonfruit";
+  | "dragonfruit"
+  | "snowpear";
 
 export type Scoring = "fresh" | "simmer" | "booster";
 
@@ -77,6 +78,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   coconut: { name: "Coconut", radius: FRUIT_ART.coconut.radius, points: 3, scoring: "fresh", touchWeight: 1, heavy: 5, text: "Fresh 3. Heavy. Crack 3." },
   cracked: { name: "Cracked Coconut", radius: FRUIT_ART.cracked.radius, points: 0, scoring: "booster", touchWeight: 1, heavy: 5, text: "Booster. Heavy. Double." },
   dragonfruit: { name: "Dragonfruit", radius: FRUIT_ART.dragonfruit.radius, points: 0, scoring: "booster", touchWeight: 1, legendary: true, text: "Legendary. Booster. Skip." },
+  snowpear: { name: "Snow Pear", radius: FRUIT_ART.snowpear.radius, points: 2, scoring: "fresh", touchWeight: 1, text: "Fresh 2. Each turn, it and its neighbours turn Frozen." },
   seed: { name: "Seed", radius: FRUIT_ART.seed.radius, points: 1, scoring: "fresh", touchWeight: 1, text: "Fresh 1. Exploded: Sprout." },
 };
 
@@ -98,6 +100,7 @@ export const OFFERABLE: readonly FruitKind[] = [
   "honeydew",
   "pitaya",
   "coconut",
+  "snowpear",
 ];
 
 /** What a Seed can sprout. */

@@ -41,6 +41,7 @@ export function Jar({ run, onReport }: JarProps) {
           rotten={f.rotten}
           honeyed={f.honeyed}
           pickled={f.pickled}
+          frozen={f.frozen}
           lit={f.lit && Math.floor(f.fuse * 20) % 2 === 0}
           glow={f.pulseDelay > 0 ? 0 : f.pulse / PULSE}
           kicks={f.kicks}

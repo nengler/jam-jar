@@ -100,7 +100,7 @@ let kept: Run | null = null;
  */
 export const save = createSave<Run>({
   name: "run",
-  version: 2,
+  version: 3,
   pick: () => kept as Run,
   apply: (run) => {
     if (typeof run?.phase === "string" && Array.isArray(run.fruits) && Array.isArray(run.pool)) useGame.actions().continueRun(run);

@@ -9,7 +9,7 @@ Built on the [tse engine](https://github.com/nengler/tse). The design doc is the
 
 ## Running it
 
-The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.9.1), with
+The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.10.0), with
 `overrides` so the packs' own dependencies on each other resolve to the same release:
 
 ```sh
@@ -71,6 +71,7 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Skip | A Merge touching it skips a size. |
 | Legendary | Rare, and never in the shop. |
 | Crush, Shake, Preserve, Pickled, Once | The items' words: the Juicer, the Shaker, the jars and the Lid. |
+| Frozen | Held in place. Explosions can't destroy it. |
 | Spill | Fruit over the rim are lost: -5 each. |
 
 A new card is a row of these, how it scores first ("Fresh 3. Heavy. Crack 3."), with a trigger before a colon ("Exploded:
@@ -94,6 +95,9 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 - Flex fruit: Kiwi (becomes a copy of the first landed fruit it touches), Peach (bounces once when it lands and shoves what it
   landed on aside) and Honeydew (honeys one fruit it touches a turn; honeyed fruit, the Honeydew included, score 2 a turn and
   are tinted gold).
+- Snow Pear: at the end of each turn it and every fruit touching it turn Frozen. A Frozen fruit is held where it is (its
+  ball is pinned, so it hangs there even if what was under it goes), an explosion does not destroy it, and it is tinted ice
+  blue. It thaws when the rent empties the jar.
 - Legendary: the Dragonfruit (a Merge touching it skips a size: two Cherries make an Orange). A Legendary takes the last
   place of a pick about one time in twelve, and is never in the shop.
 - Eat and grow: Pitaya (eats one Cherry it touches a turn, and every Pitaya scores 1 more for the rest of the run) and Coconut
@@ -121,9 +125,8 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     it had is gone. Pickled fruit are tinted green.
   - Preserves (8), the Preserves Jar: after the shop, choose up to 2 fruit to stay in the jar when the rent empties it.
 
-Not built yet: the other boss jars (tilted, blind, gravity-flip), Juice (the
-Lime, and juice pooling in the jar; the Coconut's milk is a cracked shell for now) and Snow Pear (freezing needs a ball the engine can pin in place). The Honeydew's honey is not sticky yet, for the same
-reason.
+Not built yet: the other boss jars (tilted, blind, gravity-flip), Juice (the Lime, and juice pooling in the jar; the
+Coconut's milk is a cracked shell for now), and honey that sticks fruit together (the Honeydew's honey only scores).
 
 The screen is 640 x 360 (16:9), scaled up by whole multiples.
 
