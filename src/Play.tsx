@@ -166,15 +166,11 @@ export function Play() {
         />
       ))}
       <Sprite image="jar-front.png" x={jarX} y={jarY} />
-      {/* The Preserves Jar: an amber frame on the fruit the cursor is on, and "Kept" over the ones chosen. */}
-      {preserving && chosen !== undefined && (
-        <Flex x={chosen.x - chosen.r - 4} y={chosen.y - chosen.r - 4} width={chosen.r * 2 + 8} height={chosen.r * 2 + 8} backgroundImage={SELECT} slice={CARD_SLICE} />
-      )}
+      {/* The Preserves Jar: an amber frame round each fruit kept, and an arrow over the one the cursor is on. */}
       {keptFruit.map((f) => (
-        <Text key={f.id} x={f.x} y={f.y - 10} align="center" color={GOLD} shadow={INK} shadowX={2} shadowY={2}>
-          Kept
-        </Text>
+        <Flex key={f.id} x={f.x - f.r - 4} y={f.y - f.r - 4} width={f.r * 2 + 8} height={f.r * 2 + 8} backgroundImage={SELECT} slice={CARD_SLICE} />
       ))}
+      {preserving && chosen !== undefined && <Sprite image="pointer.png" x={Math.round(chosen.x) - 9} y={Math.round(chosen.y - chosen.r) - 20} />}
       {run.effects.map((e) => (
         <Sprite
           key={e.id}
@@ -232,8 +228,8 @@ export function Play() {
         {ordering && <KeyHint name="Enter" label={run.holding ? "Put down" : "Pick up"} />}
         {ordering && <KeyHint name="Space" label="Drop" />}
         {preserving && <KeyHint name="arrows" label="Choose" />}
-        {preserving && <KeyHint name="Enter" label="Keep / let go" />}
-        {preserving && <KeyHint name="Space" label="Next cycle" />}
+        {preserving && <KeyHint name="Enter" label="Keep" />}
+        {preserving && <KeyHint name="Space" label="Done" />}
         <KeyHint name="Esc" label="Pause" />
       </Flex>
 

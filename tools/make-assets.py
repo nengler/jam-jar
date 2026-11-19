@@ -355,6 +355,16 @@ def item_preserves() -> Image.Image:
     return doubled(out)
 
 
+def pointer() -> Image.Image:
+    """A gold arrow pointing down, 9 x 7 art pixels: over the fruit the Preserves Jar's cursor is on."""
+    out = Image.new("RGBA", (9, 7))
+    draw = ImageDraw.Draw(out)
+    draw.polygon(((0, 0), (8, 0), (8, 2), (4, 6), (0, 2)), fill=colour("#341c27"))
+    draw.polygon(((1, 1), (7, 1), (4, 4)), fill=colour("#e8c170"))
+    draw.line((2, 1, 6, 1), fill=colour("#e7d5b3"))
+    return doubled(out)
+
+
 def fruit_fly() -> Image.Image:
     """The Fruit Fly, 16 x 16 art pixels: a dark body, a red eye and two pale wings."""
     out = Image.new("RGBA", (16, 16))
@@ -402,6 +412,7 @@ def main() -> None:
     key_pair("up", "down").save(ASSETS / "key-updown.png")
     for name, picture in (("lid", item_lid), ("juicer", item_juicer), ("shaker", item_shaker), ("preserves", item_preserves)):
         picture().save(ASSETS / f"item-{name}.png")
+    pointer().save(ASSETS / "pointer.png")
     kitchen().save(ASSETS / "kitchen.png")
     back, front = jar_pictures()
     back.save(ASSETS / "jar-back.png")
