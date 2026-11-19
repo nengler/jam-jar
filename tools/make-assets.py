@@ -56,6 +56,8 @@ SOUNDS = {
     "rent.wav": "digital-audio-power-up-2.wav",
     "lose.wav": "interface-sounds-error-004.wav",
     "tick.wav": "interface-sounds-tick-002.wav",
+    # The music: Farm Frolics, from Music Loops.
+    "theme.ogg": "music-loops-farm-frolics.ogg",
 }
 
 
@@ -334,7 +336,7 @@ def main() -> None:
         square.save(ASSETS / f"boom-{i}.png")
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
-    print(f"wrote {len(FRUIT_SPRITES) * 3} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds")
+    print(f"wrote {len(FRUIT_SPRITES) * 3} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds (the music among them)")
 
 
 if __name__ == "__main__":
