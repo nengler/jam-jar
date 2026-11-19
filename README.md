@@ -55,10 +55,9 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Exploded | When an explosion destroys it. |
 | Burst | Breaks into this many Cherries. |
 | Sprout | A Cherry, Grape or Orange grows here. |
-| Rotten | Scores nothing, can't Merge, spreads. |
+| Rotten | Scores nothing and spreads. Still Merges. |
 | Rots | Turns Rotten after this many turns. |
 | Ripen | Scores this much more each turn. |
-| Contained | Its rot does not spread. |
 | Honeyed / Honey | Scores +4 at the end of every turn / makes a fruit it touches Honeyed. |
 | Eat / Hatch | Removes one fruit it touches / a new Fruit Fly appears where it ate. |
 | Grow | That kind scores this much more, all run. |
@@ -90,9 +89,10 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 - The Boom group: Chili (explodes touching 4+ fruit), Durian (big blast once 3 fruit sit on it), Pomegranate (bursts into 5
   Cherries when hit; two that merge burst into 5 between them), Blueberry (counts as 3 fruit for touch checks) and Seed (sprouts a starter when blown up). Blasts
   chain into other Chilis and Durians, and score a bonus for each fruit destroyed (10 for a Chili's, 14 for a Durian's).
-- Banana: 4, then +2 a turn, rots after 3 turns, and rot spreads to one touching fruit a turn.
-- The rest of the Rot group: Prune (rotten from the start, never spreads, +10 for each rotten fruit touching it), Fruit Fly (eats
-  one rotten fruit it touches a turn for 18, and another Fly hatches there; never a Prune) and Fig (blown up while rotten, it
+- Banana: 4, then +2 a turn, rots after 3 turns, and rot spreads to one touching fruit a turn. Rotten
+  fruit score nothing but still merge, and what they merge into is rotten.
+- The rest of the Rot group: Prune (rotten from the start and spreading like any rot, +8 for each rotten fruit touching it), Fruit Fly (eats
+  one rotten fruit it touches a turn for 24, and another Fly hatches there; never a Prune) and Fig (blown up while rotten, it
   gives every Banana +1 for the rest of the run).
 - Flex fruit: Kiwi (becomes a copy of the first landed fruit it touches), Peach (bounces once when it lands and shoves what it
   landed on aside) and Honeydew (honeys one fruit it touches a turn; honeyed fruit, the Honeydew included, score 4 a turn and
@@ -178,10 +178,11 @@ that never order a hand: one that never picks, one that picks at random, one per
 | Player (24 runs) | Median score, cycles 1 to 5 | Makes the last rent |
 | --- | --- | --- |
 | Never picks | 260, 257, 252, 265, 256 | 0 in 24 |
-| Picks at random | 199, 224, 210, 244, 257 | 4 in 24 |
+| Picks at random | 216, 224, 210, 237, 257 | 4 in 24 |
 | Never picks, thins the pool | 260, 291, 327, 360, 347 | 7 in 24 |
 | Boom picks (Chili, Blueberry, Seed, Lime, Durian), thins | 243, 289, 328, 307, 304 | 3 in 24 |
-| Rot picks (Banana, Prune, Fruit Fly, Fig, Chili) | 233, 180, 194, 230, 201 | 0 in 24 |
+| Rot picks (Banana, Prune, Fruit Fly, Fig, Chili) | 233, 238, 261, 255, 240 | 1 in 24 |
+| Prune only, thins | 238, 279, 357, 417, 441 | 13 in 24 |
 | Apple, Durian, Pomegranate, Pitaya, Kiwi, thins | 274, 344, 350, 410, 412 | 13 in 24 |
 
 Cycle 3 is a boss jar, which is the dip in some rows.
@@ -192,8 +193,10 @@ take a share of the drops. So a pick had to be worth about twice an average star
 fruit but the Kiwi cost 5 to 19 points for each time it was dropped. The synergy fruit's own numbers were raised until the
 ones that stand alone (Apple, Durian, Pomegranate, Pitaya, Honeydew) are about neutral taken alone, picking at random is no
 longer a trap, and a build of good picks beats never picking. The combo pieces (Seed, Fig, Fruit Fly, Lime, Blueberry, Lemon)
-still cost points alone, on purpose. The Rot group still loses taken together: rot blocks the starters' merges, and no bot
-plays it with any care. Nothing here measures an ordered hand. Rerun it after changing a fruit.
+still cost points alone, on purpose. The Rot group used to lose badly taken together (about 200 a cycle). Rot blocking merges was not the reason: in a
+five-turn cycle a Banana's rot barely got started, so Prunes and Fruit Flies had nothing to work with. Now a Prune spreads
+its rot from the turn it lands and rotten fruit still merge, which makes the Prune a pick that stands alone and brings the
+whole group to about level with never picking. The Fruit Fly and the Fig are still combo pieces. Nothing here measures an ordered hand. Rerun it after changing a fruit.
 
 ## How it is built
 

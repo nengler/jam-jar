@@ -361,14 +361,25 @@ test("paying the last rent wins the run without a shop", () => {
   assert.equal(run.phase, "won");
 });
 
-test("a Prune is rotten from the start, does not spread, and scores for each other rotten fruit it touches", () => {
+test("a Prune is rotten from the start, scores for each other rotten fruit it touches, and spreads its rot", () => {
   const y = JAR.floor - 14;
   const banana = { ...fruit(2, "banana", 330, y, [1]), rotten: true };
   const run = jarWith([fruit(1, "prune", 300, y, [2, 3]), banana, fruit(3, "cherry", 270, y, [1])]);
   assert.equal(run.fruits[0]!.rotten, true);
   resolve(run);
-  assert.equal(run.cycleScore, FRUITS.prune.points, "one rotten neighbour");
-  assert.equal(run.fruits.find((f) => f.id === 3)!.rotten, false, "the Prune rotted nothing");
+  assert.equal(run.cycleScore, FRUITS.prune.points, "one rotten neighbour when it scored");
+  assert.equal(run.fruits.find((f) => f.id === 3)!.rotten, true, "then the Prune rotted the Cherry");
+});
+
+test("rotten fruit still Merge, and what they make is rotten", () => {
+  const y = JAR.floor - 10;
+  let run = jarWith([{ ...fruit(1, "cherry", 300, y, [2]), rotten: true }, fruit(2, "cherry", 318, y, [1])]);
+  run.phase = "settle";
+  run = advance(run, 1 / 60, NO_KEYS, []);
+  const grape = run.fruits.find((f) => f.kind === "grape");
+  assert.ok(grape, "the two Cherries merged");
+  assert.equal(grape.rotten, true);
+  assert.equal(run.cycleScore, FRUITS.grape.points, "the Merge still scores");
 });
 
 test("a Fruit Fly eats a rotten fruit it touches and another hatches; it never eats a Prune", () => {
