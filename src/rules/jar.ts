@@ -126,12 +126,14 @@ export function keeps(run: Run): number {
 }
 
 /**
- * What the shop charges, in coins: a fruit; and, to begin with, taking a fruit out of the pool and a new shelf. Those two cost one
- * more each time they are bought, and stay at what they have reached for the rest of the run (`removalPrice`, `rerollPrice`).
+ * What the shop charges, in coins: a fruit; and, to begin with, taking a fruit out of the pool and a new shelf. Each time one is bought it
+ * costs more (a new shelf by 1, a removal by `REMOVAL_STEP`), and stays at what it has reached for the rest of the run (`removalPrice`, `rerollPrice`).
  */
 export const FRUIT_PRICE = 3;
 export const REMOVAL_PRICE = 4;
 export const REROLL_PRICE = 1;
+/** How much more each removal costs than the last: thinning the pool is the strongest buy, so it climbs faster than a new shelf. */
+export const REMOVAL_STEP = 2;
 /** The shop's shelf: three fruit and an item, then its three actions. `Shop.cursor` counts across all of them. */
 export const SHOP_FRUITS = 3;
 export const SHOP_ITEM = SHOP_FRUITS;
@@ -1244,9 +1246,9 @@ export function rerollPrice(run: Run): number {
   return REROLL_PRICE + run.rerolls;
 }
 
-/** What taking a fruit out of the pool costs now: one more for each taken out this run. */
+/** What taking a fruit out of the pool costs now: `REMOVAL_STEP` more for each taken out this run. */
 export function removalPrice(run: Run): number {
-  return REMOVAL_PRICE + run.removals;
+  return REMOVAL_PRICE + REMOVAL_STEP * run.removals;
 }
 
 /** After the rent is paid: the last cycle wins the run, any other opens the shop. */
