@@ -1,0 +1,28 @@
+{
+  "name": "jam-jar",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "tse": {
+    "name": "jam-jar"
+  },
+  "dependencies": {
+    "@tsengine/native": "0.0.0",
+    "@tsengine/player": "0.0.0",
+    "@tsengine/player-node": "0.0.0",
+    "@tsengine/runtime": "0.0.0"
+  },
+  "devDependencies": {
+    "@tsengine/cli": "0.0.0",
+    "@tsengine/testing": "0.0.0",
+    "@types/node": "^22.10.0"
+  },
+  "scripts": {
+    "build": "tse build",
+    "dev": "tse dev",
+    "check": "tse check",
+    "package": "tse package",
+    "install-engine": "node tools/install-engine.ts",
+    "test": "tse check"
+  }
+}
