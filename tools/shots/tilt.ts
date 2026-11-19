@@ -1,6 +1,6 @@
 /**
  * For `tse screenshot --setup`: puts a new run in the Tilted jar (its boss cycle) once the play screen is up, so the jar can be
- * looked at without playing two cycles to reach it. `--setup` needs an engine newer than 0.10.0 (`npm run install-engine`).
+ * looked at without playing two cycles to reach it.
  *
  *     npx tse screenshot . --setup tools/shots/tilt.ts --script "_*30,Enter,_*20,Space,_*300" --every 8 --from 60 --to 250 --sheet tilt
  */

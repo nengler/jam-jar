@@ -1,7 +1,6 @@
 /**
  * For `tse screenshot --setup`: starts the run with the pool named in SHOT_POOL (kinds, comma-separated; the first four are the
- * first hand, in that order), so a fruit can be looked at without waiting to be offered it. `--setup` needs an engine newer than
- * 0.10.0 (`npm run install-engine`).
+ * first hand, in that order), so a fruit can be looked at without waiting to be offered it.
  *
  *     SHOT_POOL=honeydew,cherry,cherry,grape,orange,apple npx tse screenshot . --setup tools/shots/pool.ts \
  *       --script "_*30,Enter,_*20,Space,_*430" --every 12 --from 60 --sheet honey
