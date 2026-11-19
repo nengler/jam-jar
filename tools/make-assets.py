@@ -1,9 +1,9 @@
 """
 Lays out the game's assets/ from the free art in tools/:
 
-- tools/fluent/: Microsoft Fluent Emoji 3D fruit (MIT licence, tools/fluent/LICENSE), 256 x 256. Each fruit is cropped to its
-  pixels and scaled down (Lanczos) to its size in the jar, fruit-<kind>.png, and to a 14-pixel icon for the hand and pick lists,
-  icon-<kind>.png. Sizes come from the radii in src/rules/fruits.ts, so changing a radius and rerunning keeps them in step.
+- tools/fruit/fruit-sheet.png: 16 x 16 pixel fruit. Each fruit is scaled up with no smoothing to its size in the jar,
+  fruit-<kind>.png, and to a 32-pixel icon for the hand and pick lists, icon-<kind>.png; its ball's radius is written to
+  src/rules/sizes.ts, so the physics matches the picture.
 - tools/kenney/: Kenney's CC0 assets (from the Kenney Game Assets All-in-1 bundle, and sounds from the tse repo's games):
   - the sounds, copied as they are;
   - `kenney-mini-square-mono.ttf` (Kenney Fonts), drawn at twice its pixel size into `font.png`: the ASCII characters 32 to
@@ -13,8 +13,6 @@ Lays out the game's assets/ from the free art in tools/:
 
     python3 tools/make-assets.py
 """
-import colorsys
-import re
 import shutil
 from pathlib import Path
 
@@ -22,26 +20,31 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
-FLUENT = ROOT / "tools" / "fluent"
 KENNEY = ROOT / "tools" / "kenney"
 
-# Fruit kind -> (Fluent image, hue shift in turns or None). No emoji exists for a Durian or a Pomegranate, so they use stand-ins:
-# a Pineapple (spiky), and the Red Apple shifted toward magenta.
-SOURCES = {
-    "cherry": ("cherries", None),
-    "grape": ("grapes", None),
-    "orange": ("tangerine", None),
-    "melon": ("melon", None),
-    "watermelon": ("watermelon", None),
-    "apple": ("red_apple", None),
-    "banana": ("banana", None),
-    "chili": ("hot_pepper", None),
-    "durian": ("pineapple", None),
-    "pomegranate": ("red_apple", -0.08),
-    "blueberry": ("blueberries", None),
-    "lemon": ("lemon", None),
-    "seed": ("chestnut", None),
+# The fruit: 16 x 16 pixel sprites from tools/fruit/fruit-sheet.png (38 columns x 6 rows). Each kind is (column, row, scale):
+# the scale is how many screen pixels an art pixel takes, so the merge ladder grows Cherry -> Watermelon. Whole scales stay
+# crisp; Grape (2.5) and Melon (3.5) sit between them, as the ladder needs five sizes. No sprite exists for a Durian (the
+# Pineapple stands in), a Seed (the brown Kiwi) or a Melon (the round green one).
+FRUIT_SPRITES = {
+    "cherry": (14, 1, 2),
+    "grape": (5, 1, 2.5),
+    "orange": (9, 1, 3),
+    "melon": (17, 1, 3.5),
+    "watermelon": (26, 2, 4),
+    "apple": (0, 1, 2.5),
+    "banana": (7, 1, 2.5),
+    "chili": (30, 1, 2),
+    "durian": (11, 1, 3),
+    "pomegranate": (13, 1, 2.5),
+    "blueberry": (16, 1, 2),
+    "lemon": (18, 1, 2),
+    "seed": (19, 1, 2),
 }
+FRUIT_SHEET = ROOT / "tools" / "fruit" / "fruit-sheet.png"
+SIZES_FILE = ROOT / "src" / "rules" / "sizes.ts"
+# A fruit's ball is a little smaller than its sprite's square: the art does not fill the corners.
+BALL_SHARE = 0.45
 
 SOUNDS = {
     "merge.wav": "interface-sounds-glass-001.wav",
@@ -54,42 +57,12 @@ SOUNDS = {
 }
 
 
-def radii() -> dict[str, int]:
-    text = (ROOT / "src" / "rules" / "fruits.ts").read_text()
-    return {kind: int(r) for kind, r in re.findall(r"^\s+(\w+): \{ name: \"[^\"]+\", radius: (\d+)", text, re.M)}
-
-
-def hue_shift(image: Image.Image, turns: float) -> Image.Image:
-    out = image.copy()
-    px = out.load()
-    for y in range(out.height):
-        for x in range(out.width):
-            r, g, b, a = px[x, y]
-            if a == 0:
-                continue
-            h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
-            r2, g2, b2 = colorsys.hsv_to_rgb((h + turns) % 1, s, v * 0.85)
-            px[x, y] = (round(r2 * 255), round(g2 * 255), round(b2 * 255), a)
-    return out
-
-
-def fit(image: Image.Image, size: int) -> Image.Image:
-    """The image's pixels, scaled to fit a size x size square and centred in it."""
-    cropped = image.crop(image.getbbox())
-    scale = size / max(cropped.width, cropped.height)
-    w, h = max(1, round(cropped.width * scale)), max(1, round(cropped.height * scale))
-    small = cropped.resize((w, h), Image.LANCZOS)
-    out = Image.new("RGBA", (size, size))
-    out.paste(small, ((size - w) // 2, (size - h) // 2))
-    return out
-
-
 # Every Kenney picture is pixel art, drawn at exactly twice its size on the 640 x 360 screen (nearest neighbour), so its pixels
 # match the font's and each other's.
 PX = 2
 WIDTH, HEIGHT = 640, 360
 FONT_PX = 16
-ICON = 28
+ICON = 32
 
 # UI Pixel Pack: 16 x 16 tiles, 2 pixels apart. Each image is (column, row, tiles across, tiles down) of the sheet, drawn as a
 # 9-slice in the game.
@@ -160,14 +133,18 @@ def coin() -> Image.Image:
 
 def main() -> None:
     ASSETS.mkdir(exist_ok=True)
-    sizes = radii()
-    for kind, (source, shift) in SOURCES.items():
-        image = Image.open(FLUENT / f"{source}.png").convert("RGBA")
-        if shift is not None:
-            image = hue_shift(image, shift)
-        # A little bigger than the physics circle: emoji art is not round, and this keeps the pile looking snug.
-        fit(image, sizes[kind] * 2 + 2).save(ASSETS / f"fruit-{kind}.png")
-        fit(image, ICON).save(ASSETS / f"icon-{kind}.png")
+    sheet = Image.open(FRUIT_SHEET).convert("RGBA")
+    lines = []
+    for kind, (col, row, scale) in FRUIT_SPRITES.items():
+        sprite = sheet.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16))
+        size = round(16 * scale)
+        sprite.resize((size, size), Image.NEAREST).save(ASSETS / f"fruit-{kind}.png")
+        sprite.resize((ICON, ICON), Image.NEAREST).save(ASSETS / f"icon-{kind}.png")
+        lines.append(f"  {kind}: {{ size: {size}, radius: {round(size * BALL_SHARE)} }},")
+    SIZES_FILE.write_text(
+        "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
+        "export const FRUIT_ART = {\n" + "\n".join(lines) + "\n} as const;\n"
+    )
     background().save(ASSETS / "background.png")
     ui = Image.open(KENNEY / "ui-pixel-pack-sheet.png").convert("RGBA")
     for name, (col, row, across, down) in UI_TILES.items():
@@ -182,7 +159,7 @@ def main() -> None:
     font_sheet().save(ASSETS / "font.png")
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
-    print(f"wrote {len(SOURCES) * 2} fruit images, the font, the background, {len(UI_TILES)} UI images, the coin, the blast and {len(SOUNDS)} sounds")
+    print(f"wrote {len(FRUIT_SPRITES) * 2} fruit images, the font, the background, {len(UI_TILES)} UI images, the coin, the blast and {len(SOUNDS)} sounds")
 
 
 if __name__ == "__main__":

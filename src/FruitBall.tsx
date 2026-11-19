@@ -1,9 +1,10 @@
 import { Sprite } from "@tsengine/runtime/jsx";
 
-import { FRUITS, type FruitKind } from "./rules/fruits.ts";
+import type { FruitKind } from "./rules/fruits.ts";
+import { FRUIT_ART } from "./rules/sizes.ts";
 
 /** The icons' size in pixels (tools/make-assets.py). */
-const ICON = 28;
+const ICON = 32;
 
 interface FruitBallProps {
   kind: FruitKind;
@@ -18,11 +19,11 @@ interface FruitBallProps {
 }
 
 /**
- * A fruit, centred on (x, y): its Fluent Emoji picture (tools/fluent), scaled to its size by tools/make-assets.py. A rotten fruit
+ * A fruit, centred on (x, y): its pixel sprite (tools/fruit), scaled up to its size by tools/make-assets.py. A rotten fruit
  * is tinted brown; a lit one flashes white.
  */
 export function FruitBall({ kind, x, y, rotten = false, lit = false, icon = false }: FruitBallProps) {
-  const half = icon ? ICON / 2 : FRUITS[kind].radius + 1;
+  const half = (icon ? ICON : FRUIT_ART[kind].size) / 2;
   return (
     <Sprite
       image={icon ? `icon-${kind}.png` : `fruit-${kind}.png`}

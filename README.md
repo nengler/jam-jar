@@ -65,14 +65,14 @@ The screen is 640 x 360 (16:9), scaled up by whole multiples.
 
 ## Credits
 
-- Fruit art: [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft, MIT licence (`tools/fluent/LICENSE`, which
-  must ship with the game). There's no emoji for a Durian or a Pomegranate, so for now they use the Pineapple and a hue-shifted
-  Red Apple.
+- Fruit art: a 16 x 16 pixel fruit sheet (`tools/fruit/`; its source and licence are still to be added there). Stand-ins:
+  the Durian is the Pineapple, the Seed the brown Kiwi, the Melon the round green one.
 - Everything else is [Kenney](https://kenney.nl) pixel art, CC0: panels, cards and buttons (UI Pixel Pack), the sky, clouds,
   ground and coin (Pixel Platformer), blasts (Explosion Pack's pixel explosion), the font (Kenney Mini Square Mono) and the
   sounds. It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;
   `tools/kenney/README.md` says which file each came from.
-- The fruit are still Fluent Emoji (not pixel art) until a CC0 pixel fruit set replaces them: Kenney has no pixel fruit.
+- Every picture is pixel art. Fruit sizes come from scaling their 16-pixel sprites: 2x to 4x, with Grape and Melon at 2.5x and
+  3.5x so the merge ladder has five sizes; each ball's radius is measured from its sprite (`src/rules/sizes.ts`).
 
 ## Engine notes
 
@@ -83,5 +83,4 @@ What the engine did and didn't cover for this game:
 - **The rules stay outside components.** Scoring, merges and blasts need every fruit at once, so the run is one plain object in
   `Play`'s state, fed by the fruit's reports a step behind. `advance` returns a copy each step, because render compares by `===`.
 - **Not on npm.** Hence `install-engine`, the same loop the engine's own Bramble game uses.
-- **Free assets.** Kenney's Food Kit has only small low-poly renders and no Melon, Pomegranate, Durian, Blueberry or Seed, so
-  the fruit are Fluent Emoji; the panels, font and sounds are Kenney's.
+- **Free assets.** Kenney has no pixel fruit, so the fruit come from a separate pixel sheet; everything else is Kenney pixel art.

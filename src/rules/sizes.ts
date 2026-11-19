@@ -1,0 +1,16 @@
+/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */
+export const FRUIT_ART = {
+  cherry: { size: 32, radius: 14 },
+  grape: { size: 40, radius: 18 },
+  orange: { size: 48, radius: 22 },
+  melon: { size: 56, radius: 25 },
+  watermelon: { size: 64, radius: 29 },
+  apple: { size: 40, radius: 18 },
+  banana: { size: 40, radius: 18 },
+  chili: { size: 32, radius: 14 },
+  durian: { size: 48, radius: 22 },
+  pomegranate: { size: 40, radius: 18 },
+  blueberry: { size: 32, radius: 14 },
+  lemon: { size: 32, radius: 14 },
+  seed: { size: 32, radius: 14 },
+} as const;

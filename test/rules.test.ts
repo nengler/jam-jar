@@ -146,7 +146,7 @@ test("a blast kicks what it does not destroy away from it", () => {
 });
 
 test("Resolve: fruit over the rim spill and cost points; an Apple deeper scores more", () => {
-  const run = jarWith([fruit(1, "apple", 250, JAR.floor - 14), fruit(2, "apple", 300, RIM + 16), fruit(3, "cherry", 350, RIM - 2)]);
+  const run = jarWith([fruit(1, "apple", 250, JAR.floor - 18), fruit(2, "apple", 300, RIM + 20), fruit(3, "cherry", 350, RIM - 2)]);
   run.cycleScore = 10;
   resolve(run);
   assert.equal(run.fruits.length, 2, "the cherry spilled");
