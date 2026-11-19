@@ -71,6 +71,8 @@ The screen is 640 x 360 (16:9), scaled up by whole multiples.
   ground and coin (Pixel Platformer), blasts (Explosion Pack's pixel explosion), the font (Kenney Mini Square Mono) and the
   sounds. It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;
   `tools/kenney/README.md` says which file each came from.
+- Colours: the [Apollo palette](https://lospec.com/palette-list/apollo) by AdamCYounis (`tools/palette/apollo.hex`). Every
+  picture is snapped to it, the Kenney UI pieces are recoloured onto Apollo ramps, and `src/theme.ts` names the UI's colours.
 - Every picture is pixel art. Fruit sizes come from scaling their 16-pixel sprites: 2x to 4x, with Grape and Melon at 2.5x and
   3.5x so the merge ladder has five sizes; each ball's radius is measured from its sprite (`src/rules/sizes.ts`).
 

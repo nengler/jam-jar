@@ -10,7 +10,7 @@ export default function Main() {
   const screen = useGame((s) => s.screen);
   const paused = useGame((s) => s.paused);
   return (
-    <Game title="Jam Jar" width={640} height={360} background="#cfeefa" assets="assets" font="font.png" textSize={16} paused={paused}>
+    <Game title="Jam Jar" width={640} height={360} background="#172038" assets="assets" font="font.png" textSize={16} paused={paused}>
       <Screen width={640} height={360} fit="integer">
         {screen === "title" && <Title name="Jam Jar" />}
         {screen === "settings" && <Settings />}

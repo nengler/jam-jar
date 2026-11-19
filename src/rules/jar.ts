@@ -210,6 +210,12 @@ export function newRun(seed: number): Run {
   return run;
 }
 
+/** What the offer under the cursor does, for the pick screen; empty when nothing is offered. */
+export function offerText(run: Run): string {
+  const kind = run.offers[run.offerCursor];
+  return kind === undefined ? "" : FRUITS[kind].text;
+}
+
 /** The hand row the cursor is on while ordering, or -1 when the hand is not being ordered. */
 export function chosenRow(run: Run): number {
   return run.phase === "order" ? run.cursor : -1;
