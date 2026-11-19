@@ -7,6 +7,7 @@ import {
   advance,
   BLAST_BONUS,
   bossCycle,
+  dramatic,
   FRUIT_PRICE,
   JAR,
   JUICER_BONUS,
@@ -614,4 +615,44 @@ test("the tally: the rent's sound waits for it to end", () => {
   }
   assert.equal(run.phase, "rent");
   assert.ok(heard, "played as the rent panel came up");
+});
+
+test("readability: two popups in one place are stacked, not drawn on each other, and stay inside the jar", () => {
+  const y = JAR.floor - 18;
+  const run = jarWith([fruit(1, "apple", 300, y), fruit(2, "apple", 310, y)]);
+  run.turn = 1;
+  resolve(run);
+  const [a, b] = run.popups as [Run["popups"][number], Run["popups"][number]];
+  assert.ok(Math.abs(a.y - b.y) >= 20, "the second is a line above the first");
+
+  // Two Watermelons against the left wall: "Merge +100" is moved in, so the wall does not cut it.
+  const r = FRUITS.watermelon.radius;
+  const wall = jarWith([fruit(1, "watermelon", JAR.left + r, JAR.floor - r, [2]), fruit(2, "watermelon", JAR.left + r, JAR.floor - 3 * r, [1])]);
+  simulate(wall, DT);
+  const merge = wall.popups.at(-1)!;
+  assert.equal(merge.text, "Merge +100");
+  assert.ok(merge.x > JAR.left + r + 20, `${merge.x}`);
+});
+
+test("a second Blast soon after the first is a chain: it says so, and both a chain and a big Blast are worth slowing down for", () => {
+  const y = JAR.floor - 8;
+  let run = jarWith([fruit(1, "cherry", 300, y)]);
+  run.fruits.push({ ...fruit(2, "chili", 280, y), lit: true, fuse: 0 }, { ...fruit(3, "chili", 400, y), lit: true, fuse: 0.2 });
+  run = press(run, {});
+  assert.equal(run.chain, 1);
+  assert.equal(dramatic(run), false, "one small Blast is not");
+  let slowed = false;
+  for (let i = 0; i < 30; i++) {
+    run = press(run, {});
+    slowed = slowed || dramatic(run);
+  }
+  assert.equal(run.chain, 2);
+  assert.ok(slowed, "the second was");
+  assert.ok(run.popups.some((p) => p.text === "Chain x2"));
+  for (let i = 0; i < 120; i++) run = press(run, {});
+  assert.equal(run.chain, 0, "the chain ends when no Blast follows");
+
+  const big = jarWith([1, 2, 3, 4, 5].map((id) => fruit(id, "cherry", 290 + id * 4, y)));
+  big.fruits.push({ ...fruit(9, "chili", 300, y), lit: true, fuse: 0 });
+  assert.equal(dramatic(press(big, {})), true, "one Blast that destroys 5");
 });

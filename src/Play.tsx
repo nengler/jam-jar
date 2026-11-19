@@ -12,7 +12,7 @@ import { Peg } from "./Peg.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { Shop } from "./Shop.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, BOOM_LIFE, bossCycle, PULSE, shownScore, preservable, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, BOOM_LIFE, bossCycle, dramatic, PULSE, shownScore, preservable, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -59,6 +59,9 @@ const POOL_ROW = 32;
 /** The note of what just happened: a slate under the pool, its foot just above the counter. */
 const NOTE_H = 72;
 const NOTE_Y = 324 - NOTE_H;
+/** Slow motion: how fast the game runs in it, and how long it lasts after the Blast that set it off, in the game's slowed seconds. */
+const SLOW_SPEED = 0.35;
+const SLOW_TIME = 0.4;
 /** The pick: three cards across the middle. */
 const OFFER_W = 184;
 const OFFER_H = 232;
@@ -75,9 +78,10 @@ export function Play() {
   const seed = useGame((g) => g.seed);
   const volume = useGame((g) => g.volume);
   const learned = useGame((g) => g.learned);
-  const { pause, toTitle, learn } = useGame.actions();
+  const { pause, toTitle, learn, setSpeed } = useGame.actions();
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
-  const s = useMutable({ run: newRun(seed) as Run, reports: [] as FruitReport[] });
+  // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
+  const s = useMutable({ run: newRun(seed) as Run, reports: [] as FruitReport[], slow: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -109,6 +113,14 @@ export function Play() {
     s.reports = [];
     // Through a moment once (a hand dropped, a pick made, the shop left), its keys are known: they are not shown again.
     if (moment(s.run) !== before) learn(before);
+    // A chain of Blasts, or a big one, plays in slow motion: long enough to see what it threw and what it set off.
+    if (dramatic(s.run)) {
+      if (s.slow <= 0) setSpeed(SLOW_SPEED);
+      s.slow = SLOW_TIME;
+    } else if (s.slow > 0) {
+      s.slow -= dt;
+      if (s.slow <= 0) setSpeed(1);
+    }
     const heard = s.run.sounds;
     // The volume setting, 0 to 10, scales every sound.
     const loud = volume / 10;

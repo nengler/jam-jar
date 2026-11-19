@@ -10,9 +10,10 @@ export default function Main() {
   const screen = useGame((s) => s.screen);
   const paused = useGame((s) => s.paused);
   const volume = useGame((s) => s.volume);
+  const speed = useGame((s) => s.speed);
   const music = useGame((s) => s.music);
   return (
-    <Game title="Jam Jar" width={640} height={360} background="#10141f" assets="assets" font="tse:m5x7" textSize={20} paused={paused}>
+    <Game title="Jam Jar" width={640} height={360} background="#10141f" assets="assets" font="tse:m5x7" textSize={20} paused={paused} timeScale={speed}>
       <Screen width={640} height={360} fit="integer">
         {/* Here, not in a screen, so it plays on from the title into a run. Quieter than the sounds, and with the volume setting. */}
         <Music src="theme.ogg" playing={music} volume={(0.4 * volume) / 10} fade={1} />
