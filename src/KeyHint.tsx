@@ -1,6 +1,6 @@
 import { Flex, Text } from "@tsengine/runtime/jsx";
 
-import { INK, LIGHT } from "./theme.ts";
+import { BUTTON, BUTTON_GREY, BUTTON_SLICE, INK, LIGHT } from "./theme.ts";
 
 interface KeyHintProps {
   /** The key's name, written on a key cap; "arrows" draws the left and right arrow keys, "updown" the up and down ones. */
@@ -23,6 +23,23 @@ export function KeyHint({ name, label, color = LIGHT }: KeyHintProps) {
         </Flex>
       )}
       <Text color={color}>{label}</Text>
+    </Flex>
+  );
+}
+
+/**
+ * A button to tap or click, for what a key does: "Drop", "Skip", "Pause". It is always there, so the game can be played with
+ * no keyboard (a phone, or just the mouse); `keyName` draws the key on it as well, which the screens do until the key is learned.
+ */
+export function TapButton({ label, keyName = "", onPress }: { label: string; keyName?: string; onPress: () => void }) {
+  return (
+    <Flex direction="row" alignItems="center" gap={6} height={30} paddingX={8} paddingTop={2} backgroundImage={BUTTON_GREY} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} focusable={false} onPress={() => onPress()}>
+      {keyName !== "" && (
+        <Flex height={26} minWidth={26} paddingX={8} paddingTop={4} paddingBottom={2} backgroundImage="key.png" sliceTop={4} sliceBottom={8} sliceLeft={4} sliceRight={4} alignItems="center" justifyContent="center">
+          <Text color={INK}>{keyName}</Text>
+        </Flex>
+      )}
+      <Text color={INK}>{label}</Text>
     </Flex>
   );
 }

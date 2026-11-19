@@ -121,6 +121,25 @@ test("ordering: pick up the first fruit, move it down, and it drops second", () 
   assert.equal(run.cursor, 1);
 });
 
+test("ordering by touch: tap a fruit to pick it up, tap where it should stand, and the others keep their order", () => {
+  let run = newRun(3);
+  run.hand = ["cherry", "grape", "orange", "apple"];
+  // The mouse over a fruit only moves the cursor.
+  run = press(run, { point: 2 });
+  assert.deepEqual([run.cursor, run.holding], [2, false]);
+  // A tap on the first picks it up; a tap on the last puts it there, and the three between shuffle down.
+  run = press(run, { point: 0, confirm: true });
+  assert.deepEqual([run.cursor, run.holding], [0, true]);
+  run = press(run, { point: 3, confirm: true });
+  assert.deepEqual(run.hand, ["grape", "orange", "apple", "cherry"]);
+  assert.deepEqual([run.cursor, run.holding], [3, false]);
+  // In the Blind jar a tap does nothing.
+  run.boss = "blind";
+  run.cycle = 3;
+  run = press(run, { point: 0, confirm: true });
+  assert.deepEqual([run.cursor, run.holding], [3, false]);
+});
+
 test("a dropped fruit lands when it reports touching the floor, and a Fresh fruit scores then", () => {
   let run = newRun(5);
   run = press(run, { drop: true });
@@ -300,6 +319,16 @@ test("the shop: a new shelf costs one more each time, all run, and restocks the 
   const next = inShop(10);
   next.rerolls = run.rerolls;
   assert.equal(rerollPrice(next), 3);
+});
+
+test("the shop by touch: a tap on a kind in the take-out dialog takes one of it out", () => {
+  let run = inShop(10);
+  run.pool = ["cherry", "cherry", "grape", "grape", "apple"];
+  run.shop!.cursor = SHOP_REMOVE;
+  run = press(run, { confirm: true });
+  run = press(run, { point: 1, confirm: true });
+  assert.deepEqual(run.pool, ["cherry", "cherry", "grape", "apple"]);
+  assert.equal(run.shop!.removing, false);
 });
 
 test("the shop: taking a fruit out costs two more each time, all run", () => {

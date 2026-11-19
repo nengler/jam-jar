@@ -15,8 +15,10 @@ export default function Main() {
   const paused = useGame((s) => s.paused);
   const speed = useGame((s) => s.speed);
   return (
-    <Game id="jam-jar" title="Jam Jar" width={640} height={360} background="#10141f" assets="assets" font="tse:m5x7" textSize={20} paused={paused} timeScale={speed} fixedStep={60}>
-      <Screen width={640} height={360} fit="integer">
+    <Game id="jam-jar" title="Jam Jar" width={640} height={360} background="#10141f" assets="assets" font="tse:m5x7" textSize={20} paused={paused} timeScale={speed} fixedStep={60} upscale="sharp">
+      {/* The screen fills the window whatever its size, a phone's included: at a scale that is not a whole number each art pixel is
+          still drawn with hard edges (`upscale="sharp"`), only its edge pixels blended, so nothing shimmers or blurs. */}
+      <Screen width={640} height={360} fit="contain">
         {/* Here, not in a screen, so it plays on from the title into a run. How loud is the player's music setting, which the engine applies. */}
         <Music src="theme.ogg" fade={1} />
         {screen === "title" && <Title name="Jam Jar" />}
