@@ -6,9 +6,10 @@ import { Fruit } from "./Fruit.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
-import { offerText, poolRows } from "./layout.ts";
+import { fruitGlossary, poolRows, scoringLabel } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { Peg } from "./Peg.tsx";
+import { RuleText } from "./RuleText.tsx";
 import { Shop } from "./Shop.tsx";
 import { FRUITS } from "./rules/fruits.ts";
 import { advance, BOOM_LIFE, bossCycle, preservable, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
@@ -25,6 +26,8 @@ import {
   GOOD,
   INK,
   INK_SOFT,
+  KEYWORD,
+  KEYWORD_LIGHT,
   LIGHT,
   PLAQUE,
   SCORING,
@@ -138,6 +141,7 @@ export function Play() {
   const pool = poolRows(run.pool);
   const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
   const poolH = 30 + Math.ceil(pool.length / grid.columns) * POOL_ROW + 30;
+  const offerGlossary = fruitGlossary(picking ? run.offers[run.offerCursor] : null, 2);
   const offersLeft = 320 - (3 * OFFER_W + 2 * OFFER_GAP) / 2;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
 
@@ -270,15 +274,17 @@ export function Play() {
               </Text>
               <Flex y={116} width={OFFER_W} justifyContent="center">
                 <Flex height={22} paddingX={8} paddingTop={4} background={SCORING[FRUITS[kind].scoring].color} alignItems="center">
-                  <Text color={LIGHT}>{SCORING[FRUITS[kind].scoring].name}</Text>
+                  <Text color={LIGHT}>{scoringLabel(kind)}</Text>
                 </Flex>
               </Flex>
-              <Text x={12} y={146} width={OFFER_W - 24} maxWidth={OFFER_W - 24} align="center" color={INK_SOFT}>
-                {offerText(FRUITS[kind].text)}
-              </Text>
+              <RuleText x={12} y={146} width={OFFER_W - 24} text={FRUITS[kind].text} color={INK_SOFT} accent={KEYWORD} />
             </Entity>
           ))}
-          <Flex y={308} width={640} direction="row" justifyContent="center" gap={20}>
+          {/* What the chosen card's keywords mean. */}
+          {offerGlossary.map((line, i) => (
+            <RuleText key={line} x={0} y={294 + i * 20} width={640} text={line} color={LIGHT} accent={KEYWORD_LIGHT} />
+          ))}
+          <Flex y={334} width={640} direction="row" justifyContent="center" gap={20}>
             <KeyHint name="arrows" label="Choose" />
             <KeyHint name="Enter" label="Take" />
             <KeyHint name="Space" label="Skip for 1 coin" />

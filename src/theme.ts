@@ -55,6 +55,10 @@ export const WELL = "#c09473";
 export const BAR_FILL = "#be772b";
 export const RULE = "#d7b594";
 
+/** A keyword in card text: on parchment, and on the dark shade under a card. */
+export const KEYWORD = "#3c5e8b";
+export const KEYWORD_LIGHT = "#e8c170";
+
 /** How a fruit scores, as the chip on its pick card: its word and its colour. */
 export const SCORING: Readonly<Record<Scoring, { name: string; color: string }>> = {
   fresh: { name: "Fresh", color: "#468232" },

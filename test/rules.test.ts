@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { poolRows } from "../src/layout.ts";
+import { fruitGlossary, poolRows, scoringLabel } from "../src/layout.ts";
 import { FRUITS } from "../src/rules/fruits.ts";
 import {
   advance,
@@ -29,6 +29,7 @@ import {
 } from "../src/rules/jar.ts";
 import { ITEMS } from "../src/rules/items.ts";
 import { Rng } from "../src/rules/rng.ts";
+import { keywordOf, KEYWORDS, keywordsIn, ruleWords } from "../src/rules/terms.ts";
 
 const DT = 1 / 60;
 
@@ -497,4 +498,33 @@ test("a Coconut cracks at its third Resolve, and what touches the Cracked Coconu
   simulate(run, DT);
   // The Cherry beside the shell lands for 2, the other for 1, and they merge into a Grape (3): a Lemon would have stopped that.
   assert.equal(run.cycleScore - before, 2 + 1 + FRUITS.grape.points);
+});
+
+test("terms: a keyword is found in any of its forms, whatever punctuation follows it", () => {
+  assert.equal(keywordOf("Blast."), "blast");
+  assert.equal(keywordOf("Blasted:"), "blast");
+  assert.equal(keywordOf("Rots"), "rotten");
+  assert.equal(keywordOf("fruit"), undefined);
+  assert.equal(keywordOf("blast"), undefined, "only with its capital");
+  assert.deepEqual(
+    ruleWords("Touching 4 fruit: Blast.").map((w) => w.keyword),
+    [false, false, false, true]
+  );
+});
+
+test("terms: a card's glossary is its scoring type, then the keywords in its text in order", () => {
+  assert.deepEqual(keywordsIn(FRUITS.pomegranate.text, ["fresh"]), ["fresh", "blast", "merge", "burst"]);
+  assert.deepEqual(fruitGlossary("chili", 2), [`Fresh: ${KEYWORDS.fresh.text}`, `Blast: ${KEYWORDS.blast.text}`]);
+  assert.deepEqual(fruitGlossary(null, 2), []);
+  assert.equal(scoringLabel("orange"), "Fresh 8");
+  assert.equal(scoringLabel("lemon"), "Booster");
+});
+
+test("terms: card text keeps to the vocabulary: no scoring word, no other word for a keyword, and definitions that fit a line", () => {
+  const banned = /\b(explode|explodes|blow|blown|blows|overflow|rots? spreads|Simmer:|Booster:|Fresh:)\b/i;
+  for (const def of [...Object.values(FRUITS), ...Object.values(ITEMS)]) {
+    assert.ok(!banned.test(def.text), `${def.name}: "${def.text}"`);
+    assert.ok(def.text.endsWith("."), `${def.name} ends with a full stop`);
+  }
+  for (const def of Object.values(KEYWORDS)) assert.ok(def.text.length <= 60, `${def.name}: ${def.text.length} characters`);
 });

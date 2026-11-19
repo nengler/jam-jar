@@ -570,7 +570,7 @@ function merge(run: Run): void {
         run.message = "Two Watermelons: +100!";
       } else if (a.kind === "pomegranate") {
         born.push(...burst(run, mx, my));
-        run.message = "Pomegranates burst!";
+        run.message = "Pomegranates Burst!";
       } else {
         const into = FRUITS[a.kind].mergesInto as FruitKind;
         const f = makeFruit(run, into, mx, my);
@@ -680,10 +680,10 @@ function explode(run: Run, bomb: Fruit): void {
   score(run, points, bomb.x, bomb.y - radius / 2);
   effect(run, "boom", bomb.x, bomb.y, radius * 2);
   sound(run, "boom");
-  run.message = `${FRUITS[bomb.kind].name} blew up ${victims.length} fruit`;
+  run.message = `${FRUITS[bomb.kind].name} Blast: ${victims.length} fruit destroyed`;
   if (figs > 0) {
     run.bananaBonus += figs;
-    run.message = `A rotten Fig went up: every Banana scores +${run.bananaBonus} now`;
+    run.message = `A Rotten Fig was Blasted: Bananas score +${run.bananaBonus}`;
   }
 }
 
@@ -693,11 +693,11 @@ export function resolve(run: Run): void {
   if (spilled.length > 0 && run.items.includes("lid")) {
     // The Lid holds them in, once: nothing spills and nothing is lost, and the Lid is used up.
     run.items = run.items.filter((item) => item !== "lid");
-    run.message = `The Lid held ${spilled.length} in. It is used up`;
+    run.message = `The Lid stopped a Spill of ${spilled.length}. It is used up`;
   } else if (spilled.length > 0) {
     run.fruits = run.fruits.filter((f) => f.y - f.r >= RIM);
     for (const f of spilled) score(run, -OVERFLOW_PENALTY, f.x, RIM - 12);
-    run.message = `${spilled.length} spilled over the rim`;
+    run.message = `Spill: ${spilled.length} fruit lost, -${spilled.length * OVERFLOW_PENALTY}`;
   }
 
   // The Juicer crushes what stands on the floor: each scores its points (nothing if rotten) and a bonus, and is gone.
@@ -706,7 +706,7 @@ export function resolve(run: Run): void {
     for (const f of crushed) score(run, (f.rotten ? 0 : FRUITS[f.kind].points) + JUICER_BONUS, f.x, f.y - f.r);
     if (crushed.length > 0) {
       run.fruits = run.fruits.filter((f) => !crushed.includes(f));
-      run.message = `The Juicer crushed ${crushed.length} fruit`;
+      run.message = `Juicer: ${crushed.length} fruit Crushed`;
     }
   }
 
@@ -746,7 +746,7 @@ export function resolve(run: Run): void {
   });
   if (eaten.size > 0) {
     run.fruits = [...run.fruits.filter((f) => !eaten.has(f.id)), ...hatched];
-    run.message = eaten.size === 1 ? "A Fruit Fly ate a rotten fruit" : `Fruit Flies ate ${eaten.size} rotten fruit`;
+    run.message = `Fruit Flies Eat ${eaten.size} Rotten fruit`;
   }
 
   // Each Pitaya eats one Cherry it touches, and every Pitaya scores 1 more from then on.
@@ -760,7 +760,7 @@ export function resolve(run: Run): void {
   }
   if (swallowed.size > 0) {
     run.fruits = run.fruits.filter((f) => !swallowed.has(f.id));
-    run.message = `Pitayas ate ${swallowed.size}: each scores +${run.pitayaBonus} now`;
+    run.message = `Pitayas Eat ${swallowed.size}: each scores +${run.pitayaBonus}`;
   }
 
   // A Coconut that has sat 3 turns cracks: a Cracked Coconut where it was, which doubles what its neighbours score.
