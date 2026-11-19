@@ -20,6 +20,7 @@ const ON_COUNTER: readonly (readonly [FruitKind, number])[] = [
 
 /** The title: the name on the kitchen wall, fruit on the counter either side, and Play / Settings. */
 export function Title({ name }: { name: string }) {
+  const learned = useGame((g) => g.learned);
   const { start, openSettings } = useGame.actions();
   return (
     <Entity>
@@ -42,9 +43,10 @@ export function Title({ name }: { name: string }) {
             <Text color={INK}>Settings</Text>
           </Button>
         </Menu>
-        <Flex direction="row" gap={20}>
-          <KeyHint name="updown" label="Choose" color={LIGHT_SOFT} />
-          <KeyHint name="Enter" label="Select" color={LIGHT_SOFT} />
+        {/* The keys, until a button has been pressed once. The row keeps its height after that, so the menu does not move. */}
+        <Flex direction="row" gap={20} height={26}>
+          {!learned.includes("title") && <KeyHint name="updown" label="Choose" color={LIGHT_SOFT} />}
+          {!learned.includes("title") && <KeyHint name="Enter" label="Select" color={LIGHT_SOFT} />}
         </Flex>
       </Flex>
     </Entity>

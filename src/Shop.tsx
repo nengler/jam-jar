@@ -45,9 +45,10 @@ function Price({ x, y, price, afford }: PriceProps) {
 
 /**
  * The shop between two cycles, over the dimmed kitchen: three fruit and an item on cards, then removal, a reroll and the way out.
- * The rules (rules/jar.ts, `Shop`) hold what is for sale and where the cursor is; this draws them.
+ * The rules (rules/jar.ts, `Shop`) hold what is for sale and where the cursor is; this draws them. `hints` is whether the keys are
+ * shown: the first visit, and the first time a fruit is taken out.
  */
-export function Shop({ run, shop }: { run: Run; shop: ShopState }) {
+export function Shop({ run, shop, hints }: { run: Run; shop: ShopState; hints: boolean }) {
   const kinds = poolRows(run.pool);
   const boardW = Math.max(240, kinds.length * CELL + 32);
   const boardX = 320 - boardW / 2;
@@ -130,7 +131,7 @@ export function Shop({ run, shop }: { run: Run; shop: ShopState }) {
       {terms.map((line, i) => (
         <RuleText key={line} x={0} y={ACTIONS_Y + 40 + i * 20} width={640} text={line} color={LIGHT} accent={KEYWORD_LIGHT} />
       ))}
-      {!shop.removing && (
+      {!shop.removing && hints && (
         <Flex y={334} width={640} direction="row" justifyContent="center" gap={20}>
           <KeyHint name="arrows" label="Choose" />
           <KeyHint name="Enter" label="Buy" />
@@ -150,11 +151,13 @@ export function Shop({ run, shop }: { run: Run; shop: ShopState }) {
               <Text x={20} y={38} align="center" color={INK}>{`${row.count}`}</Text>
             </Entity>
           ))}
-          <Flex y={334} width={640} direction="row" justifyContent="center" gap={20}>
-            <KeyHint name="arrows" label="Choose" />
-            <KeyHint name="Enter" label="Take out" />
-            <KeyHint name="Space" label="Back" />
-          </Flex>
+          {hints && (
+            <Flex y={334} width={640} direction="row" justifyContent="center" gap={20}>
+              <KeyHint name="arrows" label="Choose" />
+              <KeyHint name="Enter" label="Take out" />
+              <KeyHint name="Space" label="Back" />
+            </Flex>
+          )}
         </Entity>
       )}
     </Entity>

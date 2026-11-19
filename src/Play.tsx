@@ -6,7 +6,7 @@ import { Fruit } from "./Fruit.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
-import { fruitGlossary, poolRows, scoringLabel } from "./layout.ts";
+import { fruitGlossary, moment, poolRows, scoringLabel } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { Peg } from "./Peg.tsx";
 import { RuleText } from "./RuleText.tsx";
@@ -74,7 +74,8 @@ export function Play() {
   const paused = useGame((g) => g.paused);
   const seed = useGame((g) => g.seed);
   const volume = useGame((g) => g.volume);
-  const { pause, toTitle } = useGame.actions();
+  const learned = useGame((g) => g.learned);
+  const { pause, toTitle, learn } = useGame.actions();
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
   const s = useMutable({ run: newRun(seed) as Run, reports: [] as FruitReport[] });
   const playLand = useSound("land.wav");
@@ -91,6 +92,7 @@ export function Play() {
   });
 
   useUpdate((dt, input) => {
+    const before = moment(s.run);
     s.run = advance(
       s.run,
       dt,
@@ -105,6 +107,8 @@ export function Play() {
       s.reports
     );
     s.reports = [];
+    // Through a moment once (a hand dropped, a pick made, the shop left), its keys are known: they are not shown again.
+    if (moment(s.run) !== before) learn(before);
     const heard = s.run.sounds;
     // The volume setting, 0 to 10, scales every sound.
     const loud = volume / 10;
@@ -130,6 +134,8 @@ export function Play() {
   const filled = Math.max(0, Math.min(1, run.cycleScore / rent));
   const ordering = run.phase === "order";
   const picking = run.phase === "pick";
+  /** Whether this moment's keys are shown: only until the player has been through it once. */
+  const hints = !learned.includes(moment(run));
   const boss = bossCycle(run.cycle);
   const preserving = run.phase === "preserve";
   const chosen = preserving ? preservable(run)[run.preserveCursor] : undefined;
@@ -229,15 +235,15 @@ export function Play() {
       <Text x={HUD_X + 46} y={BOARD_Y + 130} color={INK}>{`${run.coins}`}</Text>
       <Text x={HUD_X + BOARD_W - 16} y={BOARD_Y + 130} align="right" color={INK_SOFT}>{`Total ${run.total}`}</Text>
 
-      {/* Under it: the keys for this moment. */}
+      {/* Under it: the keys for this moment, the first time it comes up (the pause menu has them after that). */}
       <Flex x={HUD_X + 4} y={BOARD_Y + HUD_H + 12} direction="column" gap={4}>
-        {ordering && <KeyHint name="arrows" label={run.holding ? "Move it" : "Choose"} />}
-        {ordering && <KeyHint name="Enter" label={run.holding ? "Put down" : "Pick up"} />}
-        {ordering && <KeyHint name="Space" label="Drop" />}
-        {preserving && <KeyHint name="arrows" label="Choose" />}
-        {preserving && <KeyHint name="Enter" label="Keep" />}
-        {preserving && <KeyHint name="Space" label="Done" />}
-        <KeyHint name="Esc" label="Pause" />
+        {ordering && hints && <KeyHint name="arrows" label={run.holding ? "Move it" : "Choose"} />}
+        {ordering && hints && <KeyHint name="Enter" label={run.holding ? "Put down" : "Pick up"} />}
+        {ordering && hints && <KeyHint name="Space" label="Drop" />}
+        {preserving && hints && <KeyHint name="arrows" label="Choose" />}
+        {preserving && hints && <KeyHint name="Enter" label="Keep" />}
+        {preserving && hints && <KeyHint name="Space" label="Done" />}
+        {!learned.includes("order") && <KeyHint name="Esc" label="Pause" />}
       </Flex>
 
       {/* Right: the pool by kind, how many of each, and how many are still to be dealt this shuffle. */}
@@ -284,11 +290,13 @@ export function Play() {
           {offerGlossary.map((line, i) => (
             <RuleText key={line} x={0} y={294 + i * 20} width={640} text={line} color={LIGHT} accent={KEYWORD_LIGHT} />
           ))}
-          <Flex y={334} width={640} direction="row" justifyContent="center" gap={20}>
-            <KeyHint name="arrows" label="Choose" />
-            <KeyHint name="Enter" label="Take" />
-            <KeyHint name="Space" label="Skip for 1 coin" />
-          </Flex>
+          {hints && (
+            <Flex y={334} width={640} direction="row" justifyContent="center" gap={20}>
+              <KeyHint name="arrows" label="Choose" />
+              <KeyHint name="Enter" label="Take" />
+              <KeyHint name="Space" label="Skip for 1 coin" />
+            </Flex>
+          )}
         </Entity>
       )}
 
@@ -305,7 +313,7 @@ export function Play() {
           </Flex>
         </Entity>
       )}
-      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} />}
+      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} />}
       {paused && <Pause />}
     </Entity>
   );

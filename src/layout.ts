@@ -1,5 +1,6 @@
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { ITEMS, type ItemKind } from "./rules/items.ts";
+import type { Run } from "./rules/jar.ts";
 import { glossary, keywordsIn } from "./rules/terms.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
@@ -33,4 +34,11 @@ export function fruitGlossary(kind: FruitKind | null | undefined, most: number):
 /** What an item's keywords mean, for under its card. Nothing for no item. */
 export function itemGlossary(item: ItemKind | null, most: number): string[] {
   return item === null ? [] : glossary(keywordsIn(ITEMS[item].text), most);
+}
+
+/** The moment of a run whose keys a hint row shows, for `learned` in the game's state: "" when there are none to show. */
+export function moment(run: Run): string {
+  if (run.phase === "order" || run.phase === "pick" || run.phase === "preserve") return run.phase;
+  if (run.phase === "shop") return run.shop?.removing === true ? "remove" : "shop";
+  return "";
 }

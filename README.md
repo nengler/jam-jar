@@ -31,6 +31,9 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 | Preserves Jar | Left/Right choose a fruit in the jar, Enter keep it or let it go, Space next cycle |
 | Any time | Esc pause |
 
+The keys for each moment are on screen the first time it comes up (ordering a hand, the pick, the shop, …) and not again
+that session; the pause menu always lists them.
+
 ## Terms
 
 Cards are written in a fixed set of keywords, each with one meaning everywhere (`src/rules/terms.ts`), the way Slay the Spire's
