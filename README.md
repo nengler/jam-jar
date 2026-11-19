@@ -39,8 +39,8 @@ player's settings (`src/settings.ts`), which the engine keeps between launches.
 
 Cards are written the way Slay the Spire's are: a row of keywords, each with one meaning everywhere and often a number, like
 "Block 5". The Chili is "**Fresh 2**. **Exploder 4**." A keyword and its number are drawn in colour, and what each keyword
-means is in a tooltip beside the card: hover a card with the mouse (which also chooses it; a click takes or buys it), or
-read the first few under the cards when choosing with the keys. The keywords are in `src/rules/terms.ts`.
+means is in a tooltip beside the card: hover a card with the mouse (which also chooses it; a click takes or buys it).
+The keywords are in `src/rules/terms.ts`.
 
 | Keyword | Meaning ("this" is the number after it) |
 | --- | --- |
@@ -126,6 +126,9 @@ Lime, and juice pooling in the jar; the Coconut's milk is a cracked shell for no
 reason.
 
 The screen is 640 x 360 (16:9), scaled up by whole multiples.
+
+The Pool board shows what is still to be dealt this shuffle, by kind: the hand is on the shelf above the jar, and the rest
+has been played. When nothing is left it says the pool shuffles next.
 
 ## Reading a turn
 

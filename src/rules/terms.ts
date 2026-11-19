@@ -43,7 +43,7 @@ export type Keyword =
 
 export interface KeywordDef {
   name: string;
-  /** What it means. "This" is the number after it on the card. At most 46 characters: two lines of a tooltip, one under a card. */
+  /** What it means. "This" is the number after it on the card. At most 46 characters: two lines of a tooltip. */
   text: string;
 }
 
@@ -124,9 +124,4 @@ export function keywordsIn(text: string): Keyword[] {
     if (keyword !== undefined && !found.includes(keyword)) found.push(keyword);
   }
   return found;
-}
-
-/** The lines under a card that say what its keywords mean: "Exploder: Explodes when …", the first `most` of them. */
-export function glossary(keywords: readonly Keyword[], most: number): string[] {
-  return keywords.slice(0, most).map((keyword) => `${KEYWORDS[keyword].name}: ${KEYWORDS[keyword].text}`);
 }

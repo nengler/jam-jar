@@ -1,7 +1,6 @@
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
-import { ITEMS, type ItemKind } from "./rules/items.ts";
 import { newRun, type Run } from "./rules/jar.ts";
-import { glossary, KEYWORDS, keywordsIn } from "./rules/terms.ts";
+import { KEYWORDS, keywordsIn } from "./rules/terms.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
 export interface PoolRow {
@@ -19,11 +18,6 @@ export function poolRows(pool: readonly FruitKind[]): PoolRow[] {
   return rows;
 }
 
-/** What a fruit's keywords mean, for under its card: the first `most` of those in its text. Nothing for no fruit. */
-export function fruitGlossary(kind: FruitKind | null | undefined, most: number): string[] {
-  return kind == null ? [] : glossary(keywordsIn(FRUITS[kind].text), most);
-}
-
 /** A keyword and what it means, for a card's tooltip. */
 export interface Term {
   id: string;
@@ -36,10 +30,6 @@ export function termsOf(text: string): Term[] {
   return keywordsIn(text).map((keyword) => ({ id: keyword, name: KEYWORDS[keyword].name, text: KEYWORDS[keyword].text }));
 }
 
-/** What an item's keywords mean, for under its card. Nothing for no item. */
-export function itemGlossary(item: ItemKind | null, most: number): string[] {
-  return item === null ? [] : glossary(keywordsIn(ITEMS[item].text), most);
-}
 
 /** Whether a run is at rest at a point the player acts from: where it is kept for "Continue" (GameState.ts, `save`). */
 export function atRest(run: Run): boolean {
