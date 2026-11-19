@@ -34,10 +34,11 @@ export function Pause() {
       </Flex>
       <Heading x={320} y={100} width={248} text="Paused" />
       {/* The keys, always here: the play screen shows each moment's only the first time. */}
-      <Flex x={224} y={258} direction="column" gap={4}>
+      <Flex x={224} y={254} direction="column" gap={0}>
         <KeyHint name="arrows" label="Choose" />
         <KeyHint name="Enter" label="Take or buy" />
         <KeyHint name="Space" label="Drop or skip" />
+        <KeyHint name="F" label="Hold to hurry" />
       </Flex>
     </Entity>
   );

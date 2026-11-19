@@ -233,3 +233,45 @@ test("a Frozen fruit is held where it is: what was under it can go, and it does 
   assert.ok(at(803)!.y > 150 && at(803)!.y < 200, `the loose one fell onto it and rests there (y = ${at(803)!.y})`);
   player.close();
 });
+
+/** Play a new run's first hand to the pick, with these keys held from the drop on, and say how many frames it took and how it ended. */
+function firstHand(prepare: () => void, held: string): { frames: number; run: Run; speeds: Set<number> } {
+  const backend = new RecordingBackend();
+  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
+  prepare();
+  const speeds = new Set<number>();
+  let run: Run | null = null;
+  let frames = 0;
+  const script = `_*2, Enter, _*5, Space, ${held}*900`;
+  for (const frame of parseInputScript(script, { bindings })) {
+    backend.queueInput(frame);
+    player.step();
+    const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } } | null;
+    if (play === null) continue;
+    run = play.s.run;
+    if (run.phase === "pick") break;
+    if (run.phase !== "order") {
+      frames += 1;
+      speeds.add(useGame.getState().speed);
+    }
+  }
+  player.close();
+  return { frames, run: run!, speeds };
+}
+
+test("pace: the Speed setting plays the jar twice as fast and F three times, and the hand ends exactly as it would have", () => {
+  const normal = firstHand(() => {}, "_");
+  const fast = firstHand(() => settings.set({ fast: true }), "_");
+  const hurried = firstHand(() => {}, "F");
+  assert.deepEqual([...normal.speeds], [1]);
+  assert.deepEqual([...fast.speeds], [2]);
+  assert.ok(hurried.speeds.has(3));
+  assert.ok(fast.frames < normal.frames * 0.6, `${fast.frames} frames against ${normal.frames}`);
+  assert.ok(hurried.frames < normal.frames * 0.45, `${hurried.frames} frames against ${normal.frames}`);
+  // The same steps, run faster: the same fruit in the same places with the same score.
+  const places = (run: Run) => run.fruits.map((f) => [f.kind, Math.round(f.x * 1000), Math.round(f.y * 1000)]);
+  assert.deepEqual(places(fast.run), places(normal.run));
+  assert.deepEqual(places(hurried.run), places(normal.run));
+  assert.equal(fast.run.cycleScore, normal.run.cycleScore);
+  assert.equal(useGame.getState().speed, 1, "back to normal speed for the pick");
+});

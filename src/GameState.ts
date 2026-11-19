@@ -1,7 +1,7 @@
 import { createGameState, createSave } from "@tsengine/runtime";
 
 import type { Run } from "./rules/jar.ts";
-import { effectsLevel, learn, learnedMoments, musicLevel, settings, stepVolume } from "./settings.ts";
+import { effectsLevel, fastPlay, learn, learnedMoments, musicLevel, settings, stepVolume, toggleFast } from "./settings.ts";
 
 type Screen = "title" | "settings" | "play";
 
@@ -29,6 +29,7 @@ export const useGame = createGameState(
      * have been shown and used once ("title", "order", "pick", "shop", …), whose hints are not drawn again. */
     music: musicLevel(),
     effects: effectsLevel(),
+    fast: fastPlay(),
     learned: learnedMoments(),
     /** How fast the game runs: 1, or less for the slow motion a chain of Blasts plays in. */
     speed: 1,
@@ -38,6 +39,7 @@ export const useGame = createGameState(
     settingsChanged(s) {
       s.music = musicLevel();
       s.effects = effectsLevel();
+      s.fast = fastPlay();
       s.learned = learnedMoments();
       // The settings are read when the player's files become readable, which is also the first moment a save can be seen.
       s.hasSave = save.exists();
@@ -86,6 +88,9 @@ export const useGame = createGameState(
     },
     changeEffects(_s, by: number) {
       stepVolume("effects", by);
+    },
+    changeSpeed() {
+      toggleFast();
     },
   }
 );

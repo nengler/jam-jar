@@ -60,6 +60,9 @@ const NOTE_Y = 324 - NOTE_H;
 /** Slow motion: how fast the game runs in it, and how long it lasts after the Blast that set it off, in the game's slowed seconds. */
 const SLOW_SPEED = 0.35;
 const SLOW_TIME = 0.4;
+/** Fast-forward: how fast the jar plays with the Speed setting on Fast, and while F is held. */
+const FAST_SPEED = 2;
+const HURRY_SPEED = 3;
 /** The pick: three cards across the middle. */
 const OFFER_W = 184;
 const OFFER_H = 232;
@@ -75,6 +78,8 @@ export function Play() {
   const paused = useGame((g) => g.paused);
   const seed = useGame((g) => g.seed);
   const learned = useGame((g) => g.learned);
+  const fast = useGame((g) => g.fast);
+  const speed = useGame((g) => g.speed);
   const { pause, toTitle, setSpeed } = useGame.actions();
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
@@ -122,13 +127,13 @@ export function Play() {
       else if (s.run.phase === "over" || s.run.phase === "won") dropRun();
     }
     // A chain of Blasts, or a big one, plays in slow motion: long enough to see what it threw and what it set off.
-    if (dramatic(s.run)) {
-      if (s.slow <= 0) setSpeed(SLOW_SPEED);
-      s.slow = SLOW_TIME;
-    } else if (s.slow > 0) {
-      s.slow -= dt;
-      if (s.slow <= 0) setSpeed(1);
-    }
+    if (dramatic(s.run)) s.slow = SLOW_TIME;
+    else if (s.slow > 0) s.slow -= dt;
+    // Otherwise the jar's own business (dropping, settling, the tally) can be hurried: twice as fast with the Speed setting,
+    // three times while F is held. What the player decides at (ordering, the pick, the shop) is never hurried.
+    const busy = s.run.phase === "drop" || s.run.phase === "settle" || s.run.phase === "tally";
+    const pace = s.slow > 0 ? SLOW_SPEED : !busy ? 1 : input.down("F") ? HURRY_SPEED : fast ? FAST_SPEED : 1;
+    if (pace !== speed) setSpeed(pace);
     const heard = s.run.sounds;
     // Each at its own level; the engine scales them all by the player's sounds setting.
     if (heard.includes("land")) playLand(0.4);

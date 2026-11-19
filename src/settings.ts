@@ -2,12 +2,12 @@ import { createSettings } from "@tsengine/runtime";
 
 /**
  * The player's settings, kept between launches (the engine writes them wherever the host keeps a game's files): the two volumes,
- * which the engine applies itself to every `<Music>` and every sound, and the moments whose keys the player has already been
+ * which the engine applies itself to every `<Music>` and every sound, whether the jar plays at double speed, and the moments whose keys the player has already been
  * shown (`learned`: "title", "order", "pick", "shop", …), so the hints for them are not drawn again.
  */
 export const settings = createSettings({
   name: "settings",
-  defaults: { music: 0.4, effects: 0.8, learned: [] as string[] },
+  defaults: { music: 0.4, effects: 0.8, fast: false, learned: [] as string[] },
 });
 
 /** A volume as the settings screen shows it, 0 to 10. */
@@ -21,6 +21,15 @@ export function musicLevel(): number {
 
 export function effectsLevel(): number {
   return level(settings.get().effects);
+}
+
+/** Whether the jar plays at double speed (the settings screen's Speed row). */
+export function fastPlay(): boolean {
+  return settings.get().fast;
+}
+
+export function toggleFast(): void {
+  settings.set({ fast: !settings.get().fast });
 }
 
 /** The moments already learned. The same list until it changes, so a component that reads it is not drawn again for nothing. */
