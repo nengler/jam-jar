@@ -37,29 +37,45 @@ player's settings (`src/settings.ts`), which the engine keeps between launches.
 
 ## Terms
 
-Cards are written in a fixed set of keywords, each with one meaning everywhere (`src/rules/terms.ts`), the way Slay the Spire's
-are: "Touching 4 fruit: **Blast**." A keyword is drawn in colour on the card, and the pick and the shop show what the chosen
-card's keywords mean under it. A fruit's chip says how it scores, so its text does not.
+Cards are written the way Slay the Spire's are: a row of keywords, each with one meaning everywhere and often a number, like
+"Block 5". The Chili is "**Fresh 2**. **Exploder 4**." A keyword and its number are drawn in colour, and what each keyword
+means is in a tooltip beside the card: hover a card with the mouse (which also chooses it; a click takes or buys it), or
+read the first few under the cards when choosing with the keys. The keywords are in `src/rules/terms.ts`.
 
-| Keyword | Meaning |
+| Keyword | Meaning ("this" is the number after it) |
 | --- | --- |
-| Fresh | Scores once, when it lands or a Merge makes it. The chip says how much: "Fresh 3". |
-| Simmer | Scores at the end of every turn it is in the jar. |
-| Booster | Scores nothing itself. It changes what others score. |
-| Merge | Two of a kind that touch become the next fruit up. |
-| Blast | Destroys nearby fruit. Each scores its points +6 (a big Blast, the Durian's, +8). |
-| Burst | Breaks apart into smaller fruit. |
-| Rotten | Scores nothing, can't Merge, and spreads by touch (one fruit a turn). |
-| Honeyed | Scores +2 at the end of every turn. |
-| Eat | Removes one fruit it touches from the jar. |
-| Heavy | Shoulders lighter fruit aside on its way down. |
-| Sprout | A Cherry, Grape or Orange grows in its place. |
-| Crush | Destroys a fruit for its points +3 (the Juicer). |
-| Spill | Fruit over the rim when a turn ends are lost: -5 each. |
-| Pickled | Never ages and can never be Rotten (the Pickling Jar). |
+| Fresh | Scores this once, when it lands or is made. |
+| Simmer | Scores this at the end of every turn. |
+| Booster | Scores nothing itself. |
+| Merge | Two that touch become the fruit named. |
+| Exploder | Explodes when touching this many fruit. |
+| Buried | Explodes, big, under this many fruit. |
+| Explode | Destroys nearby fruit for points +6 (big: +8). |
+| Exploded | When an explosion destroys it. |
+| Burst | Breaks into this many Cherries. |
+| Sprout | A Cherry, Grape or Orange grows here. |
+| Rotten | Scores nothing, can't Merge, spreads. |
+| Rots | Turns Rotten after this many turns. |
+| Ripen | Scores this much more each turn. |
+| Contained | Its rot does not spread. |
+| Honeyed / Honey | Scores +2 at the end of every turn / makes a fruit it touches Honeyed. |
+| Eat / Hatch | Removes one fruit it touches / a new Fruit Fly appears where it ate. |
+| Grow | That kind scores this much more, all run. |
+| Heavy | Shoulders lighter fruit aside. |
+| Double / Sour | Fruit touching it score x2 / can't Merge. |
+| Dense | Counts as this many fruit when touched. |
+| Deep | Up to this much more the deeper it sits. |
+| Copy | Becomes the first fruit it lands on. |
+| Bouncy | Bounces, shoving its neighbours. |
+| Crack | After this many turns: Booster, Double. |
+| Skip | A Merge touching it skips a size. |
+| Legendary | Rare, and never in the shop. |
+| Crush, Shake, Preserve, Pickled, Once | The items' words: the Juicer, the Shaker, the jars and the Lid. |
+| Spill | Fruit over the rim are lost: -5 each. |
 
-A new card should use these words and no others for the same thing ("Blast", never "explodes"), start an effect with its
-condition ("Blasted: Sprout a starter."), and fit four lines of a shop card. A test holds the texts to that.
+A new card is a row of these, how it scores first ("Fresh 3. Heavy. Crack 3."), with a trigger before a colon ("Exploded:
+Sprout."). A new effect gets a keyword and a definition of at most 46 characters, not a sentence on one card. A card holds
+at most four keywords, which is what a tooltip has room for. Tests hold the cards to this, and to the rules' own numbers.
 
 ## What's in this first slice
 

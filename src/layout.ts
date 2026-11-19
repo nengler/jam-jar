@@ -1,8 +1,7 @@
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { ITEMS, type ItemKind } from "./rules/items.ts";
 import { newRun, type Run } from "./rules/jar.ts";
-import { glossary, keywordsIn } from "./rules/terms.ts";
-import { LEGENDARY_CHIP, SCORING } from "./theme.ts";
+import { glossary, KEYWORDS, keywordsIn } from "./rules/terms.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
 export interface PoolRow {
@@ -20,17 +19,21 @@ export function poolRows(pool: readonly FruitKind[]): PoolRow[] {
   return rows;
 }
 
-/** A fruit's chip: how it scores, and for a Fresh fruit how much ("Fresh 3"). */
-export function scoringLabel(kind: FruitKind): string {
-  const def = FRUITS[kind];
-  if (def.legendary === true) return "Legendary";
-  return def.scoring === "fresh" ? `Fresh ${def.points}` : def.scoring === "simmer" ? "Simmer" : "Booster";
+/** What a fruit's keywords mean, for under its card: the first `most` of those in its text. Nothing for no fruit. */
+export function fruitGlossary(kind: FruitKind | null | undefined, most: number): string[] {
+  return kind == null ? [] : glossary(keywordsIn(FRUITS[kind].text), most);
 }
 
-/** What a fruit's keywords mean, for under its card: its scoring type first, then those in its text. Nothing for no fruit. */
-export function fruitGlossary(kind: FruitKind | null | undefined, most: number): string[] {
-  if (kind == null) return [];
-  return glossary(keywordsIn(FRUITS[kind].text, [FRUITS[kind].scoring]), most);
+/** A keyword and what it means, for a card's tooltip. */
+export interface Term {
+  id: string;
+  name: string;
+  text: string;
+}
+
+/** Every keyword in a card's text, in the order it appears, with what it means: the boxes of the tooltip beside the card. */
+export function termsOf(text: string): Term[] {
+  return keywordsIn(text).map((keyword) => ({ id: keyword, name: KEYWORDS[keyword].name, text: KEYWORDS[keyword].text }));
 }
 
 /** What an item's keywords mean, for under its card. Nothing for no item. */
@@ -55,10 +58,6 @@ export function startingRun(saved: unknown, seed: number): Run {
   return saved === null || saved === undefined ? newRun(seed) : (JSON.parse(JSON.stringify(saved)) as Run);
 }
 
-/** The colour of a fruit's chip: its scoring type's, or a Legendary's own. */
-export function chipColor(kind: FruitKind): string {
-  return FRUITS[kind].legendary === true ? LEGENDARY_CHIP : SCORING[FRUITS[kind].scoring].color;
-}
 
 /** A mote of dust in the kitchen's air: where it is, and which of the two shades it is drawn in. */
 export interface Mote {
@@ -86,4 +85,14 @@ export function motes(time: number): Mote[] {
     out.push({ id, x: Math.round(((id * 151 + 23) % 640) + sway), y: Math.round(MOTE_FIELD - rise), shade: id % 3 === 0 ? 1 : 0 });
   }
   return out;
+}
+
+/** A card in a row: what is on it, and its place in the row (a mouse handler reads the place from the card, not from the list). */
+export interface Placed<T> {
+  at: number;
+  card: T;
+}
+
+export function placed<T>(cards: readonly T[]): Placed<T>[] {
+  return cards.map((card, at) => ({ at, card }));
 }
