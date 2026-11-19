@@ -1,4 +1,4 @@
-import { Entity, Flex, Shape, Text, useTime } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Shape, Text, useTime, type Child } from "@tsengine/runtime/jsx";
 
 import { ripple } from "./layout.ts";
 
@@ -40,6 +40,28 @@ export function Board({ x, y, width, height, title, heading, image = PANEL }: Bo
   );
 }
 
+/**
+ * A board whose size comes from what is on it: the same parchment, shadow and heading as `Board`, as a box that lays its
+ * children out in a column. It takes the width it is given by the box it is in and is as tall as its contents, so nothing on it
+ * is placed by counting pixels from the screen's corner, and it cannot be too short for them.
+ */
+export function Panel({ title, image = PANEL, gap = 0, children }: { title?: string; image?: string; gap?: number; children: Child }) {
+  return (
+    <Flex direction="column" alignItems="stretch" paddingTop={title === undefined ? 0 : TITLE_ROOM}>
+      {/* The shadow, pinned a little down and right of the frame; then the frame over it. */}
+      <Flex left={4} right={-4} top={(title === undefined ? 0 : TITLE_ROOM) + 4} bottom={-4} background={WALL_SHADOW} />
+      <Flex direction="column" alignItems="stretch" gap={gap} paddingX={16} paddingTop={6} paddingBottom={10} backgroundImage={image} slice={PANEL_SLICE}>
+        {children}
+      </Flex>
+      {title !== undefined && (
+        <Flex left={0} right={0} top={-18} height={HEADING_H} direction="row" justifyContent="center">
+          <Letters text={title} seed={title.length * 7} />
+        </Flex>
+      )}
+    </Flex>
+  );
+}
+
 /** The room a heading's line takes, and the width of a space in it. */
 const HEADING_H = 32;
 const HEADING_SPACE = 8;
@@ -49,10 +71,19 @@ const HEADING_SPACE = 8;
  * a ripple runs through it, a letter at a time hopping up an art pixel: something small that moves, so the wall is not all still.
  */
 export function Heading({ x, y, width, text }: { x: number; y: number; width: number; text: string }) {
-  const time = useTime();
   return (
     <Flex x={x - width / 2} y={y} width={width} height={HEADING_H} direction="row" justifyContent="center">
-      {ripple(text, time, x + y).map((l) => (
+      <Letters text={text} seed={x + y} />
+    </Flex>
+  );
+}
+
+/** A heading's letters in a row as wide as they are, rippling (see `Heading`); `seed` staggers one heading's ripple from another's. */
+export function Letters({ text, seed }: { text: string; seed: number }) {
+  const time = useTime();
+  return (
+    <Flex height={HEADING_H} direction="row">
+      {ripple(text, time, seed).map((l) => (
         <Flex key={l.at} height={HEADING_H} minWidth={l.letter === " " ? HEADING_SPACE : 0}>
           {l.letter !== " " && (
             <Entity y={-l.lift}>
