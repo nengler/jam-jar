@@ -1,5 +1,5 @@
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
-import { newRun, type Run } from "./rules/jar.ts";
+import { BOSS_NAME, bossNow, newRun, RENT, type Run } from "./rules/jar.ts";
 import { KEYWORDS, keywordsIn } from "./rules/terms.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
@@ -85,4 +85,10 @@ export interface Placed<T> {
 
 export function placed<T>(cards: readonly T[]): Placed<T>[] {
   return cards.map((card, at) => ({ at, card }));
+}
+
+/** The rent board's heading: which cycle of the run this is, named for its boss jar if it is one ("Blind jar 3 of 5"). */
+export function cycleTitle(run: Run): string {
+  const boss = bossNow(run);
+  return `${boss === null ? "Cycle" : BOSS_NAME[boss]} ${run.cycle} of ${RENT.length}`;
 }

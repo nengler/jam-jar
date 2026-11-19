@@ -6,14 +6,14 @@ import { FruitBall } from "./FruitBall.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
-import { atRest, moment, placed, startingRun, poolRows } from "./layout.ts";
+import { atRest, cycleTitle, moment, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, BOOM_LIFE, bossCycle, dramatic, shownScore, preservable, JAR, rentFor, RENT, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, BOOM_LIFE, bossNow, dramatic, shownScore, preservable, JAR, rentFor, RENT, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -170,7 +170,8 @@ export function Play() {
   const picking = run.phase === "pick";
   /** Whether this moment's keys are shown: only until the player has been through it once. */
   const hints = !learned.includes(moment(run));
-  const boss = bossCycle(run.cycle);
+  const boss = bossNow(run);
+  const blind = boss === "blind";
   const preserving = run.phase === "preserve";
   const chosen = preserving ? preservable(run)[run.preserveCursor] : undefined;
   const keptFruit = preserving ? run.fruits.filter((f) => run.kept.includes(f.id)) : [];
@@ -226,17 +227,19 @@ export function Play() {
         <Sprite key={item} image={`item-${item}.png`} x={16 + i * 50} y={COUNTER_Y - 38} />
       ))}
 
-      {/* The shelf: the hand, in the order it drops. The chosen fruit is framed in amber; a held one is lifted. */}
+      {/* The shelf: the hand, in the order it drops. The chosen fruit is framed in amber; a held one is lifted. In the Blind
+          jar each is under a cloth. */}
       <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y} />
       {shelf.map((kind, i) => (
         <Entity key={`${kind}${i}`} x={shelfLeft + i * SLOT + SLOT / 2} y={SHELF_Y - 18}>
-          {ordering && i === run.cursor && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
-          <FruitBall kind={kind} x={0} y={ordering && run.holding && i === run.cursor ? -8 : 0} look="icon" />
+          {ordering && !blind && i === run.cursor && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
+          {!blind && <FruitBall kind={kind} x={0} y={ordering && run.holding && i === run.cursor ? -8 : 0} look="icon" />}
+          {blind && <Sprite image="covered.png" x={-16} y={-16} />}
         </Entity>
       ))}
 
       {/* Left: the rent board. The score against the rent, the turn, and the coins. */}
-      <Board x={HUD_X} y={BOARD_Y} width={BOARD_W} height={HUD_H} title={boss ? `Peg jar ${run.cycle} of ${RENT.length}` : `Cycle ${run.cycle} of ${RENT.length}`} />
+      <Board x={HUD_X} y={BOARD_Y} width={BOARD_W} height={HUD_H} title={cycleTitle(run)} />
       <Text x={HUD_X + 16} y={BOARD_Y + 22} color={INK_SOFT}>
         Score
       </Text>
@@ -256,8 +259,8 @@ export function Play() {
 
       {/* Under it: the keys for this moment, the first time it comes up (the pause menu has them after that). */}
       <Flex x={HUD_X + 4} y={BOARD_Y + HUD_H + 12} direction="column" gap={4}>
-        {ordering && hints && <KeyHint name="arrows" label={run.holding ? "Move it" : "Choose"} />}
-        {ordering && hints && <KeyHint name="Enter" label={run.holding ? "Put down" : "Pick up"} />}
+        {ordering && hints && !blind && <KeyHint name="arrows" label={run.holding ? "Move it" : "Choose"} />}
+        {ordering && hints && !blind && <KeyHint name="Enter" label={run.holding ? "Put down" : "Pick up"} />}
         {ordering && hints && <KeyHint name="Space" label="Drop" />}
         {preserving && hints && <KeyHint name="arrows" label="Choose" />}
         {preserving && hints && <KeyHint name="Enter" label="Keep" />}
