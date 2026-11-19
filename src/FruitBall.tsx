@@ -1,7 +1,7 @@
 import { Sprite } from "@tsengine/runtime/jsx";
 
 import type { FruitKind } from "./rules/fruits.ts";
-import { fruitImage, fruitImageSize, HONEYED, LIGHT, PICKLED, ROTTEN, type FruitLook } from "./theme.ts";
+import { fruitImage, fruitImageSize, FROZEN, HONEYED, LIGHT, PICKLED, ROTTEN, type FruitLook } from "./theme.ts";
 
 interface FruitBallProps {
   kind: FruitKind;
@@ -13,6 +13,8 @@ interface FruitBallProps {
   honeyed?: boolean;
   /** Kept by a Pickling Jar: tinted green. */
   pickled?: boolean;
+  /** Frozen by a Snow Pear: tinted ice blue. */
+  frozen?: boolean;
   /** About to explode: drawn flashing. */
   lit?: boolean;
   /** How far it has rolled, in degrees. */
@@ -27,7 +29,7 @@ interface FruitBallProps {
  * A fruit, centred on (x, y): its pixel sprite (tools/fruit), scaled up with no smoothing by tools/make-assets.py. A rotten
  * fruit is tinted brown, a honeyed one gold; a lit one flashes.
  */
-export function FruitBall({ kind, x, y, rotten = false, honeyed = false, pickled = false, lit = false, glow = 0, turn = 0, look = "jar" }: FruitBallProps) {
+export function FruitBall({ kind, x, y, rotten = false, honeyed = false, pickled = false, frozen = false, lit = false, glow = 0, turn = 0, look = "jar" }: FruitBallProps) {
   const half = fruitImageSize(kind, look) / 2;
   return (
     <Sprite
@@ -37,7 +39,7 @@ export function FruitBall({ kind, x, y, rotten = false, honeyed = false, pickled
       originX={half}
       originY={half}
       rotation={turn}
-      tint={rotten ? ROTTEN : pickled ? PICKLED : honeyed ? HONEYED : undefined}
+      tint={frozen ? FROZEN : rotten ? ROTTEN : pickled ? PICKLED : honeyed ? HONEYED : undefined}
       flash={lit ? 0.85 : glow * 0.7}
       flashColor={LIGHT}
     />

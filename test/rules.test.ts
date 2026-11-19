@@ -63,6 +63,7 @@ function fruit(id: number, kind: Fruit["kind"], x: number, y: number, touching: 
     pulseDelay: 0,
     honeyed: kind === "honeydew",
     pickled: false,
+    frozen: false,
     lit: false,
     fuse: 0,
   };
@@ -836,4 +837,23 @@ test("the backdrop's motes are worked out from the time alone, stay on the wall,
   const a = motes(10);
   const b = motes(10 + 1 / 60);
   assert.ok(a.every((m, i) => Math.abs(m.x - b[i]!.x) <= 1 && Math.abs(m.y - b[i]!.y) <= 1 || Math.abs(m.y - b[i]!.y) > 300), "a pixel a step at most, but for wrapping");
+});
+
+test("a Snow Pear freezes itself and what it touches at the end of a turn; Frozen fruit survive an explosion", () => {
+  const y = JAR.floor - 18;
+  const run = jarWith([fruit(1, "snowpear", 300, y, [2]), fruit(2, "cherry", 332, y, [1]), fruit(3, "cherry", 380, y)]);
+  run.turn = 1;
+  resolve(run);
+  assert.deepEqual(
+    run.fruits.map((f) => f.frozen),
+    [true, true, false],
+    "the pear and its neighbour, not the fruit apart"
+  );
+  assert.ok(run.links.some((l) => l.kind === "freeze"));
+
+  run.phase = "settle";
+  run.fruits.push({ ...fruit(9, "chili", 350, y), lit: true, fuse: 0 });
+  simulate(run, DT);
+  assert.deepEqual(run.fruits.map((f) => f.id).sort(), [1, 2], "the frozen two are left; the other Cherry is gone");
+  assert.ok(run.fruits.every((f) => f.kicks === 0), "and not thrown");
 });

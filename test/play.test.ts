@@ -111,7 +111,7 @@ test("a chain of Blasts plays in slow motion, then the game runs at full speed a
     if (speeds.length === 0) {
       const chili = (id: number, x: number, fuse: number): Fruit => ({
         ...{ id, kind: "chili", x0: x, y0: JAR.floor - 16, x, y: JAR.floor - 16, r: 14, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
-        ...{ landed: true, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: false, pickled: false, lit: true, fuse },
+        ...{ landed: true, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: false, pickled: false, frozen: false, lit: true, fuse },
       });
       play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, fruits: [chili(801, 250, 0.05), chili(802, 390, 0.5)] };
     }
@@ -206,5 +206,30 @@ test("the title shows a jar filling up by itself, and it does not touch what is 
   assert.equal(useGame.getState().hasSave, false);
   assert.ok(!backend.stored.has("run"), "the demo's run is not kept");
   assert.deepEqual(settings.get().learned, []);
+  player.close();
+});
+
+test("a Frozen fruit is held where it is: what was under it can go, and it does not fall", () => {
+  const backend = new RecordingBackend();
+  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
+  const step = (script: string) => {
+    for (const frame of parseInputScript(script, { bindings })) {
+      backend.queueInput(frame);
+      player.step();
+    }
+  };
+  step("_*2, Enter, _*5");
+  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
+  const base = play.s.run.fruits;
+  const make = (id: number, kind: Fruit["kind"], y: number, frozen: boolean): Fruit => ({
+    ...{ id, kind, x0: 320, y0: y, x: 320, y, r: 18, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
+    ...{ landed: true, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: false, pickled: false, frozen, lit: false, fuse: 0 },
+  });
+  // An Apple on the floor, and a frozen one and a loose one in mid air above it.
+  play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, fruits: [...base, make(801, "apple", JAR.floor - 18, false), make(802, "apple", 200, true), make(803, "apple", 140, false)] };
+  step("_*90");
+  const at = (id: number) => play.s.run.fruits.find((f) => f.id === id);
+  assert.ok(Math.abs(at(802)!.y - 200) < 0.01, `the frozen one hangs where it was (y = ${at(802)!.y})`);
+  assert.ok(at(803)!.y > 150 && at(803)!.y < 200, `the loose one fell onto it and rests there (y = ${at(803)!.y})`);
   player.close();
 });

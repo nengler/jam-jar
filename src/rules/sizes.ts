@@ -22,5 +22,6 @@ export const FRUIT_ART = {
   coconut: { size: 48, radius: 22 },
   cracked: { size: 48, radius: 22 },
   dragonfruit: { size: 48, radius: 22 },
+  snowpear: { size: 40, radius: 18 },
   fruitfly: { size: 32, radius: 10 },
 } as const;
