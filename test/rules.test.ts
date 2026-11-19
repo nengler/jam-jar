@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { motes, poolRows, termsOf } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
-import { FRUITS } from "../src/rules/fruits.ts";
+import { APPLE, BANANA, FRUITS, HONEY } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
@@ -202,8 +202,8 @@ test("Resolve: fruit over the rim spill and cost points; an Apple deeper scores 
   run.cycleScore = 10;
   resolve(run);
   assert.equal(run.fruits.length, 2, "the cherry spilled");
-  // -5 for the spill, then 5 (deep apple) + 2 (shallow apple).
-  assert.equal(run.cycleScore, 10 - 5 + 5 + 2);
+  // -5 for the spill, then the deep Apple (its base and 5 of its Deep 6) and the shallow one (its base alone).
+  assert.equal(run.cycleScore, 10 - 5 + (APPLE.base + 5) + APPLE.base);
 });
 
 test("a Banana scores more each turn and rots after 3", () => {
@@ -216,7 +216,7 @@ test("a Banana scores more each turn and rots after 3", () => {
     resolve(run);
     scores.push(run.cycleScore - before);
   }
-  assert.deepEqual(scores, [2, 3, 4, 0]);
+  assert.deepEqual(scores, [BANANA.base, BANANA.base + BANANA.ripen, BANANA.base + 2 * BANANA.ripen, 0]);
   assert.equal(run.fruits[0]!.rotten, true);
 });
 
@@ -389,7 +389,7 @@ test("a rotten Fig blown up makes every Banana score +1 for the rest of the run"
   run.fruits = [fruit(4, "banana", 300, JAR.floor - 18)];
   const before = run.cycleScore;
   resolve(run);
-  assert.equal(run.cycleScore - before, 3);
+  assert.equal(run.cycleScore - before, BANANA.base + 1);
 });
 
 test("a Kiwi becomes a copy of the landed fruit it touches, and stays a Kiwi on the bare floor", () => {
@@ -409,17 +409,17 @@ test("a Peach bounces when it lands and shoves what it landed on aside", () => {
   assert.ok(left.kickX < 0 && right.kickX > 0, "apart");
 });
 
-test("a Honeydew scores 2 a turn and honeys one fruit it touches each turn, which then scores 2 as well", () => {
+test("a Honeydew scores its honey each turn and honeys one fruit it touches each turn, which then scores it as well", () => {
   const y = JAR.floor - 22;
   const run = jarWith([fruit(1, "honeydew", 300, y, [2, 3]), fruit(2, "orange", 344, y, [1]), fruit(3, "orange", 256, y, [1])]);
   run.turn = 1;
   resolve(run);
-  assert.equal(run.cycleScore, 2);
+  assert.equal(run.cycleScore, HONEY);
   assert.equal(run.fruits.filter((f) => f.honeyed).length, 2);
   run.turn = 1;
   run.phase = "settle";
   resolve(run);
-  assert.equal(run.cycleScore, 2 + 4);
+  assert.equal(run.cycleScore, HONEY + 2 * HONEY);
   assert.equal(run.fruits.filter((f) => f.honeyed).length, 3);
 });
 
@@ -535,9 +535,9 @@ test("a Coconut cracks at its third Resolve and is gone, leaving milk; fruit tha
   assert.equal(run.juice, COCONUT_MILK);
   assert.equal(run.milk, true);
   assert.equal(run.lime, false);
-  // The deep Apple scores 5 and the high one 3; from the turn after the Coconut cracks, the deep one sits in milk: 10.
-  assert.deepEqual(scores, [8, 8, 8, 13]);
-  assert.equal(run.popups.find((p) => p.points === 10)!.text, "+10 x2");
+  // The deep Apple scores 9 and the high one 6; from the turn after the Coconut cracks, the deep one sits in milk: 18.
+  assert.deepEqual(scores, [15, 15, 15, 24]);
+  assert.equal(run.popups.find((p) => p.points === 18)!.text, "+18 x2");
 });
 
 test("a Lime that is Exploded or Crushed leaves lime juice, which rises with each and is gone with the rent", () => {
@@ -687,7 +687,7 @@ test("the tally: Simmer fruit score one after another, the score on screen catch
   run.calmTime = 10;
   run = press(run, {});
   assert.equal(run.phase, "tally");
-  assert.equal(run.cycleScore, 15, "Resolve has scored all three (5 each, on the floor)");
+  assert.equal(run.cycleScore, 27, "Resolve has scored all three (9 each, on the floor)");
   assert.equal(shownScore(run), 0, "none has shown yet");
   const delays = run.popups.map((p) => p.delay);
   assert.ok(delays[0]! < delays[1]! && delays[1]! < delays[2]!, "each later than the last");
@@ -698,7 +698,7 @@ test("the tally: Simmer fruit score one after another, the score on screen catch
     run = press(run, {});
     seen.add(shownScore(run));
   }
-  assert.deepEqual([...seen], [0, 5, 10, 15], "counted up a fruit at a time");
+  assert.deepEqual([...seen], [0, 9, 18, 27], "counted up a fruit at a time");
   assert.equal(run.phase, "pick");
 });
 
@@ -867,7 +867,7 @@ test("the Pickling Jar keeps one fruit, Pickled: it does not age, rot it had is 
   const banana = run.fruits[0]!;
   assert.equal(banana.pickled, true);
 
-  // Three more turns beside a rotten fruit: still a Banana of age 2, scoring 4 a turn.
+  // Three more turns beside a rotten fruit: still a Banana of age 2, scoring the same each turn.
   run.fruits.push({ ...fruit(9, "fig", 336, JAR.floor - 18, [1]), rotten: true });
   run.fruits[0]!.touching = [9];
   for (let turn = 0; turn < 3; turn++) {
@@ -875,7 +875,7 @@ test("the Pickling Jar keeps one fruit, Pickled: it does not age, rot it had is 
     run.turn = 1;
     run.phase = "settle";
     resolve(run);
-    assert.equal(run.cycleScore - before, 4);
+    assert.equal(run.cycleScore - before, BANANA.base + 2 * BANANA.ripen);
   }
   assert.equal(run.fruits[0]!.age, 2);
   assert.equal(run.fruits[0]!.rotten, false);
@@ -928,4 +928,14 @@ test("a Snow Pear freezes itself and what it touches at the end of a turn; Froze
   simulate(run, DT);
   assert.deepEqual(run.fruits.map((f) => f.id).sort(), [1, 2], "the frozen two are left; the other Cherry is gone");
   assert.ok(run.fruits.every((f) => f.kicks === 0), "and not thrown");
+});
+
+test("the cards of the fruit with rules of their own say the rules' numbers", () => {
+  assert.equal(FRUITS.apple.text, `Simmer ${APPLE.base}. Deep ${APPLE.deep}.`);
+  assert.equal(FRUITS.banana.text, `Simmer ${BANANA.base}. Ripen ${BANANA.ripen}. Rots ${BANANA.rots}.`);
+  assert.match(KEYWORDS.honeyed.text, new RegExp(`\\+${HONEY} `));
+  assert.match(KEYWORDS.explode.text, new RegExp(`\\+${BLAST_BONUS.chili} \\(big \\+${BLAST_BONUS.durian}\\)`));
+  assert.match(FRUITS.prune.text, new RegExp(`Simmer ${FRUITS.prune.points} per`));
+  assert.match(FRUITS.fruitfly.text, new RegExp(`\\+${FRUITS.fruitfly.points} and Hatch`));
+  assert.match(FRUITS.pitaya.text, new RegExp(`^Simmer ${FRUITS.pitaya.points}\\.`));
 });
