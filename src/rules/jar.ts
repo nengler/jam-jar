@@ -56,6 +56,13 @@ const COCONUT_TURNS = 3;
 /** What a honeyed fruit scores at each Resolve. */
 const HONEY_POINTS = 2;
 const POPUP_LIFE = 0.9;
+/** About how wide a popup's character is on screen, how close two popups' middles may be across, and a popup's line, in pixels. */
+const POPUP_CHAR = 14;
+const POPUP_CLEAR_X = 56;
+const POPUP_LINE = 22;
+/** A chain: a Blast within this many seconds of the last one. And a big Blast: one that destroys at least this many fruit. */
+const CHAIN_WINDOW = 1.2;
+export const BIG_BLAST = 5;
 /** How long a fruit stays lit up after something happens to it, in seconds. */
 export const PULSE = 0.35;
 /** The tally: seconds between one fruit's score and the next, the most the whole of it takes, and the pause after its last. */
@@ -193,6 +200,10 @@ export interface Run {
   kept: number[];
   settleTime: number;
   calmTime: number;
+  /** Blasts so far in the chain going on (0 when none is), the seconds since the last, and how many fruit the last destroyed. */
+  chain: number;
+  sinceBlast: number;
+  blasted: number;
   /** While the tally plays: the seconds left of it, the phase that follows, and the sound that goes with that. */
   tallyTime: number;
   afterTally: Phase;
@@ -285,6 +296,9 @@ export function newRun(seed: number): Run {
     kept: [],
     settleTime: 0,
     calmTime: 0,
+    chain: 0,
+    sinceBlast: 0,
+    blasted: 0,
     tallyTime: 0,
     afterTally: "pick",
     afterSound: null,
@@ -360,9 +374,23 @@ function score(run: Run, points: number, x: number, y: number, why: Why = {}): P
   run.cycleScore += points;
   run.total += points;
   const text = `${why.label === undefined ? "" : `${why.label} `}${points > 0 ? "+" : ""}${points}${why.doubled === true ? " x2" : ""}`;
-  const popup: Popup = { id: run.nextId++, x, y, text, life: POPUP_LIFE, delay: 0, points };
+  return say(run, x, y, text, points);
+}
+
+/** A popup at (x, y): kept inside the jar's walls, and moved up clear of any popup already there, so two never sit on each other. */
+function say(run: Run, x: number, y: number, text: string, points = 0): Popup {
+  const half = Math.min((JAR.right - JAR.left) / 2, text.length * POPUP_CHAR) / 2 + 4;
+  const px = Math.max(JAR.left + half, Math.min(JAR.right - half, x));
+  let py = y;
+  for (let tries = 0; tries < 6 && run.popups.some((p) => Math.abs(p.x - px) < POPUP_CLEAR_X && Math.abs(p.y - py) < POPUP_LINE); tries++) py -= POPUP_LINE;
+  const popup: Popup = { id: run.nextId++, x: px, y: py, text, life: POPUP_LIFE, delay: 0, points };
   run.popups.push(popup);
   return popup;
+}
+
+/** Whether the Blast that just went off (this step's "boom") is worth slowing down for: part of a chain, or a big one. */
+export function dramatic(run: Run): boolean {
+  return run.sounds.includes("boom") && (run.chain >= 2 || run.blasted >= BIG_BLAST);
 }
 
 /** The cycle's score as the screen shows it: without the points of the tally's popups still to come. */
@@ -474,6 +502,8 @@ export function advance(previous: Run, dt: number, keys: Keys, reports: readonly
     else if (f.pulse > 0) f.pulse = Math.max(0, f.pulse - dt);
   }
   run.popups = run.popups.filter((p) => p.life > 0);
+  run.sinceBlast += dt;
+  if (run.sinceBlast > CHAIN_WINDOW) run.chain = 0;
   for (const e of run.effects) e.age += dt;
   run.effects = run.effects.filter((e) => e.age < BOOM_LIFE);
 
@@ -775,6 +805,10 @@ function explode(run: Run, bomb: Fruit): void {
   }
   run.fruits = [...kept, ...born];
   score(run, points, bomb.x, bomb.y - radius / 2, { label: "Blast" });
+  run.chain += 1;
+  run.sinceBlast = 0;
+  run.blasted = victims.length;
+  if (run.chain >= 2) say(run, bomb.x, bomb.y - radius / 2 - POPUP_LINE, `Chain x${run.chain}`);
   effect(run, "boom", bomb.x, bomb.y, radius * 2);
   sound(run, "boom");
   run.message = `${FRUITS[bomb.kind].name} Blast: ${victims.length} fruit destroyed`;

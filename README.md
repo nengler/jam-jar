@@ -106,6 +106,9 @@ The design doc's biggest risk is that a pile of fruit is harder to read than a g
   ends "x2" when a Booster doubled them.
 - Fruit light up when something happens because of them: the Lemon that doubled a score, what set a Chili or a Durian off,
   a fruit a Merge made, one that just rotted or was honeyed.
+- Two popups never sit on each other (a later one is a line higher) and none is cut by the jar's wall.
+- A Blast within 1.2 seconds of the last is a chain, and says so ("Chain x2"). A chain, or one Blast that destroys 5 fruit or
+  more, plays in slow motion (the game at 0.35 of its speed for a moment), so you can see what it threw and set off.
 - The end of a turn is a tally: each Simmer fruit lights up and scores in turn, with a tick, and the score counts up with them.
   A long tally is squeezed into about two seconds. The rules have already scored it all (`resolve`); the "tally" phase only
   shows it, then hands over to the pick or the rent.

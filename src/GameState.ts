@@ -19,15 +19,21 @@ export const useGame = createGameState(
     music: true,
     /** The seed of the current run; each new run takes the next one. */
     seed: 1,
+    /** How fast the game runs: 1, or less for the slow motion a chain of Blasts plays in. */
+    speed: 1,
     /** The moments whose keys have been shown and used once ("title", "order", "pick", "shop", …): their hints are not drawn again. */
     learned: [] as string[],
   },
   {
+    setSpeed(s, speed: number) {
+      s.speed = speed;
+    },
     /** The player has got through this moment once, so they know its keys. */
     learn(s, moment: string) {
       if (moment !== "" && !s.learned.includes(moment)) s.learned = [...s.learned, moment];
     },
     start(s) {
+      s.speed = 1;
       if (!s.learned.includes("title")) s.learned = [...s.learned, "title"];
       s.screen = "play";
       s.paused = false;
@@ -38,6 +44,7 @@ export const useGame = createGameState(
       s.screen = "settings";
     },
     toTitle(s) {
+      s.speed = 1;
       if (s.screen === "settings" && !s.learned.includes("settings")) s.learned = [...s.learned, "settings"];
       s.screen = "title";
       s.paused = false;

@@ -6,7 +6,7 @@ import { findComponent } from "@tsengine/testing";
 
 import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
-import { JAR, type Run } from "../src/rules/jar.ts";
+import { JAR, type Fruit, type Run } from "../src/rules/jar.ts";
 
 /** Which screen shows, whether play is paused, and the run's phase and jar when a run is on. */
 function seen(player: Player): { screen: string; paused: boolean; phase?: string; fruits?: number; hand?: number; dealt?: number } {
@@ -69,4 +69,27 @@ test("a moment's keys are learned once it has been played through: the title, th
   assert.deepEqual(states[5], ["title"], "Play was pressed");
   assert.deepEqual(states[12], ["title", "order"], "the first hand was dropped");
   assert.deepEqual(states[states.length - 1], ["title", "order", "pick"], "the first pick was skipped");
+});
+
+test("a chain of Blasts plays in slow motion, then the game runs at full speed again", () => {
+  const frames = parseInputScript("_*2, Enter, _*200", { bindings });
+  const speeds: number[] = [];
+  runScript(gameConfig, frames, (player) => {
+    const play = findComponent("Play", player.world.root) as { s: { run: Run } } | null;
+    if (play === null) return null;
+    // Once the run is on, put two lit Chilis in the jar, far enough apart to go off one after the other.
+    if (speeds.length === 0) {
+      const chili = (id: number, x: number, fuse: number): Fruit => ({
+        ...{ id, kind: "chili", x0: x, y0: JAR.floor - 16, x, y: JAR.floor - 16, r: 14, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
+        ...{ landed: true, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: false, lit: true, fuse },
+      });
+      play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, fruits: [chili(801, 250, 0.05), chili(802, 390, 0.5)] };
+    }
+    speeds.push(useGame.getState().speed);
+    return null;
+  });
+  const slowed = speeds.filter((speed) => speed < 1).length;
+  assert.ok(slowed > 30, `slow for a while (${slowed} frames)`);
+  assert.equal(speeds[0], 1);
+  assert.equal(speeds[speeds.length - 1], 1, "and back to full speed");
 });
