@@ -102,6 +102,9 @@ The screen is 640 x 360 (16:9), scaled up by whole multiples.
 
 The design doc's biggest risk is that a pile of fruit is harder to read than a grid, so the screen says why you scored:
 
+- A hand drops a fruit at a time: the next waits until the last has landed and the pile it set moving has come to rest
+  (its merges and Blasts too), so what each fruit scored is seen before the next adds to it. No more than 3 seconds, so a
+  pile that will not rest cannot stall a hand.
 - A popup names what earned its points when that has a name ("Merge +8", "Blast +14", "Spill -5", "Eat +8", "Crush +6"), and
   ends "x2" when a Booster doubled them.
 - Fruit light up when something happens because of them: the Lemon that doubled a score, what set a Chili or a Durian off,
@@ -123,10 +126,9 @@ that never order a hand: one that never picks, one that picks at random, one per
 
 | Player (60 runs) | Median score, cycles 1 to 5 | Makes the last rent |
 | --- | --- | --- |
-| Never picks | 213, 211, 189, 231, 232 | 1 in 60 |
-| Picks at random | 157, 141, 127, 133, 144 | 1 in 60 |
-| Never picks, thins the pool | 213, 243, 261, 294, 285 | 16 in 60 |
-| Takes Pomegranates, thins the pool | 177, 237, 240, 261, 282 | 13 in 60 |
+| Never picks | 219, 227, 186, 230, 227 | 0 in 60 |
+| Picks at random | 161, 142, 146, 146, 141 | 0 in 60 |
+| Never picks, thins the pool | 219, 249, 280, 296, 306 | 24 in 60 |
 
 Cycle 3 is the Peg jar, which is the dip in each row.
 

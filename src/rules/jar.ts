@@ -3,7 +3,7 @@
  * rent and the 1-of-3 pick. `advance` takes the run, the frame's time and the keys pressed, and returns the next run (a copy, so
  * the component's state changes by assignment and renders). Nothing here knows about the engine, so it is tested with node:test.
  *
- * A turn: order (arrange the 4 dealt fruits) → drop (they fall one by one at random spots) → settle (physics; merges and blasts
+ * A turn: order (arrange the 4 dealt fruits) → drop (they fall one by one at random spots, each once the last has come to rest) → settle (physics; merges and blasts
  * score as they happen) → resolve (overflow, then Simmer fruit score; shown one fruit after another, the tally) → pick (1 of 3, or skip). Five turns make a rent cycle,
  * and between cycles the shop sells fruit, an item, a removal and rerolls for the coins the rent left over.
  *
@@ -43,8 +43,11 @@ export function bossCycle(cycle: number): boolean {
 export const RENT: readonly number[] = [100, 150, 200, 260, 320];
 /** Points over the rent that make one coin. */
 export const POINTS_PER_COIN = 10;
-/** Seconds between drops in a hand. */
+/** Seconds between drops in a hand, at the least: the next fruit also waits for the pile to have been calm for `DROP_CALM`
+ * seconds, but no longer than `DROP_LIMIT` since the last drop (a pile that will not rest cannot stall a hand). */
 const DROP_GAP = 0.35;
+const DROP_CALM = 0.2;
+const DROP_LIMIT = 3;
 /** The jar has settled when every fruit is slower than this (px/s) for `CALM_TIME` seconds. */
 const CALM_SPEED = 20;
 const CALM_TIME = 0.4;
@@ -195,6 +198,8 @@ export interface Run {
   /** Left to drop this turn. */
   queue: FruitKind[];
   dropTimer: number;
+  /** Seconds since the last fruit dropped. */
+  dropWait: number;
   fruits: Fruit[];
   phase: Phase;
   cycle: number;
@@ -297,6 +302,7 @@ export function newRun(seed: number): Run {
     holding: false,
     queue: [],
     dropTimer: 0,
+    dropWait: 0,
     fruits: [],
     phase: "order",
     cycle: 1,
@@ -620,14 +626,24 @@ function order(run: Run, keys: Keys): void {
     run.hand = [];
     run.holding = false;
     run.dropTimer = 0;
+    run.dropWait = 0;
+    run.calmTime = 0;
     run.phase = "drop";
     run.message = "";
   }
 }
 
+/**
+ * The hand drops a fruit at a time: the next one waits until the last has landed and the pile it set moving (its merges and
+ * blasts too) has come to rest, so what each fruit scored can be seen before the next adds to it.
+ */
 function dropStep(run: Run, dt: number): void {
   run.dropTimer -= dt;
-  if (run.dropTimer <= 0 && run.queue.length > 0) {
+  run.dropWait += dt;
+  const calm = run.fruits.every((f) => f.landed && f.speed < CALM_SPEED && !f.lit);
+  run.calmTime = calm ? run.calmTime + dt : 0;
+  const ready = run.fruits.length === 0 || run.calmTime >= DROP_CALM || run.dropWait >= DROP_LIMIT;
+  if (run.dropTimer <= 0 && ready && run.queue.length > 0) {
     const kind = run.queue.shift() as FruitKind;
     const r = FRUITS[kind].radius;
     const rng = new Rng(run.seed);
@@ -636,8 +652,11 @@ function dropStep(run: Run, dt: number): void {
     run.fruits.push(makeFruit(run, kind, x, DROP_Y));
     run.discard.push(kind);
     run.dropTimer = DROP_GAP;
+    run.dropWait = 0;
+    run.calmTime = 0;
   }
   simulate(run, dt);
+  // The last fruit's landing is the settle phase's to wait for.
   if (run.queue.length === 0 && run.dropTimer <= 0) {
     if (run.items.includes("shaker")) shake(run);
     run.phase = "settle";
