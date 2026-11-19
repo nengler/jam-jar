@@ -125,7 +125,10 @@ export function keeps(run: Run): number {
   return jar === undefined ? 0 : (ITEMS[jar].keeps ?? 0);
 }
 
-/** What the shop charges, in coins: a fruit, taking a fruit out of the pool, and a reroll (one more each time, each visit). */
+/**
+ * What the shop charges, in coins: a fruit; and, to begin with, taking a fruit out of the pool and a new shelf. Those two cost one
+ * more each time they are bought, and stay at what they have reached for the rest of the run (`removalPrice`, `rerollPrice`).
+ */
 export const FRUIT_PRICE = 3;
 export const REMOVAL_PRICE = 4;
 export const REROLL_PRICE = 1;
@@ -142,8 +145,6 @@ export interface Shop {
   fruits: (FruitKind | null)[];
   /** The item for sale: null once bought, or when every item is owned. */
   item: ItemKind | null;
-  /** Rerolls bought this visit: each costs one more. */
-  rerolls: number;
   cursor: number;
   /** Choosing which fruit to take out of the pool: `removeCursor` is a row of `poolKinds`. */
   removing: boolean;
@@ -256,6 +257,9 @@ export interface Run {
   cycleScore: number;
   total: number;
   coins: number;
+  /** How many new shelves have been bought and how many fruit taken out of the pool, all run: each makes the next cost one more. */
+  rerolls: number;
+  removals: number;
   /** The liquid pooled at the bottom of the jar: how deep it is, in pixels, and what is in it. Lime juice floats the fruit in it;
    * Coconut milk doubles what they score. It goes when the rent empties the jar. */
   juice: number;
@@ -369,6 +373,8 @@ export function newRun(seed: number): Run {
     cycleScore: 0,
     total: 0,
     coins: 0,
+    rerolls: 0,
+    removals: 0,
     juice: 0,
     lime: false,
     milk: false,
@@ -1233,9 +1239,14 @@ export function poolKinds(pool: readonly FruitKind[]): FruitKind[] {
   return (Object.keys(FRUITS) as FruitKind[]).filter((kind) => pool.includes(kind));
 }
 
-/** What a reroll costs now. */
-export function rerollPrice(shop: Shop): number {
-  return REROLL_PRICE + shop.rerolls;
+/** What a new shelf costs now: one more for each bought this run. */
+export function rerollPrice(run: Run): number {
+  return REROLL_PRICE + run.rerolls;
+}
+
+/** What taking a fruit out of the pool costs now: one more for each taken out this run. */
+export function removalPrice(run: Run): number {
+  return REMOVAL_PRICE + run.removals;
 }
 
 /** After the rent is paid: the last cycle wins the run, any other opens the shop. */
@@ -1245,7 +1256,7 @@ function leaveRent(run: Run): void {
     run.message = "You paid every rent. The jar is yours!";
     return;
   }
-  run.shop = { fruits: [], item: null, rerolls: 0, cursor: 0, removing: false, removeCursor: 0 };
+  run.shop = { fruits: [], item: null, cursor: 0, removing: false, removeCursor: 0 };
   stock(run, run.shop);
   run.phase = "shop";
   const next = bossNow(run, run.cycle + 1);
@@ -1284,7 +1295,8 @@ function shopStep(run: Run, keys: Keys): void {
     shop.removeCursor = to;
     if (keys.confirm) {
       const kind = kinds[shop.removeCursor] as FruitKind;
-      if (pay(run, REMOVAL_PRICE)) {
+      if (pay(run, removalPrice(run))) {
+        run.removals += 1;
         run.pool.splice(run.pool.indexOf(kind), 1);
         run.message = `${FRUITS[kind].name} taken out of your pool`;
         sound(run, "pick");
@@ -1329,16 +1341,16 @@ function shopStep(run: Run, keys: Keys): void {
     if (run.pool.length <= HAND_SIZE) {
       run.message = `Your pool needs at least ${HAND_SIZE} fruit`;
       sound(run, "lose");
-    } else if (run.coins < REMOVAL_PRICE) {
-      pay(run, REMOVAL_PRICE);
+    } else if (run.coins < removalPrice(run)) {
+      pay(run, removalPrice(run));
     } else {
       shop.removing = true;
       shop.removeCursor = 0;
       run.message = "Take which fruit out of your pool?";
     }
   } else if (shop.cursor === SHOP_REROLL) {
-    if (!pay(run, rerollPrice(shop))) return;
-    shop.rerolls += 1;
+    if (!pay(run, rerollPrice(run))) return;
+    run.rerolls += 1;
     stock(run, shop);
     run.message = "A new shelf";
     sound(run, "tick");

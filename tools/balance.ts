@@ -16,7 +16,7 @@ import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
 import { OFFERABLE } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
-import { POINTS_PER_COIN, REMOVAL_PRICE, RENT, SHOP_REMOVE, type Boss, type Run } from "../src/rules/jar.ts";
+import { POINTS_PER_COIN, removalPrice, RENT, SHOP_REMOVE, type Boss, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
 
 type Strategy = string;
@@ -78,7 +78,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
       queued = [ENTER];
     } else if (run.phase === "shop") {
       const shop = run.shop!;
-      const canThin = thin && run.coins >= REMOVAL_PRICE && run.pool.length > 4 && run.pool.includes("cherry");
+      const canThin = thin && run.coins >= removalPrice(run) && run.pool.length > 4 && run.pool.includes("cherry");
       // Thinning: down to the actions (Remove is the first), Enter to open it, Enter on the first kind (Cherry).
       if (!canThin) queued = [SPACE];
       else if (shop.removing) queued = [ENTER];

@@ -132,7 +132,8 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     the floor, and each fruit starts inside the jar at the end it will fall away from. Nothing spills from it.
 - Rent: 120, 180, 240, 320 and 400 over 5 cycles. Points over rent become coins (1 per 10).
 - The shop, after each rent but the last: three fruit (3 coins each), one item, taking a fruit out of your pool (4 coins; the
-  pool keeps at least one hand of 4) and a new shelf (1 coin, then 2, 3, … that visit).
+  pool keeps at least one hand of 4) and a new shelf (1 coin). Those two cost one more each time you buy them, and the
+  price stays where it has got to for the rest of the run.
 - Items, which stand on the counter once you own them:
   - Lid (6 coins): stops one overflow, then is used up.
   - Juicer (8): at each Resolve it crushes the fruit standing on the floor, each for its points plus 3.
@@ -181,11 +182,11 @@ that never order a hand: one that never picks, one that picks at random, one per
 | --- | --- | --- |
 | Never picks | 260, 257, 252, 265, 256 | 0 in 24 |
 | Picks at random | 216, 224, 210, 237, 257 | 4 in 24 |
-| Never picks, thins the pool | 260, 291, 327, 360, 347 | 7 in 24 |
+| Never picks, thins the pool | 260, 281, 302, 359, 339 | 5 in 24 |
 | Boom picks (Chili, Blueberry, Seed, Lime, Durian), thins | 243, 289, 328, 307, 304 | 3 in 24 |
 | Rot picks (Banana, Prune, Fruit Fly, Fig, Chili) | 233, 238, 261, 255, 240 | 1 in 24 |
-| Prune only, thins | 238, 279, 357, 417, 441 | 13 in 24 |
-| Apple, Durian, Pomegranate, Pitaya, Kiwi, thins | 274, 344, 350, 410, 412 | 13 in 24 |
+| Prune only, thins | 238, 271, 305, 398, 441 | 13 in 24 |
+| Apple, Durian, Pomegranate, Pitaya, Kiwi, thins | 274, 316, 324, 417, 389 | 10 in 24 |
 
 Cycle 3 is a boss jar, which is the dip in some rows.
 

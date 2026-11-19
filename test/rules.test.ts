@@ -23,6 +23,8 @@ import {
   NO_KEYS,
   POINTS_PER_COIN,
   REMOVAL_PRICE,
+  removalPrice,
+  rerollPrice,
   RENT,
   resolve,
   rollPool,
@@ -284,7 +286,7 @@ test("the shop: without the coins nothing is bought", () => {
   assert.notEqual(run.shop!.fruits[0], null);
 });
 
-test("the shop: a reroll costs one more each time and restocks the shelf", () => {
+test("the shop: a new shelf costs one more each time, all run, and restocks the shelf", () => {
   let run = inShop(10);
   run.shop!.cursor = SHOP_REROLL;
   run = press(run, { confirm: true });
@@ -292,6 +294,26 @@ test("the shop: a reroll costs one more each time and restocks the shelf", () =>
   run = press(run, { confirm: true });
   assert.equal(run.coins, 7);
   assert.equal(run.shop!.fruits.filter((f) => f !== null).length, 3);
+  assert.equal(rerollPrice(run), 3);
+  // The next shop opens at the price this one reached.
+  const next = inShop(10);
+  next.rerolls = run.rerolls;
+  assert.equal(rerollPrice(next), 3);
+});
+
+test("the shop: taking a fruit out costs one more each time, all run", () => {
+  let run = inShop(20);
+  run.pool = ["cherry", "cherry", "cherry", "grape", "grape", "apple"];
+  run.shop!.cursor = SHOP_REMOVE;
+  assert.equal(removalPrice(run), REMOVAL_PRICE);
+  run = press(run, { confirm: true });
+  run = press(run, { confirm: true });
+  assert.equal(run.coins, 20 - REMOVAL_PRICE);
+  assert.equal(removalPrice(run), REMOVAL_PRICE + 1);
+  run = press(run, { confirm: true });
+  run = press(run, { confirm: true });
+  assert.equal(run.coins, 20 - REMOVAL_PRICE - (REMOVAL_PRICE + 1));
+  assert.equal(run.pool.length, 4);
 });
 
 test("the shop: removal takes one of the chosen kind out of the pool, and Space backs out of choosing", () => {
