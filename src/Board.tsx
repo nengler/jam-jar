@@ -1,4 +1,6 @@
-import { Entity, Flex, Shape, Text } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Shape, Text, useTime } from "@tsengine/runtime/jsx";
+
+import { ripple } from "./layout.ts";
 
 import { DISPLAY, DISPLAY_SIZE, INK, LIGHT, PANEL, PANEL_SLICE, WALL_SHADOW } from "./theme.ts";
 
@@ -28,7 +30,7 @@ export function Board({ x, y, width, height, title, heading, image = PANEL }: Bo
     <Entity x={x} y={y}>
       <Shape kind="rect" x={4} y={top + 4} width={width} height={height - top} color={WALL_SHADOW} />
       <Flex y={top} width={width} height={height - top} backgroundImage={image} slice={PANEL_SLICE} />
-      {title !== undefined && <Heading x={width / 2} y={-16} width={width - 8} text={title} />}
+      {title !== undefined && <Heading x={width / 2} y={-18} width={width - 8} text={title} />}
       {heading !== undefined && (
         <Text x={width / 2} y={8} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
           {heading}
@@ -38,11 +40,29 @@ export function Board({ x, y, width, height, title, heading, image = PANEL }: Bo
   );
 }
 
-/** A heading: light lettering with a dark shadow, straight on what is behind it, centred on `x`, its top at `y`. */
-export function Heading({ x, y, text }: { x: number; y: number; width: number; text: string }) {
+/** The room a heading's line takes, and the width of a space in it. */
+const HEADING_H = 32;
+const HEADING_SPACE = 8;
+
+/**
+ * A heading: light lettering with a dark shadow, straight on what is behind it, centred on `x`, its top at `y`. Every few seconds
+ * a ripple runs through it, a letter at a time hopping up an art pixel: something small that moves, so the wall is not all still.
+ */
+export function Heading({ x, y, width, text }: { x: number; y: number; width: number; text: string }) {
+  const time = useTime();
   return (
-    <Text x={x} y={y} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>
-      {text}
-    </Text>
+    <Flex x={x - width / 2} y={y} width={width} height={HEADING_H} direction="row" justifyContent="center">
+      {ripple(text, time, x + y).map((l) => (
+        <Flex key={l.at} height={HEADING_H} minWidth={l.letter === " " ? HEADING_SPACE : 0}>
+          {l.letter !== " " && (
+            <Entity y={-l.lift}>
+              <Text font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>
+                {l.letter}
+              </Text>
+            </Entity>
+          )}
+        </Flex>
+      ))}
+    </Flex>
   );
 }
