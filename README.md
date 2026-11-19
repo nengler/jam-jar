@@ -43,8 +43,9 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 - Rent: 25, 50, 100, 175 and 300 over 5 cycles. Points over rent become coins (1 per 5).
 
 Not built yet: the shop (coins pile up but can't be spent), items (Preserves Jar, Juicer and the rest), boss jars, Juice and
-grow, the rest of the Rot group (Fruit Fly, Fig, Prune), Kiwi, Peach, Honeydew, Snow Pear, and art for the jar itself (still
-plain shapes).
+grow, the rest of the Rot group (Fruit Fly, Fig, Prune), Kiwi, Peach, Honeydew and Snow Pear.
+
+The screen is 640 x 360 (16:9), scaled up by whole multiples.
 
 ## How it is built
 
@@ -56,7 +57,8 @@ plain shapes).
   Each step it reports where it is, its speed and which fruit it touches; a blast reaches it as a kick through its props.
 - `src/Play.tsx` collects the reports, calls `advance` once a step and draws the result: the jar (walls are `<Collider solid>`),
   the fruit, the hand or pick list, and the rent panel.
-  `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow.
+  `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `theme.ts` names the colours and
+  the Kenney panels and buttons every screen is made of.
 - `tools/install-engine.ts` packs `../tse` and installs it without saving.
 - `tools/make-assets.py` (Python with Pillow) builds `assets/` from the free art in `tools/`, sizing each fruit to its radius in
   `src/rules/fruits.ts`. Rerun it after changing a radius.
@@ -66,8 +68,9 @@ plain shapes).
 - Fruit art: [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft, MIT licence (`tools/fluent/LICENSE`, which
   must ship with the game). There's no emoji for a Durian or a Pomegranate, so for now they use the Pineapple and a hue-shifted
   Red Apple.
-- Panels (UI Pixel Pack), font (Kenney Mini Square Mono) and sounds: [Kenney](https://kenney.nl), CC0. The full bundle is on
-  this repo's `Assets` release; `tools/kenney/README.md` says which file each came from.
+- Everything else is [Kenney](https://kenney.nl), CC0: panels and buttons (UI Pack), the glass jar and the sky and hills
+  (Physics Assets), blasts (Explosion Pack), merge splats (Splat Pack), the font (Kenney Mini Square Mono) and the sounds. The
+  full bundle is on this repo's `Assets` release; `tools/kenney/README.md` says which file each came from.
 
 ## Engine notes
 

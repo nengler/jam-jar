@@ -1,22 +1,24 @@
-import { Collider, Entity, Flex, Line, Shape, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
+import { Collider, Entity, Flex, Line, Shape, Sprite, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
 import { Fruit } from "./Fruit.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { Pause } from "./Pause.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, BOOM_LIFE, chosenRow, JAR, newRun, rentFor, RENT, RIM, SPLAT_LIFE, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { BAD, GOOD, INK, INK_SOFT, LIGHT, PANEL, PANEL_SLICE, panelFor, SHADOW } from "./theme.ts";
 
-/** Kenney UI Pixel Pack frames, drawn as 9-slices (tools/make-assets.py). */
-const WOOD = "panel-wood.png";
-const CREAM = "panel-cream.png";
-const SLICE = 6;
-const DIM = "#e8d2a8";
-const GOLD = "#ffd166";
+/** The explosion's frames (Kenney Explosion Pack), each centred on a 192-pixel square (tools/make-assets.py). */
+const BOOM_FRAMES = 9;
+const BOOM_SIZE = 192;
+const SPLAT_SIZE = 64;
+/** The glass jar's frame (Kenney Physics Assets) is drawn this far outside the jar's walls. */
+const GLASS = 10;
 
 /**
- * A run. The rules live in rules/jar.ts; each step this hands them the time and the keys and keeps the run they return. Everything
- * here is drawing: the jar and its fruit in the middle, the hand (or the pick) on the left, the rent and score on the right.
+ * A run. The rules live in rules/jar.ts; each step this hands them the time, the keys and the fruit's reports, and keeps the run
+ * they return. Everything here is drawing: the hills, the glass jar and its fruit in the middle, the hand (or the pick) on the
+ * left, the rent and score on the right, all on Kenney panels.
  */
 export function Play() {
   const paused = useGame((g) => g.paused);
@@ -38,14 +40,19 @@ export function Play() {
   });
 
   useUpdate((dt, input) => {
-    s.run = advance(s.run, dt, {
-      up: input.pressed("ArrowUp"),
-      down: input.pressed("ArrowDown"),
-      left: input.pressed("ArrowLeft"),
-      right: input.pressed("ArrowRight"),
-      confirm: input.pressed("Enter"),
-      drop: input.pressed("Space"),
-    }, s.reports);
+    s.run = advance(
+      s.run,
+      dt,
+      {
+        up: input.pressed("ArrowUp"),
+        down: input.pressed("ArrowDown"),
+        left: input.pressed("ArrowLeft"),
+        right: input.pressed("ArrowRight"),
+        confirm: input.pressed("Enter"),
+        drop: input.pressed("Space"),
+      },
+      s.reports
+    );
     s.reports = [];
     const heard = s.run.sounds;
     if (heard.includes("land")) playLand(0.4);
@@ -63,20 +70,23 @@ export function Play() {
   const run = s.run;
   const rent = rentFor(run.cycle);
   const jarWidth = JAR.right - JAR.left;
-  const jarHeight = JAR.floor - RIM + 10;
+  const glassTop = RIM - 44;
+  const filled = Math.max(0, Math.min(1, run.cycleScore / rent));
+  const ordering = run.phase === "order";
+  /** The fruit still to drop: the hand while ordering, then what is left of it while dropping. */
+  const shown = ordering ? run.hand : run.queue;
 
   return (
     <Entity>
-      {/* The jar: glass, walls, floor and the rim line. */}
-      <Shape kind="rect" x={JAR.left} y={RIM - 10} width={jarWidth} height={jarHeight} color="#1b2438" />
-      <Shape kind="rect" x={JAR.left - 4} y={RIM - 12} width={4} height={jarHeight + 6} color="#6c7aa0" />
-      <Shape kind="rect" x={JAR.right} y={RIM - 12} width={4} height={jarHeight + 6} color="#6c7aa0" />
-      <Shape kind="rect" x={JAR.left - 4} y={JAR.floor} width={jarWidth + 8} height={4} color="#6c7aa0" />
-      <Line x={JAR.left} y={RIM} x2={JAR.right} y2={RIM} color="#ff6b6b70" />
+      <Sprite image="background.png" />
+
+      {/* The jar: a pane of glass behind the fruit, Kenney's glass frame around it, and the rim the fruit must stay under. */}
+      <Shape kind="rect" x={JAR.left} y={glassTop} width={jarWidth} height={JAR.floor - glassTop} color="#ffffff38" />
+      <Line x={JAR.left} y={RIM} x2={JAR.right} y2={RIM} width={2} color="#d6336c90" />
       {/* What the fruit's balls are stopped by: the floor and two walls, tall enough that nothing pops over them. */}
-      <Collider x={JAR.left - 4} y={JAR.floor} width={jarWidth + 8} height={8} solid />
-      <Collider x={JAR.left - 8} y={0} width={8} height={JAR.floor + 8} solid />
-      <Collider x={JAR.right} y={0} width={8} height={JAR.floor + 8} solid />
+      <Collider x={JAR.left - 8} y={JAR.floor} width={jarWidth + 16} height={16} solid />
+      <Collider x={JAR.left - 16} y={0} width={16} height={JAR.floor + 16} solid />
+      <Collider x={JAR.right} y={0} width={16} height={JAR.floor + 16} solid />
       {run.fruits.map((f) => (
         <Fruit
           key={f.id}
@@ -92,102 +102,148 @@ export function Play() {
           onReport={report}
         />
       ))}
+      <Flex
+        x={JAR.left - GLASS}
+        y={glassTop - GLASS}
+        width={jarWidth + GLASS * 2}
+        height={JAR.floor - glassTop + GLASS * 2}
+        backgroundImage="jar.png"
+        slice={14}
+      />
+
+      {/* Merges splash juice; blasts go off (Kenney Splat Pack and Explosion Pack). */}
+      {run.effects
+        .filter((e) => e.kind === "splat")
+        .map((e) => (
+          <Sprite
+            key={e.id}
+            image={`splat-${e.variant}.png`}
+            x={e.x}
+            y={e.y}
+            originX={SPLAT_SIZE / 2}
+            originY={SPLAT_SIZE / 2}
+            scaleX={e.size / SPLAT_SIZE}
+            scaleY={e.size / SPLAT_SIZE}
+            tint={e.color}
+            opacity={0.85 * (1 - e.age / SPLAT_LIFE)}
+          />
+        ))}
+      {run.effects
+        .filter((e) => e.kind === "boom")
+        .map((e) => (
+          <Sprite
+            key={e.id}
+            image={`boom-${Math.min(BOOM_FRAMES - 1, Math.floor((e.age / BOOM_LIFE) * BOOM_FRAMES))}.png`}
+            x={e.x}
+            y={e.y}
+            originX={BOOM_SIZE / 2}
+            originY={BOOM_SIZE / 2}
+            scaleX={e.size / 120}
+            scaleY={e.size / 120}
+          />
+        ))}
       {run.popups.map((p) => (
-        <Text key={p.id} x={p.x} y={p.y} align="center" color={p.color}>
+        <Text key={p.id} x={p.x} y={p.y} align="center" color={p.color} shadow={INK} shadowX={2} shadowY={2}>
           {p.text}
         </Text>
       ))}
 
       {/* The message line, over the jar. */}
-      <Text x={160} y={4} align="center" color={GOLD}>
+      <Text x={320} y={12} align="center" color={LIGHT} shadow={SHADOW} shadowX={2} shadowY={2}>
         {run.message}
       </Text>
 
       {/* Left: the hand to order, or the pick. */}
-      <Flex x={4} y={16} width={100} height={160} backgroundImage={WOOD} slice={SLICE} />
+      <Flex x={12} y={40} width={196} height={308} backgroundImage={PANEL} slice={PANEL_SLICE} />
       {run.phase === "pick" ? (
         <Entity>
-          <Text x={8} y={20} color={GOLD}>
-            PICK ONE
+          <Text x={28} y={54} color={INK}>
+            Pick one
           </Text>
           {run.offers.map((kind, i) => (
-            <Entity key={`${kind}${i}`} x={8} y={34 + i * 42}>
-              {i === run.offerCursor && <Shape kind="rect" x={-2} y={-2} width={96} height={40} color="#00000040" />}
-              <FruitBall kind={kind} x={7} y={7} icon />
-              <Text x={18} y={3} color={i === run.offerCursor ? GOLD : "#f4ecd8"}>
+            <Entity key={`${kind}${i}`} x={22} y={78 + i * 80}>
+              <Flex width={176} height={74} backgroundImage={panelFor(i === run.offerCursor)} slice={PANEL_SLICE} />
+              <FruitBall kind={kind} x={22} y={20} icon />
+              <Text x={42} y={13} color={INK}>
                 {FRUITS[kind].name}
               </Text>
-              <Text x={0} y={16} maxWidth={92} color={DIM}>
+              <Text x={10} y={38} maxWidth={160} size={8} lineGap={2} color={INK_SOFT}>
                 {FRUITS[kind].text}
               </Text>
             </Entity>
           ))}
-          <Text x={8} y={162} color={DIM}>
-            Enter take  Space skip
+          <Text x={28} y={322} size={8} color={INK_SOFT}>
+            Enter take   Space skip (+1 coin)
           </Text>
         </Entity>
       ) : (
         <Entity>
-          <Text x={8} y={20} color={GOLD}>
-            {run.phase === "order" ? "YOUR HAND" : "DROPPING"}
+          <Text x={28} y={54} color={INK}>
+            {run.phase === "order" ? "Your hand" : "Dropping"}
           </Text>
-          <Text x={8} y={30} color={DIM}>
-            first drops first
+          <Text x={28} y={76} size={8} color={INK_SOFT}>
+            The top fruit drops first
           </Text>
-          {(run.phase === "order" ? run.hand : run.queue).map((kind, i) => (
-            <Entity key={`${kind}${i}`} x={8} y={44 + i * 20}>
-              {run.phase === "order" && i === run.cursor && (
-                <Shape kind="rect" x={-2} y={-3} width={96} height={18} color={run.holding ? "#ffd16650" : "#00000040"} />
-              )}
-              <Text x={0} y={2} color={DIM}>
+          {shown.map((kind, i) => (
+            <Entity key={`${kind}${i}`} x={22} y={92 + i * 48}>
+              <Flex
+                width={176}
+                height={42}
+                backgroundImage={panelFor(i === chosenRow(run))}
+                slice={PANEL_SLICE}
+              />
+              <Text x={12} y={12} color={INK_SOFT}>
                 {`${i + 1}`}
               </Text>
-              <FruitBall kind={kind} x={16} y={6} icon />
-              <Text x={28} y={2} color="#f4ecd8">
+              <FruitBall kind={kind} x={46} y={19} icon />
+              <Text x={66} y={12} color={INK}>
                 {FRUITS[kind].name}
               </Text>
+              {run.phase === "order" && run.holding && i === run.cursor && (
+                <Text x={152} y={12} color={INK}>
+                  ^v
+                </Text>
+              )}
             </Entity>
           ))}
           {run.phase === "order" && (
-            <Text x={8} y={130} maxWidth={92} color={DIM}>
-              {run.holding ? "Up/Down move it\nEnter put down" : "Up/Down choose\nEnter pick up\nSpace drop"}
+            <Text x={28} y={290} maxWidth={170} size={8} lineGap={4} color={INK_SOFT}>
+              {run.holding ? "Up/Down move it\nEnter put it down" : "Up/Down choose\nEnter pick up to move\nSpace drop the hand"}
             </Text>
           )}
         </Entity>
       )}
 
       {/* Right: rent, score and the pool. */}
-      <Flex x={216} y={16} width={100} height={160} backgroundImage={WOOD} slice={SLICE} />
-      <Text x={222} y={20} color={GOLD}>{`CYCLE ${run.cycle}/${RENT.length}`}</Text>
-      <Text x={222} y={32} color="#f4ecd8">{`Turn ${Math.min(run.turn, TURNS_PER_CYCLE)}/${TURNS_PER_CYCLE}`}</Text>
-      <Text x={222} y={50} color={DIM}>
+      <Flex x={432} y={40} width={196} height={308} backgroundImage={PANEL} slice={PANEL_SLICE} />
+      <Text x={448} y={54} color={INK}>{`Cycle ${run.cycle} of ${RENT.length}`}</Text>
+      <Text x={448} y={76} color={INK_SOFT}>{`Turn ${Math.min(run.turn, TURNS_PER_CYCLE)} of ${TURNS_PER_CYCLE}`}</Text>
+      <Text x={448} y={110} color={INK_SOFT}>
         Rent due
       </Text>
-      <Text x={222} y={60} color={run.cycleScore >= rent ? "#7bd88f" : "#f4ecd8"}>{`${run.cycleScore} / ${rent}`}</Text>
-      <Shape kind="rect" x={222} y={72} width={88} height={4} color="#3b2a1a" />
-      <Shape kind="rect" x={222} y={72} width={Math.round(88 * Math.max(0, Math.min(1, run.cycleScore / rent)))} height={4} color="#7bd88f" />
-      <Text x={222} y={86} color={DIM}>
+      <Text x={448} y={130} color={run.cycleScore >= rent ? GOOD : INK}>{`${run.cycleScore} / ${rent}`}</Text>
+      <Flex x={448} y={154} width={164} height={16} backgroundImage="bar.png" slice={8} />
+      {filled > 0 && <Flex x={448} y={154} width={Math.max(16, Math.round(164 * filled))} height={16} backgroundImage="bar-fill.png" slice={8} />}
+      <Text x={448} y={190} color={INK_SOFT}>
         Total
       </Text>
-      <Text x={222} y={96} color="#f4ecd8">{`${run.total}`}</Text>
-      <Text x={222} y={112} color={DIM}>
-        Coins
-      </Text>
-      <Text x={222} y={122} color={GOLD}>{`${run.coins}`}</Text>
-      <Text x={222} y={140} color={DIM}>{`Pool ${run.pool.length}`}</Text>
-      <Text x={222} y={150} color={DIM}>{`To deal ${run.draw.length}`}</Text>
-      <Text x={222} y={162} color={DIM}>
+      <Text x={448} y={210} color={INK}>{`${run.total}`}</Text>
+      <Sprite image="coin.png" x={448} y={240} />
+      <Text x={472} y={240} color={INK}>{`${run.coins} coins`}</Text>
+      <Text x={448} y={276} size={8} color={INK_SOFT}>{`Pool ${run.pool.length}   To deal ${run.draw.length}`}</Text>
+      <Text x={448} y={322} size={8} color={INK_SOFT}>
         Esc pause
       </Text>
 
       {(run.phase === "rent" || run.phase === "over" || run.phase === "won") && (
         <Entity>
-          <Flex x={60} y={66} width={200} height={52} backgroundImage={CREAM} slice={SLICE} />
-          <Text x={160} y={74} align="center" color={run.phase === "over" ? "#b3261e" : "#2f7d3a"}>
-            {run.phase === "rent" ? "RENT PAID" : run.phase === "won" ? "YOU WIN" : "RUN OVER"}
+          <Shape kind="rect" x={0} y={0} width={640} height={360} color="#10131c70" />
+          <Flex x={170} y={120} width={300} height={120} backgroundImage={PANEL} slice={PANEL_SLICE} />
+          <Text x={320} y={140} size={32} align="center" color={run.phase === "over" ? BAD : GOOD}>
+            {run.phase === "rent" ? "Rent paid" : run.phase === "won" ? "You win" : "Run over"}
           </Text>
-          <Text x={160} y={88} align="center" color="#3b2a1a">{`Total ${run.total}  Coins ${run.coins}`}</Text>
-          <Text x={160} y={102} align="center" color="#7a5a3a">
+          <Text x={320} y={182} align="center" color={INK}>{`Total ${run.total}   Coins ${run.coins}`}</Text>
+          <Text x={320} y={210} size={8} align="center" color={INK_SOFT}>
             {run.phase === "rent" ? "Enter: next cycle" : "Enter: back to title"}
           </Text>
         </Entity>

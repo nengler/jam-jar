@@ -19,26 +19,29 @@ export interface JarBounds {
   floor: number;
 }
 
-export const JAR: JarBounds = { left: 112, right: 208, floor: 170 };
-export const GRAVITY = 600;
+export const JAR: JarBounds = { left: 224, right: 416, floor: 336 };
+export const GRAVITY = 1200;
 /** A fruit this close to the floor (beyond touching) is on it: a settled pile jitters by a fraction of a pixel. */
 const FLOOR_TOLERANCE = 1.5;
 /** The rim: a fruit whose top is above it once the jar settles spills out. */
-export const RIM = 52;
+export const RIM = 104;
 /** Where dropped fruit appear. */
-export const DROP_Y = 36;
+export const DROP_Y = 72;
 export const HAND_SIZE = 4;
 export const TURNS_PER_CYCLE = 5;
 export const RENT: readonly number[] = [25, 50, 100, 175, 300];
 /** Seconds between drops in a hand. */
 const DROP_GAP = 0.35;
 /** The jar has settled when every fruit is slower than this (px/s) for `CALM_TIME` seconds. */
-const CALM_SPEED = 10;
+const CALM_SPEED = 20;
 const CALM_TIME = 0.4;
 /** Settling gives up after this long, so a jittering pile cannot stall a turn. */
 const SETTLE_LIMIT = 8;
 const OVERFLOW_PENALTY = 5;
 const POPUP_LIFE = 0.9;
+/** How long a blast's explosion (9 frames) and a merge's splat show, in seconds. */
+export const BOOM_LIFE = 0.54;
+export const SPLAT_LIFE = 0.5;
 
 export type Phase = "order" | "drop" | "settle" | "pick" | "rent" | "over" | "won";
 
@@ -78,6 +81,21 @@ export interface Popup {
   life: number;
 }
 
+/** Something drawn for a moment: a blast's explosion, or the splat of a merge in the fruit's colour. */
+export interface Effect {
+  id: number;
+  kind: "boom" | "splat";
+  x: number;
+  y: number;
+  /** Seconds since it started. */
+  age: number;
+  /** Across, in pixels. */
+  size: number;
+  color: string;
+  /** Which of the splat pictures. */
+  variant: number;
+}
+
 export interface Run {
   seed: number;
   nextId: number;
@@ -107,6 +125,7 @@ export interface Run {
   offers: FruitKind[];
   offerCursor: number;
   popups: Popup[];
+  effects: Effect[];
   /** One line about what just happened. */
   message: string;
   /** Sounds to play this frame (cleared each `advance`). */
@@ -187,11 +206,17 @@ export function newRun(seed: number): Run {
     offers: [],
     offerCursor: 0,
     popups: [],
+    effects: [],
     message: "Order your hand, then Space to drop",
     sounds: [],
   };
   deal(run);
   return run;
+}
+
+/** The hand row the cursor is on while ordering, or -1 when the hand is not being ordered. */
+export function chosenRow(run: Run): number {
+  return run.phase === "order" ? run.cursor : -1;
 }
 
 export function rentFor(cycle: number): number {
@@ -210,6 +235,7 @@ function copy(run: Run): Run {
     fruits: run.fruits.map((f) => ({ ...f })),
     offers: run.offers.slice(),
     popups: run.popups.map((p) => ({ ...p })),
+    effects: run.effects.map((e) => ({ ...e })),
     sounds: [],
   };
 }
@@ -233,6 +259,10 @@ function deal(run: Run): void {
 
 function sound(run: Run, name: Sound): void {
   if (!run.sounds.includes(name)) run.sounds.push(name);
+}
+
+function effect(run: Run, kind: Effect["kind"], x: number, y: number, size: number, color = "#ffffff"): void {
+  run.effects.push({ id: run.nextId++, kind, x, y, age: 0, size, color, variant: run.nextId % 3 });
 }
 
 function popup(run: Run, x: number, y: number, text: string, color = "#ffd166"): void {
@@ -304,9 +334,11 @@ export function advance(previous: Run, dt: number, keys: Keys, reports: readonly
   applyReports(run, reports);
   for (const p of run.popups) {
     p.life -= dt;
-    p.y -= 18 * dt;
+    p.y -= 36 * dt;
   }
   run.popups = run.popups.filter((p) => p.life > 0);
+  for (const e of run.effects) e.age += dt;
+  run.effects = run.effects.filter((e) => e.age < (e.kind === "boom" ? BOOM_LIFE : SPLAT_LIFE));
 
   switch (run.phase) {
     case "order":
@@ -433,6 +465,7 @@ function merge(run: Run): void {
         run.message = "Pomegranates burst!";
       } else {
         const into = FRUITS[a.kind].mergesInto as FruitKind;
+        effect(run, "splat", mx, my, FRUITS[into].radius * 3, FRUITS[a.kind].color);
         const f = makeFruit(run, into, mx, my);
         f.landed = true;
         born.push(f);
@@ -452,7 +485,7 @@ function burst(run: Run, x: number, y: number): Fruit[] {
   const out: Fruit[] = [];
   for (let k = 0; k < 5; k++) {
     const angle = (k / 5) * Math.PI * 2;
-    const f = makeFruit(run, "cherry", x + Math.cos(angle) * 4, y + Math.sin(angle) * 4);
+    const f = makeFruit(run, "cherry", x + Math.cos(angle) * 8, y + Math.sin(angle) * 8);
     f.landed = true;
     out.push(f);
   }
@@ -486,10 +519,10 @@ function burn(run: Run, dt: number): void {
   for (const bomb of ready) if (run.fruits.includes(bomb)) explode(run, bomb);
 }
 
-export const BLAST_RADIUS: Readonly<Partial<Record<FruitKind, number>>> = { chili: 26, durian: 40 };
+export const BLAST_RADIUS: Readonly<Partial<Record<FruitKind, number>>> = { chili: 52, durian: 80 };
 
 function explode(run: Run, bomb: Fruit): void {
-  const radius = BLAST_RADIUS[bomb.kind] ?? 24;
+  const radius = BLAST_RADIUS[bomb.kind] ?? 48;
   const near = links(run.fruits);
   const doubled = new Set(run.fruits.filter((_, i) => nearLemon(run.fruits, near, i)).map((f) => f.id));
   const victims: Fruit[] = [];
@@ -529,12 +562,12 @@ function explode(run: Run, bomb: Fruit): void {
     const dy = f.y - bomb.y;
     const d = Math.max(1, Math.sqrt(dx * dx + dy * dy));
     if (d > radius * 2) continue;
-    const push = 160 * (1 - d / (radius * 2));
-    kick(f, (dx / d) * push, (dy / d) * push - 40);
+    const push = 320 * (1 - d / (radius * 2));
+    kick(f, (dx / d) * push, (dy / d) * push - 80);
   }
   run.fruits = [...kept, ...born];
   score(run, points, bomb.x, bomb.y - radius / 2);
-  popup(run, bomb.x, bomb.y, "BOOM", "#ff6b35");
+  effect(run, "boom", bomb.x, bomb.y, radius * 2);
   sound(run, "boom");
   run.message = `${FRUITS[bomb.kind].name} blew up ${victims.length} fruit`;
 }
@@ -544,7 +577,7 @@ export function resolve(run: Run): void {
   const spilled = run.fruits.filter((f) => f.y - f.r < RIM);
   if (spilled.length > 0) {
     run.fruits = run.fruits.filter((f) => f.y - f.r >= RIM);
-    for (const f of spilled) score(run, -OVERFLOW_PENALTY, f.x, RIM - 6);
+    for (const f of spilled) score(run, -OVERFLOW_PENALTY, f.x, RIM - 12);
     run.message = `${spilled.length} spilled over the rim`;
   }
 

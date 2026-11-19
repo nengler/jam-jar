@@ -136,7 +136,8 @@ test("a Pomegranate caught in a blast bursts into 5 Cherries", () => {
 
 test("a blast kicks what it does not destroy away from it", () => {
   const y = JAR.floor - 8;
-  const run = jarWith([fruit(1, "melon", 200, y - 4)]);
+  // Outside the Chili's blast (52 px) but inside the reach of its push (104 px).
+  const run = jarWith([fruit(1, "melon", 250, y - 4)]);
   run.fruits.push({ ...fruit(2, "chili", 165, y), lit: true, fuse: 0 });
   simulate(run, DT);
   const melon = run.fruits.find((f) => f.id === 1)!;
@@ -145,7 +146,7 @@ test("a blast kicks what it does not destroy away from it", () => {
 });
 
 test("Resolve: fruit over the rim spill and cost points; an Apple deeper scores more", () => {
-  const run = jarWith([fruit(1, "apple", 130, JAR.floor - 7), fruit(2, "apple", 180, RIM + 8), fruit(3, "cherry", 160, RIM - 2)]);
+  const run = jarWith([fruit(1, "apple", 250, JAR.floor - 14), fruit(2, "apple", 300, RIM + 16), fruit(3, "cherry", 350, RIM - 2)]);
   run.cycleScore = 10;
   resolve(run);
   assert.equal(run.fruits.length, 2, "the cherry spilled");

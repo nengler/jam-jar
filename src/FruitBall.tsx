@@ -3,7 +3,7 @@ import { Sprite } from "@tsengine/runtime/jsx";
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 
 /** The icons' size in pixels (tools/make-assets.py). */
-const ICON = 14;
+const ICON = 28;
 
 interface FruitBallProps {
   kind: FruitKind;

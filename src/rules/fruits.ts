@@ -42,19 +42,19 @@ export interface FruitDef {
 }
 
 export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
-  cherry: { name: "Cherry", radius: 5, color: "#e8475f", rim: "#8c1f33", points: 1, scoring: "fresh", mergesInto: "grape", touchWeight: 1, text: "Merges into Grape" },
-  grape: { name: "Grape", radius: 7, color: "#9b5de5", rim: "#56307f", points: 3, scoring: "fresh", mergesInto: "orange", touchWeight: 1, text: "Merges into Orange" },
-  orange: { name: "Orange", radius: 9, color: "#ff9f1c", rim: "#9c5a00", points: 8, scoring: "fresh", mergesInto: "melon", touchWeight: 1, text: "Merges into Melon" },
-  melon: { name: "Melon", radius: 12, color: "#b5e48c", rim: "#5d8a3a", points: 20, scoring: "fresh", mergesInto: "watermelon", touchWeight: 1, text: "Merges into Watermelon" },
-  watermelon: { name: "Watermelon", radius: 15, color: "#2a9d5c", rim: "#145232", points: 50, scoring: "fresh", touchWeight: 1, text: "Two vanish for +100" },
-  apple: { name: "Apple", radius: 7, color: "#d62839", rim: "#6e101b", points: 1, scoring: "simmer", touchWeight: 1, text: "Simmer: scores more the deeper it sits" },
-  banana: { name: "Banana", radius: 7, color: "#ffe066", rim: "#a68a1c", points: 1, scoring: "simmer", touchWeight: 1, text: "Simmer: +1 a turn; rots after 3 turns" },
-  chili: { name: "Chili", radius: 6, color: "#ff3d00", rim: "#8a1f00", points: 2, scoring: "fresh", touchWeight: 1, text: "Explodes touching 4+ fruit" },
-  durian: { name: "Durian", radius: 10, color: "#c9b458", rim: "#6b5f22", points: 4, scoring: "fresh", touchWeight: 1, text: "Big blast once 3 fruit sit on it" },
-  pomegranate: { name: "Pomegranate", radius: 8, color: "#b5179e", rim: "#5e0b52", points: 3, scoring: "fresh", touchWeight: 1, text: "Bursts into 5 Cherries when hit or merged" },
-  blueberry: { name: "Blueberry", radius: 4, color: "#4361ee", rim: "#1d2f8a", points: 1, scoring: "fresh", touchWeight: 3, text: "Counts as 3 fruit for touch checks" },
-  lemon: { name: "Lemon", radius: 7, color: "#fff176", rim: "#b0a420", points: 0, scoring: "booster", touchWeight: 1, text: "Booster: touching fruit score x2, can't merge" },
-  seed: { name: "Seed", radius: 4, color: "#8d6e63", rim: "#4e342e", points: 1, scoring: "fresh", touchWeight: 1, text: "Sprouts a fruit when blown up" },
+  cherry: { name: "Cherry", radius: 10, color: "#e8475f", rim: "#8c1f33", points: 1, scoring: "fresh", mergesInto: "grape", touchWeight: 1, text: "Merges into Grape" },
+  grape: { name: "Grape", radius: 14, color: "#9b5de5", rim: "#56307f", points: 3, scoring: "fresh", mergesInto: "orange", touchWeight: 1, text: "Merges into Orange" },
+  orange: { name: "Orange", radius: 18, color: "#ff9f1c", rim: "#9c5a00", points: 8, scoring: "fresh", mergesInto: "melon", touchWeight: 1, text: "Merges into Melon" },
+  melon: { name: "Melon", radius: 24, color: "#b5e48c", rim: "#5d8a3a", points: 20, scoring: "fresh", mergesInto: "watermelon", touchWeight: 1, text: "Merges into Watermelon" },
+  watermelon: { name: "Watermelon", radius: 30, color: "#2a9d5c", rim: "#145232", points: 50, scoring: "fresh", touchWeight: 1, text: "Two vanish for +100" },
+  apple: { name: "Apple", radius: 14, color: "#d62839", rim: "#6e101b", points: 1, scoring: "simmer", touchWeight: 1, text: "Simmer: scores more the deeper it sits" },
+  banana: { name: "Banana", radius: 14, color: "#ffe066", rim: "#a68a1c", points: 1, scoring: "simmer", touchWeight: 1, text: "Simmer: +1 a turn; rots after 3 turns" },
+  chili: { name: "Chili", radius: 12, color: "#ff3d00", rim: "#8a1f00", points: 2, scoring: "fresh", touchWeight: 1, text: "Explodes touching 4+ fruit" },
+  durian: { name: "Durian", radius: 20, color: "#c9b458", rim: "#6b5f22", points: 4, scoring: "fresh", touchWeight: 1, text: "Big blast once 3 fruit sit on it" },
+  pomegranate: { name: "Pomegranate", radius: 16, color: "#b5179e", rim: "#5e0b52", points: 3, scoring: "fresh", touchWeight: 1, text: "Bursts into 5 Cherries when hit or merged" },
+  blueberry: { name: "Blueberry", radius: 8, color: "#4361ee", rim: "#1d2f8a", points: 1, scoring: "fresh", touchWeight: 3, text: "Counts as 3 fruit for touch checks" },
+  lemon: { name: "Lemon", radius: 14, color: "#fff176", rim: "#b0a420", points: 0, scoring: "booster", touchWeight: 1, text: "Booster: touching fruit score x2, can't merge" },
+  seed: { name: "Seed", radius: 8, color: "#8d6e63", rim: "#4e342e", points: 1, scoring: "fresh", touchWeight: 1, text: "Sprouts a fruit when blown up" },
 };
 
 /** What the 1-of-3 pick offers. */
