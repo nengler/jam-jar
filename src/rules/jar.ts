@@ -31,7 +31,9 @@ export const RIM = 104;
 export const DROP_Y = 72;
 export const HAND_SIZE = 4;
 export const TURNS_PER_CYCLE = 5;
-export const RENT: readonly number[] = [25, 50, 100, 175, 300];
+export const RENT: readonly number[] = [100, 150, 200, 260, 320];
+/** Points over the rent that make one coin. */
+export const POINTS_PER_COIN = 10;
 /** Seconds between drops in a hand. */
 const DROP_GAP = 0.35;
 /** The jar has settled when every fruit is slower than this (px/s) for `CALM_TIME` seconds. */
@@ -48,7 +50,7 @@ export type Phase = "order" | "drop" | "settle" | "pick" | "rent" | "shop" | "ov
 
 /** What the shop charges, in coins: a fruit, taking a fruit out of the pool, and a reroll (one more each time, each visit). */
 export const FRUIT_PRICE = 3;
-export const REMOVAL_PRICE = 3;
+export const REMOVAL_PRICE = 4;
 export const REROLL_PRICE = 1;
 /** The shop's shelf: three fruit and an item, then its three actions. `Shop.cursor` counts across all of them. */
 export const SHOP_FRUITS = 3;
@@ -496,7 +498,7 @@ function merge(run: Run): void {
         score(run, 100, mx, my);
         run.message = "Two Watermelons: +100!";
       } else if (a.kind === "pomegranate") {
-        born.push(...burst(run, a.x, a.y), ...burst(run, b.x, b.y));
+        born.push(...burst(run, mx, my));
         run.message = "Pomegranates burst!";
       } else {
         const into = FRUITS[a.kind].mergesInto as FruitKind;
@@ -554,6 +556,8 @@ function burn(run: Run, dt: number): void {
 }
 
 export const BLAST_RADIUS: Readonly<Partial<Record<FruitKind, number>>> = { chili: 52, durian: 80 };
+/** What a blast scores for each fruit it destroys, on top of the fruit's own points: a blast ends what they would have merged into. */
+export const BLAST_BONUS: Readonly<Partial<Record<FruitKind, number>>> = { chili: 6, durian: 8 };
 
 function explode(run: Run, bomb: Fruit): void {
   const radius = BLAST_RADIUS[bomb.kind] ?? 48;
@@ -580,7 +584,7 @@ function explode(run: Run, bomb: Fruit): void {
     }
     victims.push(f);
     const value = FRUITS[f.kind].scoring === "booster" || f.rotten ? 0 : FRUITS[f.kind].points;
-    points += value * (doubled.has(f.id) ? 2 : 1);
+    points += (value + (BLAST_BONUS[bomb.kind] ?? 0)) * (doubled.has(f.id) ? 2 : 1);
     if (f.kind === "pomegranate") born.push(...burst(run, f.x, f.y));
     if (f.kind === "seed") {
       const rng = new Rng(run.seed);
@@ -625,9 +629,9 @@ export function resolve(run: Run): void {
     let points = 0;
     if (f.kind === "apple") {
       const depth = (f.y - RIM) / (JAR.floor - RIM);
-      points = 1 + Math.floor(Math.max(0, Math.min(1, depth)) * 3);
+      points = 2 + Math.floor(Math.max(0, Math.min(1, depth)) * 4);
     } else if (f.kind === "banana") {
-      points = 1 + f.age;
+      points = 2 + f.age;
     }
     score(run, points * (nearLemon(run.fruits, near, i) ? 2 : 1), f.x, f.y - f.r);
   });
@@ -647,7 +651,7 @@ export function resolve(run: Run): void {
     run.phase = "rent";
     const rent = rentFor(run.cycle);
     if (run.cycleScore >= rent) {
-      const earned = Math.floor((run.cycleScore - rent) / 5);
+      const earned = Math.floor((run.cycleScore - rent) / POINTS_PER_COIN);
       run.coins += earned;
       run.message = `Rent paid! +${earned} coins`;
       sound(run, "rent");

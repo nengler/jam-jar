@@ -5,11 +5,14 @@ import { poolRows } from "../src/layout.ts";
 import { FRUITS } from "../src/rules/fruits.ts";
 import {
   advance,
+  BLAST_BONUS,
   FRUIT_PRICE,
   JAR,
   newRun,
   NO_KEYS,
+  POINTS_PER_COIN,
   REMOVAL_PRICE,
+  RENT,
   resolve,
   rollPool,
   RIM,
@@ -135,7 +138,7 @@ test("a Lemon blocks merges next to it", () => {
   assert.equal(run.fruits.filter((f) => f.kind === "cherry").length, 2);
 });
 
-test("a Chili touching 4 fruit explodes and scores what it destroys", () => {
+test("a Chili touching 4 fruit explodes and scores what it destroys, with the blast's bonus for each", () => {
   // A Blueberry counts as 3 fruit, so Blueberry + Apple make 4.
   const y = JAR.floor;
   const run = jarWith([fruit(1, "chili", 160, y - 6, [2, 3]), fruit(2, "blueberry", 170, y - 4, [1]), fruit(3, "apple", 147, y - 7, [1])]);
@@ -143,7 +146,7 @@ test("a Chili touching 4 fruit explodes and scores what it destroys", () => {
   assert.equal(run.fruits[0]!.lit, true, "lit");
   for (let i = 0; i < 30; i++) simulate(run, DT);
   assert.equal(run.fruits.length, 0, "the chili and both neighbours are gone");
-  assert.equal(run.cycleScore, FRUITS.blueberry.points + FRUITS.apple.points);
+  assert.equal(run.cycleScore, FRUITS.blueberry.points + FRUITS.apple.points + 2 * BLAST_BONUS.chili!);
 });
 
 test("a Pomegranate caught in a blast bursts into 5 Cherries", () => {
@@ -152,6 +155,16 @@ test("a Pomegranate caught in a blast bursts into 5 Cherries", () => {
   run.fruits.push({ ...fruit(2, "chili", 172, y), lit: true, fuse: 0 });
   simulate(run, DT);
   assert.equal(run.fruits.filter((f) => f.kind === "cherry").length, 5);
+});
+
+test("two Pomegranates that merge burst into 5 Cherries between them", () => {
+  const y = JAR.floor - 18;
+  const run = jarWith([fruit(1, "pomegranate", 300, y, [2]), fruit(2, "pomegranate", 336, y, [1])]);
+  simulate(run, DT);
+  assert.deepEqual(
+    run.fruits.map((f) => f.kind),
+    Array(5).fill("cherry")
+  );
 });
 
 test("a blast kicks what it does not destroy away from it", () => {
@@ -170,8 +183,8 @@ test("Resolve: fruit over the rim spill and cost points; an Apple deeper scores 
   run.cycleScore = 10;
   resolve(run);
   assert.equal(run.fruits.length, 2, "the cherry spilled");
-  // -5 for the spill, then 3 (deep apple) + 1 (shallow apple).
-  assert.equal(run.cycleScore, 10 - 5 + 3 + 1);
+  // -5 for the spill, then 5 (deep apple) + 2 (shallow apple).
+  assert.equal(run.cycleScore, 10 - 5 + 5 + 2);
 });
 
 test("a Banana scores more each turn and rots after 3", () => {
@@ -184,7 +197,7 @@ test("a Banana scores more each turn and rots after 3", () => {
     resolve(run);
     scores.push(run.cycleScore - before);
   }
-  assert.deepEqual(scores, [1, 2, 3, 0]);
+  assert.deepEqual(scores, [2, 3, 4, 0]);
   assert.equal(run.fruits[0]!.rotten, true);
 });
 
@@ -197,10 +210,10 @@ test("missing rent ends the run; paying it moves to the next cycle with an empty
 
   let rich = jarWith([fruit(1, "cherry", 160, JAR.floor - 5)]);
   rich.turn = 5;
-  rich.cycleScore = 40;
+  rich.cycleScore = RENT[0]! + 3 * POINTS_PER_COIN + 4;
   resolve(rich);
   assert.equal(rich.phase, "rent");
-  assert.equal(rich.coins, 3);
+  assert.equal(rich.coins, 3, "a coin for every 10 points over the rent");
   rich = press(rich, { confirm: true });
   assert.equal(rich.phase, "shop");
   rich = press(rich, { drop: true });
@@ -223,7 +236,7 @@ test("poolRows groups the pool by kind, in the fruit table's order", () => {
 function inShop(coins: number): Run {
   const run = jarWith([]);
   run.turn = 5;
-  run.cycleScore = 25;
+  run.cycleScore = RENT[0]!;
   resolve(run);
   run.coins = coins;
   return press(run, { confirm: true });
@@ -323,7 +336,7 @@ test("paying the last rent wins the run without a shop", () => {
   let run = jarWith([]);
   run.cycle = 5;
   run.turn = 5;
-  run.cycleScore = 300;
+  run.cycleScore = RENT[4]!;
   resolve(run);
   run = press(run, { confirm: true });
   assert.equal(run.phase, "won");
