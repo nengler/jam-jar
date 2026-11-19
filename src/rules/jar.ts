@@ -804,7 +804,7 @@ function copyKiwis(run: Run): void {
 }
 
 function canMerge(f: Fruit): boolean {
-  return f.landed && !f.rotten && (FRUITS[f.kind].mergesInto !== undefined || f.kind === "watermelon" || f.kind === "pomegranate");
+  return f.landed && (FRUITS[f.kind].mergesInto !== undefined || f.kind === "watermelon" || f.kind === "pomegranate");
 }
 
 function merge(run: Run): void {
@@ -835,6 +835,8 @@ function merge(run: Run): void {
         if (dragon !== undefined) pulse(dragon);
         const f = makeFruit(run, into, mx, my);
         f.landed = true;
+        // Rot does not stop a Merge, and a Merge does not cut it out.
+        f.rotten = f.rotten || a.rotten || b.rotten;
         pulse(f);
         born.push(f);
         score(run, FRUITS[into].points, mx, my - f.r, { label: "Merge" });
@@ -1094,13 +1096,13 @@ export function resolve(run: Run): void {
     }
   }
 
-  // Age; Bananas rot after 3 turns, and each rotten fruit but a Prune rots one fruit it touches (never a Lemon or a Fruit Fly).
+  // Age; Bananas rot after 3 turns, and each rotten fruit, Prunes too, rots one fruit it touches (never a Lemon or a Fruit Fly).
   for (const f of run.fruits) {
     if (f.pickled) continue;
     f.age += 1;
     if (f.kind === "banana" && f.age >= BANANA.rots && !f.rotten) f.rotten = true;
   }
-  const rotten = run.fruits.filter((f) => f.rotten && f.kind !== "prune");
+  const rotten = run.fruits.filter((f) => f.rotten);
   for (const r of rotten) {
     const next = run.fruits.find((o) => !o.rotten && !o.pickled && o.kind !== "lemon" && o.kind !== "fruitfly" && r.touching.includes(o.id));
     if (next) {

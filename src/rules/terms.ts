@@ -18,7 +18,6 @@ export type Keyword =
   | "rotten"
   | "rots"
   | "ripen"
-  | "contained"
   | "honeyed"
   | "honey"
   | "eat"
@@ -61,10 +60,9 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   exploded: { name: "Exploded", text: "When an explosion destroys it." },
   burst: { name: "Burst", text: "Breaks into this many Cherries." },
   sprout: { name: "Sprout", text: "A Cherry, Grape or Orange grows here." },
-  rotten: { name: "Rotten", text: "Scores nothing, can't Merge, spreads." },
+  rotten: { name: "Rotten", text: "Scores nothing and spreads. Still Merges." },
   rots: { name: "Rots", text: "Turns Rotten after this many turns." },
   ripen: { name: "Ripen", text: "Scores this much more each turn." },
-  contained: { name: "Contained", text: "Its rot does not spread." },
   honeyed: { name: "Honeyed", text: "Scores +4 at the end of every turn." },
   honey: { name: "Honey", text: "Makes a fruit it touches Honeyed." },
   eat: { name: "Eat", text: "Removes one fruit it touches." },
