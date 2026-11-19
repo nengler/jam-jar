@@ -47,6 +47,19 @@ test("on the engine's physics, a turn's fruit fall into the jar, settle and the 
   }
 });
 
+test("E scrolls the pool down a row at a time, no further than its end; Q scrolls back", () => {
+  // A new run's pool is 9 fruit: 9 rows of 36 px (less the last gap) in a 248 px list leaves 72 px to scroll.
+  const frames = parseInputScript("_*2, Enter, _*5, E, _*2, E, _*2, E, _*2, E, _*2, Q, _*2", { bindings });
+  const { states } = runScript(gameConfig, frames, (player) => {
+    const play = findComponent("Play", player.world.root) as { s: { poolScroll: number } } | null;
+    return play === null ? -1 : play.s.poolScroll;
+  });
+  assert.equal(states[9], 36, "one row down");
+  assert.equal(states[15], 72, "at the end");
+  assert.equal(states[18], 72, "and no further");
+  assert.equal(states[states.length - 1], 36, "Q goes back a row");
+});
+
 test("Escape pauses the run, and the pause menu's Resume plays on", () => {
   const frames = parseInputScript("_*2, Enter, _*5, Escape, _*5, Enter, _*5", { bindings });
   const { states } = runScript(gameConfig, frames, seen);

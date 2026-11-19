@@ -48,6 +48,10 @@ const POOL_W = 72;
 const POOL_X = Math.round((416 + 640) / 2 - POOL_W / 2);
 const POOL_TOP = 16;
 const POOL_H = 312;
+/** The pool's scrolling list: its height, and each fruit's row (a 32-pixel icon and the gap under it). */
+const POOL_LIST_H = POOL_H - 64;
+const POOL_GAP = 4;
+const POOL_ROW = 32 + POOL_GAP;
 /** The pick: three cards across the middle. */
 const OFFER_W = 168;
 const OFFER_H = 232;
@@ -63,7 +67,8 @@ export function Play() {
   const seed = useGame((g) => g.seed);
   const { pause, toTitle } = useGame.actions();
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
-  const s = useMutable({ run: newRun(seed) as Run, reports: [] as FruitReport[] });
+  // The pool column's scroll, in pixels: Q and E move it a row at a time (the mouse wheel moves it too).
+  const s = useMutable({ run: newRun(seed) as Run, reports: [] as FruitReport[], poolScroll: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -74,6 +79,11 @@ export function Play() {
 
   useInput((input) => {
     if (input.pressed("Escape")) pause();
+    const rows = (input.pressed("E") ? 1 : 0) - (input.pressed("Q") ? 1 : 0);
+    if (rows !== 0) {
+      const most = Math.max(0, s.run.pool.length * POOL_ROW - POOL_GAP - POOL_LIST_H);
+      s.poolScroll = Math.max(0, Math.min(most, s.poolScroll + rows * POOL_ROW));
+    }
     if ((s.run.phase === "over" || s.run.phase === "won") && input.pressed("Enter")) toTitle();
   });
 
@@ -229,11 +239,12 @@ export function Play() {
         x={POOL_X + 8}
         y={POOL_TOP + 56}
         width={POOL_W - 16}
-        height={POOL_H - 64}
+        height={POOL_LIST_H}
         direction="column"
         alignItems="center"
-        gap={4}
+        gap={POOL_GAP}
         overflow="scroll"
+        scrollY={s.poolScroll}
         scrollbarColor={HUD_LABEL}
       >
         {sortedPool(run.pool).map((kind, i) => (
@@ -248,7 +259,7 @@ export function Play() {
         {ordering ? (run.holding ? "Arrows move  Enter place" : "Enter move  Space drop") : ""}
       </Text>
       <Text x={624} y={336} align="right" color={LIGHT_SOFT}>
-        Esc
+        Q/E pool  Esc
       </Text>
 
       {/* The pick: three cards over a dimmed jar. */}
