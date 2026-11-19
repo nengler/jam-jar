@@ -56,6 +56,10 @@ const SETTLE_LIMIT = 8;
 const OVERFLOW_PENALTY = 5;
 /** How many Resolves a Coconut sits through before it cracks. */
 const COCONUT_TURNS = 3;
+/** Juice: how deep the liquid a Lime or a Coconut leaves is, in pixels, and the deepest the jar's liquid gets. */
+export const LIME_JUICE = 20;
+export const COCONUT_MILK = 20;
+export const JUICE_MOST = 120;
 /** What a honeyed fruit scores at each Resolve. */
 const HONEY_POINTS = 2;
 const POPUP_LIFE = 0.9;
@@ -214,6 +218,11 @@ export interface Run {
   cycleScore: number;
   total: number;
   coins: number;
+  /** The liquid pooled at the bottom of the jar: how deep it is, in pixels, and what is in it. Lime juice floats the fruit in it;
+   * Coconut milk doubles what they score. It goes when the rent empties the jar. */
+  juice: number;
+  lime: boolean;
+  milk: boolean;
   /** What every Banana scores on top of its own points: +1 for each Fig blown up while rotten. */
   bananaBonus: number;
   /** What every Pitaya scores on top of its own points: +1 for each Cherry one has eaten. */
@@ -319,6 +328,9 @@ export function newRun(seed: number): Run {
     cycleScore: 0,
     total: 0,
     coins: 0,
+    juice: 0,
+    lime: false,
+    milk: false,
     bananaBonus: 0,
     pitayaBonus: 0,
     items: [],
@@ -510,7 +522,23 @@ function kick(f: Fruit, vx: number, vy: number): void {
 
 /** Whether a fruit (by index) touches a Booster, a Lemon or a Cracked Coconut: what it scores is doubled. */
 function boosted(fruits: readonly Fruit[], links: readonly number[][], i: number): boolean {
-  return (links[i] ?? []).some((j) => fruits[j]?.kind === "lemon" || fruits[j]?.kind === "cracked");
+  return (links[i] ?? []).some((j) => fruits[j]?.kind === "lemon");
+}
+
+/** Where the surface of the jar's liquid is, as a y on the screen: the floor when there is none. */
+export function surface(run: Run): number {
+  return JAR.floor - run.juice;
+}
+
+/** Whether a fruit sits in the jar's liquid: its middle is under the surface. */
+export function soaked(run: Run, f: Fruit): boolean {
+  return run.juice > 0 && f.y > surface(run);
+}
+
+/** Pour liquid into the jar: lime juice or Coconut milk, this deep, up to the most the jar's liquid gets. */
+function pour(run: Run, what: "lime" | "milk", depth: number): void {
+  run.juice = Math.min(JUICE_MOST, run.juice + depth);
+  run[what] = true;
 }
 
 /** A score a fruit earned: its popup, whether a Booster doubled it, and the fruit it lit up (itself and those Boosters). */
@@ -525,10 +553,11 @@ interface Earned {
 /** Score what a fruit (by index) earns, doubled if it touches a Booster: the popup then says "x2" and the Boosters light up too. */
 function earn(run: Run, links: readonly number[][], i: number, points: number, label?: string): Earned | null {
   const f = run.fruits[i] as Fruit;
-  const doubled = boosted(run.fruits, links, i);
+  // Doubled by a Lemon it touches, or by Coconut milk it sits in (once, not twice over).
+  const doubled = boosted(run.fruits, links, i) || (run.milk && soaked(run, f));
   const popup = score(run, points * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled });
   if (popup === null) return null;
-  const boosters = doubled ? (links[i] ?? []).map((j) => run.fruits[j] as Fruit).filter((o) => o.kind === "lemon" || o.kind === "cracked") : [];
+  const boosters = doubled ? (links[i] ?? []).map((j) => run.fruits[j] as Fruit).filter((o) => o.kind === "lemon") : [];
   const fruits = [f, ...boosters];
   for (const o of fruits) pulse(o);
   return { popup, doubled, fruits, links: boosters.map((booster) => link(run, "boost", booster, f)) };
@@ -713,7 +742,9 @@ function land(run: Run): void {
   const near = links(run.fruits);
   run.fruits.forEach((f, i) => {
     if (f.landed) return;
-    const settledOn = onFloor(f) || (near[i] ?? []).some((j) => run.fruits[j]?.landed === true);
+    // On the floor, on a fruit that has landed, or come to rest afloat in lime juice.
+    const afloat = run.lime && f.speed < CALM_SPEED && f.y + f.r > surface(run);
+    const settledOn = onFloor(f) || afloat || (near[i] ?? []).some((j) => run.fruits[j]?.landed === true);
     if (!settledOn) return;
     f.landed = true;
     sound(run, "land");
@@ -853,6 +884,7 @@ function explode(run: Run, bomb: Fruit): void {
   const born: Fruit[] = [];
   let points = 0;
   let figs = 0;
+  let limes = 0;
   for (const f of run.fruits) {
     if (f === bomb) continue;
     const dx = f.x - bomb.x;
@@ -878,6 +910,7 @@ function explode(run: Run, bomb: Fruit): void {
     points += (value + (BLAST_BONUS[bomb.kind] ?? 0)) * (doubled.has(f.id) ? 2 : 1);
     if (f.kind === "pomegranate") born.push(...burst(run, f.x, f.y));
     if (f.kind === "fig" && f.rotten) figs += 1;
+    if (f.kind === "lime") limes += 1;
     if (f.kind === "seed") {
       const rng = new Rng(run.seed);
       const sprout = makeFruit(run, rng.pick(SPROUTS), f.x, f.y);
@@ -905,6 +938,10 @@ function explode(run: Run, bomb: Fruit): void {
   effect(run, "boom", bomb.x, bomb.y, radius * 2);
   sound(run, "boom");
   run.message = `${FRUITS[bomb.kind].name} Exploded: ${victims.length} fruit destroyed`;
+  if (limes > 0) {
+    pour(run, "lime", limes * LIME_JUICE);
+    run.message = `${FRUITS[bomb.kind].name} Exploded ${limes === 1 ? "a Lime" : `${limes} Limes`}: lime juice rises`;
+  }
   if (figs > 0) {
     run.bananaBonus += figs;
     run.message = `A Rotten Fig Exploded: Bananas Grow to +${run.bananaBonus}`;
@@ -935,6 +972,11 @@ export function resolve(run: Run): void {
     if (crushed.length > 0) {
       run.fruits = run.fruits.filter((f) => !crushed.includes(f));
       run.message = `Juicer: ${crushed.length} fruit Crushed`;
+      const limes = crushed.filter((f) => f.kind === "lime").length;
+      if (limes > 0) {
+        pour(run, "lime", limes * LIME_JUICE);
+        run.message = `Juicer: ${crushed.length} fruit Crushed. Lime juice rises`;
+      }
     }
   }
 
@@ -1000,16 +1042,13 @@ export function resolve(run: Run): void {
     run.message = `Pitayas Eat ${swallowed.size}: each scores +${run.pitayaBonus}`;
   }
 
-  // A Coconut that has sat 3 turns cracks: a Cracked Coconut where it was, which doubles what its neighbours score.
-  run.fruits = run.fruits.map((f) => {
-    if (f.kind !== "coconut" || f.age < COCONUT_TURNS - 1) return f;
-    const shell = makeFruit(run, "cracked", f.x, f.y);
-    shell.landed = true;
-    slot += 1;
-    staged.push({ popup: null, fruits: [shell], links: [], slot });
-    run.message = "A Coconut cracked";
-    return shell;
-  });
+  // A Coconut that has sat 3 turns cracks open and is gone, leaving its milk in the jar.
+  const cracked = run.fruits.filter((f) => f.kind === "coconut" && f.age >= COCONUT_TURNS - 1);
+  if (cracked.length > 0) {
+    run.fruits = run.fruits.filter((f) => !cracked.includes(f));
+    pour(run, "milk", cracked.length * COCONUT_MILK);
+    run.message = "A Coconut cracked: milk in the jar";
+  }
 
   // Each Snow Pear freezes itself and every fruit it touches, where they are.
   for (const f of run.fruits) {
@@ -1280,6 +1319,9 @@ function nextCycle(run: Run): void {
   run.cycle += 1;
   run.turn = 1;
   run.cycleScore = 0;
+  run.juice = 0;
+  run.lime = false;
+  run.milk = false;
   run.fruits = run.fruits.filter((f) => run.kept.includes(f.id));
   // What a Pickling Jar keeps is Pickled: it does not age, and rot it had is gone.
   if (run.items.includes("pickling")) for (const f of run.fruits) Object.assign(f, { pickled: true, rotten: f.kind === "prune" });

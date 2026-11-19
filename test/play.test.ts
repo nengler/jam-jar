@@ -275,3 +275,30 @@ test("pace: the Speed setting plays the jar twice as fast and F three times, and
   assert.equal(fast.run.cycleScore, normal.run.cycleScore);
   assert.equal(useGame.getState().speed, 1, "back to normal speed for the pick");
 });
+
+test("in lime juice a fruit floats: it comes to rest half out of the juice, a Heavy one sinks, and the jar still settles", () => {
+  const backend = new RecordingBackend();
+  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
+  const step = (script: string) => {
+    for (const frame of parseInputScript(script, { bindings })) {
+      backend.queueInput(frame);
+      player.step();
+    }
+  };
+  step("_*2, Enter, _*5");
+  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
+  const make = (id: number, kind: Fruit["kind"], x: number, r: number): Fruit => ({
+    ...{ id, kind, x0: x, y0: 150, x, y: 150, r, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
+    ...{ landed: false, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: false, pickled: false, frozen: false, lit: false, fuse: 0 },
+  });
+  play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, juice: 80, lime: true, fruits: [make(801, "orange", 270, 22), make(802, "coconut", 370, 22)] };
+  step("_*400");
+  const run = play.s.run;
+  const orange = run.fruits.find((f) => f.id === 801)!;
+  const coconut = run.fruits.find((f) => f.id === 802)!;
+  const top = JAR.floor - 80;
+  assert.ok(Math.abs(orange.y - top) < 6, `the Orange floats at the surface (y = ${orange.y}, surface ${top})`);
+  assert.ok(coconut.y > JAR.floor - 24, `the Coconut is on the floor (y = ${coconut.y})`);
+  assert.notEqual(run.phase, "settle", "and the jar came to rest");
+  player.close();
+});

@@ -68,14 +68,15 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Deep | Up to this much more the deeper it sits. |
 | Copy | Becomes the first fruit it lands on. |
 | Bouncy | Bounces, shoving its neighbours. |
-| Crack | After this many turns: Booster, Double. |
+| Crack | Breaks open after this many turns. |
+| Juice / Milk | Lime juice this deep: fruit in it float / milk this deep: fruit in it score x2. |
 | Skip | A Merge touching it skips a size. |
 | Legendary | Rare, and never in the shop. |
 | Crush, Shake, Preserve, Pickled, Once | The items' words: the Juicer, the Shaker, the jars and the Lid. |
 | Frozen | Held in place. Explosions can't destroy it. |
 | Spill | Fruit over the rim are lost: -5 each. |
 
-A new card is a row of these, how it scores first ("Fresh 3. Heavy. Crack 3."), with a trigger before a colon ("Exploded:
+A new card is a row of these, how it scores first ("Fresh 3. Heavy. Crack 3: Milk 20."), with a trigger before a colon ("Exploded:
 Sprout."). A new effect gets a keyword and a definition of at most 46 characters, not a sentence on one card. A card holds
 at most four keywords, which is what a tooltip has room for. Tests hold the cards to this, and to the rules' own numbers.
 
@@ -101,9 +102,14 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   blue. It thaws when the rent empties the jar.
 - Legendary: the Dragonfruit (a Merge touching it skips a size: two Cherries make an Orange). A Legendary takes the last
   place of a pick about one time in twelve, and is never in the shop.
-- Eat and grow: Pitaya (eats one Cherry it touches a turn, and every Pitaya scores 1 more for the rest of the run) and Coconut
-  (five times as heavy, so it shoulders its way down; at its third Resolve it cracks into a Cracked Coconut, a Booster that
-  doubles its neighbours like a Lemon but lets them merge).
+- Eat and grow: the Pitaya eats one Cherry it touches a turn, and every Pitaya scores 1 more for the rest of the run.
+- Juice: liquid pools at the bottom of the jar, and what sits in it is changed by it.
+  - A Lime that is Exploded or Crushed leaves lime juice 20 pixels deep. Fruit in lime juice float: they rise and come to
+    rest half out of it (so they are off the floor and away from the Juicer, less Deep, and nearer the rim).
+  - A Coconut is Heavy, so it sinks and shoulders its way down. At its third Resolve it cracks open and is gone, leaving
+    milk 20 deep. Fruit that sit in milk score double.
+  - The liquid is one pool: it gets deeper with each Lime and Coconut, up to 120 pixels, holds whatever went into it,
+    and goes when the rent empties the jar.
 - The title has a jar filling up by itself: a run the rules play (`src/rules/demo.ts`: each hand dropped as dealt, every
   pick skipped, a new run a moment after the rent comes due).
 - Fruit roll: the physics has no angle, so each fruit's turning is drawn from how far it moves along what it touches.
@@ -129,8 +135,8 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     it had is gone. Pickled fruit are tinted green.
   - Preserves (8), the Preserves Jar: after the shop, choose up to 2 fruit to stay in the jar when the rent empties it.
 
-Not built yet: the other boss jars (tilted, blind, gravity-flip), Juice (the Lime, and juice pooling in the jar; the
-Coconut's milk is a cracked shell for now), and honey that sticks fruit together (the Honeydew's honey only scores).
+Not built yet: the other boss jars (tilted, blind, gravity-flip), a second kind of juice with its own effect, and honey
+that sticks fruit together (the Honeydew's honey only scores).
 
 The screen is 640 x 360 (16:9), scaled up by whole multiples.
 

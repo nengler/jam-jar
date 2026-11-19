@@ -32,6 +32,8 @@ export type Keyword =
   | "copy"
   | "bouncy"
   | "crack"
+  | "juice"
+  | "milk"
   | "skip"
   | "legendary"
   | "crush"
@@ -75,7 +77,9 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   deep: { name: "Deep", text: "Up to this much more the deeper it sits." },
   copy: { name: "Copy", text: "Becomes the first fruit it lands on." },
   bouncy: { name: "Bouncy", text: "Bounces, shoving its neighbours." },
-  crack: { name: "Crack", text: "After this many turns: Booster, Double." },
+  crack: { name: "Crack", text: "Breaks open after this many turns." },
+  juice: { name: "Juice", text: "Lime juice this deep. Fruit in it float." },
+  milk: { name: "Milk", text: "Milk this deep. Fruit in it score x2." },
   skip: { name: "Skip", text: "A Merge touching it skips a size." },
   legendary: { name: "Legendary", text: "Rare, and never in the shop." },
   crush: { name: "Crush", text: "Destroys a fruit for its points +3." },
@@ -90,6 +94,7 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
 /** Every way a keyword is written in card text, beside its name. */
 const OTHER_FORMS: Readonly<Record<string, Keyword>> = {
   Merged: "merge",
+  Crushed: "crush",
   Explodes: "explode",
 };
 
