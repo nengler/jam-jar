@@ -1,6 +1,6 @@
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { ITEMS, type ItemKind } from "./rules/items.ts";
-import type { Run } from "./rules/jar.ts";
+import { newRun, type Run } from "./rules/jar.ts";
 import { glossary, keywordsIn } from "./rules/terms.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
@@ -36,9 +36,19 @@ export function itemGlossary(item: ItemKind | null, most: number): string[] {
   return item === null ? [] : glossary(keywordsIn(ITEMS[item].text), most);
 }
 
+/** Whether a run is at rest at a point the player acts from: where it is kept for "Continue" (GameState.ts, `save`). */
+export function atRest(run: Run): boolean {
+  return run.phase === "order" || run.phase === "pick" || run.phase === "rent" || run.phase === "shop" || run.phase === "preserve";
+}
+
 /** The moment of a run whose keys a hint row shows, for `learned` in the game's state: "" when there are none to show. */
 export function moment(run: Run): string {
   if (run.phase === "order" || run.phase === "pick" || run.phase === "preserve") return run.phase;
   if (run.phase === "shop") return run.shop?.removing === true ? "remove" : "shop";
   return "";
+}
+
+/** The run the play screen starts with: the one read from the player's files (a copy: the game state's is not to be changed), or a new one. */
+export function startingRun(saved: unknown, seed: number): Run {
+  return saved === null || saved === undefined ? newRun(seed) : (JSON.parse(JSON.stringify(saved)) as Run);
 }

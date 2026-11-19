@@ -1,5 +1,6 @@
-import { createGameState } from "@tsengine/runtime";
+import { createGameState, createSave } from "@tsengine/runtime";
 
+import type { Run } from "./rules/jar.ts";
 import { effectsLevel, learn, learnedMoments, musicLevel, settings, stepVolume } from "./settings.ts";
 
 type Screen = "title" | "settings" | "play";
@@ -20,6 +21,10 @@ export const useGame = createGameState(
     paused: false,
     /** The seed of the current run; each new run takes the next one. */
     seed: 1,
+    /** A run read from the player's files, for the play screen to go on with instead of starting one; null for a new run. */
+    savedRun: null as Run | null,
+    /** Whether there is a run to continue: the title shows "Continue". */
+    hasSave: false,
     /** The player's settings as the screens show them (settings.ts keeps them): the volumes, 0 to 10, and the moments whose keys
      * have been shown and used once ("title", "order", "pick", "shop", …), whose hints are not drawn again. */
     music: musicLevel(),
@@ -34,6 +39,19 @@ export const useGame = createGameState(
       s.music = musicLevel();
       s.effects = effectsLevel();
       s.learned = learnedMoments();
+      // The settings are read when the player's files become readable, which is also the first moment a save can be seen.
+      s.hasSave = save.exists();
+    },
+    /** A run was kept, or the kept one thrown away. */
+    saveChanged(s) {
+      s.hasSave = save.exists();
+    },
+    /** Go on with a run read from the player's files. */
+    continueRun(s, run: Run) {
+      s.savedRun = run;
+      s.speed = 1;
+      s.screen = "play";
+      s.paused = false;
     },
     setSpeed(s, speed: number) {
       s.speed = speed;
@@ -41,6 +59,7 @@ export const useGame = createGameState(
     start(s) {
       s.speed = 1;
       learn("title");
+      s.savedRun = null;
       s.screen = "play";
       s.paused = false;
       s.seed += 1;
@@ -70,6 +89,47 @@ export const useGame = createGameState(
     },
   }
 );
+
+/** The run as it was last kept, for the save to write. */
+let kept: Run | null = null;
+
+/**
+ * The run in progress, kept between launches: the title's "Continue" goes on with it. It is written each time the run comes to
+ * rest at a point the player acts from (a hand to order, the pick, the rent, the shop, the Preserves Jar) and thrown away when
+ * the run ends. Raise `version` when `Run` changes shape: an older save is then ignored, not misread.
+ */
+export const save = createSave<Run>({
+  name: "run",
+  version: 1,
+  pick: () => kept as Run,
+  apply: (run) => {
+    if (typeof run?.phase === "string" && Array.isArray(run.fruits) && Array.isArray(run.pool)) useGame.actions().continueRun(run);
+  },
+});
+
+/**
+ * Keep the run, at rest. Each fruit will start where it now lies (its ball is made at `x0`, `y0`), and what was only passing
+ * (popups, lines, blasts, sounds) is left out.
+ */
+export function keepRun(run: Run): void {
+  kept = {
+    ...run,
+    fruits: run.fruits.map((f) => ({ ...f, x0: f.x, y0: f.y, pulse: 0, pulseDelay: 0, kicks: 0 })),
+    popups: [],
+    links: [],
+    effects: [],
+    sounds: [],
+  };
+  save.write();
+  useGame.actions().saveChanged();
+}
+
+/** The run is over: there is nothing to continue. */
+export function dropRun(): void {
+  kept = null;
+  save.remove();
+  useGame.actions().saveChanged();
+}
 
 // Each change to the settings, and their first reading from the player's files, is shown at once.
 settings.subscribe(() => useGame.actions().settingsChanged());

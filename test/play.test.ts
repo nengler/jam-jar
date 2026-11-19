@@ -123,3 +123,65 @@ test("a chain of Blasts plays in slow motion, then the game runs at full speed a
   assert.equal(speeds[0], 1);
   assert.equal(speeds[speeds.length - 1], 1, "and back to full speed");
 });
+
+test("a run is kept as it goes and continued from the title after a relaunch, the jar as it was", () => {
+  // The first launch: a hand dropped, up to the pick, then closed without a word.
+  const first = new RecordingBackend();
+  const player = createPlayer(first, { ...gameConfig, warn: () => {} });
+  let before: Run | null = null;
+  for (const frame of parseInputScript("_*2, Enter, _*5, Space, _*330", { bindings })) {
+    first.queueInput(frame);
+    player.step();
+    const play = findComponent("Play", player.world.root) as { s: { run: Run } } | null;
+    if (play !== null) before = play.s.run;
+  }
+  player.close();
+  assert.equal(before!.phase, "pick");
+  assert.ok(first.stored.has("run"));
+
+  // The second, on the files the first left: the title offers Continue first, and Enter takes it.
+  const second = new RecordingBackend({ storage: Object.fromEntries(first.stored) });
+  const again = createPlayer(second, { ...gameConfig, warn: () => {} });
+  let after: Run | null = null;
+  for (const frame of parseInputScript("_*2, Enter, _*4", { bindings })) {
+    second.queueInput(frame);
+    again.step();
+    const play = findComponent("Play", again.world.root) as { s: { run: Run } } | null;
+    if (play !== null) after = play.s.run;
+  }
+  assert.equal(useGame.getState().hasSave, true);
+  assert.equal(after!.phase, "pick");
+  assert.equal(after!.cycleScore, before!.cycleScore);
+  assert.deepEqual(after!.offers, before!.offers);
+  assert.deepEqual(after!.pool, before!.pool);
+  assert.equal(after!.fruits.length, before!.fruits.length);
+  for (const [i, f] of after!.fruits.entries()) {
+    const was = before!.fruits[i]!;
+    assert.equal(f.kind, was.kind);
+    assert.ok(Math.abs(f.x - was.x) < 2 && Math.abs(f.y - was.y) < 2, `${f.kind} lies where it lay (${f.x}, ${f.y} against ${was.x}, ${was.y})`);
+  }
+  again.close();
+});
+
+test("a run is kept once a hand has been played, and one that ends leaves nothing to continue", () => {
+  const backend = new RecordingBackend();
+  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
+  const step = (script: string) => {
+    for (const frame of parseInputScript(script, { bindings })) {
+      backend.queueInput(frame);
+      player.step();
+    }
+  };
+  step("_*2, Enter, _*5");
+  assert.equal(useGame.getState().hasSave, false, "a run with nothing done yet is not worth keeping");
+  step("Space, _*330");
+  assert.equal(useGame.getState().hasSave, true, "kept once its first hand has been played");
+  // Lose it: the last turn of a cycle with no score.
+  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
+  play.s.run = { ...play.s.run, turn: 5, phase: "settle", hand: [], calmTime: 10 };
+  step("_*5");
+  assert.equal(play.s.run.phase, "over");
+  assert.equal(useGame.getState().hasSave, false);
+  assert.ok(!backend.stored.has("run"));
+  player.close();
+});

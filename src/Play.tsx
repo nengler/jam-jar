@@ -4,16 +4,16 @@ import { Backdrop } from "./Backdrop.tsx";
 import { Board, Heading } from "./Board.tsx";
 import { Fruit } from "./Fruit.tsx";
 import { FruitBall } from "./FruitBall.tsx";
-import { useGame } from "./GameState.ts";
+import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
-import { fruitGlossary, moment, poolRows, scoringLabel } from "./layout.ts";
+import { atRest, fruitGlossary, moment, startingRun, poolRows, scoringLabel } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { Peg } from "./Peg.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, BOOM_LIFE, bossCycle, dramatic, PULSE, shownScore, preservable, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, BOOM_LIFE, bossCycle, dramatic, PULSE, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -82,7 +82,9 @@ export function Play() {
   const { pause, toTitle, setSpeed } = useGame.actions();
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
-  const s = useMutable({ run: newRun(seed) as Run, reports: [] as FruitReport[], slow: 0 });
+  // A run read from the player's files goes on where it was kept; otherwise a new one.
+  const savedRun = useGame((g) => g.savedRun);
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -98,6 +100,7 @@ export function Play() {
 
   useUpdate((dt, input) => {
     const before = moment(s.run);
+    const phase = s.run.phase;
     s.run = advance(
       s.run,
       dt,
@@ -114,6 +117,11 @@ export function Play() {
     s.reports = [];
     // Through a moment once (a hand dropped, a pick made, the shop left), its keys are known: they are not shown again.
     if (moment(s.run) !== before) learn(before);
+    // Each time the run comes to rest where the player acts, it is kept for "Continue"; once it is over there is nothing to keep.
+    if (s.run.phase !== phase) {
+      if (atRest(s.run)) keepRun(s.run);
+      else if (s.run.phase === "over" || s.run.phase === "won") dropRun();
+    }
     // A chain of Blasts, or a big one, plays in slow motion: long enough to see what it threw and what it set off.
     if (dramatic(s.run)) {
       if (s.slow <= 0) setSpeed(SLOW_SPEED);

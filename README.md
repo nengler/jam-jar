@@ -81,6 +81,9 @@ condition ("Blasted: Sprout a starter."), and fit four lines of a shop card. A t
   (five times as heavy, so it shoulders its way down; at its third Resolve it cracks into a Cracked Coconut, a Booster that
   doubles its neighbours like a Lemon but lets them merge).
 - Music on every screen, with a volume each for the music and the sounds in Settings, kept between launches.
+- A run in progress is kept: quit or close the game, and the title offers Continue, back to the same jar. It is written each
+  time the run comes to rest where you act (a hand to order, the pick, the rent, the shop, the Preserves Jar) and thrown
+  away when the run ends. "New run" starts over.
 - Overflow: fruit whose top is above the rim at Resolve spill and cost 5 points each.
 - The boss jar: every third cycle (so cycle 3) is the Peg jar, with a round post in the middle that splits the pile. The shop
   before it says it is coming.
