@@ -3,6 +3,7 @@ import { Entity, Flex, Line, Shape, Sprite, Text, Tooltip, useInput, useMutable,
 import { Backdrop } from "./Backdrop.tsx";
 import { Board, Heading } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
+import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
@@ -234,6 +235,14 @@ export function Play() {
         <Entity key={`${kind}${i}`} x={shelfLeft + i * SLOT + SLOT / 2} y={SHELF_Y - 18}>
           {ordering && !blind && i === run.cursor && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
           {!blind && <FruitBall kind={kind} x={0} y={ordering && run.holding && i === run.cursor ? -8 : 0} look="icon" />}
+          {/* What it does, under it: for the fruit the cursor is on, and for one the mouse is over. */}
+          {!blind && (
+            <Flex x={-20} y={-20} width={40} height={40}>
+              <Tooltip show={ordering && !run.holding && i === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={0} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                <FruitTip kind={kind} />
+              </Tooltip>
+            </Flex>
+          )}
           {blind && <Sprite image="covered.png" x={-16} y={-16} />}
         </Entity>
       ))}
@@ -274,6 +283,12 @@ export function Play() {
         <Entity key={row.kind} x={POOL_X + 10 + (i % grid.columns) * grid.cell} y={BOARD_Y + 24 + Math.floor(i / grid.columns) * POOL_ROW}>
           <FruitBall kind={row.kind} x={16} y={16} look="icon" />
           <Text x={33} y={8} color={INK}>{`${row.count}`}</Text>
+          {/* The mouse over a kind in the Pool shows what it does, to the board's left. */}
+          <Flex width={32} height={32}>
+            <Tooltip anchor="top-right" to="top-left" offsetX={-12} offsetY={0} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <FruitTip kind={row.kind} />
+            </Tooltip>
+          </Flex>
         </Entity>
       ))}
       <Text x={POOL_X + BOARD_W / 2} y={BOARD_Y + poolH - 30} align="center" color={INK_SOFT}>{run.draw.length === 0 ? "Shuffles next" : `${run.draw.length} left of ${run.pool.length}`}</Text>
