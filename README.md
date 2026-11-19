@@ -143,6 +143,9 @@ that sticks fruit together (the Honeydew's honey only scores).
 
 The screen is 640 x 360 (16:9), scaled up by whole multiples.
 
+What a fruit does can be read in play as well: its card shows under the fruit the cursor is on while you order a hand,
+and beside any fruit on the shelf or in the Pool that the mouse is over.
+
 The Pool board shows what is still to be dealt this shuffle, by kind: the hand is on the shelf above the jar, and the rest
 has been played. When nothing is left it says the pool shuffles next.
 
