@@ -391,6 +391,19 @@ def peg() -> Image.Image:
     return doubled(out)
 
 
+def covered() -> Image.Image:
+    """A fruit of the hand under a gingham cloth, 16 x 16 art pixels: what the shelf shows in the Blind jar."""
+    out = Image.new("RGBA", (16, 16))
+    draw = ImageDraw.Draw(out)
+    draw.ellipse((1, 2, 14, 15), fill=colour("#341c27"))
+    for y in range(3, 15):
+        for x in range(2, 14):
+            if (x - 7.5) ** 2 + (y - 8.5) ** 2 <= 36:
+                draw.point((x, y), fill=colour("#a53030" if (x // 2 + y // 2) % 2 == 0 else "#e7d5b3"))
+    draw.line((5, 4, 9, 4), fill=colour("#ebede9"))
+    return doubled(out)
+
+
 def pointer() -> Image.Image:
     """A gold arrow pointing down, 9 x 7 art pixels: over the fruit the Preserves Jar's cursor is on."""
     out = Image.new("RGBA", (9, 7))
@@ -456,6 +469,7 @@ def main() -> None:
     ):
         picture().save(ASSETS / f"item-{name}.png")
     pointer().save(ASSETS / "pointer.png")
+    covered().save(ASSETS / "covered.png")
     peg().save(ASSETS / "peg.png")
     wallpaper().save(ASSETS / "wall.png")
     counter().save(ASSETS / "counter.png")

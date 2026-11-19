@@ -7,7 +7,10 @@ import { FRUITS } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
+  BOSS_NAME,
   bossCycle,
+  bossFor,
+  bossNow,
   COCONUT_MILK,
   dramatic,
   FRUIT_PRICE,
@@ -468,16 +471,39 @@ test("without fruit in the jar, the Preserves Jar asks nothing", () => {
   assert.equal(run.phase, "order");
 });
 
-test("every third cycle is the Peg jar, and the shop before it says so", () => {
+test("every third cycle is a boss jar, the Peg jar or the Blind jar by the run's seed, and the shop before it says so", () => {
   assert.deepEqual([1, 2, 3, 4, 5].map(bossCycle), [false, false, true, false, false]);
-  const run = jarWith([]);
-  run.cycle = 2;
-  run.turn = 5;
-  run.cycleScore = RENT[1]!;
-  resolve(run);
-  const shop = press(run, { confirm: true });
-  assert.match(shop.message, /Peg jar/);
-  assert.match(press(shop, { drop: true }).message, /Peg jar/);
+  assert.deepEqual([bossFor(10), bossFor(11)], ["peg", "blind"]);
+  for (const boss of ["peg", "blind"] as const) {
+    const run = jarWith([]);
+    run.boss = boss;
+    run.cycle = 2;
+    run.turn = 5;
+    run.cycleScore = RENT[1]!;
+    assert.equal(bossNow(run), null, "not yet");
+    resolve(run);
+    const shop = press(run, { confirm: true });
+    assert.match(shop.message, new RegExp(BOSS_NAME[boss]));
+    const next = press(shop, { drop: true });
+    assert.match(next.message, new RegExp(BOSS_NAME[boss]));
+    assert.equal(bossNow(next), boss);
+  }
+});
+
+test("the Blind jar: the hand cannot be chosen from or reordered, only dropped", () => {
+  let run = newRun(3);
+  run.boss = "blind";
+  run.cycle = 3;
+  const hand = run.hand.slice();
+  run = press(run, { right: true });
+  run = press(run, { confirm: true });
+  run = press(run, { right: true });
+  assert.equal(run.cursor, 0);
+  assert.equal(run.holding, false);
+  assert.deepEqual(run.hand, hand);
+  run = press(run, { drop: true });
+  assert.equal(run.phase, "drop");
+  assert.deepEqual(run.queue.concat(run.fruits.map((f) => f.kind)).sort(), hand.slice().sort());
 });
 
 test("a Pitaya eats a Cherry it touches each turn, and every Pitaya scores 1 more from then on", () => {

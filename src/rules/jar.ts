@@ -35,9 +35,27 @@ export const TURNS_PER_CYCLE = 5;
 export const PEG = { x: 320, y: 236, r: 22 };
 export const BOSS_EVERY = 3;
 
-/** Whether a cycle is played in the boss jar (the Peg jar). */
+/** Whether a cycle is played in a boss jar. */
 export function bossCycle(cycle: number): boolean {
   return cycle % BOSS_EVERY === 0;
+}
+
+/**
+ * The boss jars. The Peg jar has a round post in the middle that splits the pile. In the Blind jar the hand is covered: it
+ * drops as it was dealt, and you cannot see or order it.
+ */
+export type Boss = "peg" | "blind";
+export const BOSS_NAME: Readonly<Record<Boss, string>> = { peg: "Peg jar", blind: "Blind jar" };
+const BOSS_RULE: Readonly<Record<Boss, string>> = { peg: "A post splits the pile.", blind: "The hand is covered." };
+
+/** The boss jar a run meets: one or the other, by its seed. */
+export function bossFor(seed: number): Boss {
+  return Math.abs(seed) % 2 === 0 ? "peg" : "blind";
+}
+
+/** The boss jar this cycle of the run is played in, or null for a plain one. */
+export function bossNow(run: Run, cycle = run.cycle): Boss | null {
+  return bossCycle(cycle) ? run.boss : null;
 }
 
 export const RENT: readonly number[] = [100, 150, 200, 260, 320];
@@ -195,6 +213,8 @@ export interface Effect {
 export interface Run {
   seed: number;
   nextId: number;
+  /** The boss jar this run meets on its boss cycles. */
+  boss: Boss;
   /** Every fruit you own. */
   pool: FruitKind[];
   /** Still to be dealt this shuffle, top first. */
@@ -312,6 +332,7 @@ export function newRun(seed: number): Run {
   const run: Run = {
     seed: rng.seed,
     nextId: 1,
+    boss: bossFor(seed),
     pool,
     draw: rng.shuffle(pool),
     discard: [],
@@ -646,7 +667,9 @@ export function advance(previous: Run, dt: number, keys: Keys, reports: readonly
 
 function order(run: Run, keys: Keys): void {
   const last = run.hand.length - 1;
-  const move = (keys.down || keys.right ? 1 : 0) - (keys.up || keys.left ? 1 : 0);
+  // In the Blind jar the hand is covered: there is nothing to choose or move, only to drop.
+  const blind = bossNow(run) === "blind";
+  const move = blind ? 0 : (keys.down || keys.right ? 1 : 0) - (keys.up || keys.left ? 1 : 0);
   if (move !== 0) {
     const to = Math.max(0, Math.min(last, run.cursor + move));
     if (run.holding && to !== run.cursor) {
@@ -657,7 +680,7 @@ function order(run: Run, keys: Keys): void {
     if (to !== run.cursor) sound(run, "tick");
     run.cursor = to;
   }
-  if (keys.confirm) {
+  if (keys.confirm && !blind) {
     run.holding = !run.holding;
     sound(run, "tick");
   }
@@ -1181,7 +1204,8 @@ function leaveRent(run: Run): void {
   run.shop = { fruits: [], item: null, rerolls: 0, cursor: 0, removing: false, removeCursor: 0 };
   stock(run, run.shop);
   run.phase = "shop";
-  run.message = bossCycle(run.cycle + 1) ? "Next cycle: the Peg jar" : "The shop is open";
+  const next = bossNow(run, run.cycle + 1);
+  run.message = next === null ? "The shop is open" : `Next cycle: the ${BOSS_NAME[next]}`;
 }
 
 /** Fill the shop's shelf: three different fruit, and an item the player can use (none when there is none: `offerable`). */
@@ -1330,7 +1354,8 @@ function nextCycle(run: Run): void {
   run.draw = rng.shuffle(run.pool);
   run.discard = [];
   run.seed = rng.seed;
-  run.message = bossCycle(run.cycle) ? `The Peg jar! Rent is ${rentFor(run.cycle)}` : `Cycle ${run.cycle}: rent is ${rentFor(run.cycle)}`;
+  const boss = bossNow(run);
+  run.message = boss === null ? `Cycle ${run.cycle}: rent is ${rentFor(run.cycle)}` : `The ${BOSS_NAME[boss]}! ${BOSS_RULE[boss]} Rent is ${rentFor(run.cycle)}`;
   deal(run);
   run.phase = "order";
 }

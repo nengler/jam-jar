@@ -2,7 +2,7 @@ import { Collider, Entity, Shape, Sprite } from "@tsengine/runtime/jsx";
 
 import { Fruit } from "./Fruit.tsx";
 import { Peg } from "./Peg.tsx";
-import { JAR, PULSE, RIM, bossCycle, surface, type FruitReport, type Run } from "./rules/jar.ts";
+import { JAR, PULSE, RIM, bossNow, surface, type FruitReport, type Run } from "./rules/jar.ts";
 import { JUICE } from "./theme.ts";
 
 /** The jar's pictures reach this far outside its walls and above its glass, which starts this far above the rim. */
@@ -36,7 +36,7 @@ export function Jar({ run, onReport }: JarProps) {
       {/* The liquid pooled at the bottom, behind the fruit, with a lighter line along its surface. */}
       {run.juice > 0 && <Shape kind="rect" x={JAR.left} y={top} width={width} height={run.juice} color={JUICE[liquid].body} />}
       {run.juice > 0 && <Shape kind="rect" x={JAR.left} y={top} width={width} height={2} color={JUICE[liquid].top} />}
-      {bossCycle(run.cycle) && <Peg />}
+      {bossNow(run) === "peg" && <Peg />}
       {run.fruits.map((f) => (
         <Fruit
           key={f.id}
