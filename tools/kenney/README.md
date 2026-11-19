@@ -5,6 +5,8 @@ attribution required. `tools/make-assets.py` turns it into `assets/`.
 
 - The `.wav` sounds come from the tse engine repo's games (`games/*/tools/kenney/`), already converted there to 22.05 kHz mono
   WAV. Each is named after its pack and its name there (`interface-sounds-glass-001.wav` is `glass_001` of Interface Sounds).
+- `music-loops-farm-frolics.ogg` is `Audio/Music Loops/Loops/Farm Frolics.ogg` of the Kenney Game Assets All-in-1 bundle (3.8.0),
+  as it is: the music.
 - From the Kenney Game Assets All-in-1 bundle (3.8.0), all pixel art:
   - `ui-pixel-adventure-large-thick.png`: `UI assets/UI Pack - Pixel Adventure/Tilesheets/Large tiles/Thick outline/tilemap_packed.png`
     (the boards and cards, the amber frame round the chosen fruit, the slate and the ribbon).

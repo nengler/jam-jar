@@ -68,6 +68,7 @@ const OFFER_GAP = 12;
 export function Play() {
   const paused = useGame((g) => g.paused);
   const seed = useGame((g) => g.seed);
+  const volume = useGame((g) => g.volume);
   const { pause, toTitle } = useGame.actions();
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
   const s = useMutable({ run: newRun(seed) as Run, reports: [] as FruitReport[] });
@@ -100,13 +101,15 @@ export function Play() {
     );
     s.reports = [];
     const heard = s.run.sounds;
-    if (heard.includes("land")) playLand(0.4);
-    if (heard.includes("merge")) playMerge();
-    if (heard.includes("boom")) playBoom();
-    if (heard.includes("pick")) playPick();
-    if (heard.includes("rent")) playRent();
-    if (heard.includes("lose")) playLose();
-    if (heard.includes("tick")) playTick(0.6);
+    // The volume setting, 0 to 10, scales every sound.
+    const loud = volume / 10;
+    if (heard.includes("land")) playLand(0.4 * loud);
+    if (heard.includes("merge")) playMerge(loud);
+    if (heard.includes("boom")) playBoom(loud);
+    if (heard.includes("pick")) playPick(loud);
+    if (heard.includes("rent")) playRent(loud);
+    if (heard.includes("lose")) playLose(loud);
+    if (heard.includes("tick")) playTick(0.6 * loud);
   });
 
   const report = (r: FruitReport) => {

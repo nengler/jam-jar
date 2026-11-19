@@ -41,6 +41,7 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
   Cherries when hit; two that merge burst into 5 between them), Blueberry (counts as 3 fruit for touch checks) and Seed (sprouts a starter when blown up). Blasts
   chain into other Chilis and Durians, and score a bonus for each fruit destroyed (6 for a Chili's, 8 for a Durian's).
 - Banana: 2, then +1 a turn, rots after 3 turns, and rot spreads to one touching fruit a turn.
+- Music on every screen, and the Settings' volume and music switch work.
 - Overflow: fruit whose top is above the rim at Resolve spill and cost 5 points each.
 - Rent: 100, 150, 200, 260 and 320 over 5 cycles. Points over rent become coins (1 per 10).
 - The shop, after each rent but the last: three fruit (3 coins each), one item, taking a fruit out of your pool (4 coins; the
@@ -92,8 +93,8 @@ to pay in combination, and nothing here measures an ordered hand. Rerun it after
 - Fruit art: a 16 x 16 pixel fruit sheet (`tools/fruit/`; its source and licence are still to be added there). Stand-ins:
   the Durian is the Pineapple, the Seed the brown Kiwi, the Melon the round green one.
 - [Kenney](https://kenney.nl) pixel art, CC0: the boards, cards, buttons, the slate and the ribbon (UI Pack - Pixel Adventure),
-  the wallpaper's trellis (Pattern Pack Pixel), the coin (Pixel Platformer), blasts (Explosion Pack's pixel explosion) and the
-  sounds. It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;
+  the wallpaper's trellis (Pattern Pack Pixel), the coin (Pixel Platformer), blasts (Explosion Pack's pixel explosion), the
+  sounds and the music (Farm Frolics, from Music Loops). It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;
   `tools/kenney/README.md` says which file each came from.
 - Drawn by `tools/make-assets.py`, in Apollo colours at the same 2x pixel: the kitchen (wallpaper over a wooden counter), the
   jar's glass, the shelf and the key caps. The jar is two pictures, one behind the fruit and one (its near rim, shine and
