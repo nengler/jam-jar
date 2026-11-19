@@ -5,7 +5,7 @@ import { Fruit } from "./Fruit.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { HudBox } from "./HudBox.tsx";
-import { poolLine } from "./layout.ts";
+import { sortedPool } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { FRUITS } from "./rules/fruits.ts";
 import { advance, BOOM_LIFE, chosenRow, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
@@ -219,15 +219,29 @@ export function Play() {
       <Text x={HUD_X + 44} y={252} color={GOLD}>{`${run.coins}`}</Text>
       <Text x={HUD_X + HUD_W - 12} y={252} align="right" color={HUD_LABEL}>{`total ${run.total}`}</Text>
 
-      {/* Right: the pool, one vertical line grouped by kind (copies stacked, kinds apart); how many are still to deal. */}
+      {/* Right: the pool, one fruit under another, evenly spaced; the column scrolls (mouse wheel) once it is longer than the screen. */}
       <HudBox x={POOL_X} y={POOL_TOP} width={POOL_W} height={POOL_H} />
       <Text x={POOL_X + POOL_W / 2} y={POOL_TOP + 12} align="center" color={HUD_LABEL}>
         Pool
       </Text>
       <Text x={POOL_X + POOL_W / 2} y={POOL_TOP + 32} align="center" color={LIGHT}>{`${run.draw.length}/${run.pool.length}`}</Text>
-      {poolLine(run.pool, POOL_H - 96).map((p, i) => (
-        <FruitBall key={`${p.kind}${i}`} kind={p.kind} x={POOL_X + POOL_W / 2} y={POOL_TOP + 76 + p.x} look="icon" />
-      ))}
+      <Flex
+        x={POOL_X + 8}
+        y={POOL_TOP + 56}
+        width={POOL_W - 16}
+        height={POOL_H - 64}
+        direction="column"
+        alignItems="center"
+        gap={4}
+        overflow="scroll"
+        scrollbarColor={HUD_LABEL}
+      >
+        {sortedPool(run.pool).map((kind, i) => (
+          <Flex key={`${kind}${i}`} width={32} height={32}>
+            <FruitBall kind={kind} x={16} y={16} look="icon" />
+          </Flex>
+        ))}
+      </Flex>
 
       {/* The keys for this moment. */}
       <Text x={320} y={336} align="center" color={LIGHT_SOFT}>

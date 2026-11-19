@@ -1,24 +1,7 @@
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 
-export interface Placed {
-  kind: FruitKind;
-  /** Along the line from its start, in pixels. */
-  x: number;
-}
-
-/**
- * The pool on one line (drawn as a column): grouped by kind (in the fruit table's order), each kind a little stack (copies 10
- * pixels apart) and kinds 36 apart, all squeezed to fit `length` when there are many.
- */
-export function poolLine(pool: readonly FruitKind[], length: number): Placed[] {
+/** The pool in the fruit table's order (all the Cherries, then the Grapes, …), so the same fruit sit next to each other. */
+export function sortedPool(pool: readonly FruitKind[]): FruitKind[] {
   const order = Object.keys(FRUITS) as FruitKind[];
-  const sorted = [...pool].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  const steps: number[] = sorted.map((kind, i) => (i === 0 ? 0 : kind === sorted[i - 1] ? 10 : 36));
-  const total = steps.reduce((sum: number, step: number) => sum + step, 0);
-  const squeeze = total > length ? length / total : 1;
-  let x = 0;
-  return sorted.map((kind, i) => {
-    x += (steps[i] as number) * squeeze;
-    return { kind, x };
-  });
+  return [...pool].sort((a, b) => order.indexOf(a) - order.indexOf(b));
 }
