@@ -5,12 +5,24 @@
  *
  * A turn: order (arrange the 4 dealt fruits) → drop (they fall one by one at random spots) → settle (physics; merges and blasts
  * score as they happen) → resolve (overflow, then Simmer fruit score) → pick (1 of 3, or skip). Five turns make a rent cycle.
+ *
+ * The physics is the engine's (`useBall`): each fruit is a component with a ball, and each step it reports where it is, how fast it
+ * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
+ * a kick (a blast), which the fruit's component applies.
  */
 import { FRUITS, OFFERABLE, SPROUTS, type FruitKind } from "./fruits.ts";
-import { contacts, kick, onFloor, speedOf, stepPhysics, touching, type Circle, type JarBounds } from "./physics.ts";
 import { Rng } from "./rng.ts";
 
+export interface JarBounds {
+  left: number;
+  right: number;
+  floor: number;
+}
+
 export const JAR: JarBounds = { left: 112, right: 208, floor: 170 };
+export const GRAVITY = 600;
+/** A fruit this close to the floor (beyond touching) is on it: a settled pile jitters by a fraction of a pixel. */
+const FLOOR_TOLERANCE = 1.5;
 /** The rim: a fruit whose top is above it once the jar settles spills out. */
 export const RIM = 52;
 /** Where dropped fruit appear. */
@@ -30,8 +42,23 @@ const POPUP_LIFE = 0.9;
 
 export type Phase = "order" | "drop" | "settle" | "pick" | "rent" | "over" | "won";
 
-export interface Fruit extends Circle {
+export interface Fruit {
+  id: number;
   kind: FruitKind;
+  /** Where its component's ball starts. */
+  x0: number;
+  y0: number;
+  /** Where it is and how fast it moves (px/s), as its component last reported. */
+  x: number;
+  y: number;
+  r: number;
+  speed: number;
+  /** The ids of the fruit it touches, as last reported. */
+  touching: number[];
+  /** A push to give it: each time `kicks` goes up, its component adds (`kickX`, `kickY`) px/s to its velocity. */
+  kicks: number;
+  kickX: number;
+  kickY: number;
   /** Has touched the floor or another fruit (a Fresh fruit scores then). */
   landed: boolean;
   /** Resolves survived in the jar. */
@@ -87,6 +114,22 @@ export interface Run {
 }
 
 export type Sound = "land" | "merge" | "boom" | "pick" | "rent" | "lose" | "tick";
+
+declare global {
+  /** What each ball and collider tag carries, so a fruit's `contacts("fruit")` has typed `data` (the engine's `ColliderData`). */
+  interface ColliderData {
+    fruit: { id: number };
+  }
+}
+
+/** What a fruit's component reports each step. */
+export interface FruitReport {
+  id: number;
+  x: number;
+  y: number;
+  speed: number;
+  touching: number[];
+}
 
 /** What the run reads from the keyboard this frame. */
 export interface Keys {
@@ -204,7 +247,41 @@ function score(run: Run, points: number, x: number, y: number): void {
 }
 
 function makeFruit(run: Run, kind: FruitKind, x: number, y: number): Fruit {
-  return { id: run.nextId++, kind, x, y, px: x, py: y, r: FRUITS[kind].radius, landed: false, age: 0, rotten: false, lit: false, fuse: 0 };
+  return {
+    id: run.nextId++,
+    kind,
+    x0: x,
+    y0: y,
+    x,
+    y,
+    r: FRUITS[kind].radius,
+    speed: 0,
+    touching: [],
+    kicks: 0,
+    kickX: 0,
+    kickY: 0,
+    landed: false,
+    age: 0,
+    rotten: false,
+    lit: false,
+    fuse: 0,
+  };
+}
+
+/** For each fruit (by index), the indexes of the fruit it touches, from the reports. */
+function links(fruits: readonly Fruit[]): number[][] {
+  const at = new Map(fruits.map((f, i) => [f.id, i]));
+  return fruits.map((f) => f.touching.map((id) => at.get(id)).filter((i): i is number => i !== undefined));
+}
+
+function onFloor(f: Fruit): boolean {
+  return f.y + f.r >= JAR.floor - FLOOR_TOLERANCE;
+}
+
+function kick(f: Fruit, vx: number, vy: number): void {
+  f.kicks += 1;
+  f.kickX = vx;
+  f.kickY = vy;
 }
 
 /** Whether a fruit (by index) touches a Lemon. */
@@ -212,8 +289,19 @@ function nearLemon(fruits: readonly Fruit[], links: readonly number[][], i: numb
   return (links[i] ?? []).some((j) => fruits[j]?.kind === "lemon");
 }
 
-export function advance(previous: Run, dt: number, keys: Keys): Run {
+/** Where each fruit is, as its component reported: what the rest of the step reads. */
+export function applyReports(run: Run, reports: readonly FruitReport[]): void {
+  if (reports.length === 0) return;
+  const byId = new Map(reports.map((r) => [r.id, r]));
+  run.fruits = run.fruits.map((f) => {
+    const r = byId.get(f.id);
+    return r === undefined ? f : { ...f, x: r.x, y: r.y, speed: r.speed, touching: r.touching };
+  });
+}
+
+export function advance(previous: Run, dt: number, keys: Keys, reports: readonly FruitReport[] = []): Run {
   const run = copy(previous);
+  applyReports(run, reports);
   for (const p of run.popups) {
     p.life -= dt;
     p.y -= 18 * dt;
@@ -293,30 +381,29 @@ function dropStep(run: Run, dt: number): void {
 function settleStep(run: Run, dt: number): void {
   simulate(run, dt);
   run.settleTime += dt;
-  const calm = run.fruits.every((f) => speedOf(f, dt) < CALM_SPEED) && run.fruits.every((f) => !f.lit);
+  const calm = run.fruits.every((f) => f.speed < CALM_SPEED) && run.fruits.every((f) => !f.lit);
   run.calmTime = calm ? run.calmTime + dt : 0;
   if (run.calmTime >= CALM_TIME || run.settleTime >= SETTLE_LIMIT) resolve(run);
 }
 
-/** One frame of the jar: physics, then landings, merges and blasts. */
+/** One frame of the jar, after the fruit reported where they are: landings, merges and blasts. */
 export function simulate(run: Run, dt: number): void {
-  stepPhysics(run.fruits, JAR, dt);
   land(run);
-  merge(run, dt);
+  merge(run);
   light(run);
   burn(run, dt);
 }
 
 function land(run: Run): void {
-  const links = contacts(run.fruits);
+  const near = links(run.fruits);
   run.fruits.forEach((f, i) => {
     if (f.landed) return;
-    const settledOn = onFloor(f, JAR) || (links[i] ?? []).some((j) => run.fruits[j]?.landed === true);
+    const settledOn = onFloor(f) || (near[i] ?? []).some((j) => run.fruits[j]?.landed === true);
     if (!settledOn) return;
     f.landed = true;
     sound(run, "land");
     const def = FRUITS[f.kind];
-    if (def.scoring === "fresh") score(run, def.points * (nearLemon(run.fruits, links, i) ? 2 : 1), f.x, f.y - f.r);
+    if (def.scoring === "fresh") score(run, def.points * (nearLemon(run.fruits, near, i) ? 2 : 1), f.x, f.y - f.r);
   });
 }
 
@@ -324,16 +411,16 @@ function canMerge(f: Fruit): boolean {
   return f.landed && !f.rotten && (FRUITS[f.kind].mergesInto !== undefined || f.kind === "watermelon" || f.kind === "pomegranate");
 }
 
-function merge(run: Run, dt: number): void {
-  const links = contacts(run.fruits);
+function merge(run: Run): void {
+  const near = links(run.fruits);
   const gone = new Set<number>();
   const born: Fruit[] = [];
   for (let i = 0; i < run.fruits.length; i++) {
     const a = run.fruits[i] as Fruit;
-    if (gone.has(a.id) || !canMerge(a) || nearLemon(run.fruits, links, i)) continue;
-    for (const j of links[i] ?? []) {
+    if (gone.has(a.id) || !canMerge(a) || nearLemon(run.fruits, near, i)) continue;
+    for (const j of near[i] ?? []) {
       const b = run.fruits[j] as Fruit;
-      if (j <= i || gone.has(b.id) || b.kind !== a.kind || !canMerge(b) || nearLemon(run.fruits, links, j)) continue;
+      if (j <= i || gone.has(b.id) || b.kind !== a.kind || !canMerge(b) || nearLemon(run.fruits, near, j)) continue;
       gone.add(a.id);
       gone.add(b.id);
       const mx = (a.x + b.x) / 2;
@@ -348,7 +435,6 @@ function merge(run: Run, dt: number): void {
         const into = FRUITS[a.kind].mergesInto as FruitKind;
         const f = makeFruit(run, into, mx, my);
         f.landed = true;
-        kick(f, 0, -40, dt);
         born.push(f);
         score(run, FRUITS[into].points, mx, my - f.r);
       }
@@ -375,11 +461,11 @@ function burst(run: Run, x: number, y: number): Fruit[] {
 
 /** Light the fuse of a Chili touching 4+ fruit, or a Durian with 3+ fruit stacked on it. */
 function light(run: Run): void {
-  const links = contacts(run.fruits);
+  const near = links(run.fruits);
   run.fruits.forEach((f, i) => {
     if (f.lit || !f.landed) return;
     if (f.kind === "chili") {
-      const weight = (links[i] ?? []).reduce((sum, j) => sum + FRUITS[(run.fruits[j] as Fruit).kind].touchWeight, 0);
+      const weight = (near[i] ?? []).reduce((sum, j) => sum + FRUITS[(run.fruits[j] as Fruit).kind].touchWeight, 0);
       if (weight >= 4) ignite(f, 0.3);
     } else if (f.kind === "durian") {
       const above = run.fruits.filter((o) => o !== f && o.landed && o.y < f.y - f.r * 0.5 && Math.abs(o.x - f.x) < f.r + o.r).length;
@@ -397,15 +483,15 @@ function ignite(f: Fruit, seconds: number): void {
 function burn(run: Run, dt: number): void {
   for (const f of run.fruits) if (f.lit) f.fuse -= dt;
   const ready = run.fruits.filter((f) => f.lit && f.fuse <= 0);
-  for (const bomb of ready) if (run.fruits.includes(bomb)) explode(run, bomb, dt);
+  for (const bomb of ready) if (run.fruits.includes(bomb)) explode(run, bomb);
 }
 
 export const BLAST_RADIUS: Readonly<Partial<Record<FruitKind, number>>> = { chili: 26, durian: 40 };
 
-function explode(run: Run, bomb: Fruit, dt: number): void {
+function explode(run: Run, bomb: Fruit): void {
   const radius = BLAST_RADIUS[bomb.kind] ?? 24;
-  const links = contacts(run.fruits);
-  const doubled = new Set(run.fruits.filter((_, i) => nearLemon(run.fruits, links, i)).map((f) => f.id));
+  const near = links(run.fruits);
+  const doubled = new Set(run.fruits.filter((_, i) => nearLemon(run.fruits, near, i)).map((f) => f.id));
   const victims: Fruit[] = [];
   const kept: Fruit[] = [];
   const born: Fruit[] = [];
@@ -444,7 +530,7 @@ function explode(run: Run, bomb: Fruit, dt: number): void {
     const d = Math.max(1, Math.sqrt(dx * dx + dy * dy));
     if (d > radius * 2) continue;
     const push = 160 * (1 - d / (radius * 2));
-    kick(f, (dx / d) * push, (dy / d) * push - 40, dt);
+    kick(f, (dx / d) * push, (dy / d) * push - 40);
   }
   run.fruits = [...kept, ...born];
   score(run, points, bomb.x, bomb.y - radius / 2);
@@ -462,7 +548,7 @@ export function resolve(run: Run): void {
     run.message = `${spilled.length} spilled over the rim`;
   }
 
-  const links = contacts(run.fruits);
+  const near = links(run.fruits);
   run.fruits.forEach((f, i) => {
     if (FRUITS[f.kind].scoring !== "simmer" || f.rotten) return;
     let points = 0;
@@ -472,7 +558,7 @@ export function resolve(run: Run): void {
     } else if (f.kind === "banana") {
       points = 1 + f.age;
     }
-    score(run, points * (nearLemon(run.fruits, links, i) ? 2 : 1), f.x, f.y - f.r);
+    score(run, points * (nearLemon(run.fruits, near, i) ? 2 : 1), f.x, f.y - f.r);
   });
 
   // Age; Bananas rot after 3 turns, and each rotten fruit rots one fruit it touches.
@@ -482,7 +568,7 @@ export function resolve(run: Run): void {
   }
   const rotten = run.fruits.filter((f) => f.rotten);
   for (const r of rotten) {
-    const next = run.fruits.find((o) => !o.rotten && o.kind !== "lemon" && touching(r, o));
+    const next = run.fruits.find((o) => !o.rotten && o.kind !== "lemon" && r.touching.includes(o.id));
     if (next) next.rotten = true;
   }
 

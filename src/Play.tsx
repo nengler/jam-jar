@@ -1,10 +1,11 @@
-import { Entity, Line, Shape, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
+import { Collider, Entity, Line, Shape, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
+import { Fruit } from "./Fruit.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { Pause } from "./Pause.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type Run } from "./rules/jar.ts";
+import { advance, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 
 const PANEL = "#1c2235";
 const DIM = "#8f93b8";
@@ -18,7 +19,8 @@ export function Play() {
   const paused = useGame((g) => g.paused);
   const seed = useGame((g) => g.seed);
   const { pause, toTitle } = useGame.actions();
-  const s = useMutable({ run: newRun(seed) as Run });
+  // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
+  const s = useMutable({ run: newRun(seed) as Run, reports: [] as FruitReport[] });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -40,7 +42,8 @@ export function Play() {
       right: input.pressed("ArrowRight"),
       confirm: input.pressed("Enter"),
       drop: input.pressed("Space"),
-    });
+    }, s.reports);
+    s.reports = [];
     const heard = s.run.sounds;
     if (heard.includes("land")) playLand(0.4);
     if (heard.includes("merge")) playMerge();
@@ -51,6 +54,9 @@ export function Play() {
     if (heard.includes("tick")) playTick(0.6);
   });
 
+  const report = (r: FruitReport) => {
+    s.reports = [...s.reports, r];
+  };
   const run = s.run;
   const rent = rentFor(run.cycle);
   const jarWidth = JAR.right - JAR.left;
@@ -64,8 +70,24 @@ export function Play() {
       <Shape kind="rect" x={JAR.right} y={RIM - 12} width={4} height={jarHeight + 6} color="#6c7aa0" />
       <Shape kind="rect" x={JAR.left - 4} y={JAR.floor} width={jarWidth + 8} height={4} color="#6c7aa0" />
       <Line x={JAR.left} y={RIM} x2={JAR.right} y2={RIM} color="#ff6b6b70" />
+      {/* What the fruit's balls are stopped by: the floor and two walls, tall enough that nothing pops over them. */}
+      <Collider x={JAR.left - 4} y={JAR.floor} width={jarWidth + 8} height={8} solid />
+      <Collider x={JAR.left - 8} y={0} width={8} height={JAR.floor + 8} solid />
+      <Collider x={JAR.right} y={0} width={8} height={JAR.floor + 8} solid />
       {run.fruits.map((f) => (
-        <FruitBall key={f.id} kind={f.kind} x={f.x} y={f.y} rotten={f.rotten} lit={f.lit && Math.floor(f.fuse * 20) % 2 === 0} />
+        <Fruit
+          key={f.id}
+          id={f.id}
+          kind={f.kind}
+          x0={f.x0}
+          y0={f.y0}
+          rotten={f.rotten}
+          lit={f.lit && Math.floor(f.fuse * 20) % 2 === 0}
+          kicks={f.kicks}
+          kickX={f.kickX}
+          kickY={f.kickY}
+          onReport={report}
+        />
       ))}
       {run.popups.map((p) => (
         <Text key={p.id} x={p.x} y={p.y} align="center" color={p.color}>

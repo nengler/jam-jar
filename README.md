@@ -48,10 +48,13 @@ grow, the rest of the Rot group (Fruit Fly, Fig, Prune), Kiwi, Peach, Honeydew, 
 ## How it is built
 
 - `src/rules/` holds the whole game as plain TypeScript with no engine imports, so it is tested directly with `node:test`:
-  - `jar.ts` is the run: deal, order, drop, settle, resolve, pick and rent. `advance(run, dt, keys)` returns the next run.
-  - `physics.ts` is the circle physics: Verlet integration with position-based overlap solving, inside the jar's walls.
+  - `jar.ts` is the run: deal, order, drop, settle, resolve, pick and rent. `advance(run, dt, keys, reports)` returns the next
+    run. It never moves a fruit: it reads where each one reported being.
   - `fruits.ts` is the fruit table. `rng.ts` is a seeded generator, so a seed plus the inputs replay a run exactly.
-- `src/Play.tsx` calls `advance` once a step and draws the result: the jar, the hand or pick list, and the rent panel.
+- `src/Fruit.tsx` is one fruit: a ball (the engine's `useBall`) that falls, piles up and is stopped by the jar's solid colliders.
+  Each step it reports where it is, its speed and which fruit it touches; a blast reaches it as a kick through its props.
+- `src/Play.tsx` collects the reports, calls `advance` once a step and draws the result: the jar (walls are `<Collider solid>`),
+  the fruit, the hand or pick list, and the rent panel.
   `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow.
 - `tools/install-engine.ts` packs `../tse` and installs it without saving.
 - `tools/make-assets.py` (Python with Pillow) builds `assets/` from the free art in `tools/`, sizing each fruit to its radius in
@@ -69,12 +72,10 @@ grow, the rest of the Rot group (Fruit Fly, Fig, Prune), Kiwi, Peach, Honeydew, 
 
 What the engine did and didn't cover for this game:
 
-- **No physics.** tse colliders report touching but never push anything apart, and it has no rigid bodies. A Suika-style pile
-  needs real circle stacking, so the game has its own solver in `src/rules/physics.ts` (about 150 lines). It's O(n²) per substep,
-  which is fine for a jar of 60 fruit.
-- **The game's logic lives outside components.** Each fruit isn't a component with its own state, the way Swarm's enemies are,
-  because the physics needs every fruit at once. The run is one plain object in `Play`'s `useMutable`. `advance` returns a copy
-  each step, because render compares by `===` and an in-place change wouldn't draw.
+- **Physics.** tse had none (colliders only report touching), so the game first had its own solver. It moved into the engine as
+  `useBall` (tse#205, released in v0.9.0), and each fruit is now a component with a ball.
+- **The rules stay outside components.** Scoring, merges and blasts need every fruit at once, so the run is one plain object in
+  `Play`'s state, fed by the fruit's reports a step behind. `advance` returns a copy each step, because render compares by `===`.
 - **Not on npm.** Hence `install-engine`, the same loop the engine's own Bramble game uses.
 - **Free assets.** kenney.nl, the engine's usual source, isn't reachable from the cloud environment this was built in, so the
   fruit came from Fluent Emoji on GitHub, and the sounds are Kenney's from the tse repo.

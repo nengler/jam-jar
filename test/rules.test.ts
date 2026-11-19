@@ -11,8 +11,27 @@ function press(run: Run, keys: Partial<Keys>): Run {
   return advance(run, DT, { ...NO_KEYS, ...keys });
 }
 
-function fruit(id: number, kind: Fruit["kind"], x: number, y: number): Fruit {
-  return { id, kind, x, y, px: x, py: y, r: FRUITS[kind].radius, landed: true, age: 0, rotten: false, lit: false, fuse: 0 };
+/** A landed fruit at rest at (x, y), touching the fruit with these ids (what its component would report). */
+function fruit(id: number, kind: Fruit["kind"], x: number, y: number, touching: number[] = []): Fruit {
+  return {
+    id,
+    kind,
+    x0: x,
+    y0: y,
+    x,
+    y,
+    r: FRUITS[kind].radius,
+    speed: 0,
+    touching,
+    kicks: 0,
+    kickX: 0,
+    kickY: 0,
+    landed: true,
+    age: 0,
+    rotten: false,
+    lit: false,
+    fuse: 0,
+  };
 }
 
 /** A run whose jar holds exactly these fruit, settling. */
@@ -57,26 +76,41 @@ test("ordering: pick up the first fruit, move it down, and it drops second", () 
   assert.equal(run.cursor, 1);
 });
 
-test("dropped fruit stay inside the jar and come to rest", () => {
+test("a dropped fruit lands when it reports touching the floor, and a Fresh fruit scores then", () => {
   let run = newRun(5);
   run = press(run, { drop: true });
-  for (let i = 0; i < 600 && run.phase !== "pick"; i++) run = press(run, {});
+  run = press(run, {});
+  const dropped = run.fruits[0]!;
+  assert.equal(dropped.landed, false);
+  run = advance(run, DT, NO_KEYS, [{ id: dropped.id, x: dropped.x, y: JAR.floor - dropped.r, speed: 0, touching: [] }]);
+  assert.equal(run.fruits[0]!.landed, true);
+  const def = FRUITS[dropped.kind];
+  assert.equal(run.cycleScore, def.scoring === "fresh" ? def.points : 0);
+});
+
+test("the jar settles once every fruit reports being slow", () => {
+  let run = jarWith([fruit(1, "cherry", 150, JAR.floor - 5)]);
+  run.fruits[0]!.speed = 50;
+  for (let i = 0; i < 60; i++) run = press(run, {});
+  assert.equal(run.phase, "settle", "still moving");
+  for (let i = 0; i < 60; i++) run = advance(run, DT, NO_KEYS, [{ id: 1, x: 150, y: JAR.floor - 5, speed: 1, touching: [] }]);
   assert.equal(run.phase, "pick");
-  for (const f of run.fruits) {
-    assert.ok(f.x - f.r >= JAR.left - 0.5 && f.x + f.r <= JAR.right + 0.5, "inside the walls");
-    assert.ok(f.y + f.r <= JAR.floor + 0.5, "above the floor");
-  }
 });
 
 test("two touching Cherries merge into a Grape and score its points", () => {
-  const run = jarWith([fruit(1, "cherry", 150, JAR.floor - 5), fruit(2, "cherry", 160, JAR.floor - 5)]);
+  const run = jarWith([fruit(1, "cherry", 150, JAR.floor - 5, [2]), fruit(2, "cherry", 160, JAR.floor - 5, [1])]);
   simulate(run, DT);
   assert.deepEqual(run.fruits.map((f) => f.kind), ["grape"]);
+  assert.deepEqual([run.fruits[0]!.x0, run.fruits[0]!.y0], [155, JAR.floor - 5], "made between them");
   assert.equal(run.cycleScore, FRUITS.grape.points);
 });
 
 test("a Lemon blocks merges next to it", () => {
-  const run = jarWith([fruit(1, "cherry", 150, JAR.floor - 5), fruit(2, "cherry", 160, JAR.floor - 5), fruit(3, "lemon", 155, JAR.floor - 16)]);
+  const run = jarWith([
+    fruit(1, "cherry", 150, JAR.floor - 5, [2, 3]),
+    fruit(2, "cherry", 160, JAR.floor - 5, [1, 3]),
+    fruit(3, "lemon", 155, JAR.floor - 16, [1, 2]),
+  ]);
   for (let i = 0; i < 5; i++) simulate(run, DT);
   assert.equal(run.fruits.filter((f) => f.kind === "cherry").length, 2);
 });
@@ -84,8 +118,10 @@ test("a Lemon blocks merges next to it", () => {
 test("a Chili touching 4 fruit explodes and scores what it destroys", () => {
   // A Blueberry counts as 3 fruit, so Blueberry + Apple make 4.
   const y = JAR.floor;
-  const run = jarWith([fruit(1, "chili", 160, y - 6), fruit(2, "blueberry", 170, y - 4), fruit(3, "apple", 147, y - 7)]);
-  for (let i = 0; i < 60; i++) simulate(run, DT);
+  const run = jarWith([fruit(1, "chili", 160, y - 6, [2, 3]), fruit(2, "blueberry", 170, y - 4, [1]), fruit(3, "apple", 147, y - 7, [1])]);
+  simulate(run, DT);
+  assert.equal(run.fruits[0]!.lit, true, "lit");
+  for (let i = 0; i < 30; i++) simulate(run, DT);
   assert.equal(run.fruits.length, 0, "the chili and both neighbours are gone");
   assert.equal(run.cycleScore, FRUITS.blueberry.points + FRUITS.apple.points);
 });
@@ -96,6 +132,16 @@ test("a Pomegranate caught in a blast bursts into 5 Cherries", () => {
   run.fruits.push({ ...fruit(2, "chili", 172, y), lit: true, fuse: 0 });
   simulate(run, DT);
   assert.equal(run.fruits.filter((f) => f.kind === "cherry").length, 5);
+});
+
+test("a blast kicks what it does not destroy away from it", () => {
+  const y = JAR.floor - 8;
+  const run = jarWith([fruit(1, "melon", 200, y - 4)]);
+  run.fruits.push({ ...fruit(2, "chili", 165, y), lit: true, fuse: 0 });
+  simulate(run, DT);
+  const melon = run.fruits.find((f) => f.id === 1)!;
+  assert.equal(melon.kicks, 1);
+  assert.ok(melon.kickX > 0, "pushed right, away from the blast");
 });
 
 test("Resolve: fruit over the rim spill and cost points; an Apple deeper scores more", () => {
@@ -109,6 +155,7 @@ test("Resolve: fruit over the rim spill and cost points; an Apple deeper scores 
 
 test("a Banana scores more each turn and rots after 3", () => {
   const run = jarWith([fruit(1, "banana", 160, JAR.floor - 7)]);
+  // Alone in the jar, its rot has nothing to spread to.
   const scores: number[] = [];
   for (let t = 0; t < 4; t++) {
     const before = run.cycleScore;
