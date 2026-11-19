@@ -6,7 +6,7 @@ import { FruitBall } from "./FruitBall.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
-import { atRest, fruitGlossary, moment, placed, startingRun, poolRows } from "./layout.ts";
+import { atRest, moment, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { learn } from "./settings.ts";
@@ -174,11 +174,10 @@ export function Play() {
   const shelfLeft = jarMid - (shelf.length * SLOT) / 2;
   // Resolve has already counted the next turn; the pips wait for the tally to finish before showing it.
   const turn = Math.min(run.turn - (run.phase === "tally" && run.afterTally === "pick" ? 1 : 0), TURNS_PER_CYCLE);
-  const pool = poolRows(run.pool);
+  // The board shows what is still to be dealt this shuffle: the hand is on the shelf, and the rest has been played.
+  const pool = poolRows(run.draw);
   const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
   const poolH = 30 + Math.ceil(pool.length / grid.columns) * POOL_ROW + 30;
-  // Under the cards, for the keyboard: what the chosen card's first keywords mean (a third once the key hints are gone).
-  const offerGlossary = fruitGlossary(picking ? run.offers[run.offerCursor] : null, hints ? 2 : 3);
   const offersLeft = 320 - (3 * OFFER_W + 2 * OFFER_GAP) / 2;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
 
@@ -261,7 +260,7 @@ export function Play() {
         {!learned.includes("order") && <KeyHint name="Esc" label="Pause" />}
       </Flex>
 
-      {/* Right: the pool by kind, how many of each, and how many are still to be dealt this shuffle. */}
+      {/* Right: what is left of the pool to deal this shuffle, by kind, and how many that is of the whole pool. */}
       <Board x={POOL_X} y={BOARD_Y} width={BOARD_W} height={poolH} title="Pool" />
       {pool.map((row, i) => (
         <Entity key={row.kind} x={POOL_X + 10 + (i % grid.columns) * grid.cell} y={BOARD_Y + 24 + Math.floor(i / grid.columns) * POOL_ROW}>
@@ -269,7 +268,7 @@ export function Play() {
           <Text x={33} y={8} color={INK}>{`${row.count}`}</Text>
         </Entity>
       ))}
-      <Text x={POOL_X + BOARD_W / 2} y={BOARD_Y + poolH - 30} align="center" color={INK_SOFT}>{`${run.draw.length} of ${run.pool.length} left`}</Text>
+      <Text x={POOL_X + BOARD_W / 2} y={BOARD_Y + poolH - 30} align="center" color={INK_SOFT}>{run.draw.length === 0 ? "Shuffles next" : `${run.draw.length} left of ${run.pool.length}`}</Text>
 
       {/* Under it: what just happened, on a slate. */}
       {run.message !== "" && (
@@ -300,10 +299,6 @@ export function Play() {
               </Text>
               <RuleText x={12} y={122} width={OFFER_W - 24} text={FRUITS[offer.card].text} color={INK_SOFT} accent={KEYWORD} />
             </Entity>
-          ))}
-          {/* What the chosen card's keywords mean. */}
-          {offerGlossary.map((line, i) => (
-            <RuleText key={line} x={0} y={294 + i * 20} width={640} text={line} color={LIGHT} accent={KEYWORD_LIGHT} />
           ))}
           {hints && (
             <Flex y={334} width={640} direction="row" justifyContent="center" gap={20}>

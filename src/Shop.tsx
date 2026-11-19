@@ -3,7 +3,7 @@ import { Entity, Flex, Shape, Sprite, Text, Tooltip } from "@tsengine/runtime/js
 import { Board, Heading } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { KeyHint } from "./KeyHint.tsx";
-import { fruitGlossary, itemGlossary, placed, poolRows } from "./layout.ts";
+import { placed, poolRows } from "./layout.ts";
 import { FRUITS } from "./rules/fruits.ts";
 import { ITEMS } from "./rules/items.ts";
 import { RuleText } from "./RuleText.tsx";
@@ -63,8 +63,6 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
   const kinds = poolRows(run.pool);
   const boardW = Math.max(240, kinds.length * CELL + 32);
   const boardX = 320 - boardW / 2;
-  const most = hints ? 2 : 3;
-  const terms = shop.removing ? [] : shop.cursor === SHOP_ITEM ? itemGlossary(shop.item, most) : fruitGlossary(shop.fruits[shop.cursor], most);
   return (
     <Entity>
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
@@ -82,7 +80,7 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
               </Tooltip>
             )}
           </Flex>
-          {slot.card !== null && <FruitBall kind={slot.card} x={CARD_W / 2 + 14} y={40} look="big" />}
+          {slot.card !== null && <FruitBall kind={slot.card} x={CARD_W / 2} y={40} look="big" />}
           {slot.card !== null && (
             <Text x={CARD_W / 2} y={72} align="center" color={INK}>
               {FRUITS[slot.card].name}
@@ -105,7 +103,7 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
             </Tooltip>
           )}
         </Flex>
-        {shop.item !== null && <Sprite image={`item-${shop.item}.png`} x={CARD_W / 2 - 10} y={22} />}
+        {shop.item !== null && <Sprite image={`item-${shop.item}.png`} x={CARD_W / 2 - 24} y={24} />}
         {shop.item !== null && (
           <Text x={CARD_W / 2} y={74} align="center" color={INK}>
             {ITEMS[shop.item].name}
@@ -141,13 +139,10 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
         </Text>
       </Entity>
 
-      {/* What just happened, top left; what the chosen card's keywords mean, under the actions. */}
+      {/* What just happened, top left. */}
       <Text x={16} y={8} width={196} maxWidth={196} color={LIGHT}>
         {run.message}
       </Text>
-      {terms.map((line, i) => (
-        <RuleText key={line} x={0} y={ACTIONS_Y + 40 + i * 20} width={640} text={line} color={LIGHT} accent={KEYWORD_LIGHT} />
-      ))}
       {!shop.removing && hints && (
         <Flex y={334} width={640} direction="row" justifyContent="center" gap={20}>
           <KeyHint name="arrows" label="Choose" />

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { fruitGlossary, motes, poolRows, termsOf } from "../src/layout.ts";
+import { motes, poolRows, termsOf } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { FRUITS } from "../src/rules/fruits.ts";
 import {
@@ -525,14 +525,13 @@ test("terms: a keyword is found by its capital, whatever punctuation follows it,
   );
 });
 
-test("terms: a card's tooltip is every keyword in its text, in order; under the card, the first few", () => {
+test("terms: a card's tooltip is every keyword in its text, in order, each with what it means", () => {
   assert.deepEqual(keywordsIn(FRUITS.pomegranate.text), ["fresh", "exploded", "merge", "burst"]);
   assert.deepEqual(
     termsOf(FRUITS.chili.text).map((t) => t.name),
     ["Fresh", "Exploder"]
   );
-  assert.deepEqual(fruitGlossary("chili", 2), [`Fresh: ${KEYWORDS.fresh.text}`, `Exploder: ${KEYWORDS.exploder.text}`]);
-  assert.deepEqual(fruitGlossary(null, 2), []);
+  assert.equal(termsOf(FRUITS.chili.text)[1]!.text, KEYWORDS.exploder.text);
 });
 
 test("terms: the numbers on the cards are the rules' numbers", () => {
