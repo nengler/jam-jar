@@ -6,6 +6,7 @@ import { FRUITS } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
+  bossCycle,
   FRUIT_PRICE,
   JAR,
   JUICER_BONUS,
@@ -451,4 +452,16 @@ test("without fruit in the jar, the Preserves Jar asks nothing", () => {
   run.items = ["preserves"];
   run = press(run, { drop: true });
   assert.equal(run.phase, "order");
+});
+
+test("every third cycle is the Peg jar, and the shop before it says so", () => {
+  assert.deepEqual([1, 2, 3, 4, 5].map(bossCycle), [false, false, true, false, false]);
+  const run = jarWith([]);
+  run.cycle = 2;
+  run.turn = 5;
+  run.cycleScore = RENT[1]!;
+  resolve(run);
+  const shop = press(run, { confirm: true });
+  assert.match(shop.message, /Peg jar/);
+  assert.match(press(shop, { drop: true }).message, /Peg jar/);
 });

@@ -8,9 +8,10 @@ import { useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
 import { offerText, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
+import { Peg } from "./Peg.tsx";
 import { Shop } from "./Shop.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, BOOM_LIFE, preservable, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, BOOM_LIFE, bossCycle, preservable, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -126,6 +127,7 @@ export function Play() {
   const filled = Math.max(0, Math.min(1, run.cycleScore / rent));
   const ordering = run.phase === "order";
   const picking = run.phase === "pick";
+  const boss = bossCycle(run.cycle);
   const preserving = run.phase === "preserve";
   const chosen = preserving ? preservable(run)[run.preserveCursor] : undefined;
   const keptFruit = preserving ? run.fruits.filter((f) => run.kept.includes(f.id)) : [];
@@ -149,6 +151,7 @@ export function Play() {
       <Collider x={JAR.left - 8} y={JAR.floor} width={jarWidth + 16} height={16} solid />
       <Collider x={JAR.left - 16} y={0} width={16} height={JAR.floor + 16} solid />
       <Collider x={JAR.right} y={0} width={16} height={JAR.floor + 16} solid />
+      {boss && <Peg />}
       {run.fruits.map((f) => (
         <Fruit
           key={f.id}
@@ -204,7 +207,7 @@ export function Play() {
       ))}
 
       {/* Left: the rent board. The score against the rent, the turn, and the coins. */}
-      <Board x={HUD_X} y={BOARD_Y} width={BOARD_W} height={HUD_H} title={`Cycle ${run.cycle} of ${RENT.length}`} />
+      <Board x={HUD_X} y={BOARD_Y} width={BOARD_W} height={HUD_H} title={boss ? `Peg jar ${run.cycle} of ${RENT.length}` : `Cycle ${run.cycle} of ${RENT.length}`} />
       <Text x={HUD_X + 16} y={BOARD_Y + 22} color={INK_SOFT}>
         Score
       </Text>
