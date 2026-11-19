@@ -14,9 +14,9 @@ export interface ItemDef {
 
 export const ITEMS: Readonly<Record<ItemKind, ItemDef>> = {
   lid: { name: "Lid", price: 6, text: "Stops one overflow: nothing spills" },
-  juicer: { name: "Juicer", price: 8, text: "Each turn, crushes the fruit on the floor for points" },
+  juicer: { name: "Juicer", price: 8, text: "Crushes the fruit on the floor each turn" },
   shaker: { name: "Shaker", price: 5, text: "Shakes the jar after each hand drops" },
-  preserves: { name: "Preserves Jar", price: 8, text: "Keep 2 fruit in the jar when the rent empties it" },
+  preserves: { name: "Preserves", price: 8, text: "Keeps 2 fruit in the jar past the rent" },
 };
 
 export const ITEM_KINDS = Object.keys(ITEMS) as ItemKind[];

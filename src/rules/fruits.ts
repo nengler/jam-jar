@@ -27,7 +27,10 @@ export type FruitKind =
   | "fruitfly"
   | "kiwi"
   | "peach"
-  | "honeydew";
+  | "honeydew"
+  | "pitaya"
+  | "coconut"
+  | "cracked";
 
 export type Scoring = "fresh" | "simmer" | "booster";
 
@@ -42,6 +45,8 @@ export interface FruitDef {
   mergesInto?: FruitKind;
   /** How many fruits it counts as for "touching N fruits" checks (Blueberry counts as 3). */
   touchWeight: number;
+  /** How many times heavier than its size it is against other fruit: a heavy one shoulders its way down. Default 1. */
+  heavy?: number;
   /** One line for the pick screen. */
   text: string;
 }
@@ -65,6 +70,9 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   kiwi: { name: "Kiwi", radius: FRUIT_ART.kiwi.radius, points: 2, scoring: "fresh", touchWeight: 1, text: "Becomes a copy of the first fruit it lands on" },
   peach: { name: "Peach", radius: FRUIT_ART.peach.radius, points: 4, scoring: "fresh", touchWeight: 1, text: "Bounces, shoving its neighbours apart" },
   honeydew: { name: "Honeydew", radius: FRUIT_ART.honeydew.radius, points: 2, scoring: "simmer", touchWeight: 1, text: "Simmer: honeys a neighbour a turn; honey scores 2" },
+  pitaya: { name: "Pitaya", radius: FRUIT_ART.pitaya.radius, points: 2, scoring: "simmer", touchWeight: 1, text: "Simmer: eats a Cherry a turn; Pitayas gain +1" },
+  coconut: { name: "Coconut", radius: FRUIT_ART.coconut.radius, points: 3, scoring: "fresh", touchWeight: 1, heavy: 5, text: "Heavy. In 3 turns it cracks into a x2 Booster" },
+  cracked: { name: "Cracked Coconut", radius: FRUIT_ART.cracked.radius, points: 0, scoring: "booster", touchWeight: 1, heavy: 5, text: "Booster: touching fruit score x2" },
   seed: { name: "Seed", radius: FRUIT_ART.seed.radius, points: 1, scoring: "fresh", touchWeight: 1, text: "Sprouts a fruit when blown up" },
 };
 
@@ -84,6 +92,8 @@ export const OFFERABLE: readonly FruitKind[] = [
   "kiwi",
   "peach",
   "honeydew",
+  "pitaya",
+  "coconut",
 ];
 
 /** What a Seed can sprout. */

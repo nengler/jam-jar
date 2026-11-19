@@ -31,6 +31,7 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, lit, kicks, kickX, ki
     x: x0,
     y: y0,
     radius: FRUITS[kind].radius,
+    mass: FRUITS[kind].radius * FRUITS[kind].radius * (FRUITS[kind].heavy ?? 1),
     gravity: GRAVITY,
     tag: "fruit",
     data: { id: id },

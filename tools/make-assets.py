@@ -48,6 +48,9 @@ FRUIT_SPRITES = {
     "kiwi": (19, 2, 2.5),
     "peach": (12, 0, 2.5),
     "honeydew": (2, 1, 3),
+    "pitaya": (20, 0, 2.5),
+    "coconut": (22, 1, 3),
+    "cracked": (22, 4, 3),
 }
 # The Fruit Fly is not on the sheet: it is drawn here (`fruit_fly`), 16 x 16 like the others, at 2x.
 FLY_SCALE = 2
