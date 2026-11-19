@@ -6,7 +6,7 @@ Lays out the game's assets/ from the free art in tools/:
   big-<kind>.png; its ball's radius is written to src/rules/sizes.ts, so the physics matches the picture.
 - tools/kenney/: Kenney's CC0 assets (from the Kenney Game Assets All-in-1 bundle, and sounds from the tse repo's games):
   - the sounds, copied as they are;
-  - pixel art only: UI Pack - Pixel Adventure frames and the ribbon (ADVENTURE), Pattern Pack Pixel's trellis (the wallpaper),
+  - pixel art only: UI Pack - Pixel Adventure frames (ADVENTURE), Pattern Pack Pixel's trellis (the wallpaper),
     Pixel Platformer's coin, and the Explosion Pack's pixel explosion.
 - Drawn here, in Apollo colours at the same 2x pixel: the kitchen (the wallpaper over a wooden counter), the jar's glass (a
   back, behind the fruit, and a front with its shine and fill line, over them), the shelf, the key caps and the items.
@@ -109,7 +109,6 @@ RAMPS = {
     "frame-chosen": hexes("#602c2c", "#be772b", "#de9e41", "#e8c170"),
     "select": hexes("#602c2c", "#be772b", "#de9e41", "#e8c170"),
     "plaque": hexes("#090a14", "#10141f", "#151d28", "#394a50"),
-    "ribbon": hexes("#241527", "#752438", "#a53030", "#cf573c", "#e7d5b3"),
     "wallpaper": hexes("#151d28", "#172038"),
 }
 
@@ -120,7 +119,6 @@ ADVENTURE = {
     "frame-chosen.png": (0, 0, 1, "frame-chosen"),  # the same in amber: the chosen one
     "select.png": (6, 2, 1, "select"),  # an empty amber frame: around the chosen fruit on the shelf
     "plaque.png": (3, 0, 1, "plaque"),  # dark slate: the note of what just happened
-    "ribbon.png": (4, 3, 3, "ribbon"),  # the red ribbon: headings
 }
 # Pattern Pack Pixel, greyscale: 16 x 16 tiles, packed. The wallpaper is tile (0, 2), a thin trellis, in two close navy blues.
 WALLPAPER = (0, 2)
