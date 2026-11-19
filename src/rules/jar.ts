@@ -82,7 +82,11 @@ export interface Run {
   popups: Popup[];
   /** One line about what just happened. */
   message: string;
+  /** Sounds to play this frame (cleared each `advance`). */
+  sounds: Sound[];
 }
+
+export type Sound = "land" | "merge" | "boom" | "pick" | "rent" | "lose" | "tick";
 
 /** What the run reads from the keyboard this frame. */
 export interface Keys {
@@ -141,6 +145,7 @@ export function newRun(seed: number): Run {
     offerCursor: 0,
     popups: [],
     message: "Order your hand, then Space to drop",
+    sounds: [],
   };
   deal(run);
   return run;
@@ -162,6 +167,7 @@ function copy(run: Run): Run {
     fruits: run.fruits.map((f) => ({ ...f })),
     offers: run.offers.slice(),
     popups: run.popups.map((p) => ({ ...p })),
+    sounds: [],
   };
 }
 
@@ -180,6 +186,10 @@ function deal(run: Run): void {
   run.seed = rng.seed;
   run.cursor = 0;
   run.holding = false;
+}
+
+function sound(run: Run, name: Sound): void {
+  if (!run.sounds.includes(name)) run.sounds.push(name);
 }
 
 function popup(run: Run, x: number, y: number, text: string, color = "#ffd166"): void {
@@ -243,9 +253,13 @@ function order(run: Run, keys: Keys): void {
       run.hand[run.cursor] = run.hand[to] as FruitKind;
       run.hand[to] = a;
     }
+    if (to !== run.cursor) sound(run, "tick");
     run.cursor = to;
   }
-  if (keys.confirm) run.holding = !run.holding;
+  if (keys.confirm) {
+    run.holding = !run.holding;
+    sound(run, "tick");
+  }
   if (keys.drop && run.hand.length > 0) {
     run.queue = run.hand;
     run.hand = [];
@@ -300,6 +314,7 @@ function land(run: Run): void {
     const settledOn = onFloor(f, JAR) || (links[i] ?? []).some((j) => run.fruits[j]?.landed === true);
     if (!settledOn) return;
     f.landed = true;
+    sound(run, "land");
     const def = FRUITS[f.kind];
     if (def.scoring === "fresh") score(run, def.points * (nearLemon(run.fruits, links, i) ? 2 : 1), f.x, f.y - f.r);
   });
@@ -340,7 +355,10 @@ function merge(run: Run, dt: number): void {
       break;
     }
   }
-  if (gone.size > 0) run.fruits = [...run.fruits.filter((f) => !gone.has(f.id)), ...born];
+  if (gone.size > 0) {
+    run.fruits = [...run.fruits.filter((f) => !gone.has(f.id)), ...born];
+    sound(run, "merge");
+  }
 }
 
 /** Five cherries where a Pomegranate was, already landed (they were in the pile). */
@@ -431,6 +449,7 @@ function explode(run: Run, bomb: Fruit, dt: number): void {
   run.fruits = [...kept, ...born];
   score(run, points, bomb.x, bomb.y - radius / 2);
   popup(run, bomb.x, bomb.y, "BOOM", "#ff6b35");
+  sound(run, "boom");
   run.message = `${FRUITS[bomb.kind].name} blew up ${victims.length} fruit`;
 }
 
@@ -474,9 +493,11 @@ export function resolve(run: Run): void {
       const earned = Math.floor((run.cycleScore - rent) / 5);
       run.coins += earned;
       run.message = `Rent paid! +${earned} coins. Enter for the next cycle`;
+      sound(run, "rent");
     } else {
       run.phase = "over";
       run.message = `Rent was ${rent}; you scored ${run.cycleScore}. The jar is lost.`;
+      sound(run, "lose");
     }
     return;
   }
@@ -494,7 +515,10 @@ function offer(run: Run): void {
 
 function pickStep(run: Run, keys: Keys): void {
   const move = (keys.right || keys.down ? 1 : 0) - (keys.left || keys.up ? 1 : 0);
-  if (move !== 0) run.offerCursor = Math.max(0, Math.min(run.offers.length - 1, run.offerCursor + move));
+  if (move !== 0) {
+    run.offerCursor = Math.max(0, Math.min(run.offers.length - 1, run.offerCursor + move));
+    sound(run, "tick");
+  }
   if (keys.confirm) {
     const kind = run.offers[run.offerCursor] as FruitKind;
     run.pool.push(kind);
@@ -503,6 +527,7 @@ function pickStep(run: Run, keys: Keys): void {
     run.draw.splice(rng.int(0, run.draw.length), 0, kind);
     run.seed = rng.seed;
     run.message = `${FRUITS[kind].name} added to your pool`;
+    sound(run, "pick");
     startTurn(run);
   } else if (keys.drop) {
     run.coins += 1;

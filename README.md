@@ -42,7 +42,8 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 - Rent: 25, 50, 100, 175 and 300 over 5 cycles. Points over rent become coins (1 per 5).
 
 Not built yet: the shop (coins pile up but can't be spent), items (Preserves Jar, Juicer and the rest), boss jars, Juice and
-grow, the rest of the Rot group (Fruit Fly, Fig, Prune), Kiwi, Peach, Honeydew, Snow Pear, real art and sound.
+grow, the rest of the Rot group (Fruit Fly, Fig, Prune), Kiwi, Peach, Honeydew, Snow Pear, and art for the jar and panels
+(they're still plain shapes).
 
 ## How it is built
 
@@ -51,8 +52,18 @@ grow, the rest of the Rot group (Fruit Fly, Fig, Prune), Kiwi, Peach, Honeydew, 
   - `physics.ts` is the circle physics: Verlet integration with position-based overlap solving, inside the jar's walls.
   - `fruits.ts` is the fruit table. `rng.ts` is a seeded generator, so a seed plus the inputs replay a run exactly.
 - `src/Play.tsx` calls `advance` once a step and draws the result: the jar, the hand or pick list, and the rent panel.
-  `FruitBall.tsx` draws a fruit as rimmed circles (placeholder art).
+  `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow.
 - `tools/install-engine.ts` packs `../tse` and installs it without saving.
+- `tools/make-assets.py` (Python with Pillow) builds `assets/` from the free art in `tools/`, sizing each fruit to its radius in
+  `src/rules/fruits.ts`. Rerun it after changing a radius.
+
+## Credits
+
+- Fruit art: [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft, MIT licence (`tools/fluent/LICENSE`, which
+  must ship with the game). There's no emoji for a Durian or a Pomegranate, so for now they use the Pineapple and a hue-shifted
+  Red Apple.
+- Sounds: [Kenney](https://kenney.nl), CC0, taken from the tse repo's games.
+- Font: the tse engine template's.
 
 ## Engine notes
 
@@ -65,4 +76,5 @@ What the engine did and didn't cover for this game:
   because the physics needs every fruit at once. The run is one plain object in `Play`'s `useMutable`. `advance` returns a copy
   each step, because render compares by `===` and an in-place change wouldn't draw.
 - **Not on npm.** Hence `install-engine`, the same loop the engine's own Bramble game uses.
-- **Shapes are enough for placeholder art.** Circles and rects drew everything here, and screenshots work headless.
+- **Free assets.** kenney.nl, the engine's usual source, isn't reachable from the cloud environment this was built in, so the
+  fruit came from Fluent Emoji on GitHub, and the sounds are Kenney's from the tse repo.

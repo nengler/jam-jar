@@ -1,6 +1,9 @@
-import { Entity, Shape } from "@tsengine/runtime/jsx";
+import { Sprite } from "@tsengine/runtime/jsx";
 
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
+
+/** The icons' size in pixels (tools/make-assets.py). */
+const ICON = 14;
 
 interface FruitBallProps {
   kind: FruitKind;
@@ -10,22 +13,26 @@ interface FruitBallProps {
   rotten?: boolean;
   /** About to explode: drawn flashing white. */
   lit?: boolean;
-  /** Draw at this radius instead of the fruit's own (the hand and pick lists). */
-  radius?: number;
+  /** The small picture for the hand and pick lists, instead of the fruit at its size in the jar. */
+  icon?: boolean;
 }
 
-/** A fruit drawn as a rimmed circle with a highlight, centred on (x, y). Placeholder art until real sprites exist. */
-export function FruitBall({ kind, x, y, rotten = false, lit = false, radius }: FruitBallProps) {
-  const def = FRUITS[kind];
-  const r = radius ?? def.radius;
-  const body = lit ? "#ffffff" : rotten ? "#6d4c41" : def.color;
-  const rim = rotten ? "#3e2723" : def.rim;
-  const shine = Math.max(1, Math.floor(r / 3));
+/**
+ * A fruit, centred on (x, y): its Fluent Emoji picture (tools/fluent), scaled to its size by tools/make-assets.py. A rotten fruit
+ * is tinted brown; a lit one flashes white.
+ */
+export function FruitBall({ kind, x, y, rotten = false, lit = false, icon = false }: FruitBallProps) {
+  const half = icon ? ICON / 2 : FRUITS[kind].radius + 1;
   return (
-    <Entity x={x} y={y}>
-      <Shape kind="circle" x={-r} y={-r} width={r * 2} height={r * 2} color={rim} />
-      <Shape kind="circle" x={-r + 1} y={-r + 1} width={r * 2 - 2} height={r * 2 - 2} color={body} />
-      <Shape kind="circle" x={-r / 2} y={-r / 2} width={shine} height={shine} color="#ffffff90" />
-    </Entity>
+    <Sprite
+      image={icon ? `icon-${kind}.png` : `fruit-${kind}.png`}
+      x={x}
+      y={y}
+      originX={half}
+      originY={half}
+      tint={rotten ? "#8a6a50" : undefined}
+      flash={lit ? 0.85 : 0}
+      flashColor="white"
+    />
   );
 }

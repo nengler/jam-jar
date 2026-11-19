@@ -1,4 +1,4 @@
-import { Entity, Line, Shape, Text, useInput, useMutable, useUpdate } from "@tsengine/runtime/jsx";
+import { Entity, Line, Shape, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
@@ -19,6 +19,13 @@ export function Play() {
   const seed = useGame((g) => g.seed);
   const { pause, toTitle } = useGame.actions();
   const s = useMutable({ run: newRun(seed) as Run });
+  const playLand = useSound("land.wav");
+  const playMerge = useSound("merge.wav");
+  const playBoom = useSound("boom.wav");
+  const playPick = useSound("pick.wav");
+  const playRent = useSound("rent.wav");
+  const playLose = useSound("lose.wav");
+  const playTick = useSound("tick.wav");
 
   useInput((input) => {
     if (input.pressed("Escape")) pause();
@@ -34,6 +41,14 @@ export function Play() {
       confirm: input.pressed("Enter"),
       drop: input.pressed("Space"),
     });
+    const heard = s.run.sounds;
+    if (heard.includes("land")) playLand(0.4);
+    if (heard.includes("merge")) playMerge();
+    if (heard.includes("boom")) playBoom();
+    if (heard.includes("pick")) playPick();
+    if (heard.includes("rent")) playRent();
+    if (heard.includes("lose")) playLose();
+    if (heard.includes("tick")) playTick(0.6);
   });
 
   const run = s.run;
@@ -73,7 +88,7 @@ export function Play() {
           {run.offers.map((kind, i) => (
             <Entity key={`${kind}${i}`} x={8} y={34 + i * 42}>
               {i === run.offerCursor && <Shape kind="rect" x={-2} y={-2} width={96} height={40} color="#2e3a5c" />}
-              <FruitBall kind={kind} x={7} y={7} radius={6} />
+              <FruitBall kind={kind} x={7} y={7} icon />
               <Text x={18} y={3} color={i === run.offerCursor ? GOLD : "#f4ecd8"}>
                 {FRUITS[kind].name}
               </Text>
@@ -102,7 +117,7 @@ export function Play() {
               <Text x={0} y={2} color={DIM}>
                 {`${i + 1}`}
               </Text>
-              <FruitBall kind={kind} x={16} y={6} radius={Math.min(7, FRUITS[kind].radius)} />
+              <FruitBall kind={kind} x={16} y={6} icon />
               <Text x={28} y={2} color="#f4ecd8">
                 {FRUITS[kind].name}
               </Text>
