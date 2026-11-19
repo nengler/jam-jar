@@ -56,9 +56,11 @@ The screen is 640 x 360 (16:9), scaled up by whole multiples.
 - `src/Fruit.tsx` is one fruit: a ball (the engine's `useBall`) that falls, piles up and is stopped by the jar's solid colliders.
   Each step it reports where it is, its speed and which fruit it touches; a blast reaches it as a kick through its props.
 - `src/Play.tsx` collects the reports, calls `advance` once a step and draws the result: the jar (walls are `<Collider solid>`),
-  the fruit, the hand or pick list, and the rent panel.
-  `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `theme.ts` names the colours and
-  the Kenney panels and buttons every screen is made of.
+  the fruit, the hand on its shelf, the rent board and the keys on the left, the pool by kind and a note of what just happened
+  on the right, and the pick cards.
+  `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `Board.tsx` is a parchment board
+  with a ribbon heading, `KeyHint.tsx` a key cap and what it does, `Backdrop.tsx` the kitchen behind every screen. `theme.ts`
+  names the colours, the fonts and the Kenney frames every screen is made of.
 - `tools/install-engine.ts` packs `../tse` and installs it without saving.
 - `tools/make-assets.py` (Python with Pillow) builds `assets/` from the free art in `tools/`, sizing each fruit to its radius in
   `src/rules/fruits.ts`. Rerun it after changing a radius.
@@ -67,14 +69,17 @@ The screen is 640 x 360 (16:9), scaled up by whole multiples.
 
 - Fruit art: a 16 x 16 pixel fruit sheet (`tools/fruit/`; its source and licence are still to be added there). Stand-ins:
   the Durian is the Pineapple, the Seed the brown Kiwi, the Melon the round green one.
-- Everything else is [Kenney](https://kenney.nl) pixel art, CC0: frames, cards, buttons, the HUD and the ribbon (UI Pack - Pixel Adventure), the gingham
-  backdrop (Pattern Pack Pixel), the jar's glass (UI Pixel Pack), the coin (Pixel
-  Platformer), blasts (Explosion Pack's pixel explosion), the font (Kenney Mini Square Mono) and the
+- [Kenney](https://kenney.nl) pixel art, CC0: the boards, cards, buttons, the slate and the ribbon (UI Pack - Pixel Adventure),
+  the wallpaper's trellis (Pattern Pack Pixel), the coin (Pixel Platformer), blasts (Explosion Pack's pixel explosion) and the
   sounds. It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;
   `tools/kenney/README.md` says which file each came from.
-- The backdrop is Kenney's pixel gingham (Pattern Pack Pixel) in deep Apollo reds, drifting slowly (`src/Backdrop.tsx`).
+- Drawn by `tools/make-assets.py`, in Apollo colours at the same 2x pixel: the kitchen (wallpaper over a wooden counter), the
+  jar's glass, the shelf and the key caps. The jar is two pictures, one behind the fruit and one (its near rim, shine and
+  fill line) in front of them.
+- Text: the engine's built-in pixel fonts, m5x7 for reading and Jersey 10 for headings and numbers, both at 2x.
 - Colours: the [Apollo palette](https://lospec.com/palette-list/apollo) by AdamCYounis (`tools/palette/apollo.hex`). Every
-  picture is snapped to it, the Kenney UI pieces are recoloured onto Apollo ramps, and `src/theme.ts` names the UI's colours.
+  picture is snapped to it or drawn in it, the Kenney UI pieces are recoloured onto Apollo ramps, and `src/theme.ts` names
+  the UI's colours. Nothing is drawn see-through except the shade behind a menu or the pick.
 - Every picture is pixel art. Fruit sizes come from scaling their 16-pixel sprites: 2x to 4x, with Grape and Melon at 2.5x and
   3.5x so the merge ladder has five sizes; each ball's radius is measured from its sprite (`src/rules/sizes.ts`).
 
@@ -87,4 +92,5 @@ What the engine did and didn't cover for this game:
 - **The rules stay outside components.** Scoring, merges and blasts need every fruit at once, so the run is one plain object in
   `Play`'s state, fed by the fruit's reports a step behind. `advance` returns a copy each step, because render compares by `===`.
 - **Not on npm.** Hence `install-engine`, the same loop the engine's own Bramble game uses.
-- **Free assets.** Kenney has no pixel fruit, so the fruit come from a separate pixel sheet; everything else is Kenney pixel art.
+- **Free assets.** Kenney has no pixel fruit, so the fruit come from a separate pixel sheet; the rest is Kenney pixel art or
+  drawn by `tools/make-assets.py`.
