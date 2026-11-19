@@ -3,6 +3,7 @@
 A roguelike where you build a pool of fruit and the jar plays it. Each turn you're dealt 4 fruits from your pool and you set the
 order they drop in. They fall at random spots, physics settles the pile, merges and blasts score, and then Simmer fruit score at
 Resolve. After that you pick 1 of 3 new fruits, or skip for a coin. Five turns make a rent cycle; miss rent and the run ends.
+Between cycles the shop sells fruit, an item, a removal and rerolls for the coins the rent left over.
 
 Built on the [tse engine](https://github.com/nengler/tse). The design doc is the "Jam Jar: Game Design Outline" artifact.
 
@@ -26,6 +27,7 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 | Order your hand | Up/Down choose, Enter pick up / put down (then Up/Down move it), Space drop |
 | Pick | Left/Right or Up/Down choose, Enter take, Space skip (+1 coin) |
 | Rent paid / run over | Enter |
+| Shop | Arrows choose, Enter buy, Space next cycle (or back, while choosing a fruit to remove) |
 | Any time | Esc pause |
 
 ## What's in this first slice
@@ -41,8 +43,11 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 - Banana: +1 a turn, rots after 3 turns, and rot spreads to one touching fruit a turn.
 - Overflow: fruit whose top is above the rim at Resolve spill and cost 5 points each.
 - Rent: 25, 50, 100, 175 and 300 over 5 cycles. Points over rent become coins (1 per 5).
+- The shop, after each rent but the last: three fruit (3 coins each), one item, taking a fruit out of your pool (3 coins; the
+  pool keeps at least one hand of 4) and a new shelf (1 coin, then 2, 3, … that visit).
+- Items: the Lid (6 coins) stops one overflow, then is used up. Items you own stand on the counter.
 
-Not built yet: the shop (coins pile up but can't be spent), items (Preserves Jar, Juicer and the rest), boss jars, Juice and
+Not built yet: the other items (Preserves Jar, Juicer, Shaker), boss jars, Juice and
 grow, the rest of the Rot group (Fruit Fly, Fig, Prune), Kiwi, Peach, Honeydew and Snow Pear.
 
 The screen is 640 x 360 (16:9), scaled up by whole multiples.
@@ -50,14 +55,14 @@ The screen is 640 x 360 (16:9), scaled up by whole multiples.
 ## How it is built
 
 - `src/rules/` holds the whole game as plain TypeScript with no engine imports, so it is tested directly with `node:test`:
-  - `jar.ts` is the run: deal, order, drop, settle, resolve, pick and rent. `advance(run, dt, keys, reports)` returns the next
+  - `jar.ts` is the run: deal, order, drop, settle, resolve, pick, rent and the shop. `advance(run, dt, keys, reports)` returns the next
     run. It never moves a fruit: it reads where each one reported being.
-  - `fruits.ts` is the fruit table. `rng.ts` is a seeded generator, so a seed plus the inputs replay a run exactly.
+  - `fruits.ts` is the fruit table and `items.ts` the item table. `rng.ts` is a seeded generator, so a seed plus the inputs replay a run exactly.
 - `src/Fruit.tsx` is one fruit: a ball (the engine's `useBall`) that falls, piles up and is stopped by the jar's solid colliders.
   Each step it reports where it is, its speed and which fruit it touches; a blast reaches it as a kick through its props.
 - `src/Play.tsx` collects the reports, calls `advance` once a step and draws the result: the jar (walls are `<Collider solid>`),
   the fruit, the hand on its shelf, the rent board and the keys on the left, the pool by kind and a note of what just happened
-  on the right, and the pick cards.
+  on the right, and the pick cards. `Shop.tsx` draws the shop.
   `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `Board.tsx` is a parchment board
   with a ribbon heading, `KeyHint.tsx` a key cap and what it does, `Backdrop.tsx` the kitchen behind every screen. `theme.ts`
   names the colours, the fonts and the Kenney frames every screen is made of.

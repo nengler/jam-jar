@@ -9,7 +9,7 @@ Lays out the game's assets/ from the free art in tools/:
   - pixel art only: UI Pack - Pixel Adventure frames and the ribbon (ADVENTURE), Pattern Pack Pixel's trellis (the wallpaper),
     Pixel Platformer's coin, and the Explosion Pack's pixel explosion.
 - Drawn here, in Apollo colours at the same 2x pixel: the kitchen (the wallpaper over a wooden counter), the jar's glass (a
-  back, behind the fruit, and a front with its shine and fill line, over them), the shelf and the key caps.
+  back, behind the fruit, and a front with its shine and fill line, over them), the shelf, the key caps and the items.
 
 The text is the engine's built-in fonts (m5x7 and Jersey 10), so there is no font file.
 
@@ -276,6 +276,21 @@ def key_pair(first: str, second: str) -> Image.Image:
     return doubled(out)
 
 
+def item_lid() -> Image.Image:
+    """The Lid, 24 x 14 art pixels: a brass screw lid seen a little from above, its top lit and its side ridged."""
+    out = Image.new("RGBA", (24, 14))
+    draw = ImageDraw.Draw(out)
+    draw.rounded_rectangle((0, 4, 23, 13), radius=2, fill=colour("#341c27"))
+    draw.rectangle((1, 6, 22, 12), fill=colour("#be772b"))
+    for x in range(3, 22, 3):
+        draw.line((x, 8, x, 12), fill=colour("#884b2b"))
+    draw.ellipse((0, 0, 23, 8), fill=colour("#341c27"))
+    draw.ellipse((1, 1, 22, 7), fill=colour("#e8c170"))
+    draw.ellipse((4, 2, 19, 6), fill=colour("#de9e41"))
+    draw.line((6, 2, 12, 2), fill=colour("#e7d5b3"))
+    return doubled(out)
+
+
 def coin() -> Image.Image:
     """Pixel Platformer's gold coin (tile 11, 7 of its 18 x 18 packed tiles)."""
     tiles = Image.open(KENNEY / "pixel-platformer-tiles.png").convert("RGBA")
@@ -305,6 +320,7 @@ def main() -> None:
     doubled(key_cap()).save(ASSETS / "key.png")
     key_pair("left", "right").save(ASSETS / "key-arrows.png")
     key_pair("up", "down").save(ASSETS / "key-updown.png")
+    item_lid().save(ASSETS / "item-lid.png")
     kitchen().save(ASSETS / "kitchen.png")
     back, front = jar_pictures()
     back.save(ASSETS / "jar-back.png")
