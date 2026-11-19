@@ -42,15 +42,27 @@ export function bossCycle(cycle: number): boolean {
 
 /**
  * The boss jars. The Peg jar has a round post in the middle that splits the pile. In the Blind jar the hand is covered: it
- * drops as it was dealt, and you cannot see or order it.
+ * drops as it was dealt, and you cannot see or order it. The Tilted jar leans, and everything in it rolls to the low side.
  */
-export type Boss = "peg" | "blind";
-export const BOSS_NAME: Readonly<Record<Boss, string>> = { peg: "Peg jar", blind: "Blind jar" };
-const BOSS_RULE: Readonly<Record<Boss, string>> = { peg: "A post splits the pile.", blind: "The hand is covered." };
+export type Boss = "peg" | "blind" | "tilt";
+export const BOSS_NAME: Readonly<Record<Boss, string>> = { peg: "Peg jar", blind: "Blind jar", tilt: "Tilted jar" };
+const BOSS_RULE: Readonly<Record<Boss, string>> = { peg: "A post splits the pile.", blind: "The hand is covered.", tilt: "Everything rolls right." };
+const BOSSES: readonly Boss[] = ["blind", "peg", "tilt"];
 
-/** The boss jar a run meets: one or the other, by its seed. */
+/** The boss jar a run meets: one of them, by its seed. */
 export function bossFor(seed: number): Boss {
-  return Math.abs(seed) % 2 === 0 ? "peg" : "blind";
+  return BOSSES[Math.abs(seed) % BOSSES.length] as Boss;
+}
+
+/** How far the Tilted jar leans to the right, in degrees, and how hard that pulls its fruit sideways, in pixels per second per
+ * second: gravity's share along the jar's floor. The fruit are moved in the jar's own frame, where its walls stand straight,
+ * and the whole jar is drawn leaning. */
+export const TILT = 6;
+export const TILT_PULL = Math.round(GRAVITY * Math.sin((TILT * Math.PI) / 180));
+
+/** How far the jar leans now, in radians: nothing but in the Tilted jar. */
+export function lean(run: Run): number {
+  return bossNow(run) === "tilt" ? (TILT * Math.PI) / 180 : 0;
 }
 
 /** The boss jar this cycle of the run is played in, or null for a plain one. */

@@ -17,6 +17,8 @@ interface FruitProps {
   frozen: boolean;
   /** The y of the surface of lime juice in the jar, which floats the fruit in it; at or below the floor when there is none. */
   surface: number;
+  /** A steady pull to the right, in pixels per second per second: the Tilted jar. */
+  pull: number;
   lit: boolean;
   /** How lit up it is, 0 to 1: something just happened to it or because of it. */
   glow: number;
@@ -36,7 +38,7 @@ const JUICE_DRAG = 0.12;
  * blowing up). A blast reaches it as a kick through its props. The ball has no angle of its own, so the fruit's turning is
  * drawn from how it moves: it rolls along what it touches.
  */
-export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surface, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
+export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surface, pull, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
   // `turn` is how far it has rolled, in degrees; `lastX` where it was a step ago.
   const s = useMutable({ kicked: 0, turn: 0, lastX: x0, lastY: y0 });
   const { x, y, contacts, push, speed, pin, setGravity } = useBall({
@@ -58,6 +60,7 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
     const under = FRUITS[kind].heavy === undefined ? Math.max(0, Math.min(1, (y + radius - surface) / (radius * 2))) : 0;
     setGravity(GRAVITY * (1 - 2 * under));
     if (under > 0) push(-(x - s.lastX) * 60 * JUICE_DRAG, -(y - s.lastY) * 60 * JUICE_DRAG);
+    if (pull !== 0) push(pull / 60, 0);
     if (kicks !== s.kicked) {
       s.kicked = kicks;
       push(kickX, kickY);

@@ -2,7 +2,7 @@ import { Collider, Entity, Shape, Sprite } from "@tsengine/runtime/jsx";
 
 import { Fruit } from "./Fruit.tsx";
 import { Peg } from "./Peg.tsx";
-import { JAR, PULSE, RIM, bossNow, surface, type FruitReport, type Run } from "./rules/jar.ts";
+import { JAR, PULSE, RIM, TILT_PULL, bossNow, surface, type FruitReport, type Run } from "./rules/jar.ts";
 import { JUICE } from "./theme.ts";
 
 /** The jar's pictures reach this far outside its walls and above its glass, which starts this far above the rim. */
@@ -25,6 +25,7 @@ export function Jar({ run, onReport }: JarProps) {
   const y = RIM - JAR_NECK - JAR_MARGIN;
   const width = JAR.right - JAR.left;
   const top = surface(run);
+  const pull = bossNow(run) === "tilt" ? TILT_PULL : 0;
   const liquid = run.lime && run.milk ? "both" : run.milk ? "milk" : "lime";
   return (
     <Entity>
@@ -49,6 +50,7 @@ export function Jar({ run, onReport }: JarProps) {
           pickled={f.pickled}
           frozen={f.frozen}
           surface={run.lime ? top : JAR.floor + 100}
+          pull={pull}
           lit={f.lit && Math.floor(f.fuse * 20) % 2 === 0}
           glow={f.pulseDelay > 0 ? 0 : f.pulse / PULSE}
           kicks={f.kicks}

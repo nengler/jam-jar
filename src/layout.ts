@@ -92,3 +92,14 @@ export function cycleTitle(run: Run): string {
   const boss = bossNow(run);
   return `${boss === null ? "Cycle" : BOSS_NAME[boss]} ${run.cycle} of ${RENT.length}`;
 }
+
+/**
+ * Where things in the jar are on screen when the jar leans by `angle` radians about its low right corner (`cx`, `cy`): the same
+ * things, moved. For what is drawn over a leaning jar but stays upright itself, like the score popups.
+ */
+export function leaned<T extends { x: number; y: number }>(things: readonly T[], angle: number, cx: number, cy: number): T[] {
+  if (angle === 0) return things.slice();
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return things.map((t) => ({ ...t, x: cx + (t.x - cx) * cos - (t.y - cy) * sin, y: cy + (t.x - cx) * sin + (t.y - cy) * cos }));
+}

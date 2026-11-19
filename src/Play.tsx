@@ -7,14 +7,14 @@ import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
-import { atRest, cycleTitle, moment, placed, startingRun, poolRows } from "./layout.ts";
+import { atRest, cycleTitle, leaned, moment, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, BOOM_LIFE, bossNow, dramatic, shownScore, preservable, JAR, rentFor, RENT, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, BOOM_LIFE, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -163,7 +163,7 @@ export function Play() {
   const jarMid = (JAR.left + JAR.right) / 2;
   // The score on screen runs behind the run's while the tally's popups are still to come, and catches up as each shows.
   const scored = shownScore(run);
-  const popups = run.popups.filter((p) => p.delay <= 0);
+  const popups = leaned(run.popups.filter((p) => p.delay <= 0), lean(run), JAR.right, JAR.floor);
   const links = run.links.filter((l) => l.delay <= 0);
   const paid = scored >= rent;
   const filled = Math.max(0, Math.min(1, scored / rent));
@@ -192,31 +192,37 @@ export function Play() {
     <Entity>
       <Backdrop />
 
-      <Jar run={run} onReport={report} />
-      {/* The Preserves Jar: an amber frame round each fruit kept, and an arrow over the one the cursor is on. */}
-      {keptFruit.map((f) => (
-        <Flex key={f.id} x={f.x - f.r - 4} y={f.y - f.r - 4} width={f.r * 2 + 8} height={f.r * 2 + 8} backgroundImage={SELECT} slice={CARD_SLICE} />
-      ))}
-      {preserving && chosen !== undefined && <Sprite image="pointer.png" x={Math.round(chosen.x) - 9} y={Math.round(chosen.y - chosen.r) - 20} />}
-      {run.effects.map((e) => (
-        <Sprite
-          key={e.id}
-          image={`boom-${Math.min(BOOM_FRAMES - 1, Math.floor((e.age / BOOM_LIFE) * BOOM_FRAMES))}.png`}
-          x={e.x}
-          y={e.y}
-          originX={BOOM_SIZE / 2}
-          originY={BOOM_SIZE / 2}
-          scaleX={2}
-          scaleY={2}
-        />
-      ))}
-      {/* A line between two fruit while one does something to the other: a dark one under a coloured one, so it shows on any fruit. */}
-      {links.map((l) => (
-        <Entity key={l.id}>
-          <Line x={l.x1} y={l.y1} x2={l.x2} y2={l.y2} width={6} color={INK} />
-          <Line x={l.x1} y={l.y1} x2={l.x2} y2={l.y2} width={2} color={LINK[l.kind]} />
+      {/* The jar and what is drawn on it turn together, about its low corner, when it leans (the Tilted jar). */}
+      <Entity x={JAR.right} y={JAR.floor} rotation={lean(run)}>
+        <Entity x={-JAR.right} y={-JAR.floor}>
+          <Jar run={run} onReport={report} />
+          {/* The Preserves Jar: an amber frame round each fruit kept, and an arrow over the one the cursor is on. */}
+          {keptFruit.map((f) => (
+            <Flex key={f.id} x={f.x - f.r - 4} y={f.y - f.r - 4} width={f.r * 2 + 8} height={f.r * 2 + 8} backgroundImage={SELECT} slice={CARD_SLICE} />
+          ))}
+          {preserving && chosen !== undefined && <Sprite image="pointer.png" x={Math.round(chosen.x) - 9} y={Math.round(chosen.y - chosen.r) - 20} />}
+          {run.effects.map((e) => (
+            <Sprite
+              key={e.id}
+              image={`boom-${Math.min(BOOM_FRAMES - 1, Math.floor((e.age / BOOM_LIFE) * BOOM_FRAMES))}.png`}
+              x={e.x}
+              y={e.y}
+              originX={BOOM_SIZE / 2}
+              originY={BOOM_SIZE / 2}
+              scaleX={2}
+              scaleY={2}
+            />
+          ))}
+          {/* A line between two fruit while one does something to the other: a dark one under a coloured one, so it shows on any fruit. */}
+          {links.map((l) => (
+            <Entity key={l.id}>
+              <Line x={l.x1} y={l.y1} x2={l.x2} y2={l.y2} width={6} color={INK} />
+              <Line x={l.x1} y={l.y1} x2={l.x2} y2={l.y2} width={2} color={LINK[l.kind]} />
+            </Entity>
+          ))}
         </Entity>
-      ))}
+      </Entity>
+      {/* The points stay upright over a leaning jar. */}
       {popups.map((p) => (
         <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={2} shadowY={2}>
           {p.text}

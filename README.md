@@ -121,11 +121,13 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   time the run comes to rest where you act (a hand to order, the pick, the rent, the shop, the Preserves Jar) and thrown
   away when the run ends. "New run" starts over.
 - Overflow: fruit whose top is above the rim at Resolve spill and cost 5 points each.
-- Boss jars: every third cycle (so cycle 3) is played in one, and the shop before it says which. A run meets one or the
-  other, by its seed.
+- Boss jars: every third cycle (so cycle 3) is played in one, and the shop before it says which. A run meets one of
+  three, by its seed.
   - The Peg jar has a round post in the middle that splits the pile.
   - In the Blind jar the hand is under cloths: it drops as it was dealt, and you cannot see or order it. (The Pool board
     still shows what is left, so the hand can be worked out.)
+  - The Tilted jar leans 6 degrees to the right, and everything in it rolls to the low side. The fruit are moved in the
+    jar's own frame, with a steady sideways pull, and the jar is drawn turned about its low corner.
 - Rent: 120, 180, 240, 320 and 400 over 5 cycles. Points over rent become coins (1 per 10).
 - The shop, after each rent but the last: three fruit (3 coins each), one item, taking a fruit out of your pool (4 coins; the
   pool keeps at least one hand of 4) and a new shelf (1 coin, then 2, 3, … that visit).
@@ -138,7 +140,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     it had is gone. Pickled fruit are tinted green.
   - Preserves (8), the Preserves Jar: after the shop, choose up to 2 fruit to stay in the jar when the rent empties it.
 
-Not built yet: the other boss jars (tilted, gravity-flip), a second kind of juice with its own effect, and honey
+Not built yet: the gravity-flip boss jar and honey
 that sticks fruit together (the Honeydew's honey only scores).
 
 The screen is 640 x 360 (16:9), scaled up by whole multiples.
