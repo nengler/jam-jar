@@ -42,12 +42,15 @@ export function bossCycle(cycle: number): boolean {
 
 /**
  * The boss jars. The Peg jar has a round post in the middle that splits the pile. In the Blind jar the hand is covered: it
- * drops as it was dealt, and you cannot see or order it. The Tilted jar leans, and everything in it rolls to the low side.
+ * drops as it was dealt, and you cannot see or order it. The Tilted jar leans, and everything in it rolls to the low side. The
+ * Flip jar has a lid on, and its gravity turns over after every second drop: the pile falls to the lid, then back to the floor.
  */
-export type Boss = "peg" | "blind" | "tilt";
-export const BOSS_NAME: Readonly<Record<Boss, string>> = { peg: "Peg jar", blind: "Blind jar", tilt: "Tilted jar" };
-const BOSS_RULE: Readonly<Record<Boss, string>> = { peg: "A post splits the pile.", blind: "The hand is covered.", tilt: "Everything rolls right." };
-const BOSSES: readonly Boss[] = ["blind", "peg", "tilt"];
+export type Boss = "peg" | "blind" | "tilt" | "flip";
+export const BOSS_NAME: Readonly<Record<Boss, string>> = { peg: "Peg jar", blind: "Blind jar", tilt: "Tilted jar", flip: "Flip jar" };
+const BOSS_RULE: Readonly<Record<Boss, string>> = { peg: "A post splits the pile.", blind: "The hand is covered.", tilt: "Everything rolls right.", flip: "Gravity flips every 2 drops." };
+const BOSSES: readonly Boss[] = ["blind", "peg", "tilt", "flip"];
+/** In the Flip jar, how many fruit drop between one turn of its gravity and the next. */
+export const FLIP_EVERY = 2;
 
 /** The boss jar a run meets: one of them, by its seed. */
 export function bossFor(seed: number): Boss {
@@ -243,6 +246,9 @@ export interface Run {
   dropTimer: number;
   /** Seconds since the last fruit dropped. */
   dropWait: number;
+  /** The Flip jar: how many fruit have dropped this cycle, and whether its gravity is turned over now (the pile lies on the lid). */
+  drops: number;
+  flipped: boolean;
   fruits: Fruit[];
   phase: Phase;
   cycle: number;
@@ -354,6 +360,8 @@ export function newRun(seed: number): Run {
     queue: [],
     dropTimer: 0,
     dropWait: 0,
+    drops: 0,
+    flipped: false,
     fruits: [],
     phase: "order",
     cycle: 1,
@@ -547,6 +555,11 @@ function onFloor(f: Fruit): boolean {
   return f.y + f.r >= JAR.floor - FLOOR_TOLERANCE;
 }
 
+/** Against the Flip jar's lid, which is at the rim. */
+function onLid(f: Fruit): boolean {
+  return f.y - f.r <= RIM + FLOOR_TOLERANCE;
+}
+
 function kick(f: Fruit, vx: number, vy: number): void {
   f.kicks += 1;
   f.kickX = vx;
@@ -718,13 +731,24 @@ function dropStep(run: Run, dt: number): void {
   const calm = run.fruits.every((f) => f.landed && f.speed < CALM_SPEED && !f.lit);
   run.calmTime = calm ? run.calmTime + dt : 0;
   const ready = run.fruits.length === 0 || run.calmTime >= DROP_CALM || run.dropWait >= DROP_LIMIT;
-  if (run.dropTimer <= 0 && ready && run.queue.length > 0) {
+  const flip = bossNow(run) === "flip";
+  if (run.dropTimer <= 0 && ready && run.queue.length > 0 && flip && run.drops > 0 && run.drops % FLIP_EVERY === 0 && run.flipped === (Math.floor(run.drops / FLIP_EVERY) % 2 === 0)) {
+    // The Flip jar: every second drop its gravity turns over, and the pile is left to fall and come to rest before the next.
+    run.flipped = !run.flipped;
+    run.message = run.flipped ? "Gravity flips: everything falls to the lid" : "Gravity flips back";
+    run.dropTimer = DROP_GAP;
+    run.dropWait = 0;
+    run.calmTime = 0;
+  } else if (run.dropTimer <= 0 && ready && run.queue.length > 0) {
     const kind = run.queue.shift() as FruitKind;
     const r = FRUITS[kind].radius;
     const rng = new Rng(run.seed);
     const x = rng.range(JAR.left + r, JAR.right - r);
     run.seed = rng.seed;
-    run.fruits.push(makeFruit(run, kind, x, DROP_Y));
+    // Under its lid, a fruit starts inside the jar, at the end it will fall away from.
+    const y = !flip ? DROP_Y : run.flipped ? JAR.floor - r - 2 : RIM + r + 2;
+    run.fruits.push(makeFruit(run, kind, x, y));
+    run.drops += 1;
     run.discard.push(kind);
     run.dropTimer = DROP_GAP;
     run.dropWait = 0;
@@ -779,7 +803,8 @@ function land(run: Run): void {
     if (f.landed) return;
     // On the floor, on a fruit that has landed, or come to rest afloat in lime juice.
     const afloat = run.lime && f.speed < CALM_SPEED && f.y + f.r > surface(run);
-    const settledOn = onFloor(f) || afloat || (near[i] ?? []).some((j) => run.fruits[j]?.landed === true);
+    const lying = run.flipped ? onLid(f) : onFloor(f);
+    const settledOn = lying || afloat || (near[i] ?? []).some((j) => run.fruits[j]?.landed === true);
     if (!settledOn) return;
     f.landed = true;
     sound(run, "land");
@@ -991,7 +1016,8 @@ export function resolve(run: Run): void {
   const staged: { popup: Popup | null; fruits: Fruit[]; links: Link[]; slot: number }[] = [];
   let slot = 0;
   const popupsBefore = run.popups.length;
-  const spilled = run.fruits.filter((f) => f.y - f.r < RIM);
+  // The Flip jar has its lid on: nothing spills from it.
+  const spilled = bossNow(run) === "flip" ? [] : run.fruits.filter((f) => f.y - f.r < RIM);
   if (spilled.length > 0 && run.items.includes("lid")) {
     // The Lid holds them in, once: nothing spills and nothing is lost, and the Lid is used up.
     run.items = run.items.filter((item) => item !== "lid");
@@ -1360,6 +1386,8 @@ function nextCycle(run: Run): void {
   run.juice = 0;
   run.lime = false;
   run.milk = false;
+  run.drops = 0;
+  run.flipped = false;
   run.fruits = run.fruits.filter((f) => run.kept.includes(f.id));
   // What a Pickling Jar keeps is Pickled: it does not age, and rot it had is gone.
   if (run.items.includes("pickling")) for (const f of run.fruits) Object.assign(f, { pickled: true, rotten: f.kind === "prune" });

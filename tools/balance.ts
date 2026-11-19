@@ -7,6 +7,7 @@
  * ("skip@juicer", "random@shaker+lid"). The rent is ignored (set to 0), so every run plays all its cycles.
  *
  *     node tools/balance.ts [runs per player, default 20] [players, e.g. skip,random,chili]
+ *     BALANCE_BOSS=flip node tools/balance.ts 18 skip     (every run meets that boss jar)
  */
 import { createPlayer, parseInputScript, RecordingBackend } from "@tsengine/player";
 import { findComponent } from "@tsengine/testing";
@@ -15,7 +16,7 @@ import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
 import { OFFERABLE } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
-import { POINTS_PER_COIN, REMOVAL_PRICE, RENT, SHOP_REMOVE, type Run } from "../src/rules/jar.ts";
+import { POINTS_PER_COIN, REMOVAL_PRICE, RENT, SHOP_REMOVE, type Boss, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
 
 type Strategy = string;
@@ -26,6 +27,9 @@ const ENTER = frame("Enter");
 const SPACE = frame("Space");
 const RIGHT = frame("right");
 const DOWN = frame("down");
+
+/** BALANCE_BOSS=flip plays every run's boss cycle in that jar, to compare the boss jars with each other. */
+const forcedBoss = process.env["BALANCE_BOSS"] as Boss | undefined;
 
 const rent = RENT.slice();
 (RENT as number[]).fill(0);
@@ -52,6 +56,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     const found = findComponent("Play", player.world.root) as { s: { run: Run } } | null;
     if (found === null || queued.length > 0) continue;
     if (items.some((item) => !found.s.run.items.includes(item))) found.s.run = { ...found.s.run, items };
+    if (forcedBoss !== undefined && found.s.run.boss !== forcedBoss) found.s.run = { ...found.s.run, boss: forcedBoss };
     const run = found.s.run;
     pool = run.pool.length;
     // A key, then a few idle frames, so a press is never read twice.

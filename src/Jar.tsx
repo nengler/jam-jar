@@ -45,6 +45,9 @@ export function Jar({ run, onReport }: JarProps) {
       <Collider x={JAR.left - 16} y={0} width={16} height={JAR.floor + 16} solid />
       <Collider x={JAR.right} y={0} width={16} height={JAR.floor + 16} solid />
       {bossNow(run) === "peg" && <Peg />}
+      {/* The Flip jar's lid: a plank across the rim that the pile falls to when its gravity turns over. */}
+      {bossNow(run) === "flip" && <Collider x={JAR.left - 8} y={RIM - 16} width={width + 16} height={16} solid />}
+      {bossNow(run) === "flip" && <Sprite image="shelf.png" x={(JAR.left + JAR.right) / 2 - 104} y={RIM - 12} />}
       {run.fruits.map((f) => (
         <Fruit
           key={f.id}
@@ -58,6 +61,7 @@ export function Jar({ run, onReport }: JarProps) {
           frozen={f.frozen}
           surface={run.lime ? top : JAR.floor + 100}
           pull={pull}
+          flipped={run.flipped}
           lean={angle}
           lit={f.lit && Math.floor(f.fuse * 20) % 2 === 0}
           glow={f.pulseDelay > 0 ? 0 : f.pulse / PULSE}

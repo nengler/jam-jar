@@ -20,6 +20,8 @@ interface FruitProps {
   surface: number;
   /** A steady pull to the right, in pixels per second per second: the Tilted jar. */
   pull: number;
+  /** Its gravity is turned over: it falls up (the Flip jar). */
+  flipped: boolean;
   /** How far the jar leans, in radians: the fruit is drawn where that puts it, turned with the jar. Its ball stays in the
    * jar's own frame, where the walls stand straight. */
   lean: number;
@@ -42,10 +44,10 @@ const JUICE_DRAG = 0.12;
  * blowing up). A blast reaches it as a kick through its props. The ball has no angle of its own, so the fruit's turning is
  * drawn from how it moves: it rolls along what it touches.
  */
-export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surface, pull, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
+export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surface, pull, flipped, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
   // `turn` is how far it has rolled, in degrees; `lastX` where it was a step ago.
   const s = useMutable({ kicked: 0, turn: 0, lastX: x0, lastY: y0 });
-  const { x, y, contacts, push, speed, pin, setGravity, stick } = useBall({
+  const { x, y, contacts, push, speed, pin, setGravity, setGravityX, stick } = useBall({
     x: x0,
     y: y0,
     radius: FRUITS[kind].radius,
@@ -64,9 +66,9 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
     // so it comes to rest half out of the juice. The juice also slows it, or it would bob for ever. A Heavy fruit sinks.
     const radius = FRUITS[kind].radius;
     const under = FRUITS[kind].heavy === undefined ? Math.max(0, Math.min(1, (y + radius - surface) / (radius * 2))) : 0;
-    setGravity(GRAVITY * (1 - 2 * under));
-    if (under > 0) push(-(x - s.lastX) * 60 * JUICE_DRAG, -(y - s.lastY) * 60 * JUICE_DRAG);
-    if (pull !== 0) push(pull / 60, 0);
+    setGravity(flipped ? -GRAVITY : GRAVITY * (1 - 2 * under));
+    if (under > 0 && !flipped) push(-(x - s.lastX) * 60 * JUICE_DRAG, -(y - s.lastY) * 60 * JUICE_DRAG);
+    setGravityX(pull);
     if (kicks !== s.kicked) {
       s.kicked = kicks;
       push(kickX, kickY);
