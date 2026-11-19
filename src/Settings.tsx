@@ -10,8 +10,9 @@ import { BUTTON, BUTTON_GREY, BUTTON_SLICE, INK, LIGHT_SOFT, PANEL, PANEL_SLICE 
 export function Settings() {
   const music = useGame((s) => s.music);
   const effects = useGame((s) => s.effects);
+  const fast = useGame((s) => s.fast);
   const learned = useGame((s) => s.learned);
-  const { changeMusic, changeEffects, toTitle } = useGame.actions();
+  const { changeMusic, changeEffects, changeSpeed, toTitle } = useGame.actions();
   return (
     <Entity>
       <Backdrop />
@@ -23,6 +24,9 @@ export function Settings() {
           <Button onPress={() => changeEffects(1)} onAdjust={(direction) => changeEffects(direction)} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
             <Text color={INK}>{`Sounds < ${effects} >`}</Text>
           </Button>
+          <Button onPress={changeSpeed} onAdjust={() => changeSpeed()} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
+            <Text color={INK}>{`Speed < ${fast ? "Fast" : "Normal"} >`}</Text>
+          </Button>
           <Button onPress={toTitle} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
             <Text color={INK}>Back</Text>
           </Button>
@@ -32,7 +36,7 @@ export function Settings() {
           {!learned.includes("settings") && <KeyHint name="Esc" label="Back" color={LIGHT_SOFT} />}
         </Flex>
       </Flex>
-      <Heading x={320} y={44} width={280} text="Settings" />
+      <Heading x={320} y={20} width={280} text="Settings" />
     </Entity>
   );
 }

@@ -29,6 +29,7 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 | Rent paid / run over | Enter |
 | Shop | Arrows choose, Enter buy, Space next cycle (or back, while choosing a fruit to remove) |
 | Preserves Jar | Left/Right choose a fruit in the jar, Enter keep it or let it go, Space next cycle |
+| While the jar plays | Hold F to hurry it (three times as fast) |
 | Any time | Esc pause |
 
 The keys for each moment are on screen the first time it comes up (ordering a hand, the pick, the shop, …) and not again;
@@ -107,6 +108,9 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   pick skipped, a new run a moment after the rent comes due).
 - Fruit roll: the physics has no angle, so each fruit's turning is drawn from how far it moves along what it touches.
 - Music on every screen, with a volume each for the music and the sounds in Settings, kept between launches.
+- Pace: the game steps 60 times a second whatever the display does, so the jar's own business (dropping, settling, the
+  tally) can run faster as the very same steps: twice as fast with Settings' Speed on Fast, three times while F is held.
+  Ordering, the pick and the shop are never hurried.
 - A run in progress is kept: quit or close the game, and the title offers Continue, back to the same jar. It is written each
   time the run comes to rest where you act (a hand to order, the pick, the rent, the shop, the Preserves Jar) and thrown
   away when the run ends. "New run" starts over.
