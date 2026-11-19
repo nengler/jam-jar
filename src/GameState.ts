@@ -1,51 +1,57 @@
 import { createGameState } from "@tsengine/runtime";
 
+import { effectsLevel, learn, learnedMoments, musicLevel, settings, stepVolume } from "./settings.ts";
+
 type Screen = "title" | "settings" | "play";
 
 /**
- * The game's state, in one place: which screen shows, whether play is paused, and the settings. A component reads one value with
+ * The game's state, in one place: which screen shows and whether play is paused. A component reads one value with
  * `useGame((s) => s.screen)` and takes the actions it calls with `const { start } = useGame.actions()`. An action is given the state
  * and writes it directly.
  *
- * The keys for a moment (ordering a hand, the pick, the shop, …) are shown the first time it comes up and not again: `learned`
- * lists the moments the player has been through. The pause menu always shows them.
+ * The volumes, and which moments' keys the player has already been shown, are the player's settings (settings.ts), kept
+ * between launches. They are mirrored here, so a screen reads them like any other state. (A component that read `settings`
+ * itself with `useStore` would miss the one change that matters most: the engine builds the first screen, then reads the
+ * player's files.)
  */
 export const useGame = createGameState(
   {
     screen: "title" as Screen,
     paused: false,
-    /** The volume, 0 to 10. */
-    volume: 8,
-    music: true,
     /** The seed of the current run; each new run takes the next one. */
     seed: 1,
+    /** The player's settings as the screens show them (settings.ts keeps them): the volumes, 0 to 10, and the moments whose keys
+     * have been shown and used once ("title", "order", "pick", "shop", …), whose hints are not drawn again. */
+    music: musicLevel(),
+    effects: effectsLevel(),
+    learned: learnedMoments(),
     /** How fast the game runs: 1, or less for the slow motion a chain of Blasts plays in. */
     speed: 1,
-    /** The moments whose keys have been shown and used once ("title", "order", "pick", "shop", …): their hints are not drawn again. */
-    learned: [] as string[],
   },
   {
+    /** The settings changed, or were read from the player's files: show them. */
+    settingsChanged(s) {
+      s.music = musicLevel();
+      s.effects = effectsLevel();
+      s.learned = learnedMoments();
+    },
     setSpeed(s, speed: number) {
       s.speed = speed;
     },
-    /** The player has got through this moment once, so they know its keys. */
-    learn(s, moment: string) {
-      if (moment !== "" && !s.learned.includes(moment)) s.learned = [...s.learned, moment];
-    },
     start(s) {
       s.speed = 1;
-      if (!s.learned.includes("title")) s.learned = [...s.learned, "title"];
+      learn("title");
       s.screen = "play";
       s.paused = false;
       s.seed += 1;
     },
     openSettings(s) {
-      if (!s.learned.includes("title")) s.learned = [...s.learned, "title"];
+      learn("title");
       s.screen = "settings";
     },
     toTitle(s) {
       s.speed = 1;
-      if (s.screen === "settings" && !s.learned.includes("settings")) s.learned = [...s.learned, "settings"];
+      if (s.screen === "settings") learn("settings");
       s.screen = "title";
       s.paused = false;
     },
@@ -55,11 +61,15 @@ export const useGame = createGameState(
     resume(s) {
       s.paused = false;
     },
-    changeVolume(s, by: number) {
-      s.volume = Math.min(10, Math.max(0, s.volume + by));
+    /** The settings screen's rows: the volumes are the player's settings (settings.ts), kept between launches. */
+    changeMusic(_s, by: number) {
+      stepVolume("music", by);
     },
-    toggleMusic(s) {
-      s.music = !s.music;
+    changeEffects(_s, by: number) {
+      stepVolume("effects", by);
     },
   }
 );
+
+// Each change to the settings, and their first reading from the player's files, is shown at once.
+settings.subscribe(() => useGame.actions().settingsChanged());
