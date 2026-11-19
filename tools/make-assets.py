@@ -355,6 +355,19 @@ def item_preserves() -> Image.Image:
     return doubled(out)
 
 
+def peg() -> Image.Image:
+    """The boss jar's peg, 22 x 22 art pixels (PEG.r in src/rules/jar.ts is its radius on screen): a wooden post seen end on."""
+    out = Image.new("RGBA", (22, 22))
+    draw = ImageDraw.Draw(out)
+    draw.ellipse((0, 0, 21, 21), fill=colour("#341c27"))
+    draw.ellipse((1, 1, 20, 20), fill=colour("#ad7757"))
+    draw.ellipse((4, 4, 17, 17), outline=colour("#7a4841"))
+    draw.ellipse((7, 7, 14, 14), outline=colour("#7a4841"))
+    draw.rectangle((10, 10, 11, 11), fill=colour("#7a4841"))
+    draw.arc((1, 1, 20, 20), 180, 280, fill=colour("#d7b594"))
+    return doubled(out)
+
+
 def pointer() -> Image.Image:
     """A gold arrow pointing down, 9 x 7 art pixels: over the fruit the Preserves Jar's cursor is on."""
     out = Image.new("RGBA", (9, 7))
@@ -413,6 +426,7 @@ def main() -> None:
     for name, picture in (("lid", item_lid), ("juicer", item_juicer), ("shaker", item_shaker), ("preserves", item_preserves)):
         picture().save(ASSETS / f"item-{name}.png")
     pointer().save(ASSETS / "pointer.png")
+    peg().save(ASSETS / "peg.png")
     kitchen().save(ASSETS / "kitchen.png")
     back, front = jar_pictures()
     back.save(ASSETS / "jar-back.png")

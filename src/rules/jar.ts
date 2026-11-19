@@ -31,6 +31,15 @@ export const RIM = 104;
 export const DROP_Y = 72;
 export const HAND_SIZE = 4;
 export const TURNS_PER_CYCLE = 5;
+/** The boss jar's peg: a round post in the middle of the jar that splits the pile, on every third cycle. */
+export const PEG = { x: 320, y: 236, r: 22 };
+export const BOSS_EVERY = 3;
+
+/** Whether a cycle is played in the boss jar (the Peg jar). */
+export function bossCycle(cycle: number): boolean {
+  return cycle % BOSS_EVERY === 0;
+}
+
 export const RENT: readonly number[] = [100, 150, 200, 260, 320];
 /** Points over the rent that make one coin. */
 export const POINTS_PER_COIN = 10;
@@ -182,6 +191,7 @@ declare global {
   /** What each ball and collider tag carries, so a fruit's `contacts("fruit")` has typed `data` (the engine's `ColliderData`). */
   interface ColliderData {
     fruit: { id: number };
+    peg: null;
   }
 }
 
@@ -821,7 +831,7 @@ function leaveRent(run: Run): void {
   run.shop = { fruits: [], item: null, rerolls: 0, cursor: 0, removing: false, removeCursor: 0 };
   stock(run, run.shop);
   run.phase = "shop";
-  run.message = "The shop is open";
+  run.message = bossCycle(run.cycle + 1) ? "Next cycle: the Peg jar" : "The shop is open";
 }
 
 /** Fill the shop's shelf: three different fruit, and an item not owned yet (none when every item is owned). */
@@ -962,7 +972,7 @@ function nextCycle(run: Run): void {
   run.draw = rng.shuffle(run.pool);
   run.discard = [];
   run.seed = rng.seed;
-  run.message = `Cycle ${run.cycle}: rent is ${rentFor(run.cycle)}`;
+  run.message = bossCycle(run.cycle) ? `The Peg jar! Rent is ${rentFor(run.cycle)}` : `Cycle ${run.cycle}: rent is ${rentFor(run.cycle)}`;
   deal(run);
   run.phase = "order";
 }

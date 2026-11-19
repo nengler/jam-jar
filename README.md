@@ -50,6 +50,8 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
   are tinted gold).
 - Music on every screen, and the Settings' volume and music switch work.
 - Overflow: fruit whose top is above the rim at Resolve spill and cost 5 points each.
+- The boss jar: every third cycle (so cycle 3) is the Peg jar, with a round post in the middle that splits the pile. The shop
+  before it says it is coming.
 - Rent: 100, 150, 200, 260 and 320 over 5 cycles. Points over rent become coins (1 per 10).
 - The shop, after each rent but the last: three fruit (3 coins each), one item, taking a fruit out of your pool (4 coins; the
   pool keeps at least one hand of 4) and a new shelf (1 coin, then 2, 3, … that visit).
@@ -59,7 +61,7 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
   - Shaker (5): throws every fruit about once a hand has dropped, so the pile lands differently.
   - Preserves Jar (8): after the shop, choose up to 2 fruit to stay in the jar when the rent empties it.
 
-Not built yet: the upgraded jars (Big Preserves Jar, Pickling Jar), boss jars, Juice and
+Not built yet: the upgraded jars (Big Preserves Jar, Pickling Jar), the other boss jars (tilted, blind, gravity-flip), Juice and
 grow, and Snow Pear (freezing needs a ball the engine can pin in place). The Honeydew's honey is not sticky yet, for the same
 reason.
 
@@ -92,7 +94,7 @@ group taken together sits near 110 a cycle); they are meant to pay in combinatio
   Each step it reports where it is, its speed and which fruit it touches; a blast reaches it as a kick through its props.
 - `src/Play.tsx` collects the reports, calls `advance` once a step and draws the result: the jar (walls are `<Collider solid>`),
   the fruit, the hand on its shelf, the rent board and the keys on the left, the pool by kind and a note of what just happened
-  on the right, and the pick cards. `Shop.tsx` draws the shop.
+  on the right, and the pick cards. `Shop.tsx` draws the shop and `Peg.tsx` is the boss jar's peg (a ball too heavy to move).
   `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `Board.tsx` is a parchment board
   with a ribbon heading, `KeyHint.tsx` a key cap and what it does, `Backdrop.tsx` the kitchen behind every screen. `theme.ts`
   names the colours, the fonts and the Kenney frames every screen is made of.
