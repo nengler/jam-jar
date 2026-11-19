@@ -55,6 +55,14 @@ export const WELL = "#c09473";
 export const BAR_FILL = "#be772b";
 export const RULE = "#d7b594";
 
+/** The line drawn between two fruit when one does something to the other, by what it did (rules/jar.ts, `Link`). */
+export const LINK: Readonly<Record<"boost" | "rot" | "honey" | "eat", string>> = {
+  boost: "#e8c170",
+  honey: "#de9e41",
+  rot: "#ad7757",
+  eat: "#ebede9",
+};
+
 /** A keyword in card text: on parchment, and on the dark shade under a card. */
 export const KEYWORD = "#3c5e8b";
 export const KEYWORD_LIGHT = "#e8c170";

@@ -1,4 +1,4 @@
-import { Collider, Entity, Flex, Shape, Sprite, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
+import { Collider, Entity, Flex, Line, Shape, Sprite, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
 import { Board, Heading } from "./Board.tsx";
@@ -29,6 +29,7 @@ import {
   KEYWORD,
   KEYWORD_LIGHT,
   LIGHT,
+  LINK,
   PLAQUE,
   SCORING,
   SELECT,
@@ -145,6 +146,7 @@ export function Play() {
   // The score on screen runs behind the run's while the tally's popups are still to come, and catches up as each shows.
   const scored = shownScore(run);
   const popups = run.popups.filter((p) => p.delay <= 0);
+  const links = run.links.filter((l) => l.delay <= 0);
   const paid = scored >= rent;
   const filled = Math.max(0, Math.min(1, scored / rent));
   const ordering = run.phase === "order";
@@ -212,6 +214,13 @@ export function Play() {
           scaleX={2}
           scaleY={2}
         />
+      ))}
+      {/* A line between two fruit while one does something to the other: a dark one under a coloured one, so it shows on any fruit. */}
+      {links.map((l) => (
+        <Entity key={l.id}>
+          <Line x={l.x1} y={l.y1} x2={l.x2} y2={l.y2} width={6} color={INK} />
+          <Line x={l.x1} y={l.y1} x2={l.x2} y2={l.y2} width={2} color={LINK[l.kind]} />
+        </Entity>
       ))}
       {popups.map((p) => (
         <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={2} shadowY={2}>
