@@ -12,7 +12,7 @@ import { Peg } from "./Peg.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { Shop } from "./Shop.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, BOOM_LIFE, bossCycle, preservable, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, BOOM_LIFE, bossCycle, PULSE, shownScore, preservable, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -130,8 +130,11 @@ export function Play() {
   const jarMid = (JAR.left + JAR.right) / 2;
   const jarX = JAR.left - JAR_MARGIN;
   const jarY = RIM - JAR_NECK - JAR_MARGIN;
-  const paid = run.cycleScore >= rent;
-  const filled = Math.max(0, Math.min(1, run.cycleScore / rent));
+  // The score on screen runs behind the run's while the tally's popups are still to come, and catches up as each shows.
+  const scored = shownScore(run);
+  const popups = run.popups.filter((p) => p.delay <= 0);
+  const paid = scored >= rent;
+  const filled = Math.max(0, Math.min(1, scored / rent));
   const ordering = run.phase === "order";
   const picking = run.phase === "pick";
   /** Whether this moment's keys are shown: only until the player has been through it once. */
@@ -143,7 +146,8 @@ export function Play() {
   /** On the shelf: the hand while ordering, then what is left of it while dropping. */
   const shelf = ordering ? run.hand : run.queue;
   const shelfLeft = jarMid - (shelf.length * SLOT) / 2;
-  const turn = Math.min(run.turn, TURNS_PER_CYCLE);
+  // Resolve has already counted the next turn; the pips wait for the tally to finish before showing it.
+  const turn = Math.min(run.turn - (run.phase === "tally" && run.afterTally === "pick" ? 1 : 0), TURNS_PER_CYCLE);
   const pool = poolRows(run.pool);
   const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
   const poolH = 30 + Math.ceil(pool.length / grid.columns) * POOL_ROW + 30;
@@ -172,6 +176,7 @@ export function Play() {
           rotten={f.rotten}
           honeyed={f.honeyed}
           lit={f.lit && Math.floor(f.fuse * 20) % 2 === 0}
+          glow={f.pulseDelay > 0 ? 0 : f.pulse / PULSE}
           kicks={f.kicks}
           kickX={f.kickX}
           kickY={f.kickY}
@@ -196,8 +201,8 @@ export function Play() {
           scaleY={2}
         />
       ))}
-      {run.popups.map((p) => (
-        <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={p.text.startsWith("-") ? BAD : GOLD} shadow={INK} shadowX={2} shadowY={2}>
+      {popups.map((p) => (
+        <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={2} shadowY={2}>
           {p.text}
         </Text>
       ))}
@@ -222,7 +227,7 @@ export function Play() {
         Score
       </Text>
       <Text x={HUD_X + BOARD_W - 16} y={BOARD_Y + 22} align="right" color={INK_SOFT}>{`Rent ${rent}`}</Text>
-      <Text x={HUD_X + BOARD_W / 2} y={BOARD_Y + 34} font={DISPLAY} size={DISPLAY_SIZE * 2} align="center" color={paid ? GOOD : INK}>{`${run.cycleScore}`}</Text>
+      <Text x={HUD_X + BOARD_W / 2} y={BOARD_Y + 34} font={DISPLAY} size={DISPLAY_SIZE * 2} align="center" color={paid ? GOOD : INK}>{`${scored}`}</Text>
       <Shape kind="rect" x={HUD_X + 16} y={BOARD_Y + 92} width={BOARD_W - 32} height={8} color={WELL} />
       {filled > 0 && <Shape kind="rect" x={HUD_X + 16} y={BOARD_Y + 92} width={Math.round(((BOARD_W - 32) * filled) / 2) * 2} height={8} color={paid ? GOOD : BAR_FILL} />}
       <Text x={HUD_X + 16} y={BOARD_Y + 106} color={INK_SOFT}>
@@ -233,7 +238,7 @@ export function Play() {
       ))}
       <Sprite image="coin.png" x={HUD_X + 14} y={BOARD_Y + 128} />
       <Text x={HUD_X + 46} y={BOARD_Y + 130} color={INK}>{`${run.coins}`}</Text>
-      <Text x={HUD_X + BOARD_W - 16} y={BOARD_Y + 130} align="right" color={INK_SOFT}>{`Total ${run.total}`}</Text>
+      <Text x={HUD_X + BOARD_W - 16} y={BOARD_Y + 130} align="right" color={INK_SOFT}>{`Total ${run.total - (run.cycleScore - scored)}`}</Text>
 
       {/* Under it: the keys for this moment, the first time it comes up (the pause menu has them after that). */}
       <Flex x={HUD_X + 4} y={BOARD_Y + HUD_H + 12} direction="column" gap={4}>
