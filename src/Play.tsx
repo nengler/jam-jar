@@ -297,10 +297,6 @@ export function Play() {
           <TapButton label="Done" keyName={hints ? "Space" : ""} onPress={tapDrop} />
         </Flex>
       )}
-      {/* Pause, small, in the top right corner: Esc for a finger. */}
-      <Flex right={4} top={4}>
-        <TapButton label="II" onPress={tapPause} />
-      </Flex>
 
       {/* Left: a column pinned to the screen's left edge. The rent board is as tall as what is on it: this cycle's score, big, and
           under it the rent it is counted against ("64 of 120 rent"); a bar of how much of the rent that is; the turn; and the
@@ -345,9 +341,12 @@ export function Play() {
               </Flex>
             ))}
           </Flex>
-          {/* The board shows what is still to be dealt; the whole pool, dealt or not, opens from here (or with D). */}
-          <Flex direction="row" justifyContent="center" paddingTop={4}>
-            <TapButton label="Whole pool" onPress={openPool} />
+          {/* The board shows what is still to be dealt; the whole pool, dealt or not, opens from here (or with D). Pause is
+              beside it: the two buttons of the play screen that are always there. */}
+          <Flex direction="row" justifyContent="space-between" paddingTop={4}>
+            <TapButton label="See all" onPress={openPool} />
+            {/* Esc for a finger. In words: two bars in this font read as a Roman numeral. */}
+            <TapButton label="Pause" onPress={tapPause} />
           </Flex>
         </Panel>
       </Flex>
