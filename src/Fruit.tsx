@@ -2,6 +2,7 @@ import { useBall, useMutable, useUpdate } from "@tsengine/runtime/jsx";
 
 import { FruitBall } from "./FruitBall.tsx";
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
+import { leanX, leanY } from "./layout.ts";
 import { GRAVITY, JAR, type FruitReport } from "./rules/jar.ts";
 
 interface FruitProps {
@@ -19,6 +20,9 @@ interface FruitProps {
   surface: number;
   /** A steady pull to the right, in pixels per second per second: the Tilted jar. */
   pull: number;
+  /** How far the jar leans, in radians: the fruit is drawn where that puts it, turned with the jar. Its ball stays in the
+   * jar's own frame, where the walls stand straight. */
+  lean: number;
   lit: boolean;
   /** How lit up it is, 0 to 1: something just happened to it or because of it. */
   glow: number;
@@ -38,7 +42,7 @@ const JUICE_DRAG = 0.12;
  * blowing up). A blast reaches it as a kick through its props. The ball has no angle of its own, so the fruit's turning is
  * drawn from how it moves: it rolls along what it touches.
  */
-export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surface, pull, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
+export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surface, pull, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
   // `turn` is how far it has rolled, in degrees; `lastX` where it was a step ago.
   const s = useMutable({ kicked: 0, turn: 0, lastX: x0, lastY: y0 });
   const { x, y, contacts, push, speed, pin, setGravity } = useBall({
@@ -72,5 +76,5 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
     s.lastY = y;
     onReport({ id: id, x: x, y: y, speed: speed(), touching: touching });
   });
-  return <FruitBall kind={kind} x={x} y={y} turn={s.turn} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} />;
+  return <FruitBall kind={kind} x={leanX(x, y, lean, JAR.right, JAR.floor)} y={leanY(x, y, lean, JAR.right, JAR.floor)} turn={s.turn + (lean * 180) / Math.PI} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} />;
 }

@@ -192,10 +192,10 @@ export function Play() {
     <Entity>
       <Backdrop />
 
-      {/* The jar and what is drawn on it turn together, about its low corner, when it leans (the Tilted jar). */}
+      <Jar run={run} onReport={report} />
+      {/* What is drawn on the jar turns with it, about its low corner, when it leans (the Tilted jar). */}
       <Entity x={JAR.right} y={JAR.floor} rotation={lean(run)}>
         <Entity x={-JAR.right} y={-JAR.floor}>
-          <Jar run={run} onReport={report} />
           {/* The Preserves Jar: an amber frame round each fruit kept, and an arrow over the one the cursor is on. */}
           {keptFruit.map((f) => (
             <Flex key={f.id} x={f.x - f.r - 4} y={f.y - f.r - 4} width={f.r * 2 + 8} height={f.r * 2 + 8} backgroundImage={SELECT} slice={CARD_SLICE} />
