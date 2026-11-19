@@ -1,4 +1,4 @@
-import type { FruitKind, Scoring } from "./rules/fruits.ts";
+import type { FruitKind } from "./rules/fruits.ts";
 import { FRUIT_ART } from "./rules/sizes.ts";
 
 /**
@@ -49,8 +49,6 @@ export const BUTTON_SLICE = CARD_SLICE;
 export const ROTTEN = "#ad7757";
 /** A Pickled one is tinted this green. */
 export const PICKLED = "#a8ca58";
-/** The chip of a Legendary fruit. */
-export const LEGENDARY_CHIP = "#be772b";
 /** A honeyed one is tinted this gold. */
 export const HONEYED = "#e8c170";
 
@@ -71,12 +69,6 @@ export const LINK: Readonly<Record<"boost" | "rot" | "honey" | "eat", string>> =
 export const KEYWORD = "#3c5e8b";
 export const KEYWORD_LIGHT = "#e8c170";
 
-/** How a fruit scores, as the chip on its pick card: its word and its colour. */
-export const SCORING: Readonly<Record<Scoring, { name: string; color: string }>> = {
-  fresh: { name: "Fresh", color: "#468232" },
-  simmer: { name: "Simmer", color: "#a53030" },
-  booster: { name: "Booster", color: "#3c5e8b" },
-};
 
 /** Which picture of a fruit: its size in the jar, a 32-pixel icon, or a 64-pixel one for the pick cards. */
 export type FruitLook = "jar" | "icon" | "big";
@@ -94,3 +86,6 @@ export const COUNTER_Y = 342;
 
 /** The motes of dust in the kitchen's air: two blues a little lighter than the wall. */
 export const MOTE: readonly [string, string] = ["#253a5e", "#3c5e8b"];
+
+/** A card's tooltip: one box for each keyword on it, this wide, beside the card. */
+export const TERM_W = 216;

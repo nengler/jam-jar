@@ -1,4 +1,4 @@
-import { Entity, Flex, Line, Shape, Sprite, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Line, Shape, Sprite, Text, Tooltip, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
 import { Board, Heading } from "./Board.tsx";
@@ -6,11 +6,12 @@ import { FruitBall } from "./FruitBall.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
-import { atRest, chipColor, fruitGlossary, moment, startingRun, poolRows, scoringLabel } from "./layout.ts";
+import { atRest, fruitGlossary, moment, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
+import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
 import { advance, BOOM_LIFE, bossCycle, dramatic, shownScore, preservable, JAR, rentFor, RENT, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
@@ -79,7 +80,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -104,12 +105,15 @@ export function Play() {
         down: input.pressed("ArrowDown"),
         left: input.pressed("ArrowLeft"),
         right: input.pressed("ArrowRight"),
-        confirm: input.pressed("Enter"),
+        confirm: input.pressed("Enter") || s.click,
         drop: input.pressed("Space"),
+        point: s.point,
       },
       s.reports
     );
     s.reports = [];
+    s.point = -1;
+    s.click = false;
     // Through a moment once (a hand dropped, a pick made, the shop left), its keys are known: they are not shown again.
     if (moment(s.run) !== before) learn(before);
     // Each time the run comes to rest where the player acts, it is kept for "Continue"; once it is over there is nothing to keep.
@@ -136,6 +140,14 @@ export function Play() {
     if (heard.includes("tick")) playTick(0.6);
   });
 
+  // The mouse: over a card (a pick's offer, or a place in the shop) the cursor goes to it, and a click is Enter on it.
+  const point = (card: number) => {
+    s.point = card;
+  };
+  const click = (card: number) => {
+    s.point = card;
+    s.click = true;
+  };
   const report = (r: FruitReport) => {
     s.reports = [...s.reports, r];
   };
@@ -165,7 +177,8 @@ export function Play() {
   const pool = poolRows(run.pool);
   const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
   const poolH = 30 + Math.ceil(pool.length / grid.columns) * POOL_ROW + 30;
-  const offerGlossary = fruitGlossary(picking ? run.offers[run.offerCursor] : null, 2);
+  // Under the cards, for the keyboard: what the chosen card's first keywords mean (a third once the key hints are gone).
+  const offerGlossary = fruitGlossary(picking ? run.offers[run.offerCursor] : null, hints ? 2 : 3);
   const offersLeft = 320 - (3 * OFFER_W + 2 * OFFER_GAP) / 2;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
 
@@ -273,19 +286,19 @@ export function Play() {
         <Entity>
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
           <Heading x={320} y={12} width={240} text="Pick a fruit" />
-          {run.offers.map((kind, i) => (
-            <Entity key={`${kind}${i}`} x={offersLeft + i * (OFFER_W + OFFER_GAP)} y={i === run.offerCursor ? 52 : 60}>
-              <Flex width={OFFER_W} height={OFFER_H} backgroundImage={cardFor(i === run.offerCursor)} slice={CARD_SLICE} />
-              <FruitBall kind={kind} x={OFFER_W / 2} y={50} look="big" />
-              <Text x={OFFER_W / 2} y={84} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
-                {FRUITS[kind].name}
-              </Text>
-              <Flex y={116} width={OFFER_W} justifyContent="center">
-                <Flex height={22} paddingX={8} paddingTop={4} background={chipColor(kind)} alignItems="center">
-                  <Text color={LIGHT}>{scoringLabel(kind)}</Text>
-                </Flex>
+          {placed(run.offers).map((offer) => (
+            <Entity key={offer.at} x={offersLeft + offer.at * (OFFER_W + OFFER_GAP)} y={offer.at === run.offerCursor ? 52 : 60}>
+              {/* The mouse over a card chooses it and brings up what its keywords mean, beside it; a click takes it. */}
+              <Flex width={OFFER_W} height={OFFER_H} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => point(offer.at)} onPress={() => click(offer.at)}>
+                <Tooltip anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={0} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                  <Terms text={FRUITS[offer.card].text} />
+                </Tooltip>
               </Flex>
-              <RuleText x={12} y={146} width={OFFER_W - 24} text={FRUITS[kind].text} color={INK_SOFT} accent={KEYWORD} />
+              <FruitBall kind={offer.card} x={OFFER_W / 2} y={50} look="big" />
+              <Text x={OFFER_W / 2} y={84} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
+                {FRUITS[offer.card].name}
+              </Text>
+              <RuleText x={12} y={122} width={OFFER_W - 24} text={FRUITS[offer.card].text} color={INK_SOFT} accent={KEYWORD} />
             </Entity>
           ))}
           {/* What the chosen card's keywords mean. */}
@@ -315,7 +328,7 @@ export function Play() {
           </Flex>
         </Entity>
       )}
-      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} />}
+      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} onPoint={point} onClick={click} />}
       {paused && <Pause />}
     </Entity>
   );

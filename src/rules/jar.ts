@@ -273,9 +273,11 @@ export interface Keys {
   confirm: boolean;
   /** Space: drop the hand, skip the pick. */
   drop: boolean;
+  /** The mouse came over this card (a pick's offer, a place on the shop's shelf or one of its actions): the cursor goes to it. -1 for none. */
+  point: number;
 }
 
-export const NO_KEYS: Keys = { up: false, down: false, left: false, right: false, confirm: false, drop: false };
+export const NO_KEYS: Keys = { up: false, down: false, left: false, right: false, confirm: false, drop: false, point: -1 };
 
 /** The starting pool: 1 Apple plus 8 starters, 3–5 Cherries, 2–4 Grapes and 0–2 Oranges (see the design doc). */
 export function rollPool(rng: Rng): FruitKind[] {
@@ -886,17 +888,17 @@ function explode(run: Run, bomb: Fruit): void {
     kick(f, (dx / d) * push, (dy / d) * push - 80);
   }
   run.fruits = [...kept, ...born];
-  score(run, points, bomb.x, bomb.y - radius / 2, { label: "Blast" });
+  score(run, points, bomb.x, bomb.y - radius / 2, { label: "Explode" });
   run.chain += 1;
   run.sinceBlast = 0;
   run.blasted = victims.length;
   if (run.chain >= 2) say(run, bomb.x, bomb.y - radius / 2 - POPUP_LINE, `Chain x${run.chain}`);
   effect(run, "boom", bomb.x, bomb.y, radius * 2);
   sound(run, "boom");
-  run.message = `${FRUITS[bomb.kind].name} Blast: ${victims.length} fruit destroyed`;
+  run.message = `${FRUITS[bomb.kind].name} Exploded: ${victims.length} fruit destroyed`;
   if (figs > 0) {
     run.bananaBonus += figs;
-    run.message = `A Rotten Fig was Blasted: Bananas score +${run.bananaBonus}`;
+    run.message = `A Rotten Fig Exploded: Bananas Grow to +${run.bananaBonus}`;
   }
 }
 
@@ -1073,8 +1075,9 @@ function offer(run: Run): void {
 
 function pickStep(run: Run, keys: Keys): void {
   const move = (keys.right || keys.down ? 1 : 0) - (keys.left || keys.up ? 1 : 0);
-  if (move !== 0) {
-    run.offerCursor = Math.max(0, Math.min(run.offers.length - 1, run.offerCursor + move));
+  const to = keys.point >= 0 && keys.point < run.offers.length ? keys.point : Math.max(0, Math.min(run.offers.length - 1, run.offerCursor + move));
+  if (to !== run.offerCursor) {
+    run.offerCursor = to;
     sound(run, "tick");
   }
   if (keys.confirm) {
@@ -1169,7 +1172,7 @@ function shopStep(run: Run, keys: Keys): void {
 
   // The shelf (0 to SHOP_ITEM) is the top row and the three actions the bottom one: left and right walk along both, up and
   // down change rows, keeping roughly the same place across.
-  let to = Math.max(0, Math.min(SHOP_LEAVE, shop.cursor + across));
+  let to = keys.point >= 0 && keys.point <= SHOP_LEAVE ? keys.point : Math.max(0, Math.min(SHOP_LEAVE, shop.cursor + across));
   if (down > 0 && to <= SHOP_ITEM) to = SHOP_REMOVE + Math.min(2, Math.floor((to * 3) / (SHOP_ITEM + 1)));
   else if (down < 0 && to > SHOP_ITEM) to = Math.round(((to - SHOP_REMOVE) * SHOP_ITEM) / 2);
   if (to !== shop.cursor) sound(run, "tick");

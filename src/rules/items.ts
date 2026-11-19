@@ -17,12 +17,12 @@ export interface ItemDef {
 }
 
 export const ITEMS: Readonly<Record<ItemKind, ItemDef>> = {
-  lid: { name: "Lid", price: 6, text: "Stops the next Spill, then is used up." },
+  lid: { name: "Lid", price: 6, text: "Stops the next Spill. Once." },
   juicer: { name: "Juicer", price: 8, text: "Each turn, Crush the fruit on the floor." },
-  shaker: { name: "Shaker", price: 5, text: "After each drop, shakes the jar." },
-  preserves: { name: "Preserves", price: 8, text: "Keep 2 fruit when the rent empties the jar.", keeps: 2 },
-  bigpreserves: { name: "Big Jar", price: 8, text: "Keep 3 fruit when the rent empties the jar.", upgrades: "preserves", keeps: 3 },
-  pickling: { name: "Pickling Jar", price: 8, text: "Keep 1 fruit, Pickled: it never ages or Rots.", upgrades: "preserves", keeps: 1 },
+  shaker: { name: "Shaker", price: 5, text: "After each drop, Shake." },
+  preserves: { name: "Preserves", price: 8, text: "Preserve 2.", keeps: 2 },
+  bigpreserves: { name: "Big Jar", price: 8, text: "Preserve 3.", upgrades: "preserves", keeps: 3 },
+  pickling: { name: "Pickling Jar", price: 8, text: "Preserve 1, Pickled.", upgrades: "preserves", keeps: 1 },
 };
 
 export const ITEM_KINDS = Object.keys(ITEMS) as ItemKind[];

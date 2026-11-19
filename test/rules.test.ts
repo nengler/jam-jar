@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { fruitGlossary, motes, poolRows, scoringLabel } from "../src/layout.ts";
+import { fruitGlossary, motes, poolRows, termsOf } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { FRUITS } from "../src/rules/fruits.ts";
 import {
@@ -149,7 +149,7 @@ test("a Lemon blocks merges next to it", () => {
   assert.equal(run.fruits.filter((f) => f.kind === "cherry").length, 2);
 });
 
-test("a Chili touching 4 fruit explodes and scores what it destroys, with the blast's bonus for each", () => {
+test("a Chili touching 4 fruit explodes and scores what it destroys, with the explosion's bonus for each", () => {
   // A Blueberry counts as 3 fruit, so Blueberry + Apple make 4.
   const y = JAR.floor;
   const run = jarWith([fruit(1, "chili", 160, y - 6, [2, 3]), fruit(2, "blueberry", 170, y - 4, [1]), fruit(3, "apple", 147, y - 7, [1])]);
@@ -508,33 +508,75 @@ test("a Coconut cracks at its third Resolve, and what touches the Cracked Coconu
   assert.equal(run.cycleScore - before, 2 + 1 + FRUITS.grape.points);
 });
 
-test("terms: a keyword is found in any of its forms, whatever punctuation follows it", () => {
-  assert.equal(keywordOf("Blast."), "blast");
-  assert.equal(keywordOf("Blasted:"), "blast");
-  assert.equal(keywordOf("Rots"), "rotten");
+test("terms: a keyword is found by its capital, whatever punctuation follows it, and the number after it is coloured with it", () => {
+  assert.equal(keywordOf("Exploder"), "exploder");
+  assert.equal(keywordOf("Exploded:"), "exploded");
+  assert.equal(keywordOf("Merged:"), "merge");
   assert.equal(keywordOf("fruit"), undefined);
-  assert.equal(keywordOf("blast"), undefined, "only with its capital");
+  assert.equal(keywordOf("exploded"), undefined, "only with its capital");
   assert.deepEqual(
-    ruleWords("Touching 4 fruit: Blast.").map((w) => w.keyword),
-    [false, false, false, true]
+    ruleWords("Fresh 2. Exploder 4.").map((w) => w.keyword),
+    [true, true, true, true]
+  );
+  assert.deepEqual(
+    ruleWords("Each turn, Eat a Rotten fruit: +8 and Hatch.").map((w) => w.keyword),
+    [false, false, true, false, true, false, false, false, true],
+    "a number that does not follow a keyword is not"
   );
 });
 
-test("terms: a card's glossary is its scoring type, then the keywords in its text in order", () => {
-  assert.deepEqual(keywordsIn(FRUITS.pomegranate.text, ["fresh"]), ["fresh", "blast", "merge", "burst"]);
-  assert.deepEqual(fruitGlossary("chili", 2), [`Fresh: ${KEYWORDS.fresh.text}`, `Blast: ${KEYWORDS.blast.text}`]);
+test("terms: a card's tooltip is every keyword in its text, in order; under the card, the first few", () => {
+  assert.deepEqual(keywordsIn(FRUITS.pomegranate.text), ["fresh", "exploded", "merge", "burst"]);
+  assert.deepEqual(
+    termsOf(FRUITS.chili.text).map((t) => t.name),
+    ["Fresh", "Exploder"]
+  );
+  assert.deepEqual(fruitGlossary("chili", 2), [`Fresh: ${KEYWORDS.fresh.text}`, `Exploder: ${KEYWORDS.exploder.text}`]);
   assert.deepEqual(fruitGlossary(null, 2), []);
-  assert.equal(scoringLabel("orange"), "Fresh 8");
-  assert.equal(scoringLabel("lemon"), "Booster");
 });
 
-test("terms: card text keeps to the vocabulary: no scoring word, no other word for a keyword, and definitions that fit a line", () => {
-  const banned = /\b(explode|explodes|blow|blown|blows|overflow|rots? spreads|Simmer:|Booster:|Fresh:)\b/i;
+test("terms: the numbers on the cards are the rules' numbers", () => {
+  for (const [kind, def] of Object.entries(FRUITS)) {
+    if (def.scoring === "fresh") assert.ok(def.text.startsWith(`Fresh ${def.points}.`), `${kind}: "${def.text}"`);
+  }
+  assert.match(FRUITS.blueberry.text, new RegExp(`Dense ${FRUITS.blueberry.touchWeight}\\.`));
+  assert.match(ITEMS.preserves.text, new RegExp(`Preserve ${ITEMS.preserves.keeps}\\.`));
+  assert.match(ITEMS.bigpreserves.text, new RegExp(`Preserve ${ITEMS.bigpreserves.keeps}\\.`));
+});
+
+test("terms: cards keep to the vocabulary, every keyword is used, and a definition fits its tooltip", () => {
+  const banned = /\b(blast|blasted|blow|blown|blows|overflow|explosion)\b/i;
+  const used = new Set<string>();
   for (const def of [...Object.values(FRUITS), ...Object.values(ITEMS)]) {
     assert.ok(!banned.test(def.text), `${def.name}: "${def.text}"`);
     assert.ok(def.text.endsWith("."), `${def.name} ends with a full stop`);
+    assert.ok(keywordsIn(def.text).length <= 4, `${def.name}: a tooltip holds four keywords`);
+    for (const keyword of keywordsIn(def.text)) used.add(keyword);
   }
-  for (const def of Object.values(KEYWORDS)) assert.ok(def.text.length <= 60, `${def.name}: ${def.text.length} characters`);
+  // Used in a definition or a message, not on a card of its own.
+  for (const keyword of ["explode", "spill"]) used.add(keyword);
+  for (const [keyword, def] of Object.entries(KEYWORDS)) {
+    assert.ok(def.text.length <= 46, `${def.name}: ${def.text.length} characters`);
+    assert.ok(used.has(keyword), `${def.name} is on no card`);
+  }
+});
+
+test("the mouse: coming over a card chooses it, in the pick and in the shop, and a click is Enter on it", () => {
+  let run = jarWith([]);
+  run.turn = 1;
+  resolve(run);
+  assert.equal(run.phase, "pick");
+  run = press(run, { point: 2 });
+  assert.equal(run.offerCursor, 2);
+  const kind = run.offers[1]!;
+  run = press(run, { point: 1, confirm: true });
+  assert.equal(run.pool.at(-1), kind, "clicked: taken");
+
+  let shop = inShop(10);
+  shop = press(shop, { point: SHOP_REROLL });
+  assert.equal(shop.shop!.cursor, SHOP_REROLL);
+  shop = press(shop, { point: SHOP_LEAVE, confirm: true });
+  assert.equal(shop.phase, "order");
 });
 
 test("readability: a popup names what earned it, and says x2 when a Booster doubled it", () => {
