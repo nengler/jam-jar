@@ -234,6 +234,28 @@ test("a Frozen fruit is held where it is: what was under it can go, and it does 
   player.close();
 });
 
+test("in the Tilted jar the fruit roll to the low side, stay inside the walls, and the jar still settles", () => {
+  const backend = new RecordingBackend();
+  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
+  const step = (script: string) => {
+    for (const frame of parseInputScript(script, { bindings })) {
+      backend.queueInput(frame);
+      player.step();
+    }
+  };
+  step("_*2, Enter, _*5");
+  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
+  play.s.run = { ...play.s.run, boss: "tilt", cycle: 3 };
+  step("Space, _*420");
+  const run = play.s.run;
+  assert.equal(run.phase, "pick", "it came to rest");
+  const mid = (JAR.left + JAR.right) / 2;
+  const mean = run.fruits.reduce((sum, f) => sum + f.x, 0) / run.fruits.length;
+  assert.ok(mean > mid + 20, `the pile lies to the right (mean x = ${mean}, middle ${mid})`);
+  for (const f of run.fruits) assert.ok(f.x - f.r >= JAR.left - 0.5 && f.x + f.r <= JAR.right + 0.5, `${f.kind} inside the walls (x = ${f.x})`);
+  player.close();
+});
+
 /** Play a new run's first hand to the pick, with these keys held from the drop on, and say how many frames it took and how it ended. */
 function firstHand(prepare: () => void, held: string): { frames: number; run: Run; speeds: Set<number> } {
   const backend = new RecordingBackend();
