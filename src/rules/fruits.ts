@@ -50,7 +50,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   melon: { name: "Melon", radius: FRUIT_ART.melon.radius, color: "#b5e48c", rim: "#5d8a3a", points: 20, scoring: "fresh", mergesInto: "watermelon", touchWeight: 1, text: "Merges into Watermelon" },
   watermelon: { name: "Watermelon", radius: FRUIT_ART.watermelon.radius, color: "#2a9d5c", rim: "#145232", points: 50, scoring: "fresh", touchWeight: 1, text: "Two vanish for +100" },
   apple: { name: "Apple", radius: FRUIT_ART.apple.radius, color: "#d62839", rim: "#6e101b", points: 1, scoring: "simmer", touchWeight: 1, text: "Simmer: scores more the deeper it sits" },
-  banana: { name: "Banana", radius: FRUIT_ART.banana.radius, color: "#ffe066", rim: "#a68a1c", points: 1, scoring: "simmer", touchWeight: 1, text: "Simmer: +1 a turn; rots after 3 turns" },
+  banana: { name: "Banana", radius: FRUIT_ART.banana.radius, color: "#ffe066", rim: "#a68a1c", points: 1, scoring: "simmer", touchWeight: 1, text: "Simmer: 2, then +1 a turn; rots after 3 turns" },
   chili: { name: "Chili", radius: FRUIT_ART.chili.radius, color: "#ff3d00", rim: "#8a1f00", points: 2, scoring: "fresh", touchWeight: 1, text: "Explodes touching 4+ fruit" },
   durian: { name: "Durian", radius: FRUIT_ART.durian.radius, color: "#c9b458", rim: "#6b5f22", points: 4, scoring: "fresh", touchWeight: 1, text: "Big blast once 3 fruit sit on it" },
   pomegranate: { name: "Pomegranate", radius: FRUIT_ART.pomegranate.radius, color: "#b5179e", rim: "#5e0b52", points: 3, scoring: "fresh", touchWeight: 1, text: "Bursts into 5 Cherries when hit or merged" },

@@ -38,12 +38,12 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 - Fresh fruit score when they land or are made by a merge. Simmer fruit (Apple, Banana) score at every Resolve. Lemon is a
   Booster: fruit touching it score double, and it blocks merges next to it.
 - The Boom group: Chili (explodes touching 4+ fruit), Durian (big blast once 3 fruit sit on it), Pomegranate (bursts into 5
-  Cherries when hit or merged), Blueberry (counts as 3 fruit for touch checks) and Seed (sprouts a starter when blown up). Blasts
-  chain into other Chilis and Durians.
-- Banana: +1 a turn, rots after 3 turns, and rot spreads to one touching fruit a turn.
+  Cherries when hit; two that merge burst into 5 between them), Blueberry (counts as 3 fruit for touch checks) and Seed (sprouts a starter when blown up). Blasts
+  chain into other Chilis and Durians, and score a bonus for each fruit destroyed (6 for a Chili's, 8 for a Durian's).
+- Banana: 2, then +1 a turn, rots after 3 turns, and rot spreads to one touching fruit a turn.
 - Overflow: fruit whose top is above the rim at Resolve spill and cost 5 points each.
-- Rent: 25, 50, 100, 175 and 300 over 5 cycles. Points over rent become coins (1 per 5).
-- The shop, after each rent but the last: three fruit (3 coins each), one item, taking a fruit out of your pool (3 coins; the
+- Rent: 100, 150, 200, 260 and 320 over 5 cycles. Points over rent become coins (1 per 10).
+- The shop, after each rent but the last: three fruit (3 coins each), one item, taking a fruit out of your pool (4 coins; the
   pool keeps at least one hand of 4) and a new shelf (1 coin, then 2, 3, … that visit).
 - Items: the Lid (6 coins) stops one overflow, then is used up. Items you own stand on the counter.
 
@@ -51,6 +51,23 @@ Not built yet: the other items (Preserves Jar, Juicer, Shaker), boss jars, Juice
 grow, the rest of the Rot group (Fruit Fly, Fig, Prune), Kiwi, Peach, Honeydew and Snow Pear.
 
 The screen is 640 x 360 (16:9), scaled up by whole multiples.
+
+## Balance
+
+`node tools/balance.ts` plays whole runs on the engine's physics with no window and prints what each cycle scored, for players
+that never order a hand: one that never picks, one that picks at random, one per fruit that takes only that fruit, and
+`/thin` versions that spend their coins taking Cherries out of the pool. The rent curve is set against it:
+
+| Player (30 runs) | Median score, cycles 1 to 5 | Makes the last rent |
+| --- | --- | --- |
+| Never picks | 233, 231, 233, 238, 233 | 0 in 30 |
+| Picks at random | 200, 188, 196, 171, 187 | 0 in 30 |
+| Never picks, thins the pool | 233, 263, 291, 294, 298 | 6 in 30 |
+| Takes Pomegranates, thins the pool | 206, 248, 280, 311, 350 | 17 in 30 |
+
+What it showed: the starters' merge ladder is worth about 11 points a drop, so a fruit that scores less than that when it is
+dealt makes the pool worse. Most picks still do on their own (a lone Lemon, Seed or Blueberry costs the most); they are meant
+to pay in combination, and nothing here measures an ordered hand. Rerun it after changing a fruit.
 
 ## How it is built
 
@@ -66,7 +83,7 @@ The screen is 640 x 360 (16:9), scaled up by whole multiples.
   `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `Board.tsx` is a parchment board
   with a ribbon heading, `KeyHint.tsx` a key cap and what it does, `Backdrop.tsx` the kitchen behind every screen. `theme.ts`
   names the colours, the fonts and the Kenney frames every screen is made of.
-- `tools/install-engine.ts` packs `../tse` and installs it without saving.
+- `tools/install-engine.ts` packs `../tse` and installs it without saving. `tools/balance.ts` is the balance run above.
 - `tools/make-assets.py` (Python with Pillow) builds `assets/` from the free art in `tools/`, sizing each fruit to its radius in
   `src/rules/fruits.ts`. Rerun it after changing a radius.
 
