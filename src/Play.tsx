@@ -10,7 +10,7 @@ import { offerText, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { Shop } from "./Shop.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, BOOM_LIFE, chosenRow, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, BOOM_LIFE, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -187,8 +187,8 @@ export function Play() {
       <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y} />
       {shelf.map((kind, i) => (
         <Entity key={`${kind}${i}`} x={shelfLeft + i * SLOT + SLOT / 2} y={SHELF_Y - 18}>
-          {ordering && i === chosenRow(run) && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
-          <FruitBall kind={kind} x={0} y={run.holding && i === chosenRow(run) ? -8 : 0} look="icon" />
+          {ordering && i === run.cursor && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
+          <FruitBall kind={kind} x={0} y={ordering && run.holding && i === run.cursor ? -8 : 0} look="icon" />
         </Entity>
       ))}
 
