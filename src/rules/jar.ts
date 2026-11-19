@@ -56,10 +56,11 @@ const COCONUT_TURNS = 3;
 /** What a honeyed fruit scores at each Resolve. */
 const HONEY_POINTS = 2;
 const POPUP_LIFE = 0.9;
-/** About how wide a popup's character is on screen, how close two popups' middles may be across, and a popup's line, in pixels. */
-const POPUP_CHAR = 14;
-const POPUP_CLEAR_X = 56;
+/** About how wide a popup's character is on screen, and a popup's line, in pixels. */
+const POPUP_CHAR = 13;
 const POPUP_LINE = 22;
+/** How fast a popup rises once it shows, in pixels a second. */
+const POPUP_RISE = 36;
 /** A chain: a Blast within this many seconds of the last one. And a big Blast: one that destroys at least this many fruit. */
 const CHAIN_WINDOW = 1.2;
 export const BIG_BLAST = 5;
@@ -151,6 +152,20 @@ export interface Popup {
   points: number;
 }
 
+/** A line drawn for a moment between two fruit, from the one that did something to the one it did it to. */
+export interface Link {
+  id: number;
+  /** What it shows: a Booster doubling a score, rot or honey spreading, a fruit being eaten, or rot a Prune scores for. */
+  kind: "boost" | "rot" | "honey" | "eat";
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  /** Seconds left of it, and seconds until it shows (the tally shows its steps one after another). */
+  life: number;
+  delay: number;
+}
+
 /** Something drawn for a moment: a blast's explosion. */
 export interface Effect {
   id: number;
@@ -211,6 +226,7 @@ export interface Run {
   offers: FruitKind[];
   offerCursor: number;
   popups: Popup[];
+  links: Link[];
   effects: Effect[];
   /** One line about what just happened. */
   message: string;
@@ -305,6 +321,7 @@ export function newRun(seed: number): Run {
     offers: [],
     offerCursor: 0,
     popups: [],
+    links: [],
     effects: [],
     message: "Order your hand, then Space to drop",
     sounds: [],
@@ -332,6 +349,7 @@ function copy(run: Run): Run {
     shop: run.shop === null ? null : { ...run.shop, fruits: run.shop.fruits.slice() },
     offers: run.offers.slice(),
     popups: run.popups.map((p) => ({ ...p })),
+    links: run.links.map((l) => ({ ...l })),
     effects: run.effects.map((e) => ({ ...e })),
     sounds: [],
   };
@@ -382,10 +400,31 @@ function say(run: Run, x: number, y: number, text: string, points = 0): Popup {
   const half = Math.min((JAR.right - JAR.left) / 2, text.length * POPUP_CHAR) / 2 + 4;
   const px = Math.max(JAR.left + half, Math.min(JAR.right - half, x));
   let py = y;
-  for (let tries = 0; tries < 6 && run.popups.some((p) => Math.abs(p.x - px) < POPUP_CLEAR_X && Math.abs(p.y - py) < POPUP_LINE); tries++) py -= POPUP_LINE;
+  for (let tries = 0; tries < 6 && run.popups.some((p) => Math.abs(p.x - px) < besides(p.text, text) && Math.abs(p.y - py) < POPUP_LINE); tries++) py -= POPUP_LINE;
   const popup: Popup = { id: run.nextId++, x: px, y: py, text, life: POPUP_LIFE, delay: 0, points };
   run.popups.push(popup);
   return popup;
+}
+
+/** How far apart two popups' middles must be to sit side by side: half of each one's width, about. */
+function besides(a: string, b: string): number {
+  return ((a.length + b.length) * POPUP_CHAR) / 2;
+}
+
+/** Where a popup will be, `after` seconds from now: it waits out its delay, then rises. */
+function popupY(p: Popup, after: number): number {
+  return p.y - POPUP_RISE * Math.max(0, after - p.delay);
+}
+
+/** Move a tally popup up until, when it shows, it is clear of those that show before it: they have been rising since they did. */
+function clearOf(popup: Popup, earlier: readonly Popup[]): void {
+  for (let tries = 0; tries < 8; tries++) {
+    const inTheWay = earlier.find(
+      (p) => popup.delay - p.delay < POPUP_LIFE && Math.abs(p.x - popup.x) < besides(p.text, popup.text) && Math.abs(popupY(p, popup.delay) - popup.y) < POPUP_LINE
+    );
+    if (inTheWay === undefined) return;
+    popup.y = popupY(inTheWay, popup.delay) - POPUP_LINE;
+  }
 }
 
 /** Whether the Blast that just went off (this step's "boom") is worth slowing down for: part of a chain, or a big one. */
@@ -396,6 +435,13 @@ export function dramatic(run: Run): boolean {
 /** The cycle's score as the screen shows it: without the points of the tally's popups still to come. */
 export function shownScore(run: Run): number {
   return run.cycleScore - run.popups.reduce((sum, p) => sum + (p.delay > 0 ? p.points : 0), 0);
+}
+
+/** Draw a line from one fruit to another for a moment. Returns it, so the tally can time it. */
+function link(run: Run, kind: Link["kind"], from: Fruit, to: Fruit): Link {
+  const made: Link = { id: run.nextId++, kind, x1: from.x, y1: from.y, x2: to.x, y2: to.y, life: PULSE, delay: 0 };
+  run.links.push(made);
+  return made;
 }
 
 /** Light a fruit up for a moment: something just happened to it, or because of it. */
@@ -455,6 +501,8 @@ interface Earned {
   popup: Popup;
   doubled: boolean;
   fruits: Fruit[];
+  /** A line from each Booster to the fruit. */
+  links: Link[];
 }
 
 /** Score what a fruit (by index) earns, doubled if it touches a Booster: the popup then says "x2" and the Boosters light up too. */
@@ -466,7 +514,7 @@ function earn(run: Run, links: readonly number[][], i: number, points: number, l
   const boosters = doubled ? (links[i] ?? []).map((j) => run.fruits[j] as Fruit).filter((o) => o.kind === "lemon" || o.kind === "cracked") : [];
   const fruits = [f, ...boosters];
   for (const o of fruits) pulse(o);
-  return { popup, doubled, fruits };
+  return { popup, doubled, fruits, links: boosters.map((booster) => link(run, "boost", booster, f)) };
 }
 
 /** Whether a fruit (by index) touches a Lemon: it cannot merge. */
@@ -495,8 +543,13 @@ export function advance(previous: Run, dt: number, keys: Keys, reports: readonly
       continue;
     }
     p.life -= dt;
-    p.y -= 36 * dt;
+    p.y -= POPUP_RISE * dt;
   }
+  for (const l of run.links) {
+    if (l.delay > 0) l.delay -= dt;
+    else l.life -= dt;
+  }
+  run.links = run.links.filter((l) => l.life > 0);
   for (const f of run.fruits) {
     if (f.pulseDelay > 0) f.pulseDelay -= dt;
     else if (f.pulse > 0) f.pulse = Math.max(0, f.pulse - dt);
@@ -821,7 +874,7 @@ function explode(run: Run, bomb: Fruit): void {
 /** The jar has settled: spill what is over the rim, Simmer fruit score, age and rot, then the pick (or rent after turn 5). */
 export function resolve(run: Run): void {
   // What the tally shows one after another: each popup and each fruit to light up, with its place in the order.
-  const staged: { popup: Popup | null; fruits: Fruit[]; slot: number }[] = [];
+  const staged: { popup: Popup | null; fruits: Fruit[]; links: Link[]; slot: number }[] = [];
   let slot = 0;
   const popupsBefore = run.popups.length;
   const spilled = run.fruits.filter((f) => f.y - f.r < RIM);
@@ -866,7 +919,9 @@ export function resolve(run: Run): void {
     const earned = earn(run, near, i, points);
     if (earned === null) return;
     slot += 1;
-    staged.push({ popup: earned.popup, fruits: earned.fruits, slot });
+    // A Prune's score is for the rot round it: a line from each rotten neighbour.
+    const rot = f.kind === "prune" ? touched.filter((o) => o.rotten).map((o) => link(run, "rot", o, f)) : [];
+    staged.push({ popup: earned.popup, fruits: earned.fruits, links: [...earned.links, ...rot], slot });
   });
 
   // Each Fruit Fly eats one rotten fruit it touches (never a Prune) and a new Fly hatches where it was.
@@ -879,7 +934,7 @@ export function resolve(run: Run): void {
     eaten.add(meal.id);
     const earned = earn(run, near, i, FRUITS.fruitfly.points, "Eat");
     slot += 1;
-    staged.push({ popup: earned?.popup ?? null, fruits: earned?.fruits ?? [f], slot });
+    staged.push({ popup: earned?.popup ?? null, fruits: earned?.fruits ?? [f], links: [link(run, "eat", f, meal), ...(earned?.links ?? [])], slot });
     const fly = makeFruit(run, "fruitfly", meal.x, meal.y);
     fly.landed = true;
     hatched.push(fly);
@@ -898,7 +953,7 @@ export function resolve(run: Run): void {
     swallowed.add(cherry.id);
     run.pitayaBonus += 1;
     slot += 1;
-    staged.push({ popup: null, fruits: [f], slot });
+    staged.push({ popup: null, fruits: [f], links: [link(run, "eat", f, cherry)], slot });
   }
   if (swallowed.size > 0) {
     run.fruits = run.fruits.filter((f) => !swallowed.has(f.id));
@@ -911,7 +966,7 @@ export function resolve(run: Run): void {
     const shell = makeFruit(run, "cracked", f.x, f.y);
     shell.landed = true;
     slot += 1;
-    staged.push({ popup: null, fruits: [shell], slot });
+    staged.push({ popup: null, fruits: [shell], links: [], slot });
     run.message = "A Coconut cracked";
     return shell;
   });
@@ -923,7 +978,7 @@ export function resolve(run: Run): void {
     if (next) {
       next.honeyed = true;
       slot += 1;
-      staged.push({ popup: null, fruits: [f, next], slot });
+      staged.push({ popup: null, fruits: [f, next], links: [link(run, "honey", f, next)], slot });
     }
   }
 
@@ -938,16 +993,22 @@ export function resolve(run: Run): void {
     if (next) {
       next.rotten = true;
       slot += 1;
-      staged.push({ popup: null, fruits: [next], slot });
+      staged.push({ popup: null, fruits: [next], links: [link(run, "rot", r, next)], slot });
     }
   }
 
   // Time the tally: a step between each thing, shorter when there are many, and how long the whole takes.
   const step = Math.min(TALLY_STEP, TALLY_MOST / Math.max(1, slot));
+  const shown: Popup[] = run.popups.slice(popupsBefore).filter((p) => !staged.some((s) => s.popup === p));
   for (const s of staged) {
     const delay = s.slot * step;
-    if (s.popup !== null) s.popup.delay = delay;
+    if (s.popup !== null) {
+      s.popup.delay = delay;
+      clearOf(s.popup, shown);
+      shown.push(s.popup);
+    }
     for (const f of s.fruits) pulse(f, delay);
+    for (const l of s.links) l.delay = delay;
   }
   run.tallyTime = run.popups.length > popupsBefore || slot > 0 ? slot * step + TALLY_HOLD : 0;
 

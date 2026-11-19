@@ -106,6 +106,8 @@ The design doc's biggest risk is that a pile of fruit is harder to read than a g
   ends "x2" when a Booster doubled them.
 - Fruit light up when something happens because of them: the Lemon that doubled a score, what set a Chili or a Durian off,
   a fruit a Merge made, one that just rotted or was honeyed.
+- A line joins two fruit while one does something to the other: a Booster to the fruit it doubled, rot or honey to the fruit
+  it spread to, a Fruit Fly or a Pitaya to what it ate, rot to the Prune that scores for it.
 - Two popups never sit on each other (a later one is a line higher) and none is cut by the jar's wall.
 - A Blast within 1.2 seconds of the last is a chain, and says so ("Chain x2"). A chain, or one Blast that destroys 5 fruit or
   more, plays in slow motion (the game at 0.35 of its speed for a moment), so you can see what it threw and set off.

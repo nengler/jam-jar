@@ -623,7 +623,9 @@ test("readability: two popups in one place are stacked, not drawn on each other,
   run.turn = 1;
   resolve(run);
   const [a, b] = run.popups as [Run["popups"][number], Run["popups"][number]];
-  assert.ok(Math.abs(a.y - b.y) >= 20, "the second is a line above the first");
+  // The second shows a step of the tally after the first, which has risen by then: it is a line clear of where the first is then.
+  const risen = a.y - 36 * (b.delay - a.delay);
+  assert.ok(Math.abs(risen - b.y) >= 22 - 1e-9, `${risen} and ${b.y}`);
 
   // Two Watermelons against the left wall: "Merge +100" is moved in, so the wall does not cut it.
   const r = FRUITS.watermelon.radius;
@@ -655,4 +657,19 @@ test("a second Blast soon after the first is a chain: it says so, and both a cha
   const big = jarWith([1, 2, 3, 4, 5].map((id) => fruit(id, "cherry", 290 + id * 4, y)));
   big.fruits.push({ ...fruit(9, "chili", 300, y), lit: true, fuse: 0 });
   assert.equal(dramatic(press(big, {})), true, "one Blast that destroys 5");
+});
+
+test("readability: a line joins a Booster to the fruit it doubled, and rot to the Prune that scores for it, at their turn in the tally", () => {
+  const y = JAR.floor - 18;
+  const run = jarWith([fruit(1, "apple", 300, y, [2]), fruit(2, "lemon", 334, y, [1]), fruit(3, "prune", 380, y, [4]), { ...fruit(4, "banana", 410, y, [3]), rotten: true }]);
+  run.turn = 1;
+  resolve(run);
+  const boost = run.links.find((l) => l.kind === "boost")!;
+  assert.deepEqual([boost.x1, boost.x2], [334, 300], "from the Lemon to the Apple");
+  const rot = run.links.find((l) => l.kind === "rot")!;
+  assert.deepEqual([rot.x1, rot.x2], [410, 380], "from the rotten Banana to the Prune");
+  assert.ok(rot.delay > boost.delay && boost.delay > 0, "each with its own step of the tally");
+  let later = run;
+  for (let i = 0; i < 300; i++) later = press(later, {});
+  assert.equal(later.links.length, 0, "and gone afterwards");
 });
