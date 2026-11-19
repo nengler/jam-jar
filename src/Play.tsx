@@ -1,7 +1,7 @@
 import { Entity, Flex, Line, Shape, Sprite, Text, Tooltip, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
-import { Board, Heading } from "./Board.tsx";
+import { Board, Heading, Panel } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
@@ -47,17 +47,14 @@ const SLOT = 48;
 /** The boards either side of the jar: 192 wide, 12 from the screen's edges, each under its heading. */
 const BOARD_W = 192;
 const HUD_X = 12;
-const POOL_X = 640 - 12 - BOARD_W;
 const BOARD_Y = 28;
-const HUD_H = 160;
 /** The pool: each kind a 32-pixel icon and how many of it, three across; four across, closer, once there are more than four
  * rows of them, so all 17 kinds a pool can hold fit above the note. */
-const POOL_ROOMY = { columns: 3, cell: 56 };
-const POOL_TIGHT = { columns: 4, cell: 43 };
+const POOL_ROOMY = { columns: 3, cell: 53 };
+const POOL_TIGHT = { columns: 4, cell: 40 };
 const POOL_ROW = 32;
-/** The note of what just happened: a slate under the pool, its foot just above the counter. */
-const NOTE_H = 72;
-const NOTE_Y = 324 - NOTE_H;
+/** The note of what just happened: a slate at the right, its foot this far above the foot of the screen (just above the counter). */
+const NOTE_FOOT = 36;
 /** Slow motion: how fast the game runs in it, and how long it lasts after the Blast that set it off, in the game's slowed seconds. */
 const SLOW_SPEED = 0.35;
 const SLOW_TIME = 0.4;
@@ -184,7 +181,6 @@ export function Play() {
   // The board shows what is still to be dealt this shuffle: the hand is on the shelf, and the rest has been played.
   const pool = poolRows(run.draw);
   const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
-  const poolH = 30 + Math.ceil(pool.length / grid.columns) * POOL_ROW + 30;
   const offersLeft = 320 - (3 * OFFER_W + 2 * OFFER_GAP) / 2;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
 
@@ -255,57 +251,73 @@ export function Play() {
         </Entity>
       ))}
 
-      {/* Left: the rent board. This cycle's score, big, and under it the rent it is counted against ("64 of 120 rent"); a bar of
-          how much of the rent that is; the turn; and the coins. */}
-      <Board x={HUD_X} y={BOARD_Y} width={BOARD_W} height={HUD_H} title={cycleTitle(run)} />
-      <Text x={HUD_X + BOARD_W / 2} y={BOARD_Y + 16} font={DISPLAY} size={DISPLAY_SIZE * 2} align="center" color={paid ? GOOD : INK}>{`${scored}`}</Text>
-      <Text x={HUD_X + BOARD_W / 2} y={BOARD_Y + 68} align="center" color={paid ? GOOD : INK_SOFT}>
-        {paid ? `Rent ${rent} made` : `of ${rent} rent`}
-      </Text>
-      <Shape kind="rect" x={HUD_X + 16} y={BOARD_Y + 92} width={BOARD_W - 32} height={8} color={WELL} />
-      {filled > 0 && <Shape kind="rect" x={HUD_X + 16} y={BOARD_Y + 92} width={Math.round(((BOARD_W - 32) * filled) / 2) * 2} height={8} color={paid ? GOOD : BAR_FILL} />}
-      <Text x={HUD_X + 16} y={BOARD_Y + 108} color={INK_SOFT}>
-        Turn
-      </Text>
-      <Text x={HUD_X + BOARD_W - 16} y={BOARD_Y + 108} align="right" color={INK_SOFT}>{`${turn} of ${TURNS_PER_CYCLE}`}</Text>
-      <Sprite image="coin.png" x={HUD_X + 14} y={BOARD_Y + 130} />
-      <Text x={HUD_X + 46} y={BOARD_Y + 132} color={INK}>{`${run.coins} ${run.coins === 1 ? "coin" : "coins"}`}</Text>
-
-      {/* Under it: the keys for this moment, the first time it comes up (the pause menu has them after that). */}
-      <Flex x={HUD_X + 4} y={BOARD_Y + HUD_H + 12} direction="column" gap={4}>
-        {ordering && hints && !blind && <KeyHint name="arrows" label={run.holding ? "Move it" : "Choose"} />}
-        {ordering && hints && !blind && <KeyHint name="Enter" label={run.holding ? "Put down" : "Pick up"} />}
-        {ordering && hints && <KeyHint name="Space" label="Drop" />}
-        {preserving && hints && <KeyHint name="arrows" label="Choose" />}
-        {preserving && hints && <KeyHint name="Enter" label="Keep" />}
-        {preserving && hints && <KeyHint name="Space" label="Done" />}
-        {!learned.includes("order") && <KeyHint name="Esc" label="Pause" />}
+      {/* Left: a column pinned to the screen's left edge. The rent board is as tall as what is on it: this cycle's score, big, and
+          under it the rent it is counted against ("64 of 120 rent"); a bar of how much of the rent that is; the turn; and the
+          coins. Under the board, the keys for this moment, the first time it comes up (the pause menu has them after that). */}
+      <Flex left={HUD_X} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch" gap={12}>
+        <Panel title={cycleTitle(run)}>
+          <Flex height={50} direction="row" justifyContent="center" alignItems="center">
+            <Text font={DISPLAY} size={DISPLAY_SIZE * 2} color={paid ? GOOD : INK}>{`${scored}`}</Text>
+          </Flex>
+          <Flex direction="row" justifyContent="center">
+            <Text color={paid ? GOOD : INK_SOFT}>{paid ? `Rent ${rent} made` : `of ${rent} rent`}</Text>
+          </Flex>
+          <Flex height={8} background={WELL}>
+            {filled > 0 && <Flex left={0} top={0} bottom={0} width={Math.round(((BOARD_W - 32) * filled) / 2) * 2} background={paid ? GOOD : BAR_FILL} />}
+          </Flex>
+          <Flex direction="row" justifyContent="space-between" paddingTop={6}>
+            <Text color={INK_SOFT}>Turn</Text>
+            <Text color={INK_SOFT}>{`${turn} of ${TURNS_PER_CYCLE}`}</Text>
+          </Flex>
+          <Flex direction="row" alignItems="center" gap={6}>
+            <Sprite image="coin.png" />
+            <Text color={INK}>{`${run.coins} ${run.coins === 1 ? "coin" : "coins"}`}</Text>
+          </Flex>
+        </Panel>
+        <Flex direction="column" gap={4} paddingLeft={4}>
+          {ordering && hints && !blind && <KeyHint name="arrows" label={run.holding ? "Move it" : "Choose"} />}
+          {ordering && hints && !blind && <KeyHint name="Enter" label={run.holding ? "Put down" : "Pick up"} />}
+          {ordering && hints && <KeyHint name="Space" label="Drop" />}
+          {preserving && hints && <KeyHint name="arrows" label="Choose" />}
+          {preserving && hints && <KeyHint name="Enter" label="Keep" />}
+          {preserving && hints && <KeyHint name="Space" label="Done" />}
+          {!learned.includes("order") && <KeyHint name="Esc" label="Pause" />}
+        </Flex>
       </Flex>
 
-      {/* Right: what is left of the pool to deal this shuffle, by kind, and how many that is of the whole pool. */}
-      <Board x={POOL_X} y={BOARD_Y} width={BOARD_W} height={poolH} title="Pool" />
-      {pool.map((row, i) => (
-        <Entity key={row.kind} x={POOL_X + 10 + (i % grid.columns) * grid.cell} y={BOARD_Y + 24 + Math.floor(i / grid.columns) * POOL_ROW}>
-          <FruitBall kind={row.kind} x={16} y={16} look="icon" />
-          <Text x={33} y={8} color={INK}>{`${row.count}`}</Text>
-          {/* The mouse over a kind in the Pool shows what it does, to the board's left. */}
-          <Flex width={32} height={32}>
-            <Tooltip anchor="top-right" to="top-left" offsetX={-12} offsetY={0} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-              <FruitTip kind={row.kind} grown={grownOf(run, row.kind)} />
-            </Tooltip>
+      {/* Right: pinned to the screen's right edge, what is left of the pool to deal this shuffle, by kind, and how many that is of
+          the whole pool. The kinds wrap, three to a row, or four, closer, once there are more than twelve. */}
+      <Flex right={HUD_X} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch">
+        <Panel title="Pool">
+          <Flex direction="row" wrap rowGap={0} columnGap={0}>
+            {pool.map((row) => (
+              <Flex key={row.kind} width={grid.cell} height={POOL_ROW} direction="row" alignItems="center">
+                <Flex width={32} height={32}>
+                  <FruitBall kind={row.kind} x={16} y={16} look="icon" />
+                  {/* The mouse over a kind in the Pool shows what it does, to the board's left. */}
+                  <Tooltip anchor="top-right" to="top-left" offsetX={-12} offsetY={0} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                    <FruitTip kind={row.kind} grown={grownOf(run, row.kind)} />
+                  </Tooltip>
+                </Flex>
+                <Text color={INK}>{`${row.count}`}</Text>
+              </Flex>
+            ))}
           </Flex>
-        </Entity>
-      ))}
-      <Text x={POOL_X + BOARD_W / 2} y={BOARD_Y + poolH - 30} align="center" color={INK_SOFT}>{run.draw.length === 0 ? "Shuffles next" : `${run.draw.length} left of ${run.pool.length}`}</Text>
+          <Flex direction="row" justifyContent="center" paddingTop={4}>
+            <Text color={INK_SOFT}>{run.draw.length === 0 ? "Shuffles next" : `${run.draw.length} left of ${run.pool.length}`}</Text>
+          </Flex>
+        </Panel>
+      </Flex>
 
-      {/* Under it: what just happened, on a slate. */}
+      {/* What just happened, on a slate pinned to the right edge, its foot just above the counter: as tall as its words. */}
       {run.message !== "" && run.phase !== "shop" && (
-        <Entity>
-          <Board x={POOL_X} y={NOTE_Y} width={BOARD_W} height={NOTE_H} image={PLAQUE} />
-          <Text x={POOL_X + 12} y={NOTE_Y + 6} width={BOARD_W - 24} maxWidth={BOARD_W - 24} color={LIGHT}>
-            {run.message}
-          </Text>
-        </Entity>
+        <Flex right={HUD_X} bottom={NOTE_FOOT} width={BOARD_W} direction="column" alignItems="stretch">
+          <Panel image={PLAQUE}>
+            <Text width={BOARD_W - 32} maxWidth={BOARD_W - 32} color={LIGHT}>
+              {run.message}
+            </Text>
+          </Panel>
+        </Flex>
       )}
 
       {/* The pick: three cards over a dimmed kitchen. */}

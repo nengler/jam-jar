@@ -9,7 +9,7 @@ Built on the [tse engine](https://github.com/nengler/tse). The design doc is the
 
 ## Running it
 
-The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.12.0), with
+The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.13.0), with
 `overrides` so the packs' own dependencies on each other resolve to the same release:
 
 ```sh
@@ -226,7 +226,8 @@ saved data and reads none.
   on the right, and the pick cards. `Shop.tsx` draws the shop and `Peg.tsx` is the boss jar's peg (a ball too heavy to move). `Jar.tsx` is the jar and its
   fruit, which the play screen and the title's `DemoJar.tsx` both draw.
   `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `RuleText.tsx` draws card text with its keywords in colour. `Board.tsx` is a parchment board
-  with its heading, `KeyHint.tsx` a key cap and what it does, `Backdrop.tsx` the kitchen behind every screen. `theme.ts`
+  with its heading (`Panel` is one sized by what is on it, which the rent board, the pool and the note slate are, each pinned
+  to an edge of the screen with the engine's `left` / `right` / `top` / `bottom`), `KeyHint.tsx` a key cap and what it does, `Backdrop.tsx` the kitchen behind every screen. `theme.ts`
   names the colours, the fonts and the Kenney frames every screen is made of. `settings.ts` is the player's settings, which the
   engine keeps between launches (the game has an id, `<Game id="jam-jar">`, which is what turns that on).
 - `tools/install-engine.ts` packs `../tse` and installs it without saving. `tools/balance.ts` is the balance run above.
