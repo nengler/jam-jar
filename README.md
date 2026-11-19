@@ -67,12 +67,12 @@ The screen is 640 x 360 (16:9), scaled up by whole multiples.
 
 - Fruit art: a 16 x 16 pixel fruit sheet (`tools/fruit/`; its source and licence are still to be added there). Stand-ins:
   the Durian is the Pineapple, the Seed the brown Kiwi, the Melon the round green one.
-- Everything else is [Kenney](https://kenney.nl) pixel art, CC0: panels, cards and buttons (UI Pixel Pack), the coin (Pixel
+- Everything else is [Kenney](https://kenney.nl) pixel art, CC0: frames, cards, buttons, the HUD and the ribbon (UI Pack - Pixel Adventure), the gingham
+  backdrop (Pattern Pack Pixel), the jar's glass (UI Pixel Pack), the coin (Pixel
   Platformer), blasts (Explosion Pack's pixel explosion), the font (Kenney Mini Square Mono) and the
   sounds. It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;
   `tools/kenney/README.md` says which file each came from.
-- The backdrop is a shader (`assets/swirl.glsl`): a slow swirl in four dark Apollo colours on the art's pixel grid. The
-  software renderer used by tests and `tse screenshot` runs no shaders and shows its flat colour; `tse screenshot --gpu` shows it.
+- The backdrop is Kenney's pixel gingham (Pattern Pack Pixel) in deep Apollo reds, drifting slowly (`src/Backdrop.tsx`).
 - Colours: the [Apollo palette](https://lospec.com/palette-list/apollo) by AdamCYounis (`tools/palette/apollo.hex`). Every
   picture is snapped to it, the Kenney UI pieces are recoloured onto Apollo ramps, and `src/theme.ts` names the UI's colours.
 - Every picture is pixel art. Fruit sizes come from scaling their 16-pixel sprites: 2x to 4x, with Grape and Melon at 2.5x and

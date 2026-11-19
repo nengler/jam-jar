@@ -15,12 +15,15 @@ export const BAD = "#a53030";
 export const RIM_LINE = "#cf573c";
 export const SHADE = "#090a14b0";
 
-/** Kenney UI Pixel Pack pieces, recoloured to Apollo: a cream panel, tan cards and an amber chosen card, all 9-sliced. */
-export const PANEL = "panel.png";
-export const PANEL_SLICE = 12;
-export const CARD = "card.png";
-export const CARD_CHOSEN = "card-chosen.png";
-export const CARD_SLICE = 12;
+/** Kenney UI Pack - Pixel Adventure pieces, recoloured to Apollo and 9-sliced: parchment in a wooden frame, the same in amber
+ * for the chosen one, dark slate for the HUD, and a red ribbon for headings. */
+export const PANEL = "frame.png";
+export const PANEL_SLICE = 8;
+export const CARD = "frame.png";
+export const CARD_CHOSEN = "frame-chosen.png";
+export const CARD_SLICE = 8;
+export const HUD_FRAME = "hud.png";
+export const RIBBON = "ribbon.png";
 
 /** The card for a row or an offer: amber when it is the chosen one. */
 export function cardFor(chosen: boolean): string {
@@ -48,8 +51,6 @@ export function fruitImageSize(kind: FruitKind, look: FruitLook): number {
   return look === "icon" ? 32 : look === "big" ? 64 : FRUIT_ART[kind].size;
 }
 
-/** The backdrop's plain colour, under its shader (and all a software renderer shows). */
-export const BACKDROP = "#172038";
 
 /** The HUD: dark blocks with a lighter edge, labels in soft light, values in light or gold, on dark insets. */
 export const HUD = "#10141f";

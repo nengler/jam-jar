@@ -8,7 +8,8 @@ Lays out the game's assets/ from the free art in tools/:
   - the sounds, copied as they are;
   - `kenney-mini-square-mono.ttf` (Kenney Fonts), drawn at twice its pixel size into `font.png`: the ASCII characters 32 to
     127 in a 16 x 6 grid of 12 x 16 cells, as tse's `<Text font>` takes;
-  - pixel art only, doubled with no smoothing: UI Pixel Pack panels and buttons (UI_TILES), Pixel Platformer's coin, and the Explosion Pack's pixel explosion.
+  - pixel art only: UI Pack - Pixel Adventure frames and the ribbon (ADVENTURE), Pattern Pack Pixel's gingham (the backdrop),
+    UI Pixel Pack's glass (the jar), Pixel Platformer's coin, and the Explosion Pack's pixel explosion.
 
     python3 tools/make-assets.py
 """
@@ -85,13 +86,41 @@ def hexes(*codes: str) -> list[tuple[int, int, int]]:
 # Ramps of Apollo colours, darkest first. A Kenney UI piece keeps its shading but takes a ramp's colours: its own colours,
 # ordered by brightness, are spread over the ramp (`recolor`).
 RAMPS = {
-    "panel": hexes("#4d2b32", "#7a4841", "#ad7757", "#d7b594", "#e7d5b3"),
-    "card": hexes("#4d2b32", "#7a4841", "#ad7757", "#c09473", "#d7b594"),
-    "chosen": hexes("#602c2c", "#884b2b", "#be772b", "#de9e41", "#e8c170"),
     "jar": hexes("#253a5e", "#3c5e8b", "#4f8fba", "#73bed3", "#a4dddb"),
-    "bar": hexes("#241527", "#341c27", "#4d2b32", "#602c2c"),
-    "bar-fill": hexes("#884b2b", "#be772b", "#de9e41", "#e8c170"),
 }
+
+
+# UI Pack - Pixel Adventure, large tiles with a thick outline: 32 x 32 tiles, packed, already drawn with 2 x 2 art pixels, so
+# they are used as they are. Each piece is (column, row, tiles across, ramp), drawn as a 9-slice in the game.
+ADVENTURE = {
+    "frame.png": (0, 0, 1, "frame"),  # parchment in a wooden frame: cards, menu buttons, boxes
+    "frame-chosen.png": (0, 0, 1, "frame-chosen"),  # the same in amber: the chosen one
+    "hud.png": (3, 0, 1, "hud"),  # dark slate: the HUD blocks and the shelf
+    "ribbon.png": (4, 3, 3, "ribbon"),  # the red ribbon: headings
+}
+RAMPS.update(
+    {
+        "frame": hexes("#341c27", "#7a4841", "#ad7757", "#e7d5b3"),
+        "frame-chosen": hexes("#602c2c", "#be772b", "#de9e41", "#e8c170"),
+        "hud": hexes("#090a14", "#10141f", "#151d28", "#394a50"),
+        "ribbon": hexes("#241527", "#752438", "#a53030", "#cf573c", "#e7d5b3"),
+        "gingham": hexes("#241527", "#341c27", "#4d2b32"),
+    }
+)
+# Pattern Pack Pixel, greyscale: 16 x 16 tiles, packed. The backdrop is tile (1, 4), a gingham check, like the cloth over a jam
+# jar's lid, in three deep Apollo reds, doubled and laid over a picture a tile bigger than the screen each way so it can drift.
+GINGHAM = (1, 4)
+
+
+def gingham() -> Image.Image:
+    sheet = Image.open(KENNEY / "pattern-pack-pixel-grayscale.png").convert("RGBA")
+    tile = doubled(recolor(sheet.crop((GINGHAM[0] * 16, GINGHAM[1] * 16, GINGHAM[0] * 16 + 16, GINGHAM[1] * 16 + 16)), RAMPS["gingham"]))
+    w, h = WIDTH + tile.width, HEIGHT + tile.height
+    out = Image.new("RGBA", (w, h))
+    for y in range(0, h, tile.height):
+        for x in range(0, w, tile.width):
+            out.paste(tile, (x, y))
+    return out
 
 
 def brightness(c: tuple[int, int, int]) -> float:
@@ -125,12 +154,7 @@ BIG = 64
 # UI Pixel Pack: 16 x 16 tiles, 2 pixels apart. Each image is (column, row, tiles across, tiles down) of the sheet, drawn as a
 # 9-slice in the game.
 UI_TILES = {
-    "panel.png": (0, 13, 3, 3),  # cream panel: the side panels, the banner and the boxes
-    "card.png": (9, 13, 3, 3),  # tan panel: hand rows, offers, menu buttons
-    "card-chosen.png": (9, 13, 3, 3),  # the same panel in amber: the one chosen
     "jar.png": (13, 20, 3, 3),  # blue-grey glass: the jar, drawn see-through
-    "bar.png": (3, 13, 3, 3),  # grey panel: the rent bar's track
-    "bar-fill.png": (0, 27, 3, 1),  # yellow bar: the rent paid so far
 }
 EXPLOSION_FRAMES = 9
 BOOM_SIZE = 96
@@ -193,9 +217,13 @@ def main() -> None:
     )
     ui = Image.open(KENNEY / "ui-pixel-pack-sheet.png").convert("RGBA")
     for name, (col, row, across, down) in UI_TILES.items():
-        piece = recolor(ui_image(ui, col, row, across, down), RAMPS[name.removesuffix(".png").replace("card-chosen", "chosen")])
+        piece = recolor(ui_image(ui, col, row, across, down), RAMPS[name.removesuffix(".png")])
         doubled(piece).save(ASSETS / name)
     to_palette(coin()).save(ASSETS / "coin.png")
+    adventure = Image.open(KENNEY / "ui-pixel-adventure-large-thick.png").convert("RGBA")
+    for name, (col, row, across, ramp) in ADVENTURE.items():
+        recolor(adventure.crop((col * 32, row * 32, (col + across) * 32, row * 32 + 32)), RAMPS[ramp]).save(ASSETS / name)
+    gingham().save(ASSETS / "gingham.png")
     # The explosion's frames (96 x 91) are centred on a 96 x 96 square so they share one origin.
     for i in range(EXPLOSION_FRAMES):
         frame = to_palette(Image.open(KENNEY / f"explosion-pixel-0{i}.png"))
@@ -205,7 +233,7 @@ def main() -> None:
     font_sheet().save(ASSETS / "font.png")
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
-    print(f"wrote {len(FRUIT_SPRITES) * 3} fruit images, the font, {len(UI_TILES)} UI images, the coin, the blast and {len(SOUNDS)} sounds")
+    print(f"wrote {len(FRUIT_SPRITES) * 3} fruit images, the font, the jar, {len(ADVENTURE)} frames, the gingham, the coin, the blast and {len(SOUNDS)} sounds")
 
 
 if __name__ == "__main__":

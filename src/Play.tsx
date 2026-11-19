@@ -27,6 +27,7 @@ import {
   HUD_LABEL,
   PANEL,
   PANEL_SLICE,
+  RIBBON,
   RIM_LINE,
   SHADE,
 } from "./theme.ts";
@@ -176,7 +177,7 @@ export function Play() {
       </Text>
 
       {/* The shelf: the hand, in the order it drops. The chosen fruit sits on amber; a held one is lifted. */}
-      <HudBox x={JAR.left - 24} y={SHELF_Y} width={jarWidth + 48} height={12} />
+      <HudBox x={JAR.left - 24} y={SHELF_Y} width={jarWidth + 48} height={16} />
       {shelf.map((kind, i) => (
         <Entity key={`${kind}${i}`} x={shelfLeft + i * SLOT + SLOT / 2} y={SHELF_Y - 20}>
           {i === chosenRow(run) && <Flex x={-20} y={-20} width={40} height={40} backgroundImage={cardFor(true)} slice={CARD_SLICE} />}
@@ -189,14 +190,14 @@ export function Play() {
       <Text x={HUD_X + 12} y={28} color={HUD_LABEL}>
         Cycle
       </Text>
-      <HudBox x={HUD_X + 96} y={22} width={HUD_W - 104} height={28} color={HUD_INSET} edge={HUD_INSET} />
+      <HudBox x={HUD_X + 96} y={22} width={HUD_W - 104} height={28} inset={HUD_INSET} />
       <Text x={HUD_X + HUD_W - 12} y={28} align="right" color={LIGHT}>{`${run.cycle}/${RENT.length}`}</Text>
 
       <HudBox x={HUD_X} y={64} width={HUD_W} height={120} />
       <Text x={HUD_X + 12} y={76} color={HUD_LABEL}>
         Score
       </Text>
-      <HudBox x={HUD_X + 8} y={96} width={HUD_W - 16} height={44} color={HUD_INSET} edge={HUD_INSET} />
+      <HudBox x={HUD_X + 8} y={96} width={HUD_W - 16} height={44} inset={HUD_INSET} />
       <Text x={HUD_X + HUD_W / 2} y={102} size={32} align="center" color={run.cycleScore >= rent ? GOOD_BRIGHT : GOLD}>{`${run.cycleScore}`}</Text>
       <Text x={HUD_X + 12} y={152} color={HUD_LABEL}>
         Rent
@@ -240,7 +241,8 @@ export function Play() {
       {picking && (
         <Entity>
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
-          <Text x={320} y={36} align="center" color={GOLD} shadow={INK} shadowX={2} shadowY={2}>
+          <Flex x={200} y={20} width={240} height={32} backgroundImage={RIBBON} slice={16} />
+          <Text x={320} y={28} align="center" color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>
             Pick a fruit
           </Text>
           {run.offers.map((kind, i) => (

@@ -1,15 +1,23 @@
-import { Layer, Shape } from "@tsengine/runtime/jsx";
+import { Entity, Sprite, useMutable, useUpdate } from "@tsengine/runtime/jsx";
 
-import { BACKDROP } from "./theme.ts";
+/** The gingham's tile, in pixels (Pattern Pack Pixel at 2x), and how fast it drifts, in pixels per second. */
+const TILE = 32;
+const DRIFT = 6;
 
 /**
- * The backdrop behind every screen: a full-screen square run through assets/swirl.glsl, a slow swirl in four dark Apollo colours.
- * The software renderer (tests, `tse screenshot`) runs no shaders and shows the square's plain colour instead.
+ * The backdrop behind every screen: Kenney's pixel gingham (Pattern Pack Pixel) in three deep Apollo reds, like the cloth over a
+ * jam jar's lid, drifting slowly down and to the right. The picture is a tile bigger than the screen each way, so moving it by
+ * less than a tile and wrapping shows no seam.
  */
 export function Backdrop() {
+  const s = useMutable({ time: 0 });
+  useUpdate((dt) => {
+    s.time = (s.time + dt) % (TILE / DRIFT);
+  });
+  const shift = Math.floor(s.time * DRIFT);
   return (
-    <Layer shader="swirl.glsl" params={[1]}>
-      <Shape kind="rect" x={0} y={0} width={640} height={360} color={BACKDROP} />
-    </Layer>
+    <Entity x={shift - TILE} y={shift - TILE}>
+      <Sprite image="gingham.png" />
+    </Entity>
   );
 }
