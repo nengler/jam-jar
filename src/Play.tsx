@@ -14,7 +14,7 @@ import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, BOOM_LIFE, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, BOOM_LIFE, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -84,7 +84,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -94,24 +94,31 @@ export function Play() {
   const playTick = useSound("tick.wav");
 
   useInput((input) => {
-    if (input.pressed("Escape")) pause();
+    if (input.pressed("Escape")) {
+      if (s.whole) s.whole = false;
+      else pause();
+    }
     if ((s.run.phase === "over" || s.run.phase === "won") && input.pressed("Enter")) toTitle();
   });
 
   useUpdate((dt, input) => {
     const before = moment(s.run);
     const phase = s.run.phase;
+    // While the whole pool is up, the run hears no keys: Enter, Space or D put the board away, and the jar plays on behind it.
+    const looking = s.whole;
+    if (looking && (input.pressed("Enter") || input.pressed("Space") || input.pressed("D"))) s.whole = false;
+    else if (!looking && input.pressed("D")) s.whole = true;
     s.run = advance(
       s.run,
       dt,
       {
-        up: input.pressed("ArrowUp"),
-        down: input.pressed("ArrowDown"),
-        left: input.pressed("ArrowLeft"),
-        right: input.pressed("ArrowRight"),
-        confirm: input.pressed("Enter") || s.click,
-        drop: input.pressed("Space") || s.drop,
-        point: s.point,
+        up: !looking && input.pressed("ArrowUp"),
+        down: !looking && input.pressed("ArrowDown"),
+        left: !looking && input.pressed("ArrowLeft"),
+        right: !looking && input.pressed("ArrowRight"),
+        confirm: !looking && (input.pressed("Enter") || s.click),
+        drop: !looking && (input.pressed("Space") || s.drop),
+        point: looking ? -1 : s.point,
       },
       s.reports
     );
@@ -160,6 +167,13 @@ export function Play() {
   const tapPause = () => {
     pause();
   };
+  // The whole pool, on a board over everything: opened from the Pool board or with D, closed by any key or its button.
+  const openPool = () => {
+    s.whole = true;
+  };
+  const closePool = () => {
+    s.whole = false;
+  };
   // The end board's button: on from a paid rent, or back to the title when the run is over.
   const tapEnd = () => {
     if (s.run.phase === "rent") s.click = true;
@@ -194,6 +208,8 @@ export function Play() {
   const turn = Math.min(run.turn - (run.phase === "tally" && run.afterTally === "pick" ? 1 : 0), TURNS_PER_CYCLE);
   // The board shows what is still to be dealt this shuffle: the hand is on the shelf, and the rest has been played.
   const pool = poolRows(run.draw);
+  /** The whole pool by kind, for the board that shows all of it. */
+  const whole = poolRows(run.pool);
   const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
 
@@ -264,8 +280,8 @@ export function Play() {
               the jar whichever fruit it is for, so it never covers the boards either side. */}
           {!blind && (
             <Flex x={-20} y={-20} width={40} height={40} focusable={false} onPointerEnter={() => point(slot.at)} onPress={() => click(slot.at)}>
-              <Tooltip show={!paused && ordering && slot.at === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - (shelfLeft + slot.at * SLOT + SLOT / 2)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} note={!ordering ? "" : run.holding && slot.at === run.cursor ? "Tap where it goes, or Left / Right. Enter puts it down." : "Drops left to right. Tap it or press Enter to move it."} />
+              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - (shelfLeft + slot.at * SLOT + SLOT / 2)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} note={!ordering ? "" : run.holding && slot.at === run.cursor ? "Left / Right or tap: place it. Enter: put it down." : "Enter or tap: move it. Space or tap the jar: drop."} />
               </Tooltip>
             </Flex>
           )}
@@ -273,9 +289,22 @@ export function Play() {
         </Entity>
       ))}
 
+      {/* While ordering, a tap or a click on the jar drops the hand into it. */}
+      {ordering && <Flex x={JAR.left} y={RIM} width={jarWidth} height={JAR.floor - RIM} focusable={false} onPress={() => tapDrop()} />}
+      {/* The Preserves Jar's way on, where the hand was: the shelf is empty then. */}
+      {preserving && (
+        <Flex left={0} right={0} top={6} direction="row" justifyContent="center">
+          <TapButton label="Done" keyName={hints ? "Space" : ""} onPress={tapDrop} />
+        </Flex>
+      )}
+      {/* Pause, small, in the top right corner: Esc for a finger. */}
+      <Flex right={4} top={4}>
+        <TapButton label="II" onPress={tapPause} />
+      </Flex>
+
       {/* Left: a column pinned to the screen's left edge. The rent board is as tall as what is on it: this cycle's score, big, and
           under it the rent it is counted against ("64 of 120 rent"); a bar of how much of the rent that is; the turn; and the
-          coins. Under the board, the keys for this moment, the first time it comes up (the pause menu has them after that). */}
+          coins. Nothing else is on this side: how to move a fruit and drop the hand is said on the fruit's card under the shelf. */}
       <Flex left={HUD_X} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch" gap={12}>
         <Panel title={cycleTitle(run)}>
           <Flex height={50} direction="row" justifyContent="center" alignItems="center">
@@ -296,16 +325,6 @@ export function Play() {
             <Text color={INK}>{`${run.coins} ${run.coins === 1 ? "coin" : "coins"}`}</Text>
           </Flex>
         </Panel>
-        <Flex direction="column" alignItems="start" gap={4} paddingLeft={4}>
-          {ordering && hints && !blind && <KeyHint name="arrows" label={run.holding ? "Move it" : "Choose"} />}
-          {ordering && hints && !blind && <KeyHint name="Enter" label={run.holding ? "Put down" : "Pick up"} />}
-          {preserving && hints && <KeyHint name="arrows" label="Choose" />}
-          {preserving && hints && <KeyHint name="Enter" label="Keep" />}
-          {/* What can also be tapped, always there: the key is drawn on each until it has been learned. */}
-          {ordering && <TapButton label="Drop" keyName={hints ? "Space" : ""} onPress={tapDrop} />}
-          {preserving && <TapButton label="Done" keyName={hints ? "Space" : ""} onPress={tapDrop} />}
-          <TapButton label="Pause" keyName={learned.includes("order") ? "" : "Esc"} onPress={tapPause} />
-        </Flex>
       </Flex>
 
       {/* Right: pinned to the screen's right edge, what is left of the pool to deal this shuffle, by kind, and how many that is of
@@ -326,8 +345,9 @@ export function Play() {
               </Flex>
             ))}
           </Flex>
+          {/* The board shows what is still to be dealt; the whole pool, dealt or not, opens from here (or with D). */}
           <Flex direction="row" justifyContent="center" paddingTop={4}>
-            <Text color={INK_SOFT}>{run.draw.length === 0 ? "Shuffles next" : `${run.draw.length} left of ${run.pool.length}`}</Text>
+            <TapButton label="Whole pool" onPress={openPool} />
           </Flex>
         </Panel>
       </Flex>
@@ -397,6 +417,34 @@ export function Play() {
                 </Flex>
                 <Flex direction="row" justifyContent="center" paddingTop={6}>
                   <TapButton keyName="Enter" label={run.phase === "rent" ? (run.cycle >= RENT.length ? "Go on" : "Shop") : "Title"} onPress={tapEnd} />
+                </Flex>
+              </Panel>
+            </Flex>
+          </Flex>
+        </Entity>
+      )}
+      {/* The whole pool: every kind in it and how many, dealt or not. */}
+      {s.whole && (
+        <Entity>
+          <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
+          <Flex left={0} right={0} top={0} bottom={0} direction="column" alignItems="center" justifyContent="center">
+            <Flex width={Math.max(240, Math.min(whole.length, 8) * 56 + 32)} direction="column" alignItems="stretch">
+              <Panel heading={`Your pool: ${run.pool.length} fruit`} gap={4}>
+                <Flex direction="row" wrap justifyContent="center" rowGap={4} columnGap={0}>
+                  {whole.map((row) => (
+                    <Flex key={row.kind} width={56} direction="column" alignItems="center">
+                      <Flex width={40} height={40}>
+                        <FruitBall kind={row.kind} x={20} y={20} look="icon" />
+                        <Tooltip anchor="top-center" to="bottom-center" offsetX={0} offsetY={4} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                          <FruitTip kind={row.kind} grown={grownOf(run, row.kind)} />
+                        </Tooltip>
+                      </Flex>
+                      <Text color={INK}>{`${row.count}`}</Text>
+                    </Flex>
+                  ))}
+                </Flex>
+                <Flex direction="row" justifyContent="center" paddingTop={4}>
+                  <TapButton label="Close" onPress={closePool} />
                 </Flex>
               </Panel>
             </Flex>

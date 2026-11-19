@@ -23,8 +23,10 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 ## Controls
 
 Everything can also be done with the mouse or a finger, with no keyboard: tap a fruit on the shelf to pick it up and tap where
-it should stand, and tap the buttons for what Space, Esc and Enter do (Drop, Skip, Done, Back, Pause). Cards, the shop's
-actions, a kind in the take-out dialog and a fruit the Preserves Jar can keep are tapped directly.
+it should stand, tap the jar to drop the hand into it, and tap the buttons for what Space, Esc and Enter do elsewhere (Skip,
+Done, Back, and the II in the top right corner for Pause). Cards, the shop's actions, a kind in the take-out dialog and a
+fruit the Preserves Jar can keep are tapped directly. The Pool board shows what is still to be dealt; its "Whole pool" button
+(or D) opens a board of every fruit in the pool.
 
 `npx tse package . --engine web` builds the game as a web page in `dist/jam-jar-web`, and `.github/workflows/pages.yml`
 publishes it to GitHub Pages on every push to `main` (once Settings -> Pages -> Source is set to "GitHub Actions"). The
@@ -38,9 +40,10 @@ screen fills the window at any size, a phone's included.
 | Shop | Arrows choose, Enter buy, Space next cycle (or back, while choosing a fruit to remove) |
 | Preserves Jar | Left/Right choose a fruit in the jar, Enter keep it or let it go, Space next cycle |
 | While the jar plays | Hold F to hurry it (three times as fast) |
-| Any time | Esc pause |
+| Any time | Esc pause, D the whole pool |
 
-The keys for each moment are on screen the first time it comes up (ordering a hand, the pick, the shop, …) and not again;
+The keys for the pick and the shop are on screen the first time each comes up and not again; how to move a fruit and drop
+the hand is on the fruit's card under the shelf every time;
 the pause menu always lists them. That, and the two volumes on the settings screen (music and sounds, 0 to 10), are the
 player's settings (`src/settings.ts`), which the engine keeps between launches.
 
