@@ -31,8 +31,9 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 | Preserves Jar | Left/Right choose a fruit in the jar, Enter keep it or let it go, Space next cycle |
 | Any time | Esc pause |
 
-The keys for each moment are on screen the first time it comes up (ordering a hand, the pick, the shop, …) and not again
-that session; the pause menu always lists them.
+The keys for each moment are on screen the first time it comes up (ordering a hand, the pick, the shop, …) and not again;
+the pause menu always lists them. That, and the two volumes on the settings screen (music and sounds, 0 to 10), are the
+player's settings (`src/settings.ts`), which the engine keeps between launches.
 
 ## Terms
 
@@ -79,7 +80,7 @@ condition ("Blasted: Sprout a starter."), and fit four lines of a shop card. A t
 - Eat and grow: Pitaya (eats one Cherry it touches a turn, and every Pitaya scores 1 more for the rest of the run) and Coconut
   (five times as heavy, so it shoulders its way down; at its third Resolve it cracks into a Cracked Coconut, a Booster that
   doubles its neighbours like a Lemon but lets them merge).
-- Music on every screen, and the Settings' volume and music switch work.
+- Music on every screen, with a volume each for the music and the sounds in Settings, kept between launches.
 - Overflow: fruit whose top is above the rim at Resolve spill and cost 5 points each.
 - The boss jar: every third cycle (so cycle 3) is the Peg jar, with a round post in the middle that splits the pile. The shop
   before it says it is coming.
@@ -149,7 +150,8 @@ group taken together sits near 110 a cycle); they are meant to pay in combinatio
   on the right, and the pick cards. `Shop.tsx` draws the shop and `Peg.tsx` is the boss jar's peg (a ball too heavy to move).
   `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `RuleText.tsx` draws card text with its keywords in colour. `Board.tsx` is a parchment board
   with a ribbon heading, `KeyHint.tsx` a key cap and what it does, `Backdrop.tsx` the kitchen behind every screen. `theme.ts`
-  names the colours, the fonts and the Kenney frames every screen is made of.
+  names the colours, the fonts and the Kenney frames every screen is made of. `settings.ts` is the player's settings, which the
+  engine keeps between launches (the game has an id, `<Game id="jam-jar">`, which is what turns that on).
 - `tools/install-engine.ts` packs `../tse` and installs it without saving. `tools/balance.ts` is the balance run above.
 - `tools/make-assets.py` (Python with Pillow) builds `assets/` from the free art in `tools/`, sizing each fruit to its radius in
   `src/rules/fruits.ts`. Rerun it after changing a radius.

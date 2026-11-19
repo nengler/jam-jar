@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { parseInputScript, runScript, type Player } from "@tsengine/player";
+import { createPlayer, parseInputScript, RecordingBackend, runScript, type Player } from "@tsengine/player";
 import { findComponent } from "@tsengine/testing";
 
 import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
+import { settings } from "../src/settings.ts";
 import { JAR, type Fruit, type Run } from "../src/rules/jar.ts";
 
 /** Which screen shows, whether play is paused, and the run's phase and jar when a run is on. */
@@ -55,21 +56,49 @@ test("Escape pauses the run, and the pause menu's Resume plays on", () => {
   assert.equal(states[19]!.paused, false);
 });
 
-test("Settings: right turns the volume up and Escape goes back", () => {
-  const frames = parseInputScript("_*2, down, _*2, Enter, _*3, right, _*2, right, _*2, Escape, _*3", { bindings });
+test("Settings: right turns the music up, the sounds' row turns them down, and Escape goes back", () => {
+  const frames = parseInputScript("_*2, down, _*2, Enter, _*3, right, _*2, right, _*2, down, _*2, left, _*2, Escape, _*3", { bindings });
   const { states } = runScript(gameConfig, frames, () => useGame.getState());
-  const last = states[states.length - 1]!;
-  assert.equal(last.volume, 10);
-  assert.equal(last.screen, "title");
+  assert.equal(settings.get().music, 0.6, "two steps up from 0.4");
+  assert.equal(settings.get().effects, 0.7, "one step down from 0.8");
+  assert.equal(states[states.length - 1]!.screen, "title");
 });
 
 test("a moment's keys are learned once it has been played through: the title, then ordering, then the pick", () => {
   const frames = parseInputScript("_*2, Enter, _*5, Space, _*330, Space, _*10", { bindings });
-  const { states } = runScript(gameConfig, frames, () => useGame.getState().learned);
+  const { states } = runScript(gameConfig, frames, () => settings.get().learned);
   assert.deepEqual(states[1], [], "nothing yet: every hint shows");
   assert.deepEqual(states[5], ["title"], "Play was pressed");
   assert.deepEqual(states[12], ["title", "order"], "the first hand was dropped");
   assert.deepEqual(states[states.length - 1], ["title", "order", "pick"], "the first pick was skipped");
+});
+
+/** Launch the game on a backend, press these keys, and close it. */
+function launch(backend: RecordingBackend, script: string): void {
+  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
+  for (const frame of parseInputScript(script, { bindings })) {
+    backend.queueInput(frame);
+    player.step();
+  }
+  player.close();
+}
+
+test("the settings are kept between launches: the volumes and the keys already shown come back", () => {
+  // The first launch: into the settings, the music up a step, and back.
+  const first = new RecordingBackend();
+  launch(first, "_*2, down, _*2, Enter, _*3, right, _*2, Escape, _*3");
+  assert.equal(first.storageOpenedFor, "jam-jar");
+  assert.ok(first.stored.has("settings"), "written as they change");
+
+  // The second, with the files the first left: the title is up before the settings are read, and must still follow them.
+  const second = new RecordingBackend({ storage: Object.fromEntries(first.stored) });
+  const player = createPlayer(second, { ...gameConfig, warn: () => {} });
+  second.queueInput(parseInputScript("_", { bindings })[0]!);
+  player.step();
+  assert.equal(settings.get().music, 0.5);
+  assert.deepEqual(useGame.getState().learned, ["title", "settings"], "the title knows its keys were shown");
+  assert.equal(useGame.getState().music, 5);
+  player.close();
 });
 
 test("a chain of Blasts plays in slow motion, then the game runs at full speed again", () => {

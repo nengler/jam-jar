@@ -10,6 +10,7 @@ import { fruitGlossary, moment, poolRows, scoringLabel } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { Peg } from "./Peg.tsx";
 import { RuleText } from "./RuleText.tsx";
+import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { FRUITS } from "./rules/fruits.ts";
 import { advance, BOOM_LIFE, bossCycle, dramatic, PULSE, shownScore, preservable, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
@@ -77,9 +78,8 @@ const OFFER_GAP = 12;
 export function Play() {
   const paused = useGame((g) => g.paused);
   const seed = useGame((g) => g.seed);
-  const volume = useGame((g) => g.volume);
   const learned = useGame((g) => g.learned);
-  const { pause, toTitle, learn, setSpeed } = useGame.actions();
+  const { pause, toTitle, setSpeed } = useGame.actions();
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   const s = useMutable({ run: newRun(seed) as Run, reports: [] as FruitReport[], slow: 0 });
@@ -123,15 +123,14 @@ export function Play() {
       if (s.slow <= 0) setSpeed(1);
     }
     const heard = s.run.sounds;
-    // The volume setting, 0 to 10, scales every sound.
-    const loud = volume / 10;
-    if (heard.includes("land")) playLand(0.4 * loud);
-    if (heard.includes("merge")) playMerge(loud);
-    if (heard.includes("boom")) playBoom(loud);
-    if (heard.includes("pick")) playPick(loud);
-    if (heard.includes("rent")) playRent(loud);
-    if (heard.includes("lose")) playLose(loud);
-    if (heard.includes("tick")) playTick(0.6 * loud);
+    // Each at its own level; the engine scales them all by the player's sounds setting.
+    if (heard.includes("land")) playLand(0.4);
+    if (heard.includes("merge")) playMerge();
+    if (heard.includes("boom")) playBoom();
+    if (heard.includes("pick")) playPick();
+    if (heard.includes("rent")) playRent();
+    if (heard.includes("lose")) playLose();
+    if (heard.includes("tick")) playTick(0.6);
   });
 
   const report = (r: FruitReport) => {
