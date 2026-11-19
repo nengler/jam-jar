@@ -39,9 +39,8 @@ const CALM_TIME = 0.4;
 const SETTLE_LIMIT = 8;
 const OVERFLOW_PENALTY = 5;
 const POPUP_LIFE = 0.9;
-/** How long a blast's explosion (9 frames) and a merge's splat show, in seconds. */
+/** How long a blast's explosion (9 frames) shows, in seconds. */
 export const BOOM_LIFE = 0.54;
-export const SPLAT_LIFE = 0.5;
 
 export type Phase = "order" | "drop" | "settle" | "pick" | "rent" | "over" | "won";
 
@@ -81,19 +80,16 @@ export interface Popup {
   life: number;
 }
 
-/** Something drawn for a moment: a blast's explosion, or the splat of a merge in the fruit's colour. */
+/** Something drawn for a moment: a blast's explosion. */
 export interface Effect {
   id: number;
-  kind: "boom" | "splat";
+  kind: "boom";
   x: number;
   y: number;
   /** Seconds since it started. */
   age: number;
   /** Across, in pixels. */
   size: number;
-  color: string;
-  /** Which of the splat pictures. */
-  variant: number;
 }
 
 export interface Run {
@@ -261,8 +257,8 @@ function sound(run: Run, name: Sound): void {
   if (!run.sounds.includes(name)) run.sounds.push(name);
 }
 
-function effect(run: Run, kind: Effect["kind"], x: number, y: number, size: number, color = "#ffffff"): void {
-  run.effects.push({ id: run.nextId++, kind, x, y, age: 0, size, color, variant: run.nextId % 3 });
+function effect(run: Run, kind: Effect["kind"], x: number, y: number, size: number): void {
+  run.effects.push({ id: run.nextId++, kind, x, y, age: 0, size });
 }
 
 function popup(run: Run, x: number, y: number, text: string, color = "#ffd166"): void {
@@ -338,7 +334,7 @@ export function advance(previous: Run, dt: number, keys: Keys, reports: readonly
   }
   run.popups = run.popups.filter((p) => p.life > 0);
   for (const e of run.effects) e.age += dt;
-  run.effects = run.effects.filter((e) => e.age < (e.kind === "boom" ? BOOM_LIFE : SPLAT_LIFE));
+  run.effects = run.effects.filter((e) => e.age < BOOM_LIFE);
 
   switch (run.phase) {
     case "order":
@@ -465,7 +461,6 @@ function merge(run: Run): void {
         run.message = "Pomegranates burst!";
       } else {
         const into = FRUITS[a.kind].mergesInto as FruitKind;
-        effect(run, "splat", mx, my, FRUITS[into].radius * 3, FRUITS[a.kind].color);
         const f = makeFruit(run, into, mx, my);
         f.landed = true;
         born.push(f);

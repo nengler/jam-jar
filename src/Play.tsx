@@ -5,15 +5,14 @@ import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { Pause } from "./Pause.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, BOOM_LIFE, chosenRow, JAR, newRun, rentFor, RENT, RIM, SPLAT_LIFE, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
-import { BAD, GOOD, INK, INK_SOFT, LIGHT, PANEL, PANEL_SLICE, panelFor, SHADOW } from "./theme.ts";
+import { advance, BOOM_LIFE, chosenRow, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { BAD, CARD_SLICE, cardFor, GOOD, INK, INK_SOFT, LIGHT, PANEL, PANEL_SLICE, SHADOW } from "./theme.ts";
 
-/** The explosion's frames (Kenney Explosion Pack), each centred on a 192-pixel square (tools/make-assets.py). */
+/** The pixel explosion's frames (Kenney Explosion Pack), each centred on a 96-pixel square, drawn at 2x like all the art. */
 const BOOM_FRAMES = 9;
-const BOOM_SIZE = 192;
-const SPLAT_SIZE = 64;
-/** The glass jar's frame (Kenney Physics Assets) is drawn this far outside the jar's walls. */
-const GLASS = 10;
+const BOOM_SIZE = 96;
+/** The jar's glass (Kenney UI Pixel Pack) reaches this far outside its walls. */
+const GLASS = 8;
 
 /**
  * A run. The rules live in rules/jar.ts; each step this hands them the time, the keys and the fruit's reports, and keeps the run
@@ -80,9 +79,18 @@ export function Play() {
     <Entity>
       <Sprite image="background.png" />
 
-      {/* The jar: a pane of glass behind the fruit, Kenney's glass frame around it, and the rim the fruit must stay under. */}
-      <Shape kind="rect" x={JAR.left} y={glassTop} width={jarWidth} height={JAR.floor - glassTop} color="#ffffff38" />
-      <Line x={JAR.left} y={RIM} x2={JAR.right} y2={RIM} width={2} color="#d6336c90" />
+      {/* The jar: Kenney's pixel glass panel, see-through, behind the fruit; the rim the fruit must stay under. */}
+      <Entity opacity={0.55}>
+        <Flex
+          x={JAR.left - GLASS}
+          y={glassTop - GLASS}
+          width={jarWidth + GLASS * 2}
+          height={JAR.floor - glassTop + GLASS * 2}
+          backgroundImage="jar.png"
+          slice={12}
+        />
+      </Entity>
+      <Line x={JAR.left} y={RIM} x2={JAR.right} y2={RIM} width={2} color="#d6336c" />
       {/* What the fruit's balls are stopped by: the floor and two walls, tall enough that nothing pops over them. */}
       <Collider x={JAR.left - 8} y={JAR.floor} width={jarWidth + 16} height={16} solid />
       <Collider x={JAR.left - 16} y={0} width={16} height={JAR.floor + 16} solid />
@@ -102,46 +110,19 @@ export function Play() {
           onReport={report}
         />
       ))}
-      <Flex
-        x={JAR.left - GLASS}
-        y={glassTop - GLASS}
-        width={jarWidth + GLASS * 2}
-        height={JAR.floor - glassTop + GLASS * 2}
-        backgroundImage="jar.png"
-        slice={14}
-      />
-
-      {/* Merges splash juice; blasts go off (Kenney Splat Pack and Explosion Pack). */}
-      {run.effects
-        .filter((e) => e.kind === "splat")
-        .map((e) => (
-          <Sprite
-            key={e.id}
-            image={`splat-${e.variant}.png`}
-            x={e.x}
-            y={e.y}
-            originX={SPLAT_SIZE / 2}
-            originY={SPLAT_SIZE / 2}
-            scaleX={e.size / SPLAT_SIZE}
-            scaleY={e.size / SPLAT_SIZE}
-            tint={e.color}
-            opacity={0.85 * (1 - e.age / SPLAT_LIFE)}
-          />
-        ))}
-      {run.effects
-        .filter((e) => e.kind === "boom")
-        .map((e) => (
-          <Sprite
-            key={e.id}
-            image={`boom-${Math.min(BOOM_FRAMES - 1, Math.floor((e.age / BOOM_LIFE) * BOOM_FRAMES))}.png`}
-            x={e.x}
-            y={e.y}
-            originX={BOOM_SIZE / 2}
-            originY={BOOM_SIZE / 2}
-            scaleX={e.size / 120}
-            scaleY={e.size / 120}
-          />
-        ))}
+      {/* Blasts go off: the Explosion Pack's pixel explosion. */}
+      {run.effects.map((e) => (
+        <Sprite
+          key={e.id}
+          image={`boom-${Math.min(BOOM_FRAMES - 1, Math.floor((e.age / BOOM_LIFE) * BOOM_FRAMES))}.png`}
+          x={e.x}
+          y={e.y}
+          originX={BOOM_SIZE / 2}
+          originY={BOOM_SIZE / 2}
+          scaleX={2}
+          scaleY={2}
+        />
+      ))}
       {run.popups.map((p) => (
         <Text key={p.id} x={p.x} y={p.y} align="center" color={p.color} shadow={INK} shadowX={2} shadowY={2}>
           {p.text}
@@ -162,7 +143,7 @@ export function Play() {
           </Text>
           {run.offers.map((kind, i) => (
             <Entity key={`${kind}${i}`} x={22} y={78 + i * 80}>
-              <Flex width={176} height={74} backgroundImage={panelFor(i === run.offerCursor)} slice={PANEL_SLICE} />
+              <Flex width={176} height={74} backgroundImage={cardFor(i === run.offerCursor)} slice={CARD_SLICE} />
               <FruitBall kind={kind} x={22} y={20} icon />
               <Text x={42} y={13} color={INK}>
                 {FRUITS[kind].name}
@@ -189,8 +170,8 @@ export function Play() {
               <Flex
                 width={176}
                 height={42}
-                backgroundImage={panelFor(i === chosenRow(run))}
-                slice={PANEL_SLICE}
+                backgroundImage={cardFor(i === chosenRow(run))}
+                slice={CARD_SLICE}
               />
               <Text x={12} y={12} color={INK_SOFT}>
                 {`${i + 1}`}
@@ -222,14 +203,14 @@ export function Play() {
         Rent due
       </Text>
       <Text x={448} y={130} color={run.cycleScore >= rent ? GOOD : INK}>{`${run.cycleScore} / ${rent}`}</Text>
-      <Flex x={448} y={154} width={164} height={16} backgroundImage="bar.png" slice={8} />
-      {filled > 0 && <Flex x={448} y={154} width={Math.max(16, Math.round(164 * filled))} height={16} backgroundImage="bar-fill.png" slice={8} />}
+      <Flex x={448} y={152} width={164} height={28} backgroundImage="bar.png" slice={12} />
+      {filled > 0 && <Flex x={452} y={156} width={Math.max(20, Math.round(156 * filled))} height={20} backgroundImage="bar-fill.png" slice={8} />}
       <Text x={448} y={190} color={INK_SOFT}>
         Total
       </Text>
       <Text x={448} y={210} color={INK}>{`${run.total}`}</Text>
-      <Sprite image="coin.png" x={448} y={240} />
-      <Text x={472} y={240} color={INK}>{`${run.coins} coins`}</Text>
+      <Sprite image="coin.png" x={446} y={236} />
+      <Text x={478} y={240} color={INK}>{`${run.coins} coins`}</Text>
       <Text x={448} y={276} size={8} color={INK_SOFT}>{`Pool ${run.pool.length}   To deal ${run.draw.length}`}</Text>
       <Text x={448} y={322} size={8} color={INK_SOFT}>
         Esc pause

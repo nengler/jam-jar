@@ -8,8 +8,8 @@ Lays out the game's assets/ from the free art in tools/:
   - the sounds, copied as they are;
   - `kenney-mini-square-mono.ttf` (Kenney Fonts), drawn at twice its pixel size into `font.png`: the ASCII characters 32 to
     127 in a 16 x 6 grid of 12 x 16 cells, as tse's `<Text font>` takes;
-  - UI Pack panels and buttons, a Physics Assets glass frame (the jar) and background, the Explosion Pack's regular explosion
-    and Splat Pack splats (see KENNEY_IMAGES, EXPLOSION_FRAMES and SPLATS).
+  - pixel art only, doubled with no smoothing: UI Pixel Pack panels and buttons (UI_TILES), Pixel Platformer's sky, clouds and
+    ground and its coin, and the Explosion Pack's pixel explosion.
 
     python3 tools/make-assets.py
 """
@@ -84,25 +84,39 @@ def fit(image: Image.Image, size: int) -> Image.Image:
     return out
 
 
-# Kenney files (tools/kenney) laid out as the game's images, by name in assets/: (source, size to scale to or None).
-KENNEY_IMAGES = {
-    # 9-slices: the side panels and cards (grey), the chosen card and title buttons (yellow), the jar (glass), the rent bar.
-    "panel.png": ("ui-grey-button-square-depth-flat.png", None),
-    "panel-chosen.png": ("ui-yellow-button-square-depth-flat.png", None),
-    "button.png": ("ui-yellow-button-rectangle-depth-gloss.png", None),
-    "button-grey.png": ("ui-grey-button-rectangle-depth-flat.png", None),
-    "jar.png": ("physics-glass-035.png", (70, 70)),
-    "bar.png": ("ui-grey-slide-horizontal-grey.png", None),
-    "bar-fill.png": ("ui-yellow-slide-horizontal-color.png", None),
-    "coin.png": ("ui-yellow-star.png", (16, 15)),
-}
-EXPLOSION_FRAMES = 9
-BOOM_SIZE = 192
-SPLATS = {"splat-0.png": "splat-00.png", "splat-1.png": "splat-05.png", "splat-2.png": "splat-12.png"}
-SPLAT_SIZE = 64
+# Every Kenney picture is pixel art, drawn at exactly twice its size on the 640 x 360 screen (nearest neighbour), so its pixels
+# match the font's and each other's.
+PX = 2
 WIDTH, HEIGHT = 640, 360
 FONT_PX = 16
 ICON = 28
+
+# UI Pixel Pack: 16 x 16 tiles, 2 pixels apart. Each image is (column, row, tiles across, tiles down) of the sheet, drawn as a
+# 9-slice in the game.
+UI_TILES = {
+    "panel.png": (0, 13, 3, 3),  # cream panel: the side panels and the boxes
+    "card.png": (0, 0, 3, 1),  # white button: hand rows, pick cards, menu buttons
+    "card-chosen.png": (6, 0, 3, 1),  # yellow button: the one chosen
+    "jar.png": (13, 20, 3, 3),  # blue-grey glass: the jar, drawn see-through
+    "bar.png": (3, 13, 3, 3),  # grey panel: the rent bar's track
+    "bar-fill.png": (0, 27, 3, 1),  # yellow bar: the rent paid so far
+}
+EXPLOSION_FRAMES = 9
+BOOM_SIZE = 96
+
+
+def ui_image(sheet: Image.Image, col: int, row: int, across: int, down: int) -> Image.Image:
+    out = Image.new("RGBA", (16 * across, 16 * down))
+    for dy in range(down):
+        for dx in range(across):
+            x, y = (col + dx) * 18, (row + dy) * 18
+            out.paste(sheet.crop((x, y, x + 16, y + 16)), (dx * 16, dy * 16))
+    box = out.getbbox()
+    return out.crop(box) if box else out
+
+
+def doubled(image: Image.Image) -> Image.Image:
+    return image.resize((image.width * PX, image.height * PX), Image.NEAREST)
 
 
 def font_sheet() -> Image.Image:
@@ -121,10 +135,27 @@ def font_sheet() -> Image.Image:
 
 
 def background() -> Image.Image:
-    """Physics Assets' sky and hills, scaled to the screen's width and cut to its height from the bottom (the hills)."""
-    image = Image.open(KENNEY / "physics-background-colored-land.png").convert("RGBA")
-    scaled = image.resize((WIDTH, WIDTH), Image.LANCZOS)
-    return scaled.crop((0, WIDTH - HEIGHT - 40, WIDTH, WIDTH - 40))
+    """Pixel Platformer's sky, clouds and ground (24 x 24 tiles, packed), laid across a 320 x 180 picture, then doubled."""
+    sheet = Image.open(KENNEY / "pixel-platformer-backgrounds.png").convert("RGBA")
+    tile = lambda col, row: sheet.crop((col * 24, row * 24, col * 24 + 24, row * 24 + 24))
+    w, h = WIDTH // PX, HEIGHT // PX
+    out = Image.new("RGBA", (w, h))
+    clouds_at = 96
+    for x in range(0, w, 24):
+        col = (x // 24) % 4
+        for y in range(0, clouds_at, 24):
+            out.paste(tile(col, 0), (x, y))
+        out.paste(tile(col, 1), (x, clouds_at))
+        for y in range(clouds_at + 24, h, 24):
+            out.paste(tile(col, 2), (x, y))
+    return doubled(out)
+
+
+def coin() -> Image.Image:
+    """Pixel Platformer's gold coin (tile 11, 7 of its 18 x 18 packed tiles)."""
+    tiles = Image.open(KENNEY / "pixel-platformer-tiles.png").convert("RGBA")
+    picture = tiles.crop((11 * 18, 7 * 18, 12 * 18, 8 * 18))
+    return doubled(picture.crop(picture.getbbox()))
 
 
 def main() -> None:
@@ -138,23 +169,20 @@ def main() -> None:
         fit(image, sizes[kind] * 2 + 2).save(ASSETS / f"fruit-{kind}.png")
         fit(image, ICON).save(ASSETS / f"icon-{kind}.png")
     background().save(ASSETS / "background.png")
-    for name, (source, size) in KENNEY_IMAGES.items():
-        image = Image.open(KENNEY / source).convert("RGBA")
-        if size is not None:
-            image = image.resize(size, Image.LANCZOS)
-        image.save(ASSETS / name)
-    # The explosion's frames differ in size; each is centred on a 192 x 192 square so they share one origin.
+    ui = Image.open(KENNEY / "ui-pixel-pack-sheet.png").convert("RGBA")
+    for name, (col, row, across, down) in UI_TILES.items():
+        doubled(ui_image(ui, col, row, across, down)).save(ASSETS / name)
+    coin().save(ASSETS / "coin.png")
+    # The explosion's frames (96 x 91) are centred on a 96 x 96 square so they share one origin.
     for i in range(EXPLOSION_FRAMES):
-        frame = Image.open(KENNEY / f"explosion-regular-0{i}.png").convert("RGBA")
+        frame = Image.open(KENNEY / f"explosion-pixel-0{i}.png").convert("RGBA")
         square = Image.new("RGBA", (BOOM_SIZE, BOOM_SIZE))
         square.paste(frame, ((BOOM_SIZE - frame.width) // 2, (BOOM_SIZE - frame.height) // 2))
         square.save(ASSETS / f"boom-{i}.png")
-    for name, source in SPLATS.items():
-        Image.open(KENNEY / source).convert("RGBA").resize((SPLAT_SIZE, SPLAT_SIZE), Image.LANCZOS).save(ASSETS / name)
     font_sheet().save(ASSETS / "font.png")
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
-    print(f"wrote {len(SOURCES) * 2} fruit images, the font, the background, {len(KENNEY_IMAGES)} UI images, the blast and splats, and {len(SOUNDS)} sounds")
+    print(f"wrote {len(SOURCES) * 2} fruit images, the font, the background, {len(UI_TILES)} UI images, the coin, the blast and {len(SOUNDS)} sounds")
 
 
 if __name__ == "__main__":

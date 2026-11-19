@@ -16,13 +16,13 @@ export function Settings() {
           Settings
         </Text>
         <Menu gap={10} padding={20} backgroundImage={PANEL} slice={PANEL_SLICE} alignItems="stretch" width={300} onBack={toTitle}>
-          <Button autoFocus onPress={() => changeVolume(1)} onAdjust={(direction) => changeVolume(direction)} height={44} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} alignItems="center" justifyContent="center">
+          <Button autoFocus onPress={() => changeVolume(1)} onAdjust={(direction) => changeVolume(direction)} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} alignItems="center" justifyContent="center">
             <Text color={INK}>{`Volume  < ${volume} >`}</Text>
           </Button>
-          <Button onPress={toggleMusic} onAdjust={() => toggleMusic()} height={44} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} alignItems="center" justifyContent="center">
+          <Button onPress={toggleMusic} onAdjust={() => toggleMusic()} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} alignItems="center" justifyContent="center">
             <Text color={INK}>{`Music  ${music ? "on" : "off"}`}</Text>
           </Button>
-          <Button onPress={toTitle} height={44} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} alignItems="center" justifyContent="center">
+          <Button onPress={toTitle} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} alignItems="center" justifyContent="center">
             <Text color={INK}>Back</Text>
           </Button>
         </Menu>

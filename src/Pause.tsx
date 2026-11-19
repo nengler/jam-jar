@@ -23,10 +23,10 @@ export function Pause() {
         <Text color={INK} align="center" width={220}>
           Paused
         </Text>
-        <Button autoFocus onPress={resume} height={44} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} alignItems="center" justifyContent="center">
+        <Button autoFocus onPress={resume} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} alignItems="center" justifyContent="center">
           <Text color={INK}>Resume</Text>
         </Button>
-        <Button onPress={toTitle} height={44} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} alignItems="center" justifyContent="center">
+        <Button onPress={toTitle} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} alignItems="center" justifyContent="center">
           <Text color={INK}>Quit to title</Text>
         </Button>
       </Menu>

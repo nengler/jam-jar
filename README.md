@@ -68,9 +68,11 @@ The screen is 640 x 360 (16:9), scaled up by whole multiples.
 - Fruit art: [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft, MIT licence (`tools/fluent/LICENSE`, which
   must ship with the game). There's no emoji for a Durian or a Pomegranate, so for now they use the Pineapple and a hue-shifted
   Red Apple.
-- Everything else is [Kenney](https://kenney.nl), CC0: panels and buttons (UI Pack), the glass jar and the sky and hills
-  (Physics Assets), blasts (Explosion Pack), merge splats (Splat Pack), the font (Kenney Mini Square Mono) and the sounds. The
-  full bundle is on this repo's `Assets` release; `tools/kenney/README.md` says which file each came from.
+- Everything else is [Kenney](https://kenney.nl) pixel art, CC0: panels, cards and buttons (UI Pixel Pack), the sky, clouds,
+  ground and coin (Pixel Platformer), blasts (Explosion Pack's pixel explosion), the font (Kenney Mini Square Mono) and the
+  sounds. It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;
+  `tools/kenney/README.md` says which file each came from.
+- The fruit are still Fluent Emoji (not pixel art) until a CC0 pixel fruit set replaces them: Kenney has no pixel fruit.
 
 ## Engine notes
 

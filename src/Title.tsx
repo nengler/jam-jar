@@ -24,7 +24,7 @@ export function Title({ name }: { name: string }) {
           <Button
             autoFocus
             onPress={start}
-            height={48}
+            height={40}
             backgroundImage={BUTTON_GREY}
             focusBackgroundImage={BUTTON}
             hoverBackgroundImage={BUTTON}
@@ -36,7 +36,7 @@ export function Title({ name }: { name: string }) {
           </Button>
           <Button
             onPress={openSettings}
-            height={48}
+            height={40}
             backgroundImage={BUTTON_GREY}
             focusBackgroundImage={BUTTON}
             hoverBackgroundImage={BUTTON}
