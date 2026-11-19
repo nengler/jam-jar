@@ -241,10 +241,11 @@ export function Play() {
         <Entity key={`${kind}${i}`} x={shelfLeft + i * SLOT + SLOT / 2} y={SHELF_Y - 18}>
           {ordering && !blind && i === run.cursor && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
           {!blind && <FruitBall kind={kind} x={0} y={ordering && run.holding && i === run.cursor ? -8 : 0} look="icon" />}
-          {/* What it does, under it: for the fruit the cursor is on, and for one the mouse is over. */}
+          {/* What it does, under the shelf: for the fruit the cursor is on, and for one the mouse is over. It sits over the middle of
+              the jar whichever fruit it is for, so it never covers the boards either side. */}
           {!blind && (
             <Flex x={-20} y={-20} width={40} height={40}>
-              <Tooltip show={ordering && !run.holding && i === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={0} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <Tooltip show={!paused && ordering && !run.holding && i === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - (shelfLeft + i * SLOT + SLOT / 2)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                 <FruitTip kind={kind} />
               </Tooltip>
             </Flex>
@@ -300,7 +301,7 @@ export function Play() {
       <Text x={POOL_X + BOARD_W / 2} y={BOARD_Y + poolH - 30} align="center" color={INK_SOFT}>{run.draw.length === 0 ? "Shuffles next" : `${run.draw.length} left of ${run.pool.length}`}</Text>
 
       {/* Under it: what just happened, on a slate. */}
-      {run.message !== "" && (
+      {run.message !== "" && run.phase !== "shop" && (
         <Entity>
           <Board x={POOL_X} y={NOTE_Y} width={BOARD_W} height={NOTE_H} image={PLAQUE} />
           <Text x={POOL_X + 12} y={NOTE_Y + 6} width={BOARD_W - 24} maxWidth={BOARD_W - 24} color={LIGHT}>
@@ -319,7 +320,7 @@ export function Play() {
               {/* What a card's keywords mean shows beside it while it is the chosen one or the mouse is over it; the mouse over a
                   card chooses it, and a click takes it. */}
               <Flex width={OFFER_W} height={OFFER_H} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => point(offer.at)} onPress={() => click(offer.at)}>
-                <Tooltip show={offer.at === run.offerCursor ? true : undefined} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                <Tooltip show={!paused && offer.at === run.offerCursor ? true : undefined} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                   <Terms text={FRUITS[offer.card].text} />
                 </Tooltip>
               </Flex>
@@ -345,7 +346,7 @@ export function Play() {
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
           <Board x={192} y={124} width={256} height={124} title={run.phase === "rent" ? "Rent paid" : run.phase === "won" ? "The jar is yours" : "Evicted"} />
           <Text x={320} y={148} align="center" color={INK_SOFT}>
-            {run.phase === "over" ? `Rent was ${rent}, you scored ${run.cycleScore}` : `Scored ${run.cycleScore} of ${rent}`}
+            {`Scored ${run.cycleScore} of ${rent}`}
           </Text>
           <Text x={320} y={166} font={DISPLAY} size={DISPLAY_SIZE} align="center" color={INK}>{`Total ${run.total}`}</Text>
           <Flex x={192} y={202} width={256} direction="row" justifyContent="center">

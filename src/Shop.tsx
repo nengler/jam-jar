@@ -2,6 +2,7 @@ import { Entity, Flex, Shape, Sprite, Text, Tooltip } from "@tsengine/runtime/js
 
 import { Board, Heading } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
+import { useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
 import { placed, poolRows } from "./layout.ts";
 import { FRUITS } from "./rules/fruits.ts";
@@ -60,11 +61,15 @@ function Price({ x, y, price, afford }: PriceProps) {
  * shown: the first visit, and the first time a fruit is taken out.
  */
 export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
+  // The card the cursor is on shows what its keywords mean, but not over the pause menu.
+  const paused = useGame((g) => g.paused);
   const kinds = poolRows(run.pool);
   const boardW = Math.max(240, kinds.length * CELL + 32);
   const boardX = 320 - boardW / 2;
   return (
     <Entity>
+      {/* Shaded twice: the shop covers the whole screen, and the boards behind it should not show through its header. */}
+      <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
       <Heading x={320} y={10} width={184} text="Shop" />
       <Board x={512} y={12} width={104} height={32} />
@@ -75,7 +80,7 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
         <Entity key={slot.at} x={CARDS_X + slot.at * (CARD_W + CARD_GAP)} y={CARDS_Y - (!shop.removing && shop.cursor === slot.at ? 8 : 0)}>
           <Flex width={CARD_W} height={CARD_H} backgroundImage={cardFor(!shop.removing && shop.cursor === slot.at)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(slot.at)} onPress={() => onClick(slot.at)}>
             {slot.card !== null && (
-              <Tooltip show={!shop.removing && shop.cursor === slot.at ? true : undefined} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <Tooltip show={!paused && !shop.removing && shop.cursor === slot.at ? true : undefined} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                 <Terms text={FRUITS[slot.card].text} />
               </Tooltip>
             )}
@@ -98,7 +103,7 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
       <Entity x={CARDS_X + SHOP_ITEM * (CARD_W + CARD_GAP)} y={CARDS_Y - (!shop.removing && shop.cursor === SHOP_ITEM ? 8 : 0)}>
         <Flex width={CARD_W} height={CARD_H} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_ITEM)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(SHOP_ITEM)} onPress={() => onClick(SHOP_ITEM)}>
           {shop.item !== null && (
-            <Tooltip show={!shop.removing && shop.cursor === SHOP_ITEM ? true : undefined} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+            <Tooltip show={!paused && !shop.removing && shop.cursor === SHOP_ITEM ? true : undefined} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
               <Terms text={ITEMS[shop.item].text} />
             </Tooltip>
           )}
@@ -140,7 +145,8 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
       </Entity>
 
       {/* What just happened, top left. */}
-      <Text x={16} y={8} width={196} maxWidth={196} color={LIGHT}>
+      {/* What just happened (a fruit bought, the shelf restocked), under the actions. */}
+      <Text x={320} y={ACTIONS_Y + 44} align="center" color={LIGHT}>
         {run.message}
       </Text>
       {!shop.removing && hints && (

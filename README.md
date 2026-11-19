@@ -200,6 +200,18 @@ five-turn cycle a Banana's rot barely got started, so Prunes and Fruit Flies had
 its rot from the turn it lands and rotten fruit still merge, which makes the Prune a pick that stands alone and brings the
 whole group to about level with never picking. The Fruit Fly and the Fig are still combo pieces. Nothing here measures an ordered hand. Rerun it after changing a fruit.
 
+## Looking at it without playing
+
+`tse screenshot` plays a script of keys with no window and writes frames, or a contact sheet of them to see motion
+(`--every 10 --sheet name`). Three setup scripts in `tools/shots/` put the run where a shot needs it:
+
+    SHOT_BOSS=flip npx tse screenshot . --setup tools/shots/boss.ts --script "_*30,Enter,_*20,Space,_*600" --every 20 --sheet flip
+    SHOT_POOL=honeydew,cherry,cherry,grape,orange npx tse screenshot . --setup tools/shots/pool.ts --script "_*30,Enter,_*20,Space,_*430"
+    SHOT_RUN='{"phase":"over","cycleScore":80}' npx tse screenshot . --setup tools/shots/run.ts --script "_*30,Enter,_*30"
+
+`boss.ts` plays in a boss jar, `pool.ts` starts with a chosen pool, and `run.ts` sets any fields of the run. A shot keeps no
+saved data and reads none.
+
 ## How it is built
 
 - `src/rules/` holds the whole game as plain TypeScript with no engine imports, so it is tested directly with `node:test`:
