@@ -42,7 +42,11 @@ const SLOT = 48;
 /** The HUD on the left and the pool on the right: blocks 184 wide, 16 from the edges. */
 const HUD_W = 184;
 const HUD_X = 16;
-const POOL_X = 640 - 16 - HUD_W;
+/** The pool: a column, centred in the space right of the jar, running from the top of the screen to the bottom. */
+const POOL_W = 72;
+const POOL_X = Math.round((416 + 640) / 2 - POOL_W / 2);
+const POOL_TOP = 16;
+const POOL_H = 312;
 /** The pick: three cards across the middle. */
 const OFFER_W = 168;
 const OFFER_H = 232;
@@ -214,14 +218,14 @@ export function Play() {
       <Text x={HUD_X + 44} y={252} color={GOLD}>{`${run.coins}`}</Text>
       <Text x={HUD_X + HUD_W - 12} y={252} align="right" color={HUD_LABEL}>{`total ${run.total}`}</Text>
 
-      {/* Right: the pool, one line, fanned like a hand of cards; how many are still to deal. */}
-      <HudBox x={POOL_X} y={16} width={HUD_W} height={88} />
-      <Text x={POOL_X + 12} y={28} color={HUD_LABEL}>
+      {/* Right: the pool, one vertical line grouped by kind (copies stacked, kinds apart); how many are still to deal. */}
+      <HudBox x={POOL_X} y={POOL_TOP} width={POOL_W} height={POOL_H} />
+      <Text x={POOL_X + POOL_W / 2} y={POOL_TOP + 12} align="center" color={HUD_LABEL}>
         Pool
       </Text>
-      <Text x={POOL_X + HUD_W - 12} y={28} align="right" color={LIGHT}>{`${run.draw.length}/${run.pool.length}`}</Text>
-      {poolLine(run.pool, HUD_W - 56).map((p, i) => (
-        <FruitBall key={`${p.kind}${i}`} kind={p.kind} x={POOL_X + 28 + p.x} y={74} look="icon" />
+      <Text x={POOL_X + POOL_W / 2} y={POOL_TOP + 32} align="center" color={LIGHT}>{`${run.draw.length}/${run.pool.length}`}</Text>
+      {poolLine(run.pool, POOL_H - 96).map((p, i) => (
+        <FruitBall key={`${p.kind}${i}`} kind={p.kind} x={POOL_X + POOL_W / 2} y={POOL_TOP + 76 + p.x} look="icon" />
       ))}
 
       {/* The keys for this moment. */}
