@@ -93,6 +93,14 @@ export function cycleTitle(run: Run): string {
   return `${boss === null ? "Cycle" : BOSS_NAME[boss]} ${run.cycle} of ${RENT.length}`;
 }
 
+/** Where a point in the jar is on screen when the jar leans by `angle` radians about its low right corner (`cx`, `cy`). */
+export function leanX(x: number, y: number, angle: number, cx: number, cy: number): number {
+  return angle === 0 ? x : cx + (x - cx) * Math.cos(angle) - (y - cy) * Math.sin(angle);
+}
+export function leanY(x: number, y: number, angle: number, cx: number, cy: number): number {
+  return angle === 0 ? y : cy + (x - cx) * Math.sin(angle) + (y - cy) * Math.cos(angle);
+}
+
 /**
  * Where things in the jar are on screen when the jar leans by `angle` radians about its low right corner (`cx`, `cy`): the same
  * things, moved. For what is drawn over a leaning jar but stays upright itself, like the score popups.
