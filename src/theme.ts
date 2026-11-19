@@ -1,44 +1,64 @@
-import type { FruitKind } from "./rules/fruits.ts";
+import type { FruitKind, Scoring } from "./rules/fruits.ts";
 import { FRUIT_ART } from "./rules/sizes.ts";
 
 /**
  * Jam Jar's look, in one place. Every colour is from the Apollo palette (tools/palette/apollo.hex), which every picture is
- * snapped to as well (tools/make-assets.py), and every picture is pixel art at 2x. Text is one size, 16 px, so its pixels match.
+ * snapped to or drawn in as well (tools/make-assets.py), and every picture is pixel art at 2x. The text is the engine's built-in
+ * pixel fonts at 2x too: m5x7 for reading, Jersey 10 for headings and numbers.
  */
 export const INK = "#341c27";
 export const INK_SOFT = "#7a4841";
 export const LIGHT = "#ebede9";
-export const LIGHT_SOFT = "#a4dddb";
+export const LIGHT_SOFT = "#a8b5b2";
 export const GOLD = "#e8c170";
 export const GOOD = "#468232";
 export const BAD = "#a53030";
-export const RIM_LINE = "#cf573c";
-export const SHADE = "#090a14b0";
+/** Over the jar while a menu or the pick is up: the darkest Apollo colour, see-through. */
+export const SHADE = "#090a14c0";
+/** The shadow a board or a heading casts on the wall, and the colour behind the kitchen while it loads. */
+export const WALL_SHADOW = "#10141f";
+
+/** The fonts (built into the engine) and their sizes: each is drawn at twice its own pixel size. */
+export const BODY = "tse:m5x7";
+export const BODY_SIZE = 20;
+export const DISPLAY = "tse:jersey10";
+export const DISPLAY_SIZE = 28;
 
 /** Kenney UI Pack - Pixel Adventure pieces, recoloured to Apollo and 9-sliced: parchment in a wooden frame, the same in amber
- * for the chosen one, dark slate for the HUD, and a red ribbon for headings. */
+ * for the chosen one, dark slate for the note, an empty amber frame for the chosen fruit, and a red ribbon for headings. */
 export const PANEL = "frame.png";
 export const PANEL_SLICE = 8;
 export const CARD = "frame.png";
 export const CARD_CHOSEN = "frame-chosen.png";
 export const CARD_SLICE = 8;
-export const HUD_FRAME = "hud.png";
+export const PLAQUE = "plaque.png";
+export const SELECT = "select.png";
 export const RIBBON = "ribbon.png";
 
-/** The card for a row or an offer: amber when it is the chosen one. */
+/** The card for an offer: amber when it is the chosen one. */
 export function cardFor(chosen: boolean): string {
   return chosen ? CARD_CHOSEN : CARD;
 }
 
-/** Menu buttons: a tan card, amber while focused or hovered. */
+/** Menu buttons: a parchment card, amber while focused or hovered. */
 export const BUTTON = CARD_CHOSEN;
 export const BUTTON_GREY = CARD;
 export const BUTTON_SLICE = CARD_SLICE;
 
 /** A rotten fruit is tinted this brown. */
 export const ROTTEN = "#ad7757";
-/** The dark of the pips still to come and of the shelf's shadow. */
-export const DARK = "#241527";
+
+/** On parchment: a bar's or a pip's empty colour, the rent bar's fill, and a thin rule between rows. */
+export const WELL = "#c09473";
+export const BAR_FILL = "#be772b";
+export const RULE = "#d7b594";
+
+/** How a fruit scores, as the chip on its pick card: its word and its colour. */
+export const SCORING: Readonly<Record<Scoring, { name: string; color: string }>> = {
+  fresh: { name: "Fresh", color: "#468232" },
+  simmer: { name: "Simmer", color: "#a53030" },
+  booster: { name: "Booster", color: "#3c5e8b" },
+};
 
 /** Which picture of a fruit: its size in the jar, a 32-pixel icon, or a 64-pixel one for the pick cards. */
 export type FruitLook = "jar" | "icon" | "big";
@@ -51,12 +71,5 @@ export function fruitImageSize(kind: FruitKind, look: FruitLook): number {
   return look === "icon" ? 32 : look === "big" ? 64 : FRUIT_ART[kind].size;
 }
 
-
-/** The HUD: dark blocks with a lighter edge, labels in soft light, values in light or gold, on dark insets. */
-export const HUD = "#10141f";
-export const HUD_EDGE = "#394a50";
-export const HUD_INSET = "#202e37";
-export const HUD_LABEL = "#819796";
-export const BAR_FILL = "#de9e41";
-/** Green on the dark HUD, for a score that covers the rent. */
-export const GOOD_BRIGHT = "#a8ca58";
+/** Where the counter's top is on the screen: what stands on it (the jar, the title's fruit) has its foot here. */
+export const COUNTER_Y = 342;

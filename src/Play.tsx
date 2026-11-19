@@ -1,74 +1,80 @@
-import { Collider, Entity, Flex, Line, Shape, Sprite, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
+import { Collider, Entity, Flex, Shape, Sprite, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
+import { Board, Heading } from "./Board.tsx";
 import { Fruit } from "./Fruit.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
-import { HudBox } from "./HudBox.tsx";
-import { sortedPool } from "./layout.ts";
+import { KeyHint } from "./KeyHint.tsx";
+import { poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { FRUITS } from "./rules/fruits.ts";
 import { advance, BOOM_LIFE, chosenRow, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
-  CARD,
-  CARD_SLICE,
+  BAR_FILL,
+  BODY_SIZE,
   cardFor,
-  DARK,
+  CARD_SLICE,
+  DISPLAY,
+  DISPLAY_SIZE,
   GOLD,
   GOOD,
   INK,
   INK_SOFT,
   LIGHT,
-  LIGHT_SOFT,
-  BAR_FILL,
-  GOOD_BRIGHT,
-  HUD_INSET,
-  HUD_LABEL,
-  PANEL,
-  PANEL_SLICE,
-  RIBBON,
-  RIM_LINE,
+  PLAQUE,
+  SCORING,
+  SELECT,
   SHADE,
+  WELL,
 } from "./theme.ts";
 
 /** The pixel explosion's frames (Kenney Explosion Pack), each centred on a 96-pixel square, drawn at 2x like all the art. */
 const BOOM_FRAMES = 9;
 const BOOM_SIZE = 96;
-/** The jar's glass reaches this far outside its walls. */
-const GLASS = 8;
-/** The shelf above the jar: where the hand waits, left to right in the order it drops. */
-const SHELF_Y = 44;
+/** The jar's pictures reach this far outside its walls and above its glass, which starts this far above the rim. */
+const JAR_MARGIN = 12;
+const JAR_NECK = 32;
+/** The shelf above the jar: its plank's top, and how far apart the hand's fruit stand on it, left to right in the order they drop. */
+const SHELF_Y = 48;
 const SLOT = 48;
-/** The HUD on the left and the pool on the right: blocks 184 wide, 16 from the edges. */
-const HUD_W = 184;
-const HUD_X = 16;
-/** The pool: a column, centred in the space right of the jar, running from the top of the screen to the bottom. */
-const POOL_W = 72;
-const POOL_X = Math.round((416 + 640) / 2 - POOL_W / 2);
-const POOL_TOP = 16;
-const POOL_H = 312;
-/** The pool's scrolling list: its height, and each fruit's row (a 32-pixel icon and the gap under it). */
-const POOL_LIST_H = POOL_H - 64;
-const POOL_GAP = 4;
-const POOL_ROW = 32 + POOL_GAP;
+/** The boards either side of the jar: 192 wide, 12 from the screen's edges, hung under their ribbons. */
+const BOARD_W = 192;
+const HUD_X = 12;
+const POOL_X = 640 - 12 - BOARD_W;
+const BOARD_Y = 28;
+const HUD_H = 160;
+/** The pool: three kinds across, each a 32-pixel icon and how many of it. */
+const POOL_COLUMNS = 3;
+const POOL_CELL = 56;
+const POOL_ROW = 32;
+/** The note of what just happened: a slate under the pool, its foot just above the counter. */
+const NOTE_H = 72;
+const NOTE_Y = 324 - NOTE_H;
 /** The pick: three cards across the middle. */
-const OFFER_W = 168;
+const OFFER_W = 184;
 const OFFER_H = 232;
-const OFFER_GAP = 16;
+const OFFER_GAP = 12;
+
+/** A fruit's line on its pick card, without the scoring word its chip already says. */
+function offerText(text: string): string {
+  const rest = text.replace(/^(Simmer|Booster): /, "");
+  return rest.charAt(0).toUpperCase() + rest.slice(1);
+}
 
 /**
  * A run. The rules live in rules/jar.ts; each step this hands them the time, the keys and the fruit's reports, and keeps the run
- * they return. Everything here is drawing: the jar in the middle with the hand on a shelf above it, the rent on the left, the
- * pool on the right, and the pick as three cards over everything.
+ * they return. Everything here is drawing: the jar on the counter with the hand on a shelf above it, the rent on a board to its
+ * left with the keys under it, the pool on a board to its right with a note of what just happened, and the pick as three cards
+ * over everything.
  */
 export function Play() {
   const paused = useGame((g) => g.paused);
   const seed = useGame((g) => g.seed);
   const { pause, toTitle } = useGame.actions();
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
-  // The pool column's scroll, in pixels: Q and E move it a row at a time (the mouse wheel moves it too).
-  const s = useMutable({ run: newRun(seed) as Run, reports: [] as FruitReport[], poolScroll: 0 });
+  const s = useMutable({ run: newRun(seed) as Run, reports: [] as FruitReport[] });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -79,11 +85,6 @@ export function Play() {
 
   useInput((input) => {
     if (input.pressed("Escape")) pause();
-    const rows = (input.pressed("E") ? 1 : 0) - (input.pressed("Q") ? 1 : 0);
-    if (rows !== 0) {
-      const most = Math.max(0, s.run.pool.length * POOL_ROW - POOL_GAP - POOL_LIST_H);
-      s.poolScroll = Math.max(0, Math.min(most, s.poolScroll + rows * POOL_ROW));
-    }
     if ((s.run.phase === "over" || s.run.phase === "won") && input.pressed("Enter")) toTitle();
   });
 
@@ -119,7 +120,9 @@ export function Play() {
   const rent = rentFor(run.cycle);
   const jarWidth = JAR.right - JAR.left;
   const jarMid = (JAR.left + JAR.right) / 2;
-  const glassTop = RIM - 32;
+  const jarX = JAR.left - JAR_MARGIN;
+  const jarY = RIM - JAR_NECK - JAR_MARGIN;
+  const paid = run.cycleScore >= rent;
   const filled = Math.max(0, Math.min(1, run.cycleScore / rent));
   const ordering = run.phase === "order";
   const picking = run.phase === "pick";
@@ -127,24 +130,17 @@ export function Play() {
   const shelf = ordering ? run.hand : run.queue;
   const shelfLeft = jarMid - (shelf.length * SLOT) / 2;
   const turn = Math.min(run.turn, TURNS_PER_CYCLE);
+  const pool = poolRows(run.pool);
+  const poolH = 30 + Math.ceil(pool.length / POOL_COLUMNS) * POOL_ROW + 30;
   const offersLeft = 320 - (3 * OFFER_W + 2 * OFFER_GAP) / 2;
+  const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
 
   return (
     <Entity>
       <Backdrop />
 
-      {/* The jar: Kenney's pixel glass, see-through, behind the fruit; the rim the fruit must stay under. */}
-      <Entity opacity={0.6}>
-        <Flex
-          x={JAR.left - GLASS}
-          y={glassTop - GLASS}
-          width={jarWidth + GLASS * 2}
-          height={JAR.floor - glassTop + GLASS * 2}
-          backgroundImage="jar.png"
-          slice={12}
-        />
-      </Entity>
-      <Line x={JAR.left} y={RIM} x2={JAR.right} y2={RIM} width={2} color={RIM_LINE} />
+      {/* The jar: its back (the tinted inside and the glass walls) behind the fruit, its front (shine and fill line) over them. */}
+      <Sprite image="jar-back.png" x={jarX} y={jarY} />
       {/* What the fruit's balls are stopped by: the floor and two walls, tall enough that nothing pops over them. */}
       <Collider x={JAR.left - 8} y={JAR.floor} width={jarWidth + 16} height={16} solid />
       <Collider x={JAR.left - 16} y={0} width={16} height={JAR.floor + 16} solid />
@@ -164,6 +160,7 @@ export function Play() {
           onReport={report}
         />
       ))}
+      <Sprite image="jar-front.png" x={jarX} y={jarY} />
       {run.effects.map((e) => (
         <Sprite
           key={e.id}
@@ -177,128 +174,108 @@ export function Play() {
         />
       ))}
       {run.popups.map((p) => (
-        <Text key={p.id} x={p.x} y={p.y} align="center" color={GOLD} shadow={INK} shadowX={2} shadowY={2}>
+        <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={p.text.startsWith("-") ? BAD : GOLD} shadow={INK} shadowX={2} shadowY={2}>
           {p.text}
         </Text>
       ))}
-      {/* What just happened, floating in the top of the jar. */}
-      <Text x={JAR.left + 8} y={glassTop + 4} width={jarWidth - 16} maxWidth={jarWidth - 16} lineGap={4} align="center" color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>
-        {run.message}
-      </Text>
 
-      {/* The shelf: the hand, in the order it drops. The chosen fruit sits on amber; a held one is lifted. */}
-      <HudBox x={JAR.left - 24} y={SHELF_Y} width={jarWidth + 48} height={16} />
+      {/* The shelf: the hand, in the order it drops. The chosen fruit is framed in amber; a held one is lifted. */}
+      <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y} />
       {shelf.map((kind, i) => (
-        <Entity key={`${kind}${i}`} x={shelfLeft + i * SLOT + SLOT / 2} y={SHELF_Y - 20}>
-          {i === chosenRow(run) && <Flex x={-20} y={-20} width={40} height={40} backgroundImage={cardFor(true)} slice={CARD_SLICE} />}
+        <Entity key={`${kind}${i}`} x={shelfLeft + i * SLOT + SLOT / 2} y={SHELF_Y - 18}>
+          {ordering && i === chosenRow(run) && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
           <FruitBall kind={kind} x={0} y={run.holding && i === chosenRow(run) ? -8 : 0} look="icon" />
         </Entity>
       ))}
 
-      {/* Left: the HUD. Dark blocks, each a label and its value on an inset. */}
-      <HudBox x={HUD_X} y={16} width={HUD_W} height={40} />
-      <Text x={HUD_X + 12} y={28} color={HUD_LABEL}>
-        Cycle
-      </Text>
-      <HudBox x={HUD_X + 96} y={22} width={HUD_W - 104} height={28} inset={HUD_INSET} />
-      <Text x={HUD_X + HUD_W - 12} y={28} align="right" color={LIGHT}>{`${run.cycle}/${RENT.length}`}</Text>
-
-      <HudBox x={HUD_X} y={64} width={HUD_W} height={120} />
-      <Text x={HUD_X + 12} y={76} color={HUD_LABEL}>
+      {/* Left: the rent board. The score against the rent, the turn, and the coins. */}
+      <Board x={HUD_X} y={BOARD_Y} width={BOARD_W} height={HUD_H} title={`Cycle ${run.cycle} of ${RENT.length}`} />
+      <Text x={HUD_X + 16} y={BOARD_Y + 22} color={INK_SOFT}>
         Score
       </Text>
-      <HudBox x={HUD_X + 8} y={96} width={HUD_W - 16} height={44} inset={HUD_INSET} />
-      <Text x={HUD_X + HUD_W / 2} y={102} size={32} align="center" color={run.cycleScore >= rent ? GOOD_BRIGHT : GOLD}>{`${run.cycleScore}`}</Text>
-      <Text x={HUD_X + 12} y={152} color={HUD_LABEL}>
-        Rent
-      </Text>
-      <Text x={HUD_X + HUD_W - 12} y={152} align="right" color={LIGHT}>{`${rent}`}</Text>
-      <Shape kind="rect" x={HUD_X + 8} y={172} width={HUD_W - 16} height={4} color={HUD_INSET} />
-      {filled > 0 && <Shape kind="rect" x={HUD_X + 8} y={172} width={Math.round((HUD_W - 16) * filled)} height={4} color={BAR_FILL} />}
-
-      <HudBox x={HUD_X} y={192} width={HUD_W} height={40} />
-      <Text x={HUD_X + 12} y={204} color={HUD_LABEL}>
+      <Text x={HUD_X + BOARD_W - 16} y={BOARD_Y + 22} align="right" color={INK_SOFT}>{`Rent ${rent}`}</Text>
+      <Text x={HUD_X + BOARD_W / 2} y={BOARD_Y + 34} font={DISPLAY} size={DISPLAY_SIZE * 2} align="center" color={paid ? GOOD : INK}>{`${run.cycleScore}`}</Text>
+      <Shape kind="rect" x={HUD_X + 16} y={BOARD_Y + 92} width={BOARD_W - 32} height={8} color={WELL} />
+      {filled > 0 && <Shape kind="rect" x={HUD_X + 16} y={BOARD_Y + 92} width={Math.round(((BOARD_W - 32) * filled) / 2) * 2} height={8} color={paid ? GOOD : BAR_FILL} />}
+      <Text x={HUD_X + 16} y={BOARD_Y + 106} color={INK_SOFT}>
         Turn
       </Text>
       {[1, 2, 3, 4, 5].map((t) => (
-        <Shape key={t} kind="rect" x={HUD_X + 80 + (t - 1) * 18} y={206} width={12} height={12} color={t <= turn ? GOLD : HUD_INSET} />
+        <Shape key={t} kind="rect" x={HUD_X + BOARD_W - 16 - (TURNS_PER_CYCLE - t + 1) * 18 + 6} y={BOARD_Y + 112} width={12} height={12} color={t <= turn ? BAD : WELL} />
       ))}
+      <Sprite image="coin.png" x={HUD_X + 14} y={BOARD_Y + 128} />
+      <Text x={HUD_X + 46} y={BOARD_Y + 130} color={INK}>{`${run.coins}`}</Text>
+      <Text x={HUD_X + BOARD_W - 16} y={BOARD_Y + 130} align="right" color={INK_SOFT}>{`Total ${run.total}`}</Text>
 
-      <HudBox x={HUD_X} y={240} width={HUD_W} height={40} />
-      <Sprite image="coin.png" x={HUD_X + 10} y={248} />
-      <Text x={HUD_X + 44} y={252} color={GOLD}>{`${run.coins}`}</Text>
-      <Text x={HUD_X + HUD_W - 12} y={252} align="right" color={HUD_LABEL}>{`total ${run.total}`}</Text>
-
-      {/* Right: the pool, one fruit under another, evenly spaced; the column scrolls (mouse wheel) once it is longer than the screen. */}
-      <HudBox x={POOL_X} y={POOL_TOP} width={POOL_W} height={POOL_H} />
-      <Text x={POOL_X + POOL_W / 2} y={POOL_TOP + 12} align="center" color={HUD_LABEL}>
-        Pool
-      </Text>
-      <Text x={POOL_X + POOL_W / 2} y={POOL_TOP + 32} align="center" color={LIGHT}>{`${run.draw.length}/${run.pool.length}`}</Text>
-      <Flex
-        x={POOL_X + 8}
-        y={POOL_TOP + 56}
-        width={POOL_W - 16}
-        height={POOL_LIST_H}
-        direction="column"
-        alignItems="center"
-        gap={POOL_GAP}
-        overflow="scroll"
-        scrollY={s.poolScroll}
-        scrollbarColor={HUD_LABEL}
-      >
-        {sortedPool(run.pool).map((kind, i) => (
-          <Flex key={`${kind}${i}`} width={32} height={32}>
-            <FruitBall kind={kind} x={16} y={16} look="icon" />
-          </Flex>
-        ))}
+      {/* Under it: the keys for this moment. */}
+      <Flex x={HUD_X + 4} y={BOARD_Y + HUD_H + 12} direction="column" gap={4}>
+        {ordering && <KeyHint name="arrows" label={run.holding ? "Move it" : "Choose"} />}
+        {ordering && <KeyHint name="Enter" label={run.holding ? "Put down" : "Pick up"} />}
+        {ordering && <KeyHint name="Space" label="Drop" />}
+        <KeyHint name="Esc" label="Pause" />
       </Flex>
 
-      {/* The keys for this moment. */}
-      <Text x={320} y={336} align="center" color={LIGHT_SOFT}>
-        {ordering ? (run.holding ? "Arrows move  Enter place" : "Enter move  Space drop") : ""}
-      </Text>
-      <Text x={624} y={336} align="right" color={LIGHT_SOFT}>
-        Q/E pool  Esc
-      </Text>
+      {/* Right: the pool by kind, how many of each, and how many are still to be dealt this shuffle. */}
+      <Board x={POOL_X} y={BOARD_Y} width={BOARD_W} height={poolH} title="Pool" />
+      {pool.map((row, i) => (
+        <Entity key={row.kind} x={POOL_X + 12 + (i % POOL_COLUMNS) * POOL_CELL} y={BOARD_Y + 24 + Math.floor(i / POOL_COLUMNS) * POOL_ROW}>
+          <FruitBall kind={row.kind} x={16} y={16} look="icon" />
+          <Text x={36} y={8} color={INK}>{`${row.count}`}</Text>
+        </Entity>
+      ))}
+      <Text x={POOL_X + BOARD_W / 2} y={BOARD_Y + poolH - 30} align="center" color={INK_SOFT}>{`${run.draw.length} of ${run.pool.length} left`}</Text>
 
-      {/* The pick: three cards over a dimmed jar. */}
-      {picking && (
+      {/* Under it: what just happened, on a slate. */}
+      {run.message !== "" && (
         <Entity>
-          <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
-          <Flex x={200} y={20} width={240} height={32} backgroundImage={RIBBON} slice={16} />
-          <Text x={320} y={28} align="center" color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>
-            Pick a fruit
-          </Text>
-          {run.offers.map((kind, i) => (
-            <Entity key={`${kind}${i}`} x={offersLeft + i * (OFFER_W + OFFER_GAP)} y={i === run.offerCursor ? 64 : 72}>
-              <Flex width={OFFER_W} height={OFFER_H} backgroundImage={cardFor(i === run.offerCursor)} slice={CARD_SLICE} />
-              <FruitBall kind={kind} x={OFFER_W / 2} y={56} look="big" />
-              <Text x={OFFER_W / 2} y={100} align="center" color={INK}>
-                {FRUITS[kind].name}
-              </Text>
-              <Text x={12} y={128} width={OFFER_W - 24} maxWidth={OFFER_W - 24} align="center" lineGap={4} color={INK_SOFT}>
-                {FRUITS[kind].text}
-              </Text>
-            </Entity>
-          ))}
-          <Text x={320} y={320} align="center" color={LIGHT}>
-            Enter take   Space skip +1 coin
+          <Board x={POOL_X} y={NOTE_Y} width={BOARD_W} height={NOTE_H} image={PLAQUE} />
+          <Text x={POOL_X + 12} y={NOTE_Y + 6} width={BOARD_W - 24} maxWidth={BOARD_W - 24} color={LIGHT}>
+            {run.message}
           </Text>
         </Entity>
       )}
 
-      {(run.phase === "rent" || run.phase === "over" || run.phase === "won") && (
+      {/* The pick: three cards over a dimmed kitchen. */}
+      {picking && (
         <Entity>
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
-          <Flex x={192} y={112} width={256} height={136} backgroundImage={PANEL} slice={PANEL_SLICE} />
-          <Text x={320} y={132} size={32} align="center" color={run.phase === "over" ? BAD : GOOD}>
-            {run.phase === "rent" ? "Paid" : run.phase === "won" ? "You win" : "Evicted"}
+          <Heading x={320} y={12} width={240} text="Pick a fruit" />
+          {run.offers.map((kind, i) => (
+            <Entity key={`${kind}${i}`} x={offersLeft + i * (OFFER_W + OFFER_GAP)} y={i === run.offerCursor ? 52 : 60}>
+              <Flex width={OFFER_W} height={OFFER_H} backgroundImage={cardFor(i === run.offerCursor)} slice={CARD_SLICE} />
+              <FruitBall kind={kind} x={OFFER_W / 2} y={50} look="big" />
+              <Text x={OFFER_W / 2} y={84} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
+                {FRUITS[kind].name}
+              </Text>
+              <Flex y={116} width={OFFER_W} justifyContent="center">
+                <Flex height={22} paddingX={8} paddingTop={4} background={SCORING[FRUITS[kind].scoring].color} alignItems="center">
+                  <Text color={LIGHT}>{SCORING[FRUITS[kind].scoring].name}</Text>
+                </Flex>
+              </Flex>
+              <Text x={12} y={146} width={OFFER_W - 24} maxWidth={OFFER_W - 24} align="center" color={INK_SOFT}>
+                {offerText(FRUITS[kind].text)}
+              </Text>
+            </Entity>
+          ))}
+          <Flex y={308} width={640} direction="row" justifyContent="center" gap={20}>
+            <KeyHint name="arrows" label="Choose" />
+            <KeyHint name="Enter" label="Take" />
+            <KeyHint name="Space" label="Skip for 1 coin" />
+          </Flex>
+        </Entity>
+      )}
+
+      {ended && (
+        <Entity>
+          <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
+          <Board x={192} y={124} width={256} height={124} title={run.phase === "rent" ? "Rent paid" : run.phase === "won" ? "The jar is yours" : "Evicted"} />
+          <Text x={320} y={148} align="center" color={INK_SOFT}>
+            {run.phase === "over" ? `Rent was ${rent}, you scored ${run.cycleScore}` : `Scored ${run.cycleScore} of ${rent}`}
           </Text>
-          <Text x={320} y={180} align="center" color={INK}>{`Total ${run.total}`}</Text>
-          <Text x={320} y={212} align="center" color={INK_SOFT}>
-            {run.phase === "rent" ? "Enter: next cycle" : "Enter: title"}
-          </Text>
+          <Text x={320} y={166} font={DISPLAY} size={DISPLAY_SIZE} align="center" color={INK}>{`Total ${run.total}`}</Text>
+          <Flex x={192} y={202} width={256} direction="row" justifyContent="center">
+            <KeyHint name="Enter" label={run.phase === "rent" ? "Next cycle" : "Title"} color={INK} />
+          </Flex>
         </Entity>
       )}
       {paused && <Pause />}

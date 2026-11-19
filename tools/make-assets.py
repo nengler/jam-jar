@@ -2,21 +2,23 @@
 Lays out the game's assets/ from the free art in tools/:
 
 - tools/fruit/fruit-sheet.png: 16 x 16 pixel fruit. Each fruit is scaled up with no smoothing to its size in the jar,
-  fruit-<kind>.png, and to a 32-pixel icon for the hand and pick lists, icon-<kind>.png; its ball's radius is written to
-  src/rules/sizes.ts, so the physics matches the picture.
+  fruit-<kind>.png, to a 32-pixel icon for the shelf and the pool, icon-<kind>.png, and to 64 pixels for the pick cards,
+  big-<kind>.png; its ball's radius is written to src/rules/sizes.ts, so the physics matches the picture.
 - tools/kenney/: Kenney's CC0 assets (from the Kenney Game Assets All-in-1 bundle, and sounds from the tse repo's games):
   - the sounds, copied as they are;
-  - `kenney-mini-square-mono.ttf` (Kenney Fonts), drawn at twice its pixel size into `font.png`: the ASCII characters 32 to
-    127 in a 16 x 6 grid of 12 x 16 cells, as tse's `<Text font>` takes;
-  - pixel art only: UI Pack - Pixel Adventure frames and the ribbon (ADVENTURE), Pattern Pack Pixel's gingham (the backdrop),
-    UI Pixel Pack's glass (the jar), Pixel Platformer's coin, and the Explosion Pack's pixel explosion.
+  - pixel art only: UI Pack - Pixel Adventure frames and the ribbon (ADVENTURE), Pattern Pack Pixel's trellis (the wallpaper),
+    Pixel Platformer's coin, and the Explosion Pack's pixel explosion.
+- Drawn here, in Apollo colours at the same 2x pixel: the kitchen (the wallpaper over a wooden counter), the jar's glass (a
+  back, behind the fruit, and a front with its shine and fill line, over them), the shelf and the key caps.
+
+The text is the engine's built-in fonts (m5x7 and Jersey 10), so there is no font file.
 
     python3 tools/make-assets.py
 """
 import shutil
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
@@ -86,42 +88,25 @@ def hexes(*codes: str) -> list[tuple[int, int, int]]:
 # Ramps of Apollo colours, darkest first. A Kenney UI piece keeps its shading but takes a ramp's colours: its own colours,
 # ordered by brightness, are spread over the ramp (`recolor`).
 RAMPS = {
-    "jar": hexes("#253a5e", "#3c5e8b", "#4f8fba", "#73bed3", "#a4dddb"),
+    "frame": hexes("#341c27", "#7a4841", "#ad7757", "#e7d5b3"),
+    "frame-chosen": hexes("#602c2c", "#be772b", "#de9e41", "#e8c170"),
+    "select": hexes("#602c2c", "#be772b", "#de9e41", "#e8c170"),
+    "plaque": hexes("#090a14", "#10141f", "#151d28", "#394a50"),
+    "ribbon": hexes("#241527", "#752438", "#a53030", "#cf573c", "#e7d5b3"),
+    "wallpaper": hexes("#151d28", "#172038"),
 }
-
 
 # UI Pack - Pixel Adventure, large tiles with a thick outline: 32 x 32 tiles, packed, already drawn with 2 x 2 art pixels, so
 # they are used as they are. Each piece is (column, row, tiles across, ramp), drawn as a 9-slice in the game.
 ADVENTURE = {
-    "frame.png": (0, 0, 1, "frame"),  # parchment in a wooden frame: cards, menu buttons, boxes
+    "frame.png": (0, 0, 1, "frame"),  # parchment in a wooden frame: boards, cards, menu buttons
     "frame-chosen.png": (0, 0, 1, "frame-chosen"),  # the same in amber: the chosen one
-    "hud.png": (3, 0, 1, "hud"),  # dark slate: the HUD blocks and the shelf
+    "select.png": (6, 2, 1, "select"),  # an empty amber frame: around the chosen fruit on the shelf
+    "plaque.png": (3, 0, 1, "plaque"),  # dark slate: the note of what just happened
     "ribbon.png": (4, 3, 3, "ribbon"),  # the red ribbon: headings
 }
-RAMPS.update(
-    {
-        "frame": hexes("#341c27", "#7a4841", "#ad7757", "#e7d5b3"),
-        "frame-chosen": hexes("#602c2c", "#be772b", "#de9e41", "#e8c170"),
-        "hud": hexes("#090a14", "#10141f", "#151d28", "#394a50"),
-        "ribbon": hexes("#241527", "#752438", "#a53030", "#cf573c", "#e7d5b3"),
-        "gingham": hexes("#241527", "#341c27", "#4d2b32"),
-    }
-)
-# Pattern Pack Pixel, greyscale: 16 x 16 tiles, packed. The backdrop is tile (1, 4), a gingham check, like the cloth over a jam
-# jar's lid, in three deep Apollo reds, doubled and laid over a picture a tile bigger than the screen each way so it can drift.
-GINGHAM = (1, 4)
-
-
-def gingham() -> Image.Image:
-    sheet = Image.open(KENNEY / "pattern-pack-pixel-grayscale.png").convert("RGBA")
-    tile = doubled(recolor(sheet.crop((GINGHAM[0] * 16, GINGHAM[1] * 16, GINGHAM[0] * 16 + 16, GINGHAM[1] * 16 + 16)), RAMPS["gingham"]))
-    w, h = WIDTH + tile.width, HEIGHT + tile.height
-    out = Image.new("RGBA", (w, h))
-    for y in range(0, h, tile.height):
-        for x in range(0, w, tile.width):
-            out.paste(tile, (x, y))
-    return out
-
+# Pattern Pack Pixel, greyscale: 16 x 16 tiles, packed. The wallpaper is tile (0, 2), a thin trellis, in two close navy blues.
+WALLPAPER = (0, 2)
 
 def brightness(c: tuple[int, int, int]) -> float:
     return 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
@@ -146,51 +131,149 @@ def recolor(image: Image.Image, ramp: list[tuple[int, int, int]]) -> Image.Image
 # match the font's and each other's.
 PX = 2
 WIDTH, HEIGHT = 640, 360
-FONT_PX = 16
 ICON = 32
 # The pick screen's cards show each fruit at 4x.
 BIG = 64
 
-# UI Pixel Pack: 16 x 16 tiles, 2 pixels apart. Each image is (column, row, tiles across, tiles down) of the sheet, drawn as a
-# 9-slice in the game.
-UI_TILES = {
-    "jar.png": (13, 20, 3, 3),  # blue-grey glass: the jar, drawn see-through
-}
 EXPLOSION_FRAMES = 9
 BOOM_SIZE = 96
-
-
-def ui_image(sheet: Image.Image, col: int, row: int, across: int, down: int) -> Image.Image:
-    out = Image.new("RGBA", (16 * across, 16 * down))
-    for dy in range(down):
-        for dx in range(across):
-            x, y = (col + dx) * 18, (row + dy) * 18
-            out.paste(sheet.crop((x, y, x + 16, y + 16)), (dx * 16, dy * 16))
-    box = out.getbbox()
-    return out.crop(box) if box else out
 
 
 def doubled(image: Image.Image) -> Image.Image:
     return image.resize((image.width * PX, image.height * PX), Image.NEAREST)
 
 
-def font_sheet() -> Image.Image:
-    """Kenney Mini Square Mono at 16 px, twice its pixel size (every pixel a 2 x 2 block, nothing to smooth). Its glyphs reach
-    rows 4 to 18, so each is drawn 4 up in a 12 x 16 cell."""
-    font = ImageFont.truetype(str(KENNEY / "kenney-mini-square-mono.ttf"), FONT_PX)
-    cell_w, cell_h = 12, 16
-    sheet = Image.new("L", (cell_w * 16, cell_h * 6), 0)
-    draw = ImageDraw.Draw(sheet)
-    for code in range(32, 128):
-        i = code - 32
-        draw.text(((i % 16) * cell_w, (i // 16) * cell_h - 4), chr(code), font=font, fill=255)
-    # A dotted zero: the font's 0 is the same square ring as its O, which alone reads as an empty box.
-    zero = ord("0") - 32
-    zx, zy = (zero % 16) * cell_w, (zero // 16) * cell_h
-    draw.rectangle((zx + 4, zy + 6, zx + 5, zy + 7), fill=255)
-    out = Image.new("RGBA", sheet.size, (255, 255, 255, 0))
-    out.putalpha(sheet.point(lambda v: 255 if v >= 128 else 0))
+def colour(code: str) -> tuple[int, int, int, int]:
+    rgb = hexes(code)[0]
+    assert rgb in PALETTE, f"{code} is not an Apollo colour"
+    return (*rgb, 255)
+
+
+# The jar, as src/rules/jar.ts has it (JAR and RIM), in art pixels (half the screen's): its inside, the line fruit must stay
+# under, and where its glass starts. The glass is 3 art pixels thick, and the pictures reach MARGIN art pixels outside the walls.
+JAR_LEFT, JAR_RIGHT, JAR_FLOOR, JAR_RIM, JAR_TOP = 112, 208, 168, 52, 36
+GLASS = 3
+MARGIN = 6
+# How far the mouth's rim reaches above and below the glass's top.
+MOUTH = 4
+# Where the counter's top starts, where its front starts, in art pixels: the jar's foot stands on the top.
+COUNTER_TOP, COUNTER_FRONT = 162, 173
+
+
+def kitchen() -> Image.Image:
+    """The backdrop of every screen: trellis wallpaper in two navy blues, a skirting shadow, and a wooden counter seen a
+    little from above (its top, then its front)."""
+    sheet = Image.open(KENNEY / "pattern-pack-pixel-grayscale.png").convert("RGBA")
+    tile = recolor(sheet.crop((WALLPAPER[0] * 16, WALLPAPER[1] * 16, WALLPAPER[0] * 16 + 16, WALLPAPER[1] * 16 + 16)), RAMPS["wallpaper"])
+    w, h = WIDTH // PX, HEIGHT // PX
+    out = Image.new("RGBA", (w, h))
+    for y in range(0, h, 16):
+        for x in range(0, w, 16):
+            out.paste(tile, (x, y))
+    draw = ImageDraw.Draw(out)
+    # The wall darkens to the counter: a dithered row, then two dark ones.
+    for x in range(0, w, 2):
+        out.putpixel((x, COUNTER_TOP - 3), colour("#10141f"))
+    draw.rectangle((0, COUNTER_TOP - 2, w, COUNTER_TOP - 1), fill=colour("#10141f"))
+    # The top: light wood, a lighter back edge, and short grain lines.
+    draw.rectangle((0, COUNTER_TOP, w, COUNTER_FRONT - 1), fill=colour("#c09473"))
+    draw.line((0, COUNTER_TOP, w, COUNTER_TOP), fill=colour("#d7b594"))
+    for i, x in enumerate(range(5, w, 23)):
+        y = COUNTER_TOP + 2 + (i * 5) % 8
+        draw.line((x, y, x + 9 + (i * 7) % 6, y), fill=colour("#ad7757"))
+    # The front: a lit edge, darker wood, plank seams and a shadow along the bottom.
+    draw.rectangle((0, COUNTER_FRONT, w, h), fill=colour("#7a4841"))
+    draw.line((0, COUNTER_FRONT, w, COUNTER_FRONT), fill=colour("#e7d5b3"))
+    draw.line((0, COUNTER_FRONT + 1, w, COUNTER_FRONT + 1), fill=colour("#ad7757"))
+    draw.line((0, h - 1, w, h - 1), fill=colour("#4d2b32"))
+    for x in range(31, w, 64):
+        draw.line((x, COUNTER_FRONT + 2, x, h), fill=colour("#4d2b32"))
+    return doubled(out)
+
+
+def jar_pictures() -> tuple[Image.Image, Image.Image]:
+    """The jar, drawn twice: its back (the tinted inside, the glass walls, the far side of its mouth and its shadow on the counter), behind
+    the fruit, and its front (the near side of its mouth, the shine, the screw thread and the dashed fill line), over them. Both are the same size, with
+    the jar's inside left wall MARGIN art pixels in and its glass top MARGIN down."""
+    w = JAR_RIGHT - JAR_LEFT + MARGIN * 2
+    h = JAR_FLOOR - JAR_TOP + MARGIN * 2
+    left, right, top, floor, rim = MARGIN, w - MARGIN, MARGIN, h - MARGIN, MARGIN + JAR_RIM - JAR_TOP
+    back = Image.new("RGBA", (w, h))
+    draw = ImageDraw.Draw(back)
+    # Its shadow on the counter, to the right.
+    draw.rectangle((left, floor + GLASS, w - 1, floor + GLASS + 1), fill=colour("#ad7757"))
+    draw.rectangle((left - 1, floor + GLASS - 1, w - 3, floor + GLASS), fill=colour("#ad7757"))
+    # The glass: an outer line, a bright middle and an inner line, with the foot's corners rounded; then the tinted inside.
+    for inset, code in ((0, "#4f8fba"), (1, "#a4dddb"), (2, "#3c5e8b")):
+        draw.rounded_rectangle((left - GLASS + inset, top - 8, right + GLASS - 1 - inset, floor + GLASS - 1 - inset), radius=4 - inset, fill=colour(code))
+    draw.rectangle((left, 0, right - 1, floor - 1), fill=colour("#202e37"))
+    draw.rectangle((0, 0, w, top - 1), fill=(0, 0, 0, 0))
+    # Darker glass low down and a soft reflection up each side.
+    draw.rectangle((left, floor - 2, right - 1, floor - 1), fill=colour("#151d28"))
+    draw.rectangle((left + 3, rim + 4, left + 5, floor - 8), fill=colour("#253a5e"))
+    draw.rectangle((right - 4, rim + 30, right - 3, floor - 6), fill=colour("#253a5e"))
+    # The mouth, seen a little from above like the counter: the far half of its rim, and the inside showing under it.
+    mouth = (left - GLASS, top - MOUTH, right + GLASS - 1, top + MOUTH)
+    draw.chord(mouth, 180, 360, fill=colour("#202e37"))
+    draw.arc(mouth, 180, 360, fill=colour("#3c5e8b"))
+
+    front = Image.new("RGBA", (w, h))
+    draw = ImageDraw.Draw(front)
+    # The near half of the rim, lit, with a darker line under it; then the screw thread: two broken lines round the neck.
+    draw.arc((mouth[0], mouth[1] + 1, mouth[2], mouth[3] + 1), 0, 180, fill=colour("#4f8fba"))
+    draw.arc(mouth, 0, 180, fill=colour("#a4dddb"))
+    draw.arc(mouth, 60, 120, fill=colour("#ebede9"))
+    for y, start in ((top + MOUTH + 4, 0), (top + MOUTH + 7, 6)):
+        for x in range(left + start, right - 6, 12):
+            draw.line((x, y, x + 6, y), fill=colour("#3c5e8b"))
+    # The fill line: dashes across, and a tick on each wall.
+    for x in range(left + 2, right - 3, 5):
+        draw.line((x, rim, x + 2, rim), fill=colour("#cf573c"))
+    for x in (left - GLASS, right):
+        draw.line((x, rim, x + GLASS - 1, rim), fill=colour("#cf573c"))
+    # The shine: a long streak and a short one down the left, a glint low on the right.
+    draw.line((left + 4, rim + 6, left + 4, rim + 44), fill=colour("#a4dddb"))
+    draw.line((left + 4, rim + 8, left + 4, rim + 20), fill=colour("#ebede9"))
+    draw.line((left + 4, rim + 50, left + 4, rim + 56), fill=colour("#a4dddb"))
+    draw.line((right - 4, floor - 22, right - 4, floor - 10), fill=colour("#73bed3"))
+    return doubled(back), doubled(front)
+
+
+def shelf(width: int) -> Image.Image:
+    """The shelf the hand waits on: a plank, `width` art pixels long."""
+    out = Image.new("RGBA", (width, 6))
+    draw = ImageDraw.Draw(out)
+    draw.rectangle((0, 0, width - 1, 5), fill=colour("#341c27"))
+    draw.rectangle((1, 1, width - 2, 4), fill=colour("#ad7757"))
+    draw.line((1, 1, width - 2, 1), fill=colour("#d7b594"))
+    draw.line((1, 4, width - 2, 4), fill=colour("#7a4841"))
+    return doubled(out)
+
+
+def key_cap(width: int = 8, arrow: str = "") -> Image.Image:
+    """A key cap, 13 art pixels tall: a lit top edge, a face tall enough for a line of text, and a lip. With no arrow it is a
+    9-slice the game writes the key's name on; with one ("left", "right", "up", "down") it is 13 wide with the arrow on it."""
+    out = Image.new("RGBA", (width, 13))
+    draw = ImageDraw.Draw(out)
+    draw.rounded_rectangle((0, 0, width - 1, 12), radius=1, fill=colour("#202e37"))
+    draw.rectangle((1, 1, width - 2, 9), fill=colour("#c7cfcc"))
+    draw.line((1, 1, width - 2, 1), fill=colour("#ebede9"))
+    draw.rectangle((1, 10, width - 2, 11), fill=colour("#a8b5b2"))
+    # The arrow: a 5 x 3 wedge about (6, 5), pointing its way.
+    for i in range(3):
+        for j in range(-i, i + 1):
+            dx, dy = {"left": (i - 1, j), "right": (1 - i, j), "up": (j, i - 1), "down": (j, 1 - i)}.get(arrow, (None, None))
+            if dx is not None:
+                out.putpixel((6 + dx, 5 + dy), colour("#202e37"))
     return out
+
+
+def key_pair(first: str, second: str) -> Image.Image:
+    """Two arrow keys side by side, an art pixel apart."""
+    out = Image.new("RGBA", (27, 13))
+    out.paste(key_cap(13, first), (0, 0))
+    out.paste(key_cap(13, second), (14, 0))
+    return doubled(out)
 
 
 def coin() -> Image.Image:
@@ -215,25 +298,27 @@ def main() -> None:
         "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
         "export const FRUIT_ART = {\n" + "\n".join(lines) + "\n} as const;\n"
     )
-    ui = Image.open(KENNEY / "ui-pixel-pack-sheet.png").convert("RGBA")
-    for name, (col, row, across, down) in UI_TILES.items():
-        piece = recolor(ui_image(ui, col, row, across, down), RAMPS[name.removesuffix(".png")])
-        doubled(piece).save(ASSETS / name)
     to_palette(coin()).save(ASSETS / "coin.png")
     adventure = Image.open(KENNEY / "ui-pixel-adventure-large-thick.png").convert("RGBA")
     for name, (col, row, across, ramp) in ADVENTURE.items():
         recolor(adventure.crop((col * 32, row * 32, (col + across) * 32, row * 32 + 32)), RAMPS[ramp]).save(ASSETS / name)
-    gingham().save(ASSETS / "gingham.png")
+    doubled(key_cap()).save(ASSETS / "key.png")
+    key_pair("left", "right").save(ASSETS / "key-arrows.png")
+    key_pair("up", "down").save(ASSETS / "key-updown.png")
+    kitchen().save(ASSETS / "kitchen.png")
+    back, front = jar_pictures()
+    back.save(ASSETS / "jar-back.png")
+    front.save(ASSETS / "jar-front.png")
+    shelf(104).save(ASSETS / "shelf.png")
     # The explosion's frames (96 x 91) are centred on a 96 x 96 square so they share one origin.
     for i in range(EXPLOSION_FRAMES):
         frame = to_palette(Image.open(KENNEY / f"explosion-pixel-0{i}.png"))
         square = Image.new("RGBA", (BOOM_SIZE, BOOM_SIZE))
         square.paste(frame, ((BOOM_SIZE - frame.width) // 2, (BOOM_SIZE - frame.height) // 2))
         square.save(ASSETS / f"boom-{i}.png")
-    font_sheet().save(ASSETS / "font.png")
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
-    print(f"wrote {len(FRUIT_SPRITES) * 3} fruit images, the font, the jar, {len(ADVENTURE)} frames, the gingham, the coin, the blast and {len(SOUNDS)} sounds")
+    print(f"wrote {len(FRUIT_SPRITES) * 3} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,17 @@
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 
-/** The pool in the fruit table's order (all the Cherries, then the Grapes, …), so the same fruit sit next to each other. */
-export function sortedPool(pool: readonly FruitKind[]): FruitKind[] {
-  const order = Object.keys(FRUITS) as FruitKind[];
-  return [...pool].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+/** One kind of fruit in the pool, and how many of it the pool holds. */
+export interface PoolRow {
+  kind: FruitKind;
+  count: number;
+}
+
+/** The pool by kind, in the fruit table's order (Cherry, Grape, …): only the kinds it holds. */
+export function poolRows(pool: readonly FruitKind[]): PoolRow[] {
+  const rows: PoolRow[] = [];
+  for (const kind of Object.keys(FRUITS) as FruitKind[]) {
+    const count = pool.filter((k) => k === kind).length;
+    if (count > 0) rows.push({ kind, count });
+  }
+  return rows;
 }

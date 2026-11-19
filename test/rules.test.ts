@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { poolRows } from "../src/layout.ts";
 import { FRUITS } from "../src/rules/fruits.ts";
 import { advance, JAR, newRun, NO_KEYS, resolve, rollPool, RIM, simulate, type Fruit, type Keys, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
@@ -186,4 +187,12 @@ test("missing rent ends the run; paying it moves to the next cycle with an empty
   assert.equal(rich.cycle, 2);
   assert.equal(rich.fruits.length, 0);
   assert.equal(rich.hand.length, 4);
+});
+
+test("poolRows groups the pool by kind, in the fruit table's order", () => {
+  assert.deepEqual(poolRows(["grape", "cherry", "apple", "cherry", "grape", "cherry"]), [
+    { kind: "cherry", count: 3 },
+    { kind: "grape", count: 2 },
+    { kind: "apple", count: 1 },
+  ]);
 });

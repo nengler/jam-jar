@@ -1,5 +1,6 @@
-import { Button, Flex, Menu, Text } from "@tsengine/runtime/jsx";
+import { Button, Entity, Flex, Menu, Text } from "@tsengine/runtime/jsx";
 
+import { Heading } from "./Board.tsx";
 import { useGame } from "./GameState.ts";
 import { BUTTON, BUTTON_GREY, BUTTON_SLICE, INK, PANEL, PANEL_SLICE, SHADE } from "./theme.ts";
 
@@ -10,26 +11,27 @@ import { BUTTON, BUTTON_GREY, BUTTON_SLICE, INK, PANEL, PANEL_SLICE, SHADE } fro
 export function Pause() {
   const { resume, toTitle } = useGame.actions();
   return (
-    <Flex modal width={640} height={360} background={SHADE} alignItems="center" justifyContent="center">
-      <Menu
-        gap={8}
-        padding={16}
-        backgroundImage={PANEL}
-        slice={PANEL_SLICE}
-        width={256}
-        alignItems="stretch"
-        onBack={resume}
-      >
-        <Text color={INK} align="center" width={224}>
-          Paused
-        </Text>
-        <Button autoFocus onPress={resume} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} alignItems="center" justifyContent="center">
-          <Text color={INK}>Resume</Text>
-        </Button>
-        <Button onPress={toTitle} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} alignItems="center" justifyContent="center">
-          <Text color={INK}>Quit to title</Text>
-        </Button>
-      </Menu>
-    </Flex>
+    <Entity>
+      <Flex modal width={640} height={360} background={SHADE} alignItems="center" justifyContent="center">
+        <Menu
+          gap={8}
+          padding={16}
+          paddingTop={28}
+          backgroundImage={PANEL}
+          slice={PANEL_SLICE}
+          width={256}
+          alignItems="stretch"
+          onBack={resume}
+        >
+          <Button autoFocus onPress={resume} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
+            <Text color={INK}>Resume</Text>
+          </Button>
+          <Button onPress={toTitle} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
+            <Text color={INK}>Quit to title</Text>
+          </Button>
+        </Menu>
+      </Flex>
+      <Heading x={320} y={100} width={248} text="Paused" />
+    </Entity>
   );
 }
