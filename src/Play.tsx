@@ -1,19 +1,18 @@
-import { Collider, Entity, Flex, Line, Shape, Sprite, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Line, Shape, Sprite, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
 import { Board, Heading } from "./Board.tsx";
-import { Fruit } from "./Fruit.tsx";
 import { FruitBall } from "./FruitBall.tsx";
+import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
 import { atRest, chipColor, fruitGlossary, moment, startingRun, poolRows, scoringLabel } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
-import { Peg } from "./Peg.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, BOOM_LIFE, bossCycle, dramatic, PULSE, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, BOOM_LIFE, bossCycle, dramatic, shownScore, preservable, JAR, rentFor, RENT, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -40,9 +39,6 @@ import {
 /** The pixel explosion's frames (Kenney Explosion Pack), each centred on a 96-pixel square, drawn at 2x like all the art. */
 const BOOM_FRAMES = 9;
 const BOOM_SIZE = 96;
-/** The jar's pictures reach this far outside its walls and above its glass, which starts this far above the rim. */
-const JAR_MARGIN = 12;
-const JAR_NECK = 32;
 /** The shelf above the jar: its plank's top, and how far apart the hand's fruit stand on it, left to right in the order they drop. */
 const SHELF_Y = 48;
 const SLOT = 48;
@@ -147,8 +143,6 @@ export function Play() {
   const rent = rentFor(run.cycle);
   const jarWidth = JAR.right - JAR.left;
   const jarMid = (JAR.left + JAR.right) / 2;
-  const jarX = JAR.left - JAR_MARGIN;
-  const jarY = RIM - JAR_NECK - JAR_MARGIN;
   // The score on screen runs behind the run's while the tally's popups are still to come, and catches up as each shows.
   const scored = shownScore(run);
   const popups = run.popups.filter((p) => p.delay <= 0);
@@ -179,32 +173,7 @@ export function Play() {
     <Entity>
       <Backdrop />
 
-      {/* The jar: its back (the tinted inside and the glass walls) behind the fruit, its front (shine and fill line) over them. */}
-      <Sprite image="jar-back.png" x={jarX} y={jarY} />
-      {/* What the fruit's balls are stopped by: the floor and two walls, tall enough that nothing pops over them. */}
-      <Collider x={JAR.left - 8} y={JAR.floor} width={jarWidth + 16} height={16} solid />
-      <Collider x={JAR.left - 16} y={0} width={16} height={JAR.floor + 16} solid />
-      <Collider x={JAR.right} y={0} width={16} height={JAR.floor + 16} solid />
-      {boss && <Peg />}
-      {run.fruits.map((f) => (
-        <Fruit
-          key={f.id}
-          id={f.id}
-          kind={f.kind}
-          x0={f.x0}
-          y0={f.y0}
-          rotten={f.rotten}
-          honeyed={f.honeyed}
-          pickled={f.pickled}
-          lit={f.lit && Math.floor(f.fuse * 20) % 2 === 0}
-          glow={f.pulseDelay > 0 ? 0 : f.pulse / PULSE}
-          kicks={f.kicks}
-          kickX={f.kickX}
-          kickY={f.kickY}
-          onReport={report}
-        />
-      ))}
-      <Sprite image="jar-front.png" x={jarX} y={jarY} />
+      <Jar run={run} onReport={report} />
       {/* The Preserves Jar: an amber frame round each fruit kept, and an arrow over the one the cursor is on. */}
       {keptFruit.map((f) => (
         <Flex key={f.id} x={f.x - f.r - 4} y={f.y - f.r - 4} width={f.r * 2 + 8} height={f.r * 2 + 8} backgroundImage={SELECT} slice={CARD_SLICE} />

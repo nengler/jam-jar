@@ -83,6 +83,9 @@ condition ("Blasted: Sprout a starter."), and fit four lines of a shop card. A t
 - Eat and grow: Pitaya (eats one Cherry it touches a turn, and every Pitaya scores 1 more for the rest of the run) and Coconut
   (five times as heavy, so it shoulders its way down; at its third Resolve it cracks into a Cracked Coconut, a Booster that
   doubles its neighbours like a Lemon but lets them merge).
+- The title has a jar filling up by itself: a run the rules play (`src/rules/demo.ts`: each hand dropped as dealt, every
+  pick skipped, a new run a moment after the rent comes due).
+- Fruit roll: the physics has no angle, so each fruit's turning is drawn from how far it moves along what it touches.
 - Music on every screen, with a volume each for the music and the sounds in Settings, kept between launches.
 - A run in progress is kept: quit or close the game, and the title offers Continue, back to the same jar. It is written each
   time the run comes to rest where you act (a hand to order, the pick, the rent, the shop, the Preserves Jar) and thrown
@@ -156,7 +159,8 @@ group taken together sits near 110 a cycle); they are meant to pay in combinatio
   Each step it reports where it is, its speed and which fruit it touches; a blast reaches it as a kick through its props.
 - `src/Play.tsx` collects the reports, calls `advance` once a step and draws the result: the jar (walls are `<Collider solid>`),
   the fruit, the hand on its shelf, the rent board and the keys on the left, the pool by kind and a note of what just happened
-  on the right, and the pick cards. `Shop.tsx` draws the shop and `Peg.tsx` is the boss jar's peg (a ball too heavy to move).
+  on the right, and the pick cards. `Shop.tsx` draws the shop and `Peg.tsx` is the boss jar's peg (a ball too heavy to move). `Jar.tsx` is the jar and its
+  fruit, which the play screen and the title's `DemoJar.tsx` both draw.
   `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `RuleText.tsx` draws card text with its keywords in colour. `Board.tsx` is a parchment board
   with a ribbon heading, `KeyHint.tsx` a key cap and what it does, `Backdrop.tsx` the kitchen behind every screen. `theme.ts`
   names the colours, the fonts and the Kenney frames every screen is made of. `settings.ts` is the player's settings, which the
@@ -175,6 +179,9 @@ group taken together sits near 110 a cycle); they are meant to pay in combinatio
   the wallpaper's trellis (Pattern Pack Pixel), the coin (Pixel Platformer), blasts (Explosion Pack's pixel explosion), the
   sounds and the music (Farm Frolics, from Music Loops). It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;
   `tools/kenney/README.md` says which file each came from.
+- The backdrop moves a little: the wallpaper drifts slowly, and a few motes of dust rise through the air (`src/Backdrop.tsx`).
+  No shader: the engine's software renderer, which the tests and `tse screenshot` use, runs none, and a shader would blend
+  colours off the palette.
 - Drawn by `tools/make-assets.py`, in Apollo colours at the same 2x pixel: the kitchen (wallpaper over a wooden counter), the
   jar's glass, the shelf and the key caps. The jar is two pictures, one behind the fruit and one (its near rim, shine and
   fill line) in front of them.

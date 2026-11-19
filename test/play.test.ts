@@ -185,3 +185,26 @@ test("a run is kept once a hand has been played, and one that ends leaves nothin
   assert.ok(!backend.stored.has("run"));
   player.close();
 });
+
+test("the title shows a jar filling up by itself, and it does not touch what is kept", () => {
+  const backend = new RecordingBackend();
+  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
+  let most = 0;
+  let turned = false;
+  for (const frame of parseInputScript("_*600", { bindings })) {
+    backend.queueInput(frame);
+    player.step();
+    const demo = findComponent("DemoJar", player.world.root) as unknown as { s: { run: Run } };
+    most = Math.max(most, demo.s.run.fruits.length);
+    for (const f of demo.s.run.fruits) assert.ok(f.x - f.r >= JAR.left - 0.5 && f.x + f.r <= JAR.right + 0.5, "inside its walls, wherever the jar is drawn");
+    const fruit = findComponent("Fruit", player.world.root) as unknown as { s: { turn: number } } | null;
+    turned = turned || (fruit !== null && fruit.s.turn !== 0);
+  }
+  assert.ok(most >= 4, `fruit pile up (${most})`);
+  assert.ok(turned, "and roll as they land on each other");
+  assert.equal(useGame.getState().screen, "title");
+  assert.equal(useGame.getState().hasSave, false);
+  assert.ok(!backend.stored.has("run"), "the demo's run is not kept");
+  assert.deepEqual(settings.get().learned, []);
+  player.close();
+});

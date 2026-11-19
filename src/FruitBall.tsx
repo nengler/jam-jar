@@ -15,6 +15,8 @@ interface FruitBallProps {
   pickled?: boolean;
   /** About to explode: drawn flashing. */
   lit?: boolean;
+  /** How far it has rolled, in degrees. */
+  turn?: number;
   /** Lit up, 0 to 1: a softer flash than `lit`, fading as what caused it passes. */
   glow?: number;
   /** "jar": its size in the jar (the default); "icon": 32 px, for the shelf and the pool; "big": 64 px, for the pick cards. */
@@ -25,7 +27,7 @@ interface FruitBallProps {
  * A fruit, centred on (x, y): its pixel sprite (tools/fruit), scaled up with no smoothing by tools/make-assets.py. A rotten
  * fruit is tinted brown, a honeyed one gold; a lit one flashes.
  */
-export function FruitBall({ kind, x, y, rotten = false, honeyed = false, pickled = false, lit = false, glow = 0, look = "jar" }: FruitBallProps) {
+export function FruitBall({ kind, x, y, rotten = false, honeyed = false, pickled = false, lit = false, glow = 0, turn = 0, look = "jar" }: FruitBallProps) {
   const half = fruitImageSize(kind, look) / 2;
   return (
     <Sprite
@@ -34,6 +36,7 @@ export function FruitBall({ kind, x, y, rotten = false, honeyed = false, pickled
       y={y}
       originX={half}
       originY={half}
+      rotation={turn}
       tint={rotten ? ROTTEN : pickled ? PICKLED : honeyed ? HONEYED : undefined}
       flash={lit ? 0.85 : glow * 0.7}
       flashColor={LIGHT}
