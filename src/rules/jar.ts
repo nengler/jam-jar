@@ -243,11 +243,6 @@ export function newRun(seed: number): Run {
   return run;
 }
 
-/** The hand row the cursor is on while ordering, or -1 when the hand is not being ordered. */
-export function chosenRow(run: Run): number {
-  return run.phase === "order" ? run.cursor : -1;
-}
-
 export function rentFor(cycle: number): number {
   return RENT[Math.min(cycle, RENT.length) - 1] as number;
 }
