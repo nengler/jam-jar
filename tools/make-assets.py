@@ -27,7 +27,8 @@ KENNEY = ROOT / "tools" / "kenney"
 # The fruit: 16 x 16 pixel sprites from tools/fruit/fruit-sheet.png (38 columns x 6 rows). Each kind is (column, row, scale):
 # the scale is how many screen pixels an art pixel takes, so the merge ladder grows Cherry -> Watermelon. Whole scales stay
 # crisp; Grape (2.5) and Melon (3.5) sit between them, as the ladder needs five sizes. No sprite exists for a Durian (the
-# Pineapple stands in), a Seed (the brown Kiwi) or a Melon (the round green one).
+# Pineapple stands in), a Seed (the brown Kiwi), a Melon (the round green one), a Prune (the Blackberry), a Fig (the Aubergine)
+# or a Honeydew (the golden Apple).
 FRUIT_SPRITES = {
     "cherry": (14, 1, 2),
     "grape": (5, 1, 2.5),
@@ -42,11 +43,20 @@ FRUIT_SPRITES = {
     "blueberry": (16, 1, 2),
     "lemon": (18, 1, 2),
     "seed": (19, 1, 2),
+    "prune": (36, 1, 2),
+    "fig": (25, 2, 2.5),
+    "kiwi": (19, 2, 2.5),
+    "peach": (12, 0, 2.5),
+    "honeydew": (2, 1, 3),
 }
+# The Fruit Fly is not on the sheet: it is drawn here (`fruit_fly`), 16 x 16 like the others, at 2x.
+FLY_SCALE = 2
 FRUIT_SHEET = ROOT / "tools" / "fruit" / "fruit-sheet.png"
 SIZES_FILE = ROOT / "src" / "rules" / "sizes.ts"
-# A fruit's ball is a little smaller than its sprite's square: the art does not fill the corners.
+# A fruit's ball is a little smaller than its sprite's square: the art does not fill the corners. The Fruit Fly's is smaller
+# still: it is tiny in its square.
 BALL_SHARE = 0.45
+FLY_SHARE = 0.3
 
 SOUNDS = {
     "merge.wav": "interface-sounds-glass-001.wav",
@@ -293,6 +303,21 @@ def item_lid() -> Image.Image:
     return doubled(out)
 
 
+def fruit_fly() -> Image.Image:
+    """The Fruit Fly, 16 x 16 art pixels: a dark body, a red eye and two pale wings."""
+    out = Image.new("RGBA", (16, 16))
+    draw = ImageDraw.Draw(out)
+    for box in ((2, 3, 7, 8), (8, 3, 13, 8)):
+        draw.ellipse(box, fill=colour("#577277"))
+        draw.ellipse((box[0] + 1, box[1] + 1, box[2] - 1, box[3] - 1), fill=colour("#c7cfcc"))
+    draw.ellipse((5, 6, 10, 12), fill=colour("#241527"))
+    draw.rectangle((6, 8, 9, 10), fill=colour("#4d2b32"))
+    draw.rectangle((6, 4, 9, 6), fill=colour("#241527"))
+    draw.point((6, 5), fill=colour("#cf573c"))
+    draw.point((9, 5), fill=colour("#cf573c"))
+    return out
+
+
 def coin() -> Image.Image:
     """Pixel Platformer's gold coin (tile 11, 7 of its 18 x 18 packed tiles)."""
     tiles = Image.open(KENNEY / "pixel-platformer-tiles.png").convert("RGBA")
@@ -304,13 +329,14 @@ def main() -> None:
     ASSETS.mkdir(exist_ok=True)
     sheet = to_palette(Image.open(FRUIT_SHEET))
     lines = []
-    for kind, (col, row, scale) in FRUIT_SPRITES.items():
-        sprite = sheet.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16))
+    sprites = {kind: (sheet.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16)), scale, BALL_SHARE) for kind, (col, row, scale) in FRUIT_SPRITES.items()}
+    sprites["fruitfly"] = (fruit_fly(), FLY_SCALE, FLY_SHARE)
+    for kind, (sprite, scale, share) in sprites.items():
         size = round(16 * scale)
         sprite.resize((size, size), Image.NEAREST).save(ASSETS / f"fruit-{kind}.png")
         sprite.resize((ICON, ICON), Image.NEAREST).save(ASSETS / f"icon-{kind}.png")
         sprite.resize((BIG, BIG), Image.NEAREST).save(ASSETS / f"big-{kind}.png")
-        lines.append(f"  {kind}: {{ size: {size}, radius: {round(size * BALL_SHARE)} }},")
+        lines.append(f"  {kind}: {{ size: {size}, radius: {round(size * share)} }},")
     SIZES_FILE.write_text(
         "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
         "export const FRUIT_ART = {\n" + "\n".join(lines) + "\n} as const;\n"
@@ -336,7 +362,7 @@ def main() -> None:
         square.save(ASSETS / f"boom-{i}.png")
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
-    print(f"wrote {len(FRUIT_SPRITES) * 3} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds (the music among them)")
+    print(f"wrote {len(sprites) * 3} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds (the music among them)")
 
 
 if __name__ == "__main__":

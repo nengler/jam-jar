@@ -47,9 +47,10 @@ const HUD_X = 12;
 const POOL_X = 640 - 12 - BOARD_W;
 const BOARD_Y = 28;
 const HUD_H = 160;
-/** The pool: three kinds across, each a 32-pixel icon and how many of it. */
-const POOL_COLUMNS = 3;
-const POOL_CELL = 56;
+/** The pool: each kind a 32-pixel icon and how many of it, three across; four across, closer, once there are more than four
+ * rows of them, so all 17 kinds a pool can hold fit above the note. */
+const POOL_ROOMY = { columns: 3, cell: 56 };
+const POOL_TIGHT = { columns: 4, cell: 43 };
 const POOL_ROW = 32;
 /** The note of what just happened: a slate under the pool, its foot just above the counter. */
 const NOTE_H = 72;
@@ -130,7 +131,8 @@ export function Play() {
   const shelfLeft = jarMid - (shelf.length * SLOT) / 2;
   const turn = Math.min(run.turn, TURNS_PER_CYCLE);
   const pool = poolRows(run.pool);
-  const poolH = 30 + Math.ceil(pool.length / POOL_COLUMNS) * POOL_ROW + 30;
+  const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
+  const poolH = 30 + Math.ceil(pool.length / grid.columns) * POOL_ROW + 30;
   const offersLeft = 320 - (3 * OFFER_W + 2 * OFFER_GAP) / 2;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
 
@@ -152,6 +154,7 @@ export function Play() {
           x0={f.x0}
           y0={f.y0}
           rotten={f.rotten}
+          honeyed={f.honeyed}
           lit={f.lit && Math.floor(f.fuse * 20) % 2 === 0}
           kicks={f.kicks}
           kickX={f.kickX}
@@ -222,9 +225,9 @@ export function Play() {
       {/* Right: the pool by kind, how many of each, and how many are still to be dealt this shuffle. */}
       <Board x={POOL_X} y={BOARD_Y} width={BOARD_W} height={poolH} title="Pool" />
       {pool.map((row, i) => (
-        <Entity key={row.kind} x={POOL_X + 12 + (i % POOL_COLUMNS) * POOL_CELL} y={BOARD_Y + 24 + Math.floor(i / POOL_COLUMNS) * POOL_ROW}>
+        <Entity key={row.kind} x={POOL_X + 10 + (i % grid.columns) * grid.cell} y={BOARD_Y + 24 + Math.floor(i / grid.columns) * POOL_ROW}>
           <FruitBall kind={row.kind} x={16} y={16} look="icon" />
-          <Text x={36} y={8} color={INK}>{`${row.count}`}</Text>
+          <Text x={33} y={8} color={INK}>{`${row.count}`}</Text>
         </Entity>
       ))}
       <Text x={POOL_X + BOARD_W / 2} y={BOARD_Y + poolH - 30} align="center" color={INK_SOFT}>{`${run.draw.length} of ${run.pool.length} left`}</Text>

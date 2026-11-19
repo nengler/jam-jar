@@ -13,4 +13,10 @@ export const FRUIT_ART = {
   blueberry: { size: 32, radius: 14 },
   lemon: { size: 32, radius: 14 },
   seed: { size: 32, radius: 14 },
+  prune: { size: 32, radius: 14 },
+  fig: { size: 40, radius: 18 },
+  kiwi: { size: 40, radius: 18 },
+  peach: { size: 40, radius: 18 },
+  honeydew: { size: 48, radius: 22 },
+  fruitfly: { size: 32, radius: 10 },
 } as const;

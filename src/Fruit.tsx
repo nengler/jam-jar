@@ -11,6 +11,7 @@ interface FruitProps {
   x0: number;
   y0: number;
   rotten: boolean;
+  honeyed: boolean;
   lit: boolean;
   /** Each time `kicks` goes up, the ball is pushed by (`kickX`, `kickY`) px/s: a blast. */
   kicks: number;
@@ -24,7 +25,7 @@ interface FruitProps {
  * tells the run where it is, how fast it moves and which fruit it touches; the run decides what that means (landing, merging,
  * blowing up). A blast reaches it as a kick through its props.
  */
-export function Fruit({ id, kind, x0, y0, rotten, lit, kicks, kickX, kickY, onReport }: FruitProps) {
+export function Fruit({ id, kind, x0, y0, rotten, honeyed, lit, kicks, kickX, kickY, onReport }: FruitProps) {
   const s = useMutable({ kicked: 0 });
   const { x, y, contacts, push, speed } = useBall({
     x: x0,
@@ -41,5 +42,5 @@ export function Fruit({ id, kind, x0, y0, rotten, lit, kicks, kickX, kickY, onRe
     }
     onReport({ id: id, x: x, y: y, speed: speed(), touching: contacts("fruit").map((c) => c.data.id) });
   });
-  return <FruitBall kind={kind} x={x} y={y} rotten={rotten} lit={lit} />;
+  return <FruitBall kind={kind} x={x} y={y} rotten={rotten} honeyed={honeyed} lit={lit} />;
 }
