@@ -2,7 +2,7 @@ import { Button, Entity, Flex, Menu, Text } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
 import { FruitBall } from "./FruitBall.tsx";
-import { useGame } from "./GameState.ts";
+import { save, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
 import type { FruitKind } from "./rules/fruits.ts";
 import { FRUIT_ART } from "./rules/sizes.ts";
@@ -21,6 +21,7 @@ const ON_COUNTER: readonly (readonly [FruitKind, number])[] = [
 /** The title: the name on the kitchen wall, fruit on the counter either side, and Play / Settings. */
 export function Title({ name }: { name: string }) {
   const learned = useGame((g) => g.learned);
+  const hasSave = useGame((g) => g.hasSave);
   const { start, openSettings } = useGame.actions();
   return (
     <Entity>
@@ -30,14 +31,19 @@ export function Title({ name }: { name: string }) {
       ))}
       <FruitBall kind="grape" x={124} y={COUNTER_Y - 62} />
       <FruitBall kind="banana" x={568} y={COUNTER_Y - 56} />
-      <Flex direction="column" width={640} height={320} alignItems="center" justifyContent="center" gap={12}>
+      <Flex direction="column" width={640} height={324} alignItems="center" justifyContent="center" gap={hasSave ? 6 : 12}>
         <Text font={DISPLAY} size={DISPLAY_SIZE * 3} color={GOLD} shadow={INK} shadowX={4} shadowY={4}>
           {name}
         </Text>
         <Text color={LIGHT_SOFT}>Fill the jar. Make the rent.</Text>
         <Menu gap={8} alignItems="stretch" width={208} paddingTop={8} paddingBottom={8}>
-          <Button autoFocus onPress={start} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
-            <Text color={INK}>Play</Text>
+          {hasSave && (
+            <Button autoFocus onPress={() => save.load()} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
+              <Text color={INK}>Continue</Text>
+            </Button>
+          )}
+          <Button autoFocus={!hasSave} onPress={start} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
+            <Text color={INK}>{hasSave ? "New run" : "Play"}</Text>
           </Button>
           <Button onPress={openSettings} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
             <Text color={INK}>Settings</Text>
