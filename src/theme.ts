@@ -92,3 +92,10 @@ export const MOTE: readonly [string, string] = ["#253a5e", "#3c5e8b"];
 
 /** A card's tooltip: one box for each keyword on it, this wide, beside the card. */
 export const TERM_W = 216;
+
+/** The liquid in the jar, by what is in it: its body, behind the fruit, and the line along its surface. */
+export const JUICE: Readonly<Record<"lime" | "milk" | "both", { body: string; top: string }>> = {
+  lime: { body: "#25562e", top: "#75a743" },
+  milk: { body: "#a8b5b2", top: "#ebede9" },
+  both: { body: "#468232", top: "#d0da91" },
+};

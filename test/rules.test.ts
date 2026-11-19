@@ -8,10 +8,13 @@ import {
   advance,
   BLAST_BONUS,
   bossCycle,
+  COCONUT_MILK,
   dramatic,
   FRUIT_PRICE,
   JAR,
   JUICER_BONUS,
+  JUICE_MOST,
+  LIME_JUICE,
   keeps,
   newRun,
   NO_KEYS,
@@ -27,6 +30,7 @@ import {
   SHOP_REROLL,
   shownScore,
   simulate,
+  surface,
   type Fruit,
   type Keys,
   type Run,
@@ -490,23 +494,65 @@ test("a Pitaya eats a Cherry it touches each turn, and every Pitaya scores 1 mor
   assert.equal(run.cycleScore, FRUITS.pitaya.points * 2 + 1);
 });
 
-test("a Coconut cracks at its third Resolve, and what touches the Cracked Coconut scores double but still merges", () => {
+test("a Coconut cracks at its third Resolve and is gone, leaving milk; fruit that sit in the milk score double", () => {
   const y = JAR.floor - 22;
-  const run = jarWith([fruit(1, "coconut", 300, y)]);
-  for (let turn = 0; turn < 3; turn++) {
-    assert.equal(run.fruits[0]!.kind, "coconut");
+  const run = jarWith([fruit(1, "coconut", 300, y), fruit(2, "apple", 360, JAR.floor - 18), fruit(3, "apple", 400, JAR.floor - 150)]);
+  const scores: number[] = [];
+  for (let turn = 0; turn < 4; turn++) {
+    const before = run.cycleScore;
     run.turn = 1;
     run.phase = "settle";
     resolve(run);
+    scores.push(run.cycleScore - before);
   }
-  const shell = run.fruits[0]!;
-  assert.equal(shell.kind, "cracked");
-  run.fruits.push({ ...fruit(50, "cherry", 340, y, [shell.id, 51]), landed: false }, { ...fruit(51, "cherry", 370, y, [50]), landed: false });
-  run.phase = "settle";
-  const before = run.cycleScore;
+  assert.ok(!run.fruits.some((f) => f.kind === "coconut"));
+  assert.equal(run.juice, COCONUT_MILK);
+  assert.equal(run.milk, true);
+  assert.equal(run.lime, false);
+  // The deep Apple scores 5 and the high one 3; from the turn after the Coconut cracks, the deep one sits in milk: 10.
+  assert.deepEqual(scores, [8, 8, 8, 13]);
+  assert.equal(run.popups.find((p) => p.points === 10)!.text, "+10 x2");
+});
+
+test("a Lime that is Exploded or Crushed leaves lime juice, which rises with each and is gone with the rent", () => {
+  const y = JAR.floor - 18;
+  let run = jarWith([fruit(1, "lime", 300, y), fruit(2, "lime", 330, y)]);
+  run.fruits.push({ ...fruit(9, "chili", 316, y), lit: true, fuse: 0 });
   simulate(run, DT);
-  // The Cherry beside the shell lands for 2, the other for 1, and they merge into a Grape (3): a Lemon would have stopped that.
-  assert.equal(run.cycleScore - before, 2 + 1 + FRUITS.grape.points);
+  assert.equal(run.juice, 2 * LIME_JUICE);
+  assert.equal(run.lime, true);
+  assert.equal(surface(run), JAR.floor - 2 * LIME_JUICE);
+
+  run.items = ["juicer"];
+  run.fruits = [fruit(3, "lime", 300, y)];
+  run.turn = 1;
+  resolve(run);
+  assert.equal(run.juice, 3 * LIME_JUICE, "crushed by the Juicer");
+  for (let i = 0; i < 20; i++) run.fruits.push(fruit(20 + i, "lime", 300, y));
+  run.turn = 1;
+  run.phase = "settle";
+  resolve(run);
+  assert.equal(run.juice, JUICE_MOST, "no deeper than the jar's liquid gets");
+
+  run.turn = 5;
+  run.cycleScore = RENT[0]!;
+  run.phase = "settle";
+  run.fruits = [];
+  resolve(run);
+  run = press(run, { confirm: true });
+  run = press(run, { drop: true });
+  assert.equal(run.cycle, 2);
+  assert.deepEqual([run.juice, run.lime, run.milk], [0, false, false]);
+});
+
+test("a fruit that comes to rest afloat in lime juice has landed, and scores as one that reached the floor", () => {
+  const run = jarWith([]);
+  run.juice = 60;
+  run.lime = true;
+  run.fruits = [{ ...fruit(1, "orange", 300, JAR.floor - 60), landed: false, speed: 4 }];
+  simulate(run, DT);
+  assert.equal(run.fruits[0]!.landed, true);
+  assert.equal(run.cycleScore, FRUITS.orange.points);
 });
 
 test("terms: a keyword is found by its capital, whatever punctuation follows it, and the number after it is coloured with it", () => {

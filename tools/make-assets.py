@@ -50,7 +50,7 @@ FRUIT_SPRITES = {
     "honeydew": (2, 1, 3),
     "pitaya": (20, 0, 2.5),
     "coconut": (22, 1, 3),
-    "cracked": (22, 4, 3),
+    "lime": (17, 2, 2.5),
     "dragonfruit": (21, 1, 3),
     "snowpear": (10, 1, 2.5),
 }

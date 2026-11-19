@@ -1,8 +1,9 @@
-import { Collider, Entity, Sprite } from "@tsengine/runtime/jsx";
+import { Collider, Entity, Shape, Sprite } from "@tsengine/runtime/jsx";
 
 import { Fruit } from "./Fruit.tsx";
 import { Peg } from "./Peg.tsx";
-import { JAR, PULSE, RIM, bossCycle, type FruitReport, type Run } from "./rules/jar.ts";
+import { JAR, PULSE, RIM, bossCycle, surface, type FruitReport, type Run } from "./rules/jar.ts";
+import { JUICE } from "./theme.ts";
 
 /** The jar's pictures reach this far outside its walls and above its glass, which starts this far above the rim. */
 const JAR_MARGIN = 12;
@@ -23,6 +24,8 @@ export function Jar({ run, onReport }: JarProps) {
   const x = JAR.left - JAR_MARGIN;
   const y = RIM - JAR_NECK - JAR_MARGIN;
   const width = JAR.right - JAR.left;
+  const top = surface(run);
+  const liquid = run.lime && run.milk ? "both" : run.milk ? "milk" : "lime";
   return (
     <Entity>
       <Sprite image="jar-back.png" x={x} y={y} />
@@ -30,6 +33,9 @@ export function Jar({ run, onReport }: JarProps) {
       <Collider x={JAR.left - 8} y={JAR.floor} width={width + 16} height={16} solid />
       <Collider x={JAR.left - 16} y={0} width={16} height={JAR.floor + 16} solid />
       <Collider x={JAR.right} y={0} width={16} height={JAR.floor + 16} solid />
+      {/* The liquid pooled at the bottom, behind the fruit, with a lighter line along its surface. */}
+      {run.juice > 0 && <Shape kind="rect" x={JAR.left} y={top} width={width} height={run.juice} color={JUICE[liquid].body} />}
+      {run.juice > 0 && <Shape kind="rect" x={JAR.left} y={top} width={width} height={2} color={JUICE[liquid].top} />}
       {bossCycle(run.cycle) && <Peg />}
       {run.fruits.map((f) => (
         <Fruit
@@ -42,6 +48,7 @@ export function Jar({ run, onReport }: JarProps) {
           honeyed={f.honeyed}
           pickled={f.pickled}
           frozen={f.frozen}
+          surface={run.lime ? top : JAR.floor + 100}
           lit={f.lit && Math.floor(f.fuse * 20) % 2 === 0}
           glow={f.pulseDelay > 0 ? 0 : f.pulse / PULSE}
           kicks={f.kicks}

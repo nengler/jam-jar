@@ -75,7 +75,7 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
         <Entity key={slot.at} x={CARDS_X + slot.at * (CARD_W + CARD_GAP)} y={CARDS_Y - (!shop.removing && shop.cursor === slot.at ? 8 : 0)}>
           <Flex width={CARD_W} height={CARD_H} backgroundImage={cardFor(!shop.removing && shop.cursor === slot.at)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(slot.at)} onPress={() => onClick(slot.at)}>
             {slot.card !== null && (
-              <Tooltip show={!shop.removing && shop.cursor === slot.at ? true : undefined} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={0} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <Tooltip show={!shop.removing && shop.cursor === slot.at ? true : undefined} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                 <Terms text={FRUITS[slot.card].text} />
               </Tooltip>
             )}
@@ -98,7 +98,7 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
       <Entity x={CARDS_X + SHOP_ITEM * (CARD_W + CARD_GAP)} y={CARDS_Y - (!shop.removing && shop.cursor === SHOP_ITEM ? 8 : 0)}>
         <Flex width={CARD_W} height={CARD_H} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_ITEM)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(SHOP_ITEM)} onPress={() => onClick(SHOP_ITEM)}>
           {shop.item !== null && (
-            <Tooltip show={!shop.removing && shop.cursor === SHOP_ITEM ? true : undefined} anchor="top-right" to="top-left" offsetX={-4} offsetY={0} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+            <Tooltip show={!shop.removing && shop.cursor === SHOP_ITEM ? true : undefined} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
               <Terms text={ITEMS[shop.item].text} />
             </Tooltip>
           )}

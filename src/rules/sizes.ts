@@ -20,7 +20,7 @@ export const FRUIT_ART = {
   honeydew: { size: 48, radius: 22 },
   pitaya: { size: 40, radius: 18 },
   coconut: { size: 48, radius: 22 },
-  cracked: { size: 48, radius: 22 },
+  lime: { size: 40, radius: 18 },
   dragonfruit: { size: 48, radius: 22 },
   snowpear: { size: 40, radius: 18 },
   fruitfly: { size: 32, radius: 10 },

@@ -295,7 +295,7 @@ export function Play() {
               {/* What a card's keywords mean shows beside it while it is the chosen one or the mouse is over it; the mouse over a
                   card chooses it, and a click takes it. */}
               <Flex width={OFFER_W} height={OFFER_H} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => point(offer.at)} onPress={() => click(offer.at)}>
-                <Tooltip show={offer.at === run.offerCursor ? true : undefined} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={0} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                <Tooltip show={offer.at === run.offerCursor ? true : undefined} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                   <Terms text={FRUITS[offer.card].text} />
                 </Tooltip>
               </Flex>
