@@ -57,7 +57,7 @@ SOUNDS = {
 
 
 # Every picture is snapped to one palette, Apollo (tools/palette/apollo.hex, by AdamCYounis on Lospec): each pixel becomes the
-# nearest of its 46 colours, so the fruit, the Kenney pieces and the background share one set of colours with the UI (src/theme.ts).
+# nearest of its 46 colours, so the fruit and the Kenney pieces share one set of colours with the UI (src/theme.ts).
 PALETTE = [tuple(int(line[i : i + 2], 16) for i in (0, 2, 4)) for line in (ROOT / "tools" / "palette" / "apollo.hex").read_text().split()]
 
 
@@ -205,7 +205,7 @@ def main() -> None:
     font_sheet().save(ASSETS / "font.png")
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
-    print(f"wrote {len(FRUIT_SPRITES) * 3} fruit images, the font, the background, {len(UI_TILES)} UI images, the coin, the blast and {len(SOUNDS)} sounds")
+    print(f"wrote {len(FRUIT_SPRITES) * 3} fruit images, the font, {len(UI_TILES)} UI images, the coin, the blast and {len(SOUNDS)} sounds")
 
 
 if __name__ == "__main__":
