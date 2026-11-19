@@ -17,7 +17,8 @@ export type Keyword =
   | "heavy"
   | "sprout"
   | "crush"
-  | "spill";
+  | "spill"
+  | "pickled";
 
 export interface KeywordDef {
   name: string;
@@ -38,6 +39,7 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   heavy: { name: "Heavy", text: "Shoulders lighter fruit aside on its way down." },
   sprout: { name: "Sprout", text: "A Cherry, Grape or Orange grows in its place." },
   crush: { name: "Crush", text: "Destroys a fruit for its points +3." },
+  pickled: { name: "Pickled", text: "Never ages and can never be Rotten." },
   spill: { name: "Spill", text: "Fruit over the rim when a turn ends are lost: -5 each." },
 };
 
@@ -60,6 +62,7 @@ const FORMS: Readonly<Record<string, Keyword>> = {
   Sprout: "sprout",
   Crush: "crush",
   Spill: "spill",
+  Pickled: "pickled",
 };
 
 /** The keyword a word of card text is, if it is one: "Blast." and "Blasted:" are Blast. */

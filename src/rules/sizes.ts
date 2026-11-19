@@ -21,5 +21,6 @@ export const FRUIT_ART = {
   pitaya: { size: 40, radius: 18 },
   coconut: { size: 48, radius: 22 },
   cracked: { size: 48, radius: 22 },
+  dragonfruit: { size: 48, radius: 22 },
   fruitfly: { size: 32, radius: 10 },
 } as const;

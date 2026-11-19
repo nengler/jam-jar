@@ -3,12 +3,12 @@ import { Entity, Flex, Shape, Sprite, Text } from "@tsengine/runtime/jsx";
 import { Board, Heading } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { KeyHint } from "./KeyHint.tsx";
-import { fruitGlossary, itemGlossary, poolRows, scoringLabel } from "./layout.ts";
+import { chipColor, fruitGlossary, itemGlossary, poolRows, scoringLabel } from "./layout.ts";
 import { FRUITS } from "./rules/fruits.ts";
 import { ITEMS } from "./rules/items.ts";
 import { RuleText } from "./RuleText.tsx";
 import { FRUIT_PRICE, REMOVAL_PRICE, rerollPrice, SHOP_ITEM, SHOP_LEAVE, SHOP_REMOVE, SHOP_REROLL, type Run, type Shop as ShopState } from "./rules/jar.ts";
-import { BAD, cardFor, CARD_SLICE, INK, INK_SOFT, KEYWORD, KEYWORD_LIGHT, LIGHT, SCORING, SELECT, SHADE, WELL } from "./theme.ts";
+import { BAD, cardFor, CARD_SLICE, INK, INK_SOFT, KEYWORD, KEYWORD_LIGHT, LIGHT, SELECT, SHADE, WELL } from "./theme.ts";
 
 /** The shelf: four cards across the middle. */
 const CARD_W = 148;
@@ -72,7 +72,7 @@ export function Shop({ run, shop, hints }: { run: Run; shop: ShopState; hints: b
           )}
           {kind !== null && (
             <Flex y={92} width={CARD_W} justifyContent="center">
-              <Flex height={22} paddingX={8} paddingTop={4} background={SCORING[FRUITS[kind].scoring].color} alignItems="center">
+              <Flex height={22} paddingX={8} paddingTop={4} background={chipColor(kind)} alignItems="center">
                 <Text color={LIGHT}>{scoringLabel(kind)}</Text>
               </Flex>
             </Flex>

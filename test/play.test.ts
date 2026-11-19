@@ -111,7 +111,7 @@ test("a chain of Blasts plays in slow motion, then the game runs at full speed a
     if (speeds.length === 0) {
       const chili = (id: number, x: number, fuse: number): Fruit => ({
         ...{ id, kind: "chili", x0: x, y0: JAR.floor - 16, x, y: JAR.floor - 16, r: 14, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
-        ...{ landed: true, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: false, lit: true, fuse },
+        ...{ landed: true, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: false, pickled: false, lit: true, fuse },
       });
       play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, fruits: [chili(801, 250, 0.05), chili(802, 390, 0.5)] };
     }

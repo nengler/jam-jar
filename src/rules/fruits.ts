@@ -30,7 +30,8 @@ export type FruitKind =
   | "honeydew"
   | "pitaya"
   | "coconut"
-  | "cracked";
+  | "cracked"
+  | "dragonfruit";
 
 export type Scoring = "fresh" | "simmer" | "booster";
 
@@ -47,6 +48,8 @@ export interface FruitDef {
   touchWeight: number;
   /** How many times heavier than its size it is against other fruit: a heavy one shoulders its way down. Default 1. */
   heavy?: number;
+  /** A Legendary fruit: offered rarely, and its chip says so. */
+  legendary?: boolean;
   /** What it does, in the game's terms (rules/terms.ts): keywords with a capital, and no scoring word, which its chip says. */
   text: string;
 }
@@ -73,6 +76,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   pitaya: { name: "Pitaya", radius: FRUIT_ART.pitaya.radius, points: 2, scoring: "simmer", touchWeight: 1, text: "Scores 2. Eat a Cherry a turn: all gain +1." },
   coconut: { name: "Coconut", radius: FRUIT_ART.coconut.radius, points: 3, scoring: "fresh", touchWeight: 1, heavy: 5, text: "Heavy. After 3 turns, cracks into a Booster." },
   cracked: { name: "Cracked Coconut", radius: FRUIT_ART.cracked.radius, points: 0, scoring: "booster", touchWeight: 1, heavy: 5, text: "Touching fruit score x2." },
+  dragonfruit: { name: "Dragonfruit", radius: FRUIT_ART.dragonfruit.radius, points: 0, scoring: "booster", touchWeight: 1, legendary: true, text: "A Merge touching it skips a size." },
   seed: { name: "Seed", radius: FRUIT_ART.seed.radius, points: 1, scoring: "fresh", touchWeight: 1, text: "Blasted: Sprout a starter." },
 };
 
@@ -98,3 +102,7 @@ export const OFFERABLE: readonly FruitKind[] = [
 
 /** What a Seed can sprout. */
 export const SPROUTS: readonly FruitKind[] = ["cherry", "grape", "orange"];
+
+/** The Legendary fruit, and the chance that one takes the last place among a pick's three offers. */
+export const LEGENDARY: readonly FruitKind[] = ["dragonfruit"];
+export const LEGENDARY_CHANCE = 0.08;

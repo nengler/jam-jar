@@ -51,6 +51,7 @@ FRUIT_SPRITES = {
     "pitaya": (20, 0, 2.5),
     "coconut": (22, 1, 3),
     "cracked": (22, 4, 3),
+    "dragonfruit": (21, 1, 3),
 }
 # The Fruit Fly is not on the sheet: it is drawn here (`fruit_fly`), 16 x 16 like the others, at 2x.
 FLY_SCALE = 2
@@ -342,20 +343,30 @@ def item_shaker() -> Image.Image:
     return doubled(out)
 
 
-def item_preserves() -> Image.Image:
-    """The Preserves Jar: a small jar of red jam under a gingham cloth lid."""
+def item_preserves(jam: str = "#a53030", shine: str = "#cf573c", lid: tuple[str, str] = ("#cf573c", "#e7d5b3"), wide: int = 0) -> Image.Image:
+    """The Preserves Jar: a small jar of red jam under a gingham cloth lid. The Big Preserves Jar is `wide` art pixels wider each
+    side; the Pickling Jar is green, under a plain lid."""
     out = Image.new("RGBA", (ITEM_W, ITEM_H))
     draw = ImageDraw.Draw(out)
-    draw.rounded_rectangle((5, 6, 18, 19), radius=2, fill=colour("#341c27"))
-    draw.rounded_rectangle((6, 7, 17, 18), radius=1, fill=colour("#73bed3"))
-    draw.rectangle((6, 10, 17, 18), fill=colour("#a53030"))
-    draw.line((6, 10, 17, 10), fill=colour("#cf573c"))
-    draw.line((8, 9, 8, 16), fill=colour("#e7d5b3"))
-    draw.rounded_rectangle((4, 1, 19, 7), radius=1, fill=colour("#341c27"))
+    left, right = 5 - wide, 18 + wide
+    draw.rounded_rectangle((left, 6, right, 19), radius=2, fill=colour("#341c27"))
+    draw.rounded_rectangle((left + 1, 7, right - 1, 18), radius=1, fill=colour("#73bed3"))
+    draw.rectangle((left + 1, 10, right - 1, 18), fill=colour(jam))
+    draw.line((left + 1, 10, right - 1, 10), fill=colour(shine))
+    draw.line((left + 3, 9, left + 3, 16), fill=colour("#e7d5b3"))
+    draw.rounded_rectangle((left - 1, 1, right + 1, 7), radius=1, fill=colour("#341c27"))
     for y in range(2, 7):
-        for x in range(5, 19):
-            draw.point((x, y), fill=colour("#cf573c" if (x // 2 + y // 2) % 2 == 0 else "#e7d5b3"))
+        for x in range(left, right + 1):
+            draw.point((x, y), fill=colour(lid[0] if (x // 2 + y // 2) % 2 == 0 else lid[1]))
     return doubled(out)
+
+
+def item_bigpreserves() -> Image.Image:
+    return item_preserves(wide=3)
+
+
+def item_pickling() -> Image.Image:
+    return item_preserves(jam="#468232", shine="#75a743", lid=("#a8b5b2", "#a8b5b2"))
 
 
 def peg() -> Image.Image:
@@ -426,7 +437,14 @@ def main() -> None:
     doubled(key_cap()).save(ASSETS / "key.png")
     key_pair("left", "right").save(ASSETS / "key-arrows.png")
     key_pair("up", "down").save(ASSETS / "key-updown.png")
-    for name, picture in (("lid", item_lid), ("juicer", item_juicer), ("shaker", item_shaker), ("preserves", item_preserves)):
+    for name, picture in (
+        ("lid", item_lid),
+        ("juicer", item_juicer),
+        ("shaker", item_shaker),
+        ("preserves", item_preserves),
+        ("bigpreserves", item_bigpreserves),
+        ("pickling", item_pickling),
+    ):
         picture().save(ASSETS / f"item-{name}.png")
     pointer().save(ASSETS / "pointer.png")
     peg().save(ASSETS / "peg.png")

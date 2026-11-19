@@ -56,6 +56,7 @@ card's keywords mean under it. A fruit's chip says how it scores, so its text do
 | Sprout | A Cherry, Grape or Orange grows in its place. |
 | Crush | Destroys a fruit for its points +3 (the Juicer). |
 | Spill | Fruit over the rim when a turn ends are lost: -5 each. |
+| Pickled | Never ages and can never be Rotten (the Pickling Jar). |
 
 A new card should use these words and no others for the same thing ("Blast", never "explodes"), start an effect with its
 condition ("Blasted: Sprout a starter."), and fit four lines of a shop card. A test holds the texts to that.
@@ -77,6 +78,8 @@ condition ("Blasted: Sprout a starter."), and fit four lines of a shop card. A t
 - Flex fruit: Kiwi (becomes a copy of the first landed fruit it touches), Peach (bounces once when it lands and shoves what it
   landed on aside) and Honeydew (honeys one fruit it touches a turn; honeyed fruit, the Honeydew included, score 2 a turn and
   are tinted gold).
+- Legendary: the Dragonfruit (a Merge touching it skips a size: two Cherries make an Orange). A Legendary takes the last
+  place of a pick about one time in twelve, and is never in the shop.
 - Eat and grow: Pitaya (eats one Cherry it touches a turn, and every Pitaya scores 1 more for the rest of the run) and Coconut
   (five times as heavy, so it shoulders its way down; at its third Resolve it cracks into a Cracked Coconut, a Booster that
   doubles its neighbours like a Lemon but lets them merge).
@@ -94,9 +97,12 @@ condition ("Blasted: Sprout a starter."), and fit four lines of a shop card. A t
   - Lid (6 coins): stops one overflow, then is used up.
   - Juicer (8): at each Resolve it crushes the fruit standing on the floor, each for its points plus 3.
   - Shaker (5): throws every fruit about once a hand has dropped, so the pile lands differently.
+  - Big Jar and Pickling Jar (8 each): upgrades, offered only once you own the Preserves Jar, and each takes its place. The
+    Big Jar keeps 3. The Pickling Jar keeps 1, Pickled: it never ages or rots again (a Banana stays at its best), and rot
+    it had is gone. Pickled fruit are tinted green.
   - Preserves (8), the Preserves Jar: after the shop, choose up to 2 fruit to stay in the jar when the rent empties it.
 
-Not built yet: the upgraded jars (Big Preserves Jar, Pickling Jar), the other boss jars (tilted, blind, gravity-flip), Juice (the
+Not built yet: the other boss jars (tilted, blind, gravity-flip), Juice (the
 Lime, and juice pooling in the jar; the Coconut's milk is a cracked shell for now) and Snow Pear (freezing needs a ball the engine can pin in place). The Honeydew's honey is not sticky yet, for the same
 reason.
 
@@ -163,7 +169,8 @@ group taken together sits near 110 a cycle); they are meant to pay in combinatio
 
 - Fruit art: a 16 x 16 pixel fruit sheet (`tools/fruit/`; its source and licence are still to be added there). Stand-ins:
   the Durian is the Pineapple, the Seed the brown Kiwi, the Melon the round green one, the Prune the Blackberry, the Fig the
-  Aubergine and the Honeydew the golden Apple. The Pitaya is the sheet's Dragon Fruit. The Fruit Fly is drawn by `tools/make-assets.py`.
+  Aubergine and the Honeydew the golden Apple. The Pitaya is the sheet's Dragon Fruit and the Dragonfruit its
+  white-fleshed one. The Fruit Fly is drawn by `tools/make-assets.py`.
 - [Kenney](https://kenney.nl) pixel art, CC0: the boards, cards, buttons, the slate and the ribbon (UI Pack - Pixel Adventure),
   the wallpaper's trellis (Pattern Pack Pixel), the coin (Pixel Platformer), blasts (Explosion Pack's pixel explosion), the
   sounds and the music (Farm Frolics, from Music Loops). It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;

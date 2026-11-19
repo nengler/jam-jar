@@ -11,8 +11,8 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { FRUITS, OFFERABLE, SPROUTS, type FruitKind } from "./fruits.ts";
-import { ITEM_KINDS, ITEMS, type ItemKind } from "./items.ts";
+import { FRUITS, LEGENDARY, LEGENDARY_CHANCE, OFFERABLE, SPROUTS, type FruitKind } from "./fruits.ts";
+import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
 
 export interface JarBounds {
@@ -82,8 +82,11 @@ export type Phase = "order" | "drop" | "settle" | "tally" | "pick" | "rent" | "s
 export const JUICER_BONUS = 3;
 /** How hard the Shaker throws each fruit, at most, sideways and up (px/s). */
 const SHAKE = 260;
-/** How many fruit the Preserves Jar keeps. */
-export const PRESERVED = 2;
+/** How many fruit the run's keeping jar (the Preserves Jar or its upgrade) holds; 0 without one. */
+export function keeps(run: Run): number {
+  const jar = keepingJar(run.items);
+  return jar === undefined ? 0 : (ITEMS[jar].keeps ?? 0);
+}
 
 /** What the shop charges, in coins: a fruit, taking a fruit out of the pool, and a reroll (one more each time, each visit). */
 export const FRUIT_PRICE = 3;
@@ -135,6 +138,8 @@ export interface Fruit {
   /** Seconds left of being lit up, because something just happened to it or because of it; and seconds until that starts. */
   pulse: number;
   pulseDelay: number;
+  /** Kept by a Pickling Jar: it does not age and cannot rot. */
+  pickled: boolean;
   /** Coated in honey (a Honeydew, or a fruit one has honeyed): it scores at every Resolve. */
   honeyed: boolean;
   /** A Chili or Durian about to go off, and the seconds left. */
@@ -476,6 +481,7 @@ function makeFruit(run: Run, kind: FruitKind, x: number, y: number): Fruit {
     pulse: 0,
     pulseDelay: 0,
     honeyed: kind === "honeydew",
+    pickled: false,
     lit: false,
     fuse: 0,
   };
@@ -763,7 +769,11 @@ function merge(run: Run): void {
         born.push(...burst(run, mx, my));
         run.message = "Pomegranates Burst!";
       } else {
-        const into = FRUITS[a.kind].mergesInto as FruitKind;
+        // A Merge that touches a Dragonfruit skips a size, when there is one to skip to.
+        const next = FRUITS[a.kind].mergesInto as FruitKind;
+        const dragon = [...(near[i] ?? []), ...(near[j] ?? [])].map((k) => run.fruits[k] as Fruit).find((o) => o.kind === "dragonfruit");
+        const into = dragon === undefined ? next : (FRUITS[next].mergesInto ?? next);
+        if (dragon !== undefined) pulse(dragon);
         const f = makeFruit(run, into, mx, my);
         f.landed = true;
         pulse(f);
@@ -1003,12 +1013,13 @@ export function resolve(run: Run): void {
 
   // Age; Bananas rot after 3 turns, and each rotten fruit but a Prune rots one fruit it touches (never a Lemon or a Fruit Fly).
   for (const f of run.fruits) {
+    if (f.pickled) continue;
     f.age += 1;
     if (f.kind === "banana" && f.age >= 3 && !f.rotten) f.rotten = true;
   }
   const rotten = run.fruits.filter((f) => f.rotten && f.kind !== "prune");
   for (const r of rotten) {
-    const next = run.fruits.find((o) => !o.rotten && o.kind !== "lemon" && o.kind !== "fruitfly" && r.touching.includes(o.id));
+    const next = run.fruits.find((o) => !o.rotten && !o.pickled && o.kind !== "lemon" && o.kind !== "fruitfly" && r.touching.includes(o.id));
     if (next) {
       next.rotten = true;
       slot += 1;
@@ -1053,6 +1064,8 @@ export function resolve(run: Run): void {
 function offer(run: Run): void {
   const rng = new Rng(run.seed);
   run.offers = rng.shuffle(OFFERABLE).slice(0, 3);
+  // Now and then a Legendary takes the last place.
+  if (rng.next() < LEGENDARY_CHANCE) run.offers[2] = rng.pick(LEGENDARY);
   run.seed = rng.seed;
   run.offerCursor = 0;
   run.phase = "pick";
@@ -1110,12 +1123,12 @@ function leaveRent(run: Run): void {
   run.message = bossCycle(run.cycle + 1) ? "Next cycle: the Peg jar" : "The shop is open";
 }
 
-/** Fill the shop's shelf: three different fruit, and an item not owned yet (none when every item is owned). */
+/** Fill the shop's shelf: three different fruit, and an item the player can use (none when there is none: `offerable`). */
 function stock(run: Run, shop: Shop): void {
   const rng = new Rng(run.seed);
   shop.fruits = rng.shuffle(OFFERABLE).slice(0, SHOP_FRUITS);
-  const unowned = ITEM_KINDS.filter((item) => !run.items.includes(item));
-  shop.item = unowned.length === 0 ? null : rng.pick(unowned);
+  const choices = offerable(run.items);
+  shop.item = choices.length === 0 ? null : rng.pick(choices);
   run.seed = rng.seed;
 }
 
@@ -1176,6 +1189,9 @@ function shopStep(run: Run, keys: Keys): void {
     sound(run, "pick");
   } else if (shop.cursor === SHOP_ITEM) {
     if (shop.item === null || !pay(run, ITEMS[shop.item].price)) return;
+    // An upgrade takes the place of what it upgrades.
+    const from = ITEMS[shop.item].upgrades;
+    run.items = run.items.filter((item) => item !== from);
     run.items.push(shop.item);
     run.message = `You own the ${ITEMS[shop.item].name}`;
     shop.item = null;
@@ -1211,13 +1227,13 @@ export function preservable(run: Run): Fruit[] {
 function leaveShop(run: Run): void {
   run.shop = null;
   run.kept = [];
-  if (!run.items.includes("preserves") || run.fruits.length === 0) {
+  if (keeps(run) === 0 || run.fruits.length === 0) {
     nextCycle(run);
     return;
   }
   run.preserveCursor = 0;
   run.phase = "preserve";
-  run.message = `Preserves Jar: keep up to ${PRESERVED} fruit`;
+  run.message = `${ITEMS[keepingJar(run.items) as ItemKind].name}: keep up to ${keeps(run)} fruit`;
 }
 
 function preserveStep(run: Run, keys: Keys): void {
@@ -1229,8 +1245,8 @@ function preserveStep(run: Run, keys: Keys): void {
   if (keys.confirm) {
     const id = (fruits[run.preserveCursor] as Fruit).id;
     if (run.kept.includes(id)) run.kept = run.kept.filter((k) => k !== id);
-    else if (run.kept.length < PRESERVED) run.kept.push(id);
-    else run.message = `The Preserves Jar holds ${PRESERVED}: let one go first`;
+    else if (run.kept.length < keeps(run)) run.kept.push(id);
+    else run.message = `It holds ${keeps(run)}: let one go first`;
     sound(run, "tick");
   } else if (keys.drop) {
     nextCycle(run);
@@ -1243,6 +1259,8 @@ function nextCycle(run: Run): void {
   run.turn = 1;
   run.cycleScore = 0;
   run.fruits = run.fruits.filter((f) => run.kept.includes(f.id));
+  // What a Pickling Jar keeps is Pickled: it does not age, and rot it had is gone.
+  if (run.items.includes("pickling")) for (const f of run.fruits) Object.assign(f, { pickled: true, rotten: f.kind === "prune" });
   run.kept = [];
   const rng = new Rng(run.seed);
   run.draw = rng.shuffle(run.pool);
