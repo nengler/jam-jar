@@ -58,7 +58,7 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Rotten | Scores nothing and spreads. Still Merges. |
 | Rots | Turns Rotten after this many turns. |
 | Ripen | Scores this much more each turn. |
-| Honeyed / Honey | Scores +4 at the end of every turn / makes a fruit it touches Honeyed. |
+| Honeyed / Honey | Scores +4 at the end of every turn, and sticks to what it touches / makes a fruit it touches Honeyed. |
 | Eat / Hatch | Removes one fruit it touches / a new Fruit Fly appears where it ate. |
 | Grow | That kind scores this much more, all run. |
 | Heavy | Shoulders lighter fruit aside. |
@@ -95,8 +95,8 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   one rotten fruit it touches a turn for 24, and another Fly hatches there; never a Prune) and Fig (blown up while rotten, it
   gives every Banana +1 for the rest of the run).
 - Flex fruit: Kiwi (becomes a copy of the first landed fruit it touches), Peach (bounces once when it lands and shoves what it
-  landed on aside) and Honeydew (honeys one fruit it touches a turn; honeyed fruit, the Honeydew included, score 4 a turn and
-  are tinted gold).
+  landed on aside) and Honeydew (honeys one fruit it touches a turn; honeyed fruit, the Honeydew included, score 4 a turn, are
+  tinted gold, and stick to every fruit that comes to touch them, so a honeyed lump moves as one).
 - Snow Pear: at the end of each turn it and every fruit touching it turn Frozen. A Frozen fruit is held where it is (its
   ball is pinned, so it hangs there even if what was under it goes), an explosion does not destroy it, and it is tinted ice
   blue. It thaws when the rent empties the jar.
@@ -140,8 +140,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     it had is gone. Pickled fruit are tinted green.
   - Preserves (8), the Preserves Jar: after the shop, choose up to 2 fruit to stay in the jar when the rent empties it.
 
-Not built yet: the gravity-flip boss jar and honey
-that sticks fruit together (the Honeydew's honey only scores).
+Not built yet: the gravity-flip boss jar.
 
 The screen is 640 x 360 (16:9), scaled up by whole multiples.
 

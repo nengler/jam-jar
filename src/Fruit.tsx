@@ -45,7 +45,7 @@ const JUICE_DRAG = 0.12;
 export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surface, pull, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
   // `turn` is how far it has rolled, in degrees; `lastX` where it was a step ago.
   const s = useMutable({ kicked: 0, turn: 0, lastX: x0, lastY: y0 });
-  const { x, y, contacts, push, speed, pin, setGravity } = useBall({
+  const { x, y, contacts, push, speed, pin, setGravity, stick } = useBall({
     x: x0,
     y: y0,
     radius: FRUITS[kind].radius,
@@ -58,6 +58,8 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
   });
   useUpdate(() => {
     pin(frozen);
+    // Honey is sticky: a honeyed fruit holds on to every fruit that comes to touch it, and they move as one lump.
+    if (honeyed) stick("fruit");
     // In lime juice it floats: the more of it is under the surface, the less it weighs, down to rising as hard as it would fall,
     // so it comes to rest half out of the juice. The juice also slows it, or it would bob for ever. A Heavy fruit sinks.
     const radius = FRUITS[kind].radius;
