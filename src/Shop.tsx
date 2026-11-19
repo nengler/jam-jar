@@ -82,7 +82,7 @@ export function Shop({ run, shop }: { run: Run; shop: ShopState }) {
       ))}
       <Entity x={CARDS_X + SHOP_ITEM * (CARD_W + CARD_GAP)} y={CARDS_Y - (!shop.removing && shop.cursor === SHOP_ITEM ? 8 : 0)}>
         <Flex width={CARD_W} height={CARD_H} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_ITEM)} slice={CARD_SLICE} />
-        {shop.item !== null && <Sprite image={`item-${shop.item}.png`} x={CARD_W / 2 - 24} y={26} />}
+        {shop.item !== null && <Sprite image={`item-${shop.item}.png`} x={CARD_W / 2 - 24} y={18} />}
         {shop.item !== null && (
           <Text x={CARD_W / 2} y={74} align="center" color={INK}>
             {ITEMS[shop.item].name}

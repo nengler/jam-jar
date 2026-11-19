@@ -28,6 +28,7 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 | Pick | Left/Right or Up/Down choose, Enter take, Space skip (+1 coin) |
 | Rent paid / run over | Enter |
 | Shop | Arrows choose, Enter buy, Space next cycle (or back, while choosing a fruit to remove) |
+| Preserves Jar | Left/Right choose a fruit in the jar, Enter keep it or let it go, Space next cycle |
 | Any time | Esc pause |
 
 ## What's in this first slice
@@ -52,9 +53,13 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 - Rent: 100, 150, 200, 260 and 320 over 5 cycles. Points over rent become coins (1 per 10).
 - The shop, after each rent but the last: three fruit (3 coins each), one item, taking a fruit out of your pool (4 coins; the
   pool keeps at least one hand of 4) and a new shelf (1 coin, then 2, 3, … that visit).
-- Items: the Lid (6 coins) stops one overflow, then is used up. Items you own stand on the counter.
+- Items, which stand on the counter once you own them:
+  - Lid (6 coins): stops one overflow, then is used up.
+  - Juicer (8): at each Resolve it crushes the fruit standing on the floor, each for its points plus 3.
+  - Shaker (5): throws every fruit about once a hand has dropped, so the pile lands differently.
+  - Preserves Jar (8): after the shop, choose up to 2 fruit to stay in the jar when the rent empties it.
 
-Not built yet: the other items (Preserves Jar, Juicer, Shaker), boss jars, Juice and
+Not built yet: the upgraded jars (Big Preserves Jar, Pickling Jar), boss jars, Juice and
 grow, and Snow Pear (freezing needs a ball the engine can pin in place). The Honeydew's honey is not sticky yet, for the same
 reason.
 

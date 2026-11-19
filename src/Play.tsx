@@ -10,7 +10,7 @@ import { offerText, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { Shop } from "./Shop.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, BOOM_LIFE, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, BOOM_LIFE, preservable, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -126,6 +126,9 @@ export function Play() {
   const filled = Math.max(0, Math.min(1, run.cycleScore / rent));
   const ordering = run.phase === "order";
   const picking = run.phase === "pick";
+  const preserving = run.phase === "preserve";
+  const chosen = preserving ? preservable(run)[run.preserveCursor] : undefined;
+  const keptFruit = preserving ? run.fruits.filter((f) => run.kept.includes(f.id)) : [];
   /** On the shelf: the hand while ordering, then what is left of it while dropping. */
   const shelf = ordering ? run.hand : run.queue;
   const shelfLeft = jarMid - (shelf.length * SLOT) / 2;
@@ -163,6 +166,11 @@ export function Play() {
         />
       ))}
       <Sprite image="jar-front.png" x={jarX} y={jarY} />
+      {/* The Preserves Jar: an amber frame round each fruit kept, and an arrow over the one the cursor is on. */}
+      {keptFruit.map((f) => (
+        <Flex key={f.id} x={f.x - f.r - 4} y={f.y - f.r - 4} width={f.r * 2 + 8} height={f.r * 2 + 8} backgroundImage={SELECT} slice={CARD_SLICE} />
+      ))}
+      {preserving && chosen !== undefined && <Sprite image="pointer.png" x={Math.round(chosen.x) - 9} y={Math.round(chosen.y - chosen.r) - 20} />}
       {run.effects.map((e) => (
         <Sprite
           key={e.id}
@@ -183,7 +191,7 @@ export function Play() {
 
       {/* The items owned stand on the counter, left of the jar. */}
       {run.items.map((item, i) => (
-        <Sprite key={item} image={`item-${item}.png`} x={20 + i * 56} y={COUNTER_Y - 26} />
+        <Sprite key={item} image={`item-${item}.png`} x={16 + i * 50} y={COUNTER_Y - 38} />
       ))}
 
       {/* The shelf: the hand, in the order it drops. The chosen fruit is framed in amber; a held one is lifted. */}
@@ -219,6 +227,9 @@ export function Play() {
         {ordering && <KeyHint name="arrows" label={run.holding ? "Move it" : "Choose"} />}
         {ordering && <KeyHint name="Enter" label={run.holding ? "Put down" : "Pick up"} />}
         {ordering && <KeyHint name="Space" label="Drop" />}
+        {preserving && <KeyHint name="arrows" label="Choose" />}
+        {preserving && <KeyHint name="Enter" label="Keep" />}
+        {preserving && <KeyHint name="Space" label="Done" />}
         <KeyHint name="Esc" label="Pause" />
       </Flex>
 

@@ -3,7 +3,8 @@
  * The players are not clever: "skip" drops each hand as dealt and never picks; "random" takes a random offer; and one player for
  * each fruit takes that fruit whenever it is offered and nothing else, which shows what the fruit is worth next to "skip"
  * ("chili+blueberry+seed" takes any of those). None of them orders a hand. A player ending "/thin" ("skip/thin") spends its coins
- * in the shop taking Cherries out of its pool; the others buy nothing. The rent is ignored (set to 0), so every run plays all its cycles.
+ * in the shop taking Cherries out of its pool; the others buy nothing. A player with "@" owns those items from the start
+ * ("skip@juicer", "random@shaker+lid"). The rent is ignored (set to 0), so every run plays all its cycles.
  *
  *     node tools/balance.ts [runs per player, default 20] [players, e.g. skip,random,chili]
  */
@@ -13,6 +14,7 @@ import { findComponent } from "@tsengine/testing";
 import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
 import { OFFERABLE } from "../src/rules/fruits.ts";
+import type { ItemKind } from "../src/rules/items.ts";
 import { POINTS_PER_COIN, REMOVAL_PRICE, RENT, SHOP_REMOVE, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
 
@@ -39,14 +41,17 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   let pool = 0;
   let wait = 0;
   let coins = 0;
-  const thin = strategy.endsWith("/thin");
-  const picks = strategy.replace("/thin", "");
+  const [plan = "", owned = ""] = strategy.split("@");
+  const thin = plan.endsWith("/thin");
+  const picks = plan.replace("/thin", "");
+  const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
     backend.queueInput(queued.shift() ?? NONE);
     player.step();
     const found = findComponent("Play", player.world.root) as { s: { run: Run } } | null;
     if (found === null || queued.length > 0) continue;
+    if (items.some((item) => !found.s.run.items.includes(item))) found.s.run = { ...found.s.run, items };
     const run = found.s.run;
     pool = run.pool.length;
     // A key, then a few idle frames, so a press is never read twice.
@@ -76,6 +81,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
       else queued = [ENTER];
       coins = run.coins;
     }
+    else if (run.phase === "preserve") queued = [SPACE];
     else if (run.phase === "won" || run.phase === "over") break;
     else wait = 0;
   }
