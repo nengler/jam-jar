@@ -14,7 +14,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const tse = resolve(process.env["TSE_DIR"] ?? join(root, "..", "tse"));
 if (!existsSync(join(tse, "tools", "pack.ts"))) throw new Error(`no tse checkout at ${tse}: set TSE_DIR`);
 
-execFileSync("npm", ["install", "--no-audit", "--no-fund"], { cwd: tse, stdio: "inherit" });
+// `npm ci` installs from the lockfile without rewriting it, so the tse checkout stays clean.
+execFileSync("npm", ["ci", "--no-audit", "--no-fund"], { cwd: tse, stdio: "inherit" });
 if (!existsSync(join(tse, "native", "build-headless")))
   execFileSync("npm", ["run", "-s", "native:build:headless"], { cwd: tse, stdio: "inherit" });
 execFileSync("npm", ["run", "-s", "pack"], { cwd: tse, stdio: "inherit" });
