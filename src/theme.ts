@@ -25,7 +25,8 @@ export const DISPLAY = "tse:jersey10";
 export const DISPLAY_SIZE = 28;
 
 /** Kenney UI Pack - Pixel Adventure pieces, recoloured to Apollo and 9-sliced: parchment in a wooden frame, the same in amber
- * for the chosen one, dark slate for the note, an empty amber frame for the chosen fruit, and a red ribbon for headings. */
+ * for the chosen one, dark slate for the note, and an empty amber frame for the chosen fruit. Headings are plain
+ * lettering: light on the wall above a board, ink at the top of a dialog. */
 export const PANEL = "frame.png";
 export const PANEL_SLICE = 8;
 export const CARD = "frame.png";
@@ -33,7 +34,6 @@ export const CARD_CHOSEN = "frame-chosen.png";
 export const CARD_SLICE = 8;
 export const PLAQUE = "plaque.png";
 export const SELECT = "select.png";
-export const RIBBON = "ribbon.png";
 
 /** The card for an offer: amber when it is the chosen one. */
 export function cardFor(chosen: boolean): string {

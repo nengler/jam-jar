@@ -44,7 +44,7 @@ const BOOM_SIZE = 96;
 /** The shelf above the jar: its plank's top, and how far apart the hand's fruit stand on it, left to right in the order they drop. */
 const SHELF_Y = 48;
 const SLOT = 48;
-/** The boards either side of the jar: 192 wide, 12 from the screen's edges, hung under their ribbons. */
+/** The boards either side of the jar: 192 wide, 12 from the screen's edges, each under its heading. */
 const BOARD_W = 192;
 const HUD_X = 12;
 const POOL_X = 640 - 12 - BOARD_W;
@@ -241,12 +241,13 @@ export function Play() {
         <Entity key={`${kind}${i}`} x={shelfLeft + i * SLOT + SLOT / 2} y={SHELF_Y - 18}>
           {ordering && !blind && i === run.cursor && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
           {!blind && <FruitBall kind={kind} x={0} y={ordering && run.holding && i === run.cursor ? -8 : 0} look="icon" />}
-          {/* What it does, under the shelf: for the fruit the cursor is on, and for one the mouse is over. It sits over the middle of
+          {/* What it does, under the shelf: for the fruit the cursor is on, and for one the mouse is over. While ordering it also
+              says, every time, that the hand can be reordered and how: the keys' own hints show only the first time. It sits over the middle of
               the jar whichever fruit it is for, so it never covers the boards either side. */}
           {!blind && (
             <Flex x={-20} y={-20} width={40} height={40}>
-              <Tooltip show={!paused && ordering && !run.holding && i === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - (shelfLeft + i * SLOT + SLOT / 2)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                <FruitTip kind={kind} />
+              <Tooltip show={!paused && ordering && i === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - (shelfLeft + i * SLOT + SLOT / 2)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                <FruitTip kind={kind} note={!ordering ? "" : run.holding && i === run.cursor ? "Left / Right moves it. Enter puts it down." : "Drops left to right. Enter picks it up to move it."} />
               </Tooltip>
             </Flex>
           )}
@@ -325,7 +326,7 @@ export function Play() {
                 </Tooltip>
               </Flex>
               <FruitBall kind={offer.card} x={OFFER_W / 2} y={50} look="big" />
-              <Text x={OFFER_W / 2} y={84} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
+              <Text x={0} y={84} width={OFFER_W} maxWidth={OFFER_W} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
                 {FRUITS[offer.card].name}
               </Text>
               <RuleText x={12} y={122} width={OFFER_W - 24} text={FRUITS[offer.card].text} color={INK_SOFT} accent={KEYWORD} />
@@ -344,8 +345,8 @@ export function Play() {
       {ended && (
         <Entity>
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
-          <Board x={192} y={124} width={256} height={124} title={run.phase === "rent" ? "Rent paid" : run.phase === "won" ? "The jar is yours" : "Evicted"} />
-          <Text x={320} y={148} align="center" color={INK_SOFT}>
+          <Board x={192} y={106} width={256} height={142} heading={run.phase === "rent" ? "Rent paid" : run.phase === "won" ? "The jar is yours" : "Evicted"} />
+          <Text x={204} y={148} width={232} maxWidth={232} align="center" color={INK_SOFT}>
             {`Scored ${run.cycleScore} of ${rent}`}
           </Text>
           <Text x={320} y={166} font={DISPLAY} size={DISPLAY_SIZE} align="center" color={INK}>{`Total ${run.total}`}</Text>

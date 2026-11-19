@@ -87,7 +87,7 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
           </Flex>
           {slot.card !== null && <FruitBall kind={slot.card} x={CARD_W / 2} y={40} look="big" />}
           {slot.card !== null && (
-            <Text x={CARD_W / 2} y={72} align="center" color={INK}>
+            <Text x={6} y={72} width={CARD_W - 12} maxWidth={CARD_W - 12} align="center" color={INK}>
               {FRUITS[slot.card].name}
             </Text>
           )}
@@ -110,7 +110,7 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
         </Flex>
         {shop.item !== null && <Sprite image={`item-${shop.item}.png`} x={CARD_W / 2 - 24} y={24} />}
         {shop.item !== null && (
-          <Text x={CARD_W / 2} y={74} align="center" color={INK}>
+          <Text x={6} y={74} width={CARD_W - 12} maxWidth={CARD_W - 12} align="center" color={INK}>
             {ITEMS[shop.item].name}
           </Text>
         )}
@@ -146,7 +146,7 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
 
       {/* What just happened, top left. */}
       {/* What just happened (a fruit bought, the shelf restocked), under the actions. */}
-      <Text x={320} y={ACTIONS_Y + 44} align="center" color={LIGHT}>
+      <Text x={120} y={ACTIONS_Y + 40} width={400} maxWidth={400} align="center" color={LIGHT}>
         {run.message}
       </Text>
       {!shop.removing && hints && (
@@ -161,7 +161,7 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
       {shop.removing && (
         <Entity>
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
-          <Board x={boardX} y={120} width={boardW} height={96} title="Take out one" />
+          <Board x={boardX} y={108} width={boardW} height={108} heading="Take out one" />
           {kinds.map((row, i) => (
             <Entity key={row.kind} x={boardX + (boardW - kinds.length * CELL) / 2 + i * CELL} y={150}>
               {i === shop.removeCursor && <Flex x={0} y={-4} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
