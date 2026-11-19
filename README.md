@@ -9,7 +9,7 @@ Built on the [tse engine](https://github.com/nengler/tse). The design doc is the
 
 ## Running it
 
-The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.12.0), with
+The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.13.0), with
 `overrides` so the packs' own dependencies on each other resolve to the same release:
 
 ```sh
