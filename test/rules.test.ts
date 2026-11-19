@@ -23,6 +23,7 @@ import {
   NO_KEYS,
   POINTS_PER_COIN,
   REMOVAL_PRICE,
+  REMOVAL_STEP,
   removalPrice,
   rerollPrice,
   RENT,
@@ -301,7 +302,7 @@ test("the shop: a new shelf costs one more each time, all run, and restocks the 
   assert.equal(rerollPrice(next), 3);
 });
 
-test("the shop: taking a fruit out costs one more each time, all run", () => {
+test("the shop: taking a fruit out costs two more each time, all run", () => {
   let run = inShop(20);
   run.pool = ["cherry", "cherry", "cherry", "grape", "grape", "apple"];
   run.shop!.cursor = SHOP_REMOVE;
@@ -309,10 +310,10 @@ test("the shop: taking a fruit out costs one more each time, all run", () => {
   run = press(run, { confirm: true });
   run = press(run, { confirm: true });
   assert.equal(run.coins, 20 - REMOVAL_PRICE);
-  assert.equal(removalPrice(run), REMOVAL_PRICE + 1);
+  assert.equal(removalPrice(run), REMOVAL_PRICE + REMOVAL_STEP);
   run = press(run, { confirm: true });
   run = press(run, { confirm: true });
-  assert.equal(run.coins, 20 - REMOVAL_PRICE - (REMOVAL_PRICE + 1));
+  assert.equal(run.coins, 20 - REMOVAL_PRICE - (REMOVAL_PRICE + REMOVAL_STEP));
   assert.equal(run.pool.length, 4);
 });
 
