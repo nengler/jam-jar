@@ -6,7 +6,7 @@ import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
-import { KeyHint } from "./KeyHint.tsx";
+import { KeyHint, TapButton } from "./KeyHint.tsx";
 import { atRest, cycleTitle, grownOf, leaned, moment, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
@@ -84,7 +84,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -110,7 +110,7 @@ export function Play() {
         left: input.pressed("ArrowLeft"),
         right: input.pressed("ArrowRight"),
         confirm: input.pressed("Enter") || s.click,
-        drop: input.pressed("Space"),
+        drop: input.pressed("Space") || s.drop,
         point: s.point,
       },
       s.reports
@@ -118,6 +118,7 @@ export function Play() {
     s.reports = [];
     s.point = -1;
     s.click = false;
+    s.drop = false;
     // Through a moment once (a hand dropped, a pick made, the shop left), its keys are known: they are not shown again.
     if (moment(s.run) !== before) learn(before);
     // Each time the run comes to rest where the player acts, it is kept for "Continue"; once it is over there is nothing to keep.
@@ -151,6 +152,18 @@ export function Play() {
   const click = (card: number) => {
     s.point = card;
     s.click = true;
+  };
+  // The buttons on screen, for playing with no keyboard: what Space, Esc and (on the end board) Enter do.
+  const tapDrop = () => {
+    s.drop = true;
+  };
+  const tapPause = () => {
+    pause();
+  };
+  // The end board's button: on from a paid rent, or back to the title when the run is over.
+  const tapEnd = () => {
+    if (s.run.phase === "rent") s.click = true;
+    else toTitle();
   };
   const report = (r: FruitReport) => {
     s.reports = [...s.reports, r];
@@ -196,6 +209,14 @@ export function Play() {
           {keptFruit.map((f) => (
             <Flex key={f.id} x={f.x - f.r - 4} y={f.y - f.r - 4} width={f.r * 2 + 8} height={f.r * 2 + 8} backgroundImage={SELECT} slice={CARD_SLICE} />
           ))}
+          {/* Each fruit the Preserves Jar can keep can be clicked or tapped: it is kept, or let go. */}
+          {preserving && (
+            <>
+              {placed(preservable(run)).map((slot) => (
+                <Flex key={slot.card.id} x={slot.card.x - slot.card.r} y={slot.card.y - slot.card.r} width={slot.card.r * 2} height={slot.card.r * 2} focusable={false} onPointerEnter={() => point(slot.at)} onPress={() => click(slot.at)} />
+              ))}
+            </>
+          )}
           {preserving && chosen !== undefined && <Sprite image="pointer.png" x={Math.round(chosen.x) - 9} y={Math.round(chosen.y - chosen.r) - 20} />}
           {run.effects.map((e) => (
             <Sprite
@@ -233,17 +254,18 @@ export function Play() {
       {/* The shelf: the hand, in the order it drops. The chosen fruit is framed in amber; a held one is lifted. In the Blind
           jar each is under a cloth. */}
       <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y} />
-      {shelf.map((kind, i) => (
-        <Entity key={`${kind}${i}`} x={shelfLeft + i * SLOT + SLOT / 2} y={SHELF_Y - 18}>
-          {ordering && !blind && i === run.cursor && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
-          {!blind && <FruitBall kind={kind} x={0} y={ordering && run.holding && i === run.cursor ? -8 : 0} look="icon" />}
-          {/* What it does, under the shelf: for the fruit the cursor is on, and for one the mouse is over. While ordering it also
+      {placed(shelf).map((slot) => (
+        <Entity key={`${slot.card}${slot.at}`} x={shelfLeft + slot.at * SLOT + SLOT / 2} y={SHELF_Y - 18}>
+          {ordering && !blind && slot.at === run.cursor && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
+          {!blind && <FruitBall kind={slot.card} x={0} y={ordering && run.holding && slot.at === run.cursor ? -8 : 0} look="icon" />}
+          {/* The mouse over a fruit moves the cursor to it, and a click or a tap picks it up or puts the held one down there.
+              What it does shows under the shelf: for the fruit the cursor is on, and for one the mouse is over. While ordering it also
               says, every time, that the hand can be reordered and how: the keys' own hints show only the first time. It sits over the middle of
               the jar whichever fruit it is for, so it never covers the boards either side. */}
           {!blind && (
-            <Flex x={-20} y={-20} width={40} height={40}>
-              <Tooltip show={!paused && ordering && i === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - (shelfLeft + i * SLOT + SLOT / 2)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                <FruitTip kind={kind} grown={grownOf(run, kind)} note={!ordering ? "" : run.holding && i === run.cursor ? "Left / Right moves it. Enter puts it down." : "Drops left to right. Enter picks it up to move it."} />
+            <Flex x={-20} y={-20} width={40} height={40} focusable={false} onPointerEnter={() => point(slot.at)} onPress={() => click(slot.at)}>
+              <Tooltip show={!paused && ordering && slot.at === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - (shelfLeft + slot.at * SLOT + SLOT / 2)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} note={!ordering ? "" : run.holding && slot.at === run.cursor ? "Tap where it goes, or Left / Right. Enter puts it down." : "Drops left to right. Tap it or press Enter to move it."} />
               </Tooltip>
             </Flex>
           )}
@@ -274,14 +296,15 @@ export function Play() {
             <Text color={INK}>{`${run.coins} ${run.coins === 1 ? "coin" : "coins"}`}</Text>
           </Flex>
         </Panel>
-        <Flex direction="column" gap={4} paddingLeft={4}>
+        <Flex direction="column" alignItems="start" gap={4} paddingLeft={4}>
           {ordering && hints && !blind && <KeyHint name="arrows" label={run.holding ? "Move it" : "Choose"} />}
           {ordering && hints && !blind && <KeyHint name="Enter" label={run.holding ? "Put down" : "Pick up"} />}
-          {ordering && hints && <KeyHint name="Space" label="Drop" />}
           {preserving && hints && <KeyHint name="arrows" label="Choose" />}
           {preserving && hints && <KeyHint name="Enter" label="Keep" />}
-          {preserving && hints && <KeyHint name="Space" label="Done" />}
-          {!learned.includes("order") && <KeyHint name="Esc" label="Pause" />}
+          {/* What can also be tapped, always there: the key is drawn on each until it has been learned. */}
+          {ordering && <TapButton label="Drop" keyName={hints ? "Space" : ""} onPress={tapDrop} />}
+          {preserving && <TapButton label="Done" keyName={hints ? "Space" : ""} onPress={tapDrop} />}
+          <TapButton label="Pause" keyName={learned.includes("order") ? "" : "Esc"} onPress={tapPause} />
         </Flex>
       </Flex>
 
@@ -350,13 +373,12 @@ export function Play() {
               ))}
             </Flex>
           </Flex>
-          {hints && (
-            <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center" gap={20}>
-              <KeyHint name="arrows" label="Choose" />
-              <KeyHint name="Enter" label="Take" />
-              <KeyHint name="Space" label="Skip for 1 coin" />
-            </Flex>
-          )}
+          {/* The way out, always there, in the bottom left corner: a card's keywords open to its side, never over this. */}
+          <Flex left={16} bottom={2} direction="row" alignItems="center" gap={20}>
+            <TapButton label="Skip for 1 coin" keyName={hints ? "Space" : ""} onPress={tapDrop} />
+            {hints && <KeyHint name="arrows" label="Choose" />}
+            {hints && <KeyHint name="Enter" label="Take" />}
+          </Flex>
         </Entity>
       )}
 
@@ -374,14 +396,14 @@ export function Play() {
                   <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`Total ${run.total}`}</Text>
                 </Flex>
                 <Flex direction="row" justifyContent="center" paddingTop={6}>
-                  <KeyHint name="Enter" label={run.phase === "rent" ? (run.cycle >= RENT.length ? "Go on" : "Shop") : "Title"} color={INK} />
+                  <TapButton keyName="Enter" label={run.phase === "rent" ? (run.cycle >= RENT.length ? "Go on" : "Shop") : "Title"} onPress={tapEnd} />
                 </Flex>
               </Panel>
             </Flex>
           </Flex>
         </Entity>
       )}
-      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} onPoint={point} onClick={click} />}
+      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} onPoint={point} onClick={click} onSpace={tapDrop} />}
       {paused && <Pause />}
     </Entity>
   );

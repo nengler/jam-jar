@@ -22,6 +22,14 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 
 ## Controls
 
+Everything can also be done with the mouse or a finger, with no keyboard: tap a fruit on the shelf to pick it up and tap where
+it should stand, and tap the buttons for what Space, Esc and Enter do (Drop, Skip, Done, Back, Pause). Cards, the shop's
+actions, a kind in the take-out dialog and a fruit the Preserves Jar can keep are tapped directly.
+
+`npx tse package . --engine web` builds the game as a web page in `dist/jam-jar-web`, and `.github/workflows/pages.yml`
+publishes it to GitHub Pages on every push to `main` (once Settings -> Pages -> Source is set to "GitHub Actions"). The
+screen fills the window at any size, a phone's included.
+
 | Phase | Keys |
 | --- | --- |
 | Order your hand | Up/Down choose, Enter pick up / put down (then Up/Down move it), Space drop |

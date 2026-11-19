@@ -328,7 +328,11 @@ export interface Keys {
   confirm: boolean;
   /** Space: drop the hand, skip the pick. */
   drop: boolean;
-  /** The mouse came over this card (a pick's offer, a place on the shop's shelf or one of its actions): the cursor goes to it. -1 for none. */
+  /**
+   * The mouse came over this place, or a finger tapped it (with `confirm`): the cursor goes to it. A place is a fruit on the shelf
+   * while ordering, a pick's offer, a place on the shop's shelf or one of its actions, a kind in the take-out dialog, or a fruit
+   * the Preserves Jar can keep. -1 for none.
+   */
   point: number;
 }
 
@@ -707,14 +711,16 @@ function order(run: Run, keys: Keys): void {
   // In the Blind jar the hand is covered: there is nothing to choose or move, only to drop.
   const blind = bossNow(run) === "blind";
   const move = blind ? 0 : (keys.down || keys.right ? 1 : 0) - (keys.up || keys.left ? 1 : 0);
-  if (move !== 0) {
-    const to = Math.max(0, Math.min(last, run.cursor + move));
-    if (run.holding && to !== run.cursor) {
-      const a = run.hand[run.cursor] as FruitKind;
-      run.hand[run.cursor] = run.hand[to] as FruitKind;
-      run.hand[to] = a;
+  // The cursor goes a step with the arrows, or straight to the fruit the mouse is over or a finger tapped. A held fruit goes
+  // with it, past each fruit on the way, so the others keep their order: tap one fruit, then where it should stand.
+  const pointed = !blind && keys.point >= 0 && keys.point <= last;
+  const to = pointed ? keys.point : Math.max(0, Math.min(last, run.cursor + move));
+  if (to !== run.cursor) {
+    if (run.holding) {
+      const held = run.hand.splice(run.cursor, 1)[0] as FruitKind;
+      run.hand.splice(to, 0, held);
     }
-    if (to !== run.cursor) sound(run, "tick");
+    sound(run, "tick");
     run.cursor = to;
   }
   if (keys.confirm && !blind) {
@@ -1292,7 +1298,7 @@ function shopStep(run: Run, keys: Keys): void {
   const down = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
   if (shop.removing) {
     const kinds = poolKinds(run.pool);
-    const to = Math.max(0, Math.min(kinds.length - 1, shop.removeCursor + across + down));
+    const to = keys.point >= 0 && keys.point < kinds.length ? keys.point : Math.max(0, Math.min(kinds.length - 1, shop.removeCursor + across + down));
     if (to !== shop.removeCursor) sound(run, "tick");
     shop.removeCursor = to;
     if (keys.confirm) {
@@ -1382,7 +1388,7 @@ function leaveShop(run: Run): void {
 function preserveStep(run: Run, keys: Keys): void {
   const fruits = preservable(run);
   const move = (keys.right || keys.down ? 1 : 0) - (keys.left || keys.up ? 1 : 0);
-  const to = Math.max(0, Math.min(fruits.length - 1, run.preserveCursor + move));
+  const to = keys.point >= 0 && keys.point < fruits.length ? keys.point : Math.max(0, Math.min(fruits.length - 1, run.preserveCursor + move));
   if (to !== run.preserveCursor) sound(run, "tick");
   run.preserveCursor = to;
   if (keys.confirm) {
