@@ -3,7 +3,26 @@ import { test } from "node:test";
 
 import { poolRows } from "../src/layout.ts";
 import { FRUITS } from "../src/rules/fruits.ts";
-import { advance, JAR, newRun, NO_KEYS, resolve, rollPool, RIM, simulate, type Fruit, type Keys, type Run } from "../src/rules/jar.ts";
+import {
+  advance,
+  FRUIT_PRICE,
+  JAR,
+  newRun,
+  NO_KEYS,
+  REMOVAL_PRICE,
+  resolve,
+  rollPool,
+  RIM,
+  SHOP_ITEM,
+  SHOP_LEAVE,
+  SHOP_REMOVE,
+  SHOP_REROLL,
+  simulate,
+  type Fruit,
+  type Keys,
+  type Run,
+} from "../src/rules/jar.ts";
+import { ITEMS } from "../src/rules/items.ts";
 import { Rng } from "../src/rules/rng.ts";
 
 const DT = 1 / 60;
@@ -183,7 +202,10 @@ test("missing rent ends the run; paying it moves to the next cycle with an empty
   assert.equal(rich.phase, "rent");
   assert.equal(rich.coins, 3);
   rich = press(rich, { confirm: true });
+  assert.equal(rich.phase, "shop");
+  rich = press(rich, { drop: true });
   assert.equal(rich.phase, "order");
+  assert.equal(rich.shop, null);
   assert.equal(rich.cycle, 2);
   assert.equal(rich.fruits.length, 0);
   assert.equal(rich.hand.length, 4);
@@ -195,4 +217,114 @@ test("poolRows groups the pool by kind, in the fruit table's order", () => {
     { kind: "grape", count: 2 },
     { kind: "apple", count: 1 },
   ]);
+});
+
+/** A run in the shop after its first rent, with this many coins. */
+function inShop(coins: number): Run {
+  const run = jarWith([]);
+  run.turn = 5;
+  run.cycleScore = 25;
+  resolve(run);
+  run.coins = coins;
+  return press(run, { confirm: true });
+}
+
+test("the shop: a fruit costs coins, joins the pool and leaves a gap on the shelf", () => {
+  let run = inShop(10);
+  const kind = run.shop!.fruits[1]!;
+  const before = run.pool.length;
+  run = press(run, { right: true });
+  run = press(run, { confirm: true });
+  assert.equal(run.coins, 10 - FRUIT_PRICE);
+  assert.equal(run.pool.length, before + 1);
+  assert.equal(run.pool[before], kind);
+  assert.equal(run.shop!.fruits[1], null);
+  run = press(run, { confirm: true });
+  assert.equal(run.coins, 10 - FRUIT_PRICE, "a gap sells nothing");
+});
+
+test("the shop: without the coins nothing is bought", () => {
+  let run = inShop(FRUIT_PRICE - 1);
+  const before = run.pool.length;
+  run = press(run, { confirm: true });
+  assert.equal(run.pool.length, before);
+  assert.equal(run.coins, FRUIT_PRICE - 1);
+  assert.notEqual(run.shop!.fruits[0], null);
+});
+
+test("the shop: a reroll costs one more each time and restocks the shelf", () => {
+  let run = inShop(10);
+  run.shop!.cursor = SHOP_REROLL;
+  run = press(run, { confirm: true });
+  assert.equal(run.coins, 9);
+  run = press(run, { confirm: true });
+  assert.equal(run.coins, 7);
+  assert.equal(run.shop!.fruits.filter((f) => f !== null).length, 3);
+});
+
+test("the shop: removal takes one of the chosen kind out of the pool, and Space backs out of choosing", () => {
+  let run = inShop(10);
+  run.pool = ["cherry", "cherry", "grape", "grape", "apple"];
+  run.shop!.cursor = SHOP_REMOVE;
+  run = press(run, { confirm: true });
+  assert.equal(run.shop!.removing, true);
+  run = press(run, { drop: true });
+  assert.equal(run.shop!.removing, false);
+  assert.equal(run.phase, "shop", "Space left the choosing, not the shop");
+  run = press(run, { confirm: true });
+  run = press(run, { right: true });
+  run = press(run, { confirm: true });
+  assert.deepEqual(run.pool, ["cherry", "cherry", "grape", "apple"]);
+  assert.equal(run.coins, 10 - REMOVAL_PRICE);
+  assert.equal(run.shop!.removing, false);
+
+  run.pool = ["cherry", "cherry", "grape", "apple"];
+  run = press(run, { confirm: true });
+  assert.equal(run.shop!.removing, false, "a pool of 4 cannot shrink: it is one hand");
+});
+
+test("the shop: up and down change rows, and the last action leaves for the next cycle", () => {
+  let run = inShop(0);
+  run = press(run, { down: true });
+  assert.equal(run.shop!.cursor, SHOP_REMOVE);
+  run = press(run, { right: true });
+  run = press(run, { right: true });
+  assert.equal(run.shop!.cursor, SHOP_LEAVE);
+  run = press(run, { up: true });
+  assert.equal(run.shop!.cursor, SHOP_ITEM);
+  run = press(run, { down: true });
+  run = press(run, { confirm: true });
+  assert.equal(run.phase, "order");
+  assert.equal(run.cycle, 2);
+});
+
+test("the Lid: bought in the shop, it holds one overflow in and is used up", () => {
+  let run = inShop(ITEMS.lid.price);
+  assert.equal(run.shop!.item, "lid");
+  run.shop!.cursor = SHOP_ITEM;
+  run = press(run, { confirm: true });
+  assert.deepEqual(run.items, ["lid"]);
+  assert.equal(run.coins, 0);
+  assert.equal(run.shop!.item, null);
+
+  run.phase = "settle";
+  run.fruits = [fruit(1, "cherry", 300, RIM - 20), fruit(2, "cherry", 340, JAR.floor - 14)];
+  const score = run.cycleScore;
+  resolve(run);
+  assert.equal(run.fruits.length, 2, "nothing spilled");
+  assert.equal(run.cycleScore, score, "and nothing was lost");
+  assert.deepEqual(run.items, []);
+  run.phase = "settle";
+  resolve(run);
+  assert.equal(run.fruits.length, 1, "the next overflow spills");
+});
+
+test("paying the last rent wins the run without a shop", () => {
+  let run = jarWith([]);
+  run.cycle = 5;
+  run.turn = 5;
+  run.cycleScore = 300;
+  resolve(run);
+  run = press(run, { confirm: true });
+  assert.equal(run.phase, "won");
 });

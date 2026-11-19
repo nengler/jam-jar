@@ -4,13 +4,15 @@
  * the component's state changes by assignment and renders). Nothing here knows about the engine, so it is tested with node:test.
  *
  * A turn: order (arrange the 4 dealt fruits) → drop (they fall one by one at random spots) → settle (physics; merges and blasts
- * score as they happen) → resolve (overflow, then Simmer fruit score) → pick (1 of 3, or skip). Five turns make a rent cycle.
+ * score as they happen) → resolve (overflow, then Simmer fruit score) → pick (1 of 3, or skip). Five turns make a rent cycle,
+ * and between cycles the shop sells fruit, an item, a removal and rerolls for the coins the rent left over.
  *
  * The physics is the engine's (`useBall`): each fruit is a component with a ball, and each step it reports where it is, how fast it
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
 import { FRUITS, OFFERABLE, SPROUTS, type FruitKind } from "./fruits.ts";
+import { ITEM_KINDS, ITEMS, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
 
 export interface JarBounds {
@@ -42,7 +44,32 @@ const POPUP_LIFE = 0.9;
 /** How long a blast's explosion (9 frames) shows, in seconds. */
 export const BOOM_LIFE = 0.54;
 
-export type Phase = "order" | "drop" | "settle" | "pick" | "rent" | "over" | "won";
+export type Phase = "order" | "drop" | "settle" | "pick" | "rent" | "shop" | "over" | "won";
+
+/** What the shop charges, in coins: a fruit, taking a fruit out of the pool, and a reroll (one more each time, each visit). */
+export const FRUIT_PRICE = 3;
+export const REMOVAL_PRICE = 3;
+export const REROLL_PRICE = 1;
+/** The shop's shelf: three fruit and an item, then its three actions. `Shop.cursor` counts across all of them. */
+export const SHOP_FRUITS = 3;
+export const SHOP_ITEM = SHOP_FRUITS;
+export const SHOP_REMOVE = SHOP_ITEM + 1;
+export const SHOP_REROLL = SHOP_ITEM + 2;
+export const SHOP_LEAVE = SHOP_ITEM + 3;
+
+/** The shop between two cycles. */
+export interface Shop {
+  /** The fruit for sale; a bought one leaves a gap (null) so the others stay where they are. */
+  fruits: (FruitKind | null)[];
+  /** The item for sale: null once bought, or when every item is owned. */
+  item: ItemKind | null;
+  /** Rerolls bought this visit: each costs one more. */
+  rerolls: number;
+  cursor: number;
+  /** Choosing which fruit to take out of the pool: `removeCursor` is a row of `poolKinds`. */
+  removing: boolean;
+  removeCursor: number;
+}
 
 export interface Fruit {
   id: number;
@@ -116,6 +143,10 @@ export interface Run {
   cycleScore: number;
   total: number;
   coins: number;
+  /** The items owned, in the order they were bought. A used-up one (the Lid) is taken out. */
+  items: ItemKind[];
+  /** The shop, while the phase is "shop". */
+  shop: Shop | null;
   settleTime: number;
   calmTime: number;
   offers: FruitKind[];
@@ -197,6 +228,8 @@ export function newRun(seed: number): Run {
     cycleScore: 0,
     total: 0,
     coins: 0,
+    items: [],
+    shop: null,
     settleTime: 0,
     calmTime: 0,
     offers: [],
@@ -208,12 +241,6 @@ export function newRun(seed: number): Run {
   };
   deal(run);
   return run;
-}
-
-/** What the offer under the cursor does, for the pick screen; empty when nothing is offered. */
-export function offerText(run: Run): string {
-  const kind = run.offers[run.offerCursor];
-  return kind === undefined ? "" : FRUITS[kind].text;
 }
 
 /** The hand row the cursor is on while ordering, or -1 when the hand is not being ordered. */
@@ -235,6 +262,8 @@ function copy(run: Run): Run {
     hand: run.hand.slice(),
     queue: run.queue.slice(),
     fruits: run.fruits.map((f) => ({ ...f })),
+    items: run.items.slice(),
+    shop: run.shop === null ? null : { ...run.shop, fruits: run.shop.fruits.slice() },
     offers: run.offers.slice(),
     popups: run.popups.map((p) => ({ ...p })),
     effects: run.effects.map((e) => ({ ...e })),
@@ -356,7 +385,11 @@ export function advance(previous: Run, dt: number, keys: Keys, reports: readonly
       pickStep(run, keys);
       break;
     case "rent":
-      if (keys.confirm || keys.drop) nextCycle(run);
+      // Enter only: Space also leaves the shop, so a second press of it would skip the shop unseen.
+      if (keys.confirm) leaveRent(run);
+      break;
+    case "shop":
+      shopStep(run, keys);
       break;
     case "over":
     case "won":
@@ -576,7 +609,11 @@ function explode(run: Run, bomb: Fruit): void {
 /** The jar has settled: spill what is over the rim, Simmer fruit score, age and rot, then the pick (or rent after turn 5). */
 export function resolve(run: Run): void {
   const spilled = run.fruits.filter((f) => f.y - f.r < RIM);
-  if (spilled.length > 0) {
+  if (spilled.length > 0 && run.items.includes("lid")) {
+    // The Lid holds them in, once: nothing spills and nothing is lost, and the Lid is used up.
+    run.items = run.items.filter((item) => item !== "lid");
+    run.message = `The Lid held ${spilled.length} in. It is used up`;
+  } else if (spilled.length > 0) {
     run.fruits = run.fruits.filter((f) => f.y - f.r >= RIM);
     for (const f of spilled) score(run, -OVERFLOW_PENALTY, f.x, RIM - 12);
     run.message = `${spilled.length} spilled over the rim`;
@@ -612,7 +649,7 @@ export function resolve(run: Run): void {
     if (run.cycleScore >= rent) {
       const earned = Math.floor((run.cycleScore - rent) / 5);
       run.coins += earned;
-      run.message = `Rent paid! +${earned} coins. Enter for the next cycle`;
+      run.message = `Rent paid! +${earned} coins`;
       sound(run, "rent");
     } else {
       run.phase = "over";
@@ -662,12 +699,123 @@ function startTurn(run: Run): void {
   run.phase = "order";
 }
 
-function nextCycle(run: Run): void {
+/** The kinds of fruit in the pool, in the fruit table's order: what the shop's removal chooses from. */
+export function poolKinds(pool: readonly FruitKind[]): FruitKind[] {
+  return (Object.keys(FRUITS) as FruitKind[]).filter((kind) => pool.includes(kind));
+}
+
+/** What a reroll costs now. */
+export function rerollPrice(shop: Shop): number {
+  return REROLL_PRICE + shop.rerolls;
+}
+
+/** After the rent is paid: the last cycle wins the run, any other opens the shop. */
+function leaveRent(run: Run): void {
   if (run.cycle >= RENT.length) {
     run.phase = "won";
     run.message = "You paid every rent. The jar is yours!";
     return;
   }
+  run.shop = { fruits: [], item: null, rerolls: 0, cursor: 0, removing: false, removeCursor: 0 };
+  stock(run, run.shop);
+  run.phase = "shop";
+  run.message = "The shop is open";
+}
+
+/** Fill the shop's shelf: three different fruit, and an item not owned yet (none when every item is owned). */
+function stock(run: Run, shop: Shop): void {
+  const rng = new Rng(run.seed);
+  shop.fruits = rng.shuffle(OFFERABLE).slice(0, SHOP_FRUITS);
+  const unowned = ITEM_KINDS.filter((item) => !run.items.includes(item));
+  shop.item = unowned.length === 0 ? null : rng.pick(unowned);
+  run.seed = rng.seed;
+}
+
+/** Pay `price` coins if the run has them; says so and returns false if not. */
+function pay(run: Run, price: number): boolean {
+  if (run.coins < price) {
+    run.message = `Not enough coins: that costs ${price}`;
+    sound(run, "lose");
+    return false;
+  }
+  run.coins -= price;
+  return true;
+}
+
+function shopStep(run: Run, keys: Keys): void {
+  const shop = run.shop;
+  if (shop === null) return;
+  const across = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  const down = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+  if (shop.removing) {
+    const kinds = poolKinds(run.pool);
+    const to = Math.max(0, Math.min(kinds.length - 1, shop.removeCursor + across + down));
+    if (to !== shop.removeCursor) sound(run, "tick");
+    shop.removeCursor = to;
+    if (keys.confirm) {
+      const kind = kinds[shop.removeCursor] as FruitKind;
+      if (pay(run, REMOVAL_PRICE)) {
+        run.pool.splice(run.pool.indexOf(kind), 1);
+        run.message = `${FRUITS[kind].name} taken out of your pool`;
+        sound(run, "pick");
+        shop.removing = false;
+      }
+    } else if (keys.drop) {
+      shop.removing = false;
+    }
+    return;
+  }
+
+  // The shelf (0 to SHOP_ITEM) is the top row and the three actions the bottom one: left and right walk along both, up and
+  // down change rows, keeping roughly the same place across.
+  let to = Math.max(0, Math.min(SHOP_LEAVE, shop.cursor + across));
+  if (down > 0 && to <= SHOP_ITEM) to = SHOP_REMOVE + Math.min(2, Math.floor((to * 3) / (SHOP_ITEM + 1)));
+  else if (down < 0 && to > SHOP_ITEM) to = Math.round(((to - SHOP_REMOVE) * SHOP_ITEM) / 2);
+  if (to !== shop.cursor) sound(run, "tick");
+  shop.cursor = to;
+
+  if (keys.drop) {
+    nextCycle(run);
+    return;
+  }
+  if (!keys.confirm) return;
+  if (shop.cursor < SHOP_FRUITS) {
+    const kind = shop.fruits[shop.cursor];
+    if (kind == null || !pay(run, FRUIT_PRICE)) return;
+    run.pool.push(kind);
+    shop.fruits[shop.cursor] = null;
+    run.message = `${FRUITS[kind].name} added to your pool`;
+    sound(run, "pick");
+  } else if (shop.cursor === SHOP_ITEM) {
+    if (shop.item === null || !pay(run, ITEMS[shop.item].price)) return;
+    run.items.push(shop.item);
+    run.message = `You own the ${ITEMS[shop.item].name}`;
+    shop.item = null;
+    sound(run, "pick");
+  } else if (shop.cursor === SHOP_REMOVE) {
+    if (run.pool.length <= HAND_SIZE) {
+      run.message = `Your pool needs at least ${HAND_SIZE} fruit`;
+      sound(run, "lose");
+    } else if (run.coins < REMOVAL_PRICE) {
+      pay(run, REMOVAL_PRICE);
+    } else {
+      shop.removing = true;
+      shop.removeCursor = 0;
+      run.message = "Take which fruit out of your pool?";
+    }
+  } else if (shop.cursor === SHOP_REROLL) {
+    if (!pay(run, rerollPrice(shop))) return;
+    shop.rerolls += 1;
+    stock(run, shop);
+    run.message = "A new shelf";
+    sound(run, "tick");
+  } else {
+    nextCycle(run);
+  }
+}
+
+function nextCycle(run: Run): void {
+  run.shop = null;
   run.cycle += 1;
   run.turn = 1;
   run.cycleScore = 0;

@@ -6,8 +6,9 @@ import { Fruit } from "./Fruit.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
-import { poolRows } from "./layout.ts";
+import { offerText, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
+import { Shop } from "./Shop.tsx";
 import { FRUITS } from "./rules/fruits.ts";
 import { advance, BOOM_LIFE, chosenRow, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
@@ -16,6 +17,7 @@ import {
   BODY_SIZE,
   cardFor,
   CARD_SLICE,
+  COUNTER_Y,
   DISPLAY,
   DISPLAY_SIZE,
   GOLD,
@@ -56,12 +58,6 @@ const NOTE_Y = 324 - NOTE_H;
 const OFFER_W = 184;
 const OFFER_H = 232;
 const OFFER_GAP = 12;
-
-/** A fruit's line on its pick card, without the scoring word its chip already says. */
-function offerText(text: string): string {
-  const rest = text.replace(/^(Simmer|Booster): /, "");
-  return rest.charAt(0).toUpperCase() + rest.slice(1);
-}
 
 /**
  * A run. The rules live in rules/jar.ts; each step this hands them the time, the keys and the fruit's reports, and keeps the run
@@ -179,6 +175,11 @@ export function Play() {
         </Text>
       ))}
 
+      {/* The items owned stand on the counter, left of the jar. */}
+      {run.items.map((item, i) => (
+        <Sprite key={item} image={`item-${item}.png`} x={20 + i * 56} y={COUNTER_Y - 26} />
+      ))}
+
       {/* The shelf: the hand, in the order it drops. The chosen fruit is framed in amber; a held one is lifted. */}
       <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y} />
       {shelf.map((kind, i) => (
@@ -274,10 +275,11 @@ export function Play() {
           </Text>
           <Text x={320} y={166} font={DISPLAY} size={DISPLAY_SIZE} align="center" color={INK}>{`Total ${run.total}`}</Text>
           <Flex x={192} y={202} width={256} direction="row" justifyContent="center">
-            <KeyHint name="Enter" label={run.phase === "rent" ? "Next cycle" : "Title"} color={INK} />
+            <KeyHint name="Enter" label={run.phase === "rent" ? (run.cycle >= RENT.length ? "Go on" : "Shop") : "Title"} color={INK} />
           </Flex>
         </Entity>
       )}
+      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} />}
       {paused && <Pause />}
     </Entity>
   );

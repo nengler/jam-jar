@@ -15,3 +15,9 @@ export function poolRows(pool: readonly FruitKind[]): PoolRow[] {
   }
   return rows;
 }
+
+/** A fruit's line on a card, without the scoring word ("Simmer: ") it starts with. */
+export function offerText(text: string): string {
+  const rest = text.replace(/^(Simmer|Booster): /, "");
+  return rest.charAt(0).toUpperCase() + rest.slice(1);
+}
