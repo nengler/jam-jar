@@ -7,7 +7,7 @@ import { findComponent } from "@tsengine/testing";
 import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
 import { settings } from "../src/settings.ts";
-import { JAR, type Fruit, type Run } from "../src/rules/jar.ts";
+import { JAR, RIM, type Fruit, type Run } from "../src/rules/jar.ts";
 
 /** Which screen shows, whether play is paused, and the run's phase and jar when a run is on. */
 function seen(player: Player): { screen: string; paused: boolean; phase?: string; fruits?: number; hand?: number; dealt?: number } {
@@ -231,6 +231,34 @@ test("a Frozen fruit is held where it is: what was under it can go, and it does 
   const at = (id: number) => play.s.run.fruits.find((f) => f.id === id);
   assert.ok(Math.abs(at(802)!.y - 200) < 0.01, `the frozen one hangs where it was (y = ${at(802)!.y})`);
   assert.ok(at(803)!.y > 150 && at(803)!.y < 200, `the loose one fell onto it and rests there (y = ${at(803)!.y})`);
+  player.close();
+});
+
+test("in the Flip jar gravity turns over after every second drop: the hand ends on the lid, inside the jar, and still settles", () => {
+  const backend = new RecordingBackend();
+  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
+  const step = (script: string) => {
+    for (const frame of parseInputScript(script, { bindings })) {
+      backend.queueInput(frame);
+      player.step();
+    }
+  };
+  step("_*2, Enter, _*5");
+  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
+  play.s.run = { ...play.s.run, boss: "flip", cycle: 3 };
+  step("Space, _*30");
+  assert.equal(play.s.run.flipped, false, "the first falls to the floor");
+  step("_*570");
+  const run = play.s.run;
+  assert.equal(run.phase, "pick", "it came to rest");
+  assert.equal(run.drops, 4);
+  assert.equal(run.flipped, true, "turned over after the second drop");
+  const mid = (RIM + JAR.floor) / 2;
+  for (const f of run.fruits) {
+    assert.ok(f.y < mid, `${f.kind} lies at the lid's end (y = ${f.y})`);
+    assert.ok(f.y - f.r >= RIM - 0.5, `${f.kind} under the lid (y = ${f.y})`);
+    assert.ok(f.x - f.r >= JAR.left - 0.5 && f.x + f.r <= JAR.right + 0.5, `${f.kind} inside the walls (x = ${f.x})`);
+  }
   player.close();
 });
 

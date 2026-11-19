@@ -482,10 +482,10 @@ test("without fruit in the jar, the Preserves Jar asks nothing", () => {
   assert.equal(run.phase, "order");
 });
 
-test("every third cycle is a boss jar, the Peg jar or the Blind jar by the run's seed, and the shop before it says so", () => {
+test("every third cycle is a boss jar, one of four by the run's seed, and the shop before it says so", () => {
   assert.deepEqual([1, 2, 3, 4, 5].map(bossCycle), [false, false, true, false, false]);
-  assert.deepEqual([bossFor(9), bossFor(10), bossFor(11)], ["blind", "peg", "tilt"]);
-  for (const boss of ["peg", "blind", "tilt"] as const) {
+  assert.deepEqual([bossFor(8), bossFor(9), bossFor(10), bossFor(11)], ["blind", "peg", "tilt", "flip"]);
+  for (const boss of ["peg", "blind", "tilt", "flip"] as const) {
     const run = jarWith([]);
     run.boss = boss;
     run.cycle = 2;
