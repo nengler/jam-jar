@@ -18,7 +18,8 @@ function seen(player: Player): { screen: string; paused: boolean; phase?: string
 }
 
 test("Play starts a run with a hand of 4; Space drops it into the jar", () => {
-  const frames = parseInputScript("_*2, Enter, _*5, Space, _*120", { bindings });
+  // A fruit drops once the last has landed and come to rest, so a hand of 4 takes a few seconds.
+  const frames = parseInputScript("_*2, Enter, _*5, Space, _*300", { bindings });
   const { states } = runScript(gameConfig, frames, seen);
   assert.equal(states[7]!.screen, "play");
   assert.equal(states[7]!.phase, "order");
