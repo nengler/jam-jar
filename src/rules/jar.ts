@@ -463,12 +463,16 @@ function score(run: Run, points: number, x: number, y: number, why: Why = {}): P
   return say(run, x, y, text, points);
 }
 
-/** A popup at (x, y): kept inside the jar's walls, and moved up clear of any popup already there, so two never sit on each other. */
+/** A popup at (x, y): kept inside the jar's walls and under its rim, and moved clear of any popup already there, so two never sit on each other. */
 function say(run: Run, x: number, y: number, text: string, points = 0): Popup {
   const half = Math.min((JAR.right - JAR.left) / 2, text.length * POPUP_CHAR) / 2 + 4;
   const px = Math.max(JAR.left + half, Math.min(JAR.right - half, x));
-  let py = y;
-  for (let tries = 0; tries < 6 && run.popups.some((p) => Math.abs(p.x - px) < besides(p.text, text) && Math.abs(p.y - py) < POPUP_LINE); tries++) py -= POPUP_LINE;
+  // It rises while it shows, and should still be inside the jar when it fades: one that would start too near the rim (a pile up to
+  // the top, or the Flip jar's pile lying on its lid) starts lower, over the fruit, and makes room downwards.
+  const top = RIM + POPUP_RISE * POPUP_LIFE + 4;
+  const step = y < top ? POPUP_LINE : -POPUP_LINE;
+  let py = Math.max(y, top);
+  for (let tries = 0; tries < 6 && run.popups.some((p) => Math.abs(p.x - px) < besides(p.text, text) && Math.abs(p.y - py) < POPUP_LINE); tries++) py += step;
   const popup: Popup = { id: run.nextId++, x: px, y: py, text, life: POPUP_LIFE, delay: 0, points };
   run.popups.push(popup);
   return popup;

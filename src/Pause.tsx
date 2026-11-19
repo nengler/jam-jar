@@ -6,14 +6,14 @@ import { useGame } from "./GameState.ts";
 import { BUTTON, BUTTON_GREY, BUTTON_SLICE, INK, PANEL, PANEL_SLICE, SHADE } from "./theme.ts";
 
 /**
- * The pause menu, over the game. It is `modal`: while it is open only it hears the keys, so Escape here closes the menu
+ * The pause menu, over the game, set a little above the middle so the keys under it stay clear of the foot of the screen. It is `modal`: while it is open only it hears the keys, so Escape here closes the menu
  * (`onBack`) and does not reach the play screen's Escape.
  */
 export function Pause() {
   const { resume, toTitle } = useGame.actions();
   return (
     <Entity>
-      <Flex modal width={640} height={360} background={SHADE} alignItems="center" justifyContent="center">
+      <Flex modal width={640} height={360} paddingBottom={56} background={SHADE} alignItems="center" justifyContent="center">
         <Menu
           gap={8}
           padding={16}
@@ -32,9 +32,9 @@ export function Pause() {
           </Button>
         </Menu>
       </Flex>
-      <Heading x={320} y={100} width={248} text="Paused" />
+      <Heading x={320} y={72} width={248} text="Paused" />
       {/* The keys, always here: the play screen shows each moment's only the first time. */}
-      <Flex x={224} y={254} direction="column" gap={0}>
+      <Flex x={224} y={226} direction="column" gap={0}>
         <KeyHint name="arrows" label="Choose" />
         <KeyHint name="Enter" label="Take or buy" />
         <KeyHint name="Space" label="Drop or skip" />
