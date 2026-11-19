@@ -51,6 +51,8 @@ const CALM_TIME = 0.4;
 /** Settling gives up after this long, so a jittering pile cannot stall a turn. */
 const SETTLE_LIMIT = 8;
 const OVERFLOW_PENALTY = 5;
+/** How many Resolves a Coconut sits through before it cracks. */
+const COCONUT_TURNS = 3;
 /** What a honeyed fruit scores at each Resolve. */
 const HONEY_POINTS = 2;
 const POPUP_LIFE = 0.9;
@@ -166,6 +168,8 @@ export interface Run {
   coins: number;
   /** What every Banana scores on top of its own points: +1 for each Fig blown up while rotten. */
   bananaBonus: number;
+  /** What every Pitaya scores on top of its own points: +1 for each Cherry one has eaten. */
+  pitayaBonus: number;
   /** The items owned, in the order they were bought. A used-up one (the Lid) is taken out. */
   items: ItemKind[];
   /** The shop, while the phase is "shop". */
@@ -256,6 +260,7 @@ export function newRun(seed: number): Run {
     total: 0,
     coins: 0,
     bananaBonus: 0,
+    pitayaBonus: 0,
     items: [],
     shop: null,
     preserveCursor: 0,
@@ -372,7 +377,12 @@ function kick(f: Fruit, vx: number, vy: number): void {
   f.kickY = vy;
 }
 
-/** Whether a fruit (by index) touches a Lemon. */
+/** Whether a fruit (by index) touches a Booster, a Lemon or a Cracked Coconut: what it scores is doubled. */
+function boosted(fruits: readonly Fruit[], links: readonly number[][], i: number): boolean {
+  return (links[i] ?? []).some((j) => fruits[j]?.kind === "lemon" || fruits[j]?.kind === "cracked");
+}
+
+/** Whether a fruit (by index) touches a Lemon: it cannot merge. */
 function nearLemon(fruits: readonly Fruit[], links: readonly number[][], i: number): boolean {
   return (links[i] ?? []).some((j) => fruits[j]?.kind === "lemon");
 }
@@ -510,7 +520,7 @@ function land(run: Run): void {
     f.landed = true;
     sound(run, "land");
     const def = FRUITS[f.kind];
-    if (def.scoring === "fresh") score(run, def.points * (nearLemon(run.fruits, near, i) ? 2 : 1), f.x, f.y - f.r);
+    if (def.scoring === "fresh") score(run, def.points * (boosted(run.fruits, near, i) ? 2 : 1), f.x, f.y - f.r);
     if (f.kind === "peach") {
       // It bounces once, and shoves what it landed on away to each side.
       kick(f, 0, -PEACH_BOUNCE);
@@ -623,7 +633,7 @@ export const BLAST_BONUS: Readonly<Partial<Record<FruitKind, number>>> = { chili
 function explode(run: Run, bomb: Fruit): void {
   const radius = BLAST_RADIUS[bomb.kind] ?? 48;
   const near = links(run.fruits);
-  const doubled = new Set(run.fruits.filter((_, i) => nearLemon(run.fruits, near, i)).map((f) => f.id));
+  const doubled = new Set(run.fruits.filter((_, i) => boosted(run.fruits, near, i)).map((f) => f.id));
   const victims: Fruit[] = [];
   const kept: Fruit[] = [];
   const born: Fruit[] = [];
@@ -714,9 +724,11 @@ export function resolve(run: Run): void {
       points = 2 + Math.floor(Math.max(0, Math.min(1, depth)) * 4);
     } else if (f.kind === "banana") {
       points = 2 + f.age + run.bananaBonus;
+    } else if (f.kind === "pitaya") {
+      points = FRUITS.pitaya.points + run.pitayaBonus;
     }
     if (f.honeyed) points += HONEY_POINTS;
-    score(run, points * (nearLemon(run.fruits, near, i) ? 2 : 1), f.x, f.y - f.r);
+    score(run, points * (boosted(run.fruits, near, i) ? 2 : 1), f.x, f.y - f.r);
   });
 
   // Each Fruit Fly eats one rotten fruit it touches (never a Prune) and a new Fly hatches where it was.
@@ -727,7 +739,7 @@ export function resolve(run: Run): void {
     const meal = (near[i] ?? []).map((j) => run.fruits[j] as Fruit).find((o) => o.rotten && o.kind !== "prune" && !eaten.has(o.id));
     if (meal === undefined) return;
     eaten.add(meal.id);
-    score(run, FRUITS.fruitfly.points * (nearLemon(run.fruits, near, i) ? 2 : 1), meal.x, meal.y - meal.r);
+    score(run, FRUITS.fruitfly.points * (boosted(run.fruits, near, i) ? 2 : 1), meal.x, meal.y - meal.r);
     const fly = makeFruit(run, "fruitfly", meal.x, meal.y);
     fly.landed = true;
     hatched.push(fly);
@@ -736,6 +748,29 @@ export function resolve(run: Run): void {
     run.fruits = [...run.fruits.filter((f) => !eaten.has(f.id)), ...hatched];
     run.message = eaten.size === 1 ? "A Fruit Fly ate a rotten fruit" : `Fruit Flies ate ${eaten.size} rotten fruit`;
   }
+
+  // Each Pitaya eats one Cherry it touches, and every Pitaya scores 1 more from then on.
+  const swallowed = new Set<number>();
+  for (const f of run.fruits) {
+    if (f.kind !== "pitaya" || f.rotten) continue;
+    const cherry = run.fruits.find((o) => o.kind === "cherry" && !swallowed.has(o.id) && f.touching.includes(o.id));
+    if (cherry === undefined) continue;
+    swallowed.add(cherry.id);
+    run.pitayaBonus += 1;
+  }
+  if (swallowed.size > 0) {
+    run.fruits = run.fruits.filter((f) => !swallowed.has(f.id));
+    run.message = `Pitayas ate ${swallowed.size}: each scores +${run.pitayaBonus} now`;
+  }
+
+  // A Coconut that has sat 3 turns cracks: a Cracked Coconut where it was, which doubles what its neighbours score.
+  run.fruits = run.fruits.map((f) => {
+    if (f.kind !== "coconut" || f.age < COCONUT_TURNS - 1) return f;
+    const shell = makeFruit(run, "cracked", f.x, f.y);
+    shell.landed = true;
+    run.message = "A Coconut cracked";
+    return shell;
+  });
 
   // Each Honeydew honeys one fruit it touches.
   for (const f of run.fruits) {

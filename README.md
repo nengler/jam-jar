@@ -48,6 +48,9 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 - Flex fruit: Kiwi (becomes a copy of the first landed fruit it touches), Peach (bounces once when it lands and shoves what it
   landed on aside) and Honeydew (honeys one fruit it touches a turn; honeyed fruit, the Honeydew included, score 2 a turn and
   are tinted gold).
+- Eat and grow: Pitaya (eats one Cherry it touches a turn, and every Pitaya scores 1 more for the rest of the run) and Coconut
+  (five times as heavy, so it shoulders its way down; at its third Resolve it cracks into a Cracked Coconut, a Booster that
+  doubles its neighbours like a Lemon but lets them merge).
 - Music on every screen, and the Settings' volume and music switch work.
 - Overflow: fruit whose top is above the rim at Resolve spill and cost 5 points each.
 - The boss jar: every third cycle (so cycle 3) is the Peg jar, with a round post in the middle that splits the pile. The shop
@@ -59,10 +62,10 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
   - Lid (6 coins): stops one overflow, then is used up.
   - Juicer (8): at each Resolve it crushes the fruit standing on the floor, each for its points plus 3.
   - Shaker (5): throws every fruit about once a hand has dropped, so the pile lands differently.
-  - Preserves Jar (8): after the shop, choose up to 2 fruit to stay in the jar when the rent empties it.
+  - Preserves (8), the Preserves Jar: after the shop, choose up to 2 fruit to stay in the jar when the rent empties it.
 
-Not built yet: the upgraded jars (Big Preserves Jar, Pickling Jar), the other boss jars (tilted, blind, gravity-flip), Juice and
-grow, and Snow Pear (freezing needs a ball the engine can pin in place). The Honeydew's honey is not sticky yet, for the same
+Not built yet: the upgraded jars (Big Preserves Jar, Pickling Jar), the other boss jars (tilted, blind, gravity-flip), Juice (the
+Lime, and juice pooling in the jar; the Coconut's milk is a cracked shell for now) and Snow Pear (freezing needs a ball the engine can pin in place). The Honeydew's honey is not sticky yet, for the same
 reason.
 
 The screen is 640 x 360 (16:9), scaled up by whole multiples.
@@ -73,12 +76,14 @@ The screen is 640 x 360 (16:9), scaled up by whole multiples.
 that never order a hand: one that never picks, one that picks at random, one per fruit that takes only that fruit, and
 `/thin` versions that spend their coins taking Cherries out of the pool. The rent curve is set against it:
 
-| Player (30 runs) | Median score, cycles 1 to 5 | Makes the last rent |
+| Player (60 runs) | Median score, cycles 1 to 5 | Makes the last rent |
 | --- | --- | --- |
-| Never picks | 233, 231, 233, 238, 233 | 0 in 30 |
-| Picks at random | 200, 188, 196, 171, 187 | 0 in 30 |
-| Never picks, thins the pool | 233, 263, 291, 294, 298 | 6 in 30 |
-| Takes Pomegranates, thins the pool | 206, 248, 280, 311, 350 | 17 in 30 |
+| Never picks | 213, 211, 189, 231, 232 | 1 in 60 |
+| Picks at random | 157, 141, 127, 133, 144 | 1 in 60 |
+| Never picks, thins the pool | 213, 243, 261, 294, 285 | 16 in 60 |
+| Takes Pomegranates, thins the pool | 177, 237, 240, 261, 282 | 13 in 60 |
+
+Cycle 3 is the Peg jar, which is the dip in each row.
 
 What it showed: the starters' merge ladder is worth about 11 points a drop, so a fruit that scores less than that when it is
 dealt makes the pool worse. Most picks still do on their own (a lone Lemon, Seed or Blueberry costs the most, and the Rot
@@ -106,7 +111,7 @@ group taken together sits near 110 a cycle); they are meant to pay in combinatio
 
 - Fruit art: a 16 x 16 pixel fruit sheet (`tools/fruit/`; its source and licence are still to be added there). Stand-ins:
   the Durian is the Pineapple, the Seed the brown Kiwi, the Melon the round green one, the Prune the Blackberry, the Fig the
-  Aubergine and the Honeydew the golden Apple. The Fruit Fly is drawn by `tools/make-assets.py`.
+  Aubergine and the Honeydew the golden Apple. The Pitaya is the sheet's Dragon Fruit. The Fruit Fly is drawn by `tools/make-assets.py`.
 - [Kenney](https://kenney.nl) pixel art, CC0: the boards, cards, buttons, the slate and the ribbon (UI Pack - Pixel Adventure),
   the wallpaper's trellis (Pattern Pack Pixel), the coin (Pixel Platformer), blasts (Explosion Pack's pixel explosion), the
   sounds and the music (Farm Frolics, from Music Loops). It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;

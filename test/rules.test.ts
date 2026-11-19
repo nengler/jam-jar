@@ -465,3 +465,36 @@ test("every third cycle is the Peg jar, and the shop before it says so", () => {
   assert.match(shop.message, /Peg jar/);
   assert.match(press(shop, { drop: true }).message, /Peg jar/);
 });
+
+test("a Pitaya eats a Cherry it touches each turn, and every Pitaya scores 1 more from then on", () => {
+  const y = JAR.floor - 18;
+  const run = jarWith([fruit(1, "pitaya", 300, y, [2, 3]), fruit(2, "cherry", 332, y, [1]), fruit(3, "cherry", 268, y, [1])]);
+  run.turn = 1;
+  resolve(run);
+  assert.equal(run.cycleScore, FRUITS.pitaya.points);
+  assert.equal(run.fruits.filter((f) => f.kind === "cherry").length, 1, "one Cherry a turn");
+  assert.equal(run.pitayaBonus, 1);
+  run.turn = 1;
+  run.phase = "settle";
+  resolve(run);
+  assert.equal(run.cycleScore, FRUITS.pitaya.points * 2 + 1);
+});
+
+test("a Coconut cracks at its third Resolve, and what touches the Cracked Coconut scores double but still merges", () => {
+  const y = JAR.floor - 22;
+  const run = jarWith([fruit(1, "coconut", 300, y)]);
+  for (let turn = 0; turn < 3; turn++) {
+    assert.equal(run.fruits[0]!.kind, "coconut");
+    run.turn = 1;
+    run.phase = "settle";
+    resolve(run);
+  }
+  const shell = run.fruits[0]!;
+  assert.equal(shell.kind, "cracked");
+  run.fruits.push({ ...fruit(50, "cherry", 340, y, [shell.id, 51]), landed: false }, { ...fruit(51, "cherry", 370, y, [50]), landed: false });
+  run.phase = "settle";
+  const before = run.cycleScore;
+  simulate(run, DT);
+  // The Cherry beside the shell lands for 2, the other for 1, and they merge into a Grape (3): a Lemon would have stopped that.
+  assert.equal(run.cycleScore - before, 2 + 1 + FRUITS.grape.points);
+});
