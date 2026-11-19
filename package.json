@@ -1,0 +1,39 @@
+{
+  "name": "jam-jar",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "tse": {
+    "name": "jam-jar"
+  },
+  "dependencies": {
+    "@tsengine/native": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-native-0.9.0.tgz",
+    "@tsengine/player": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-player-0.9.0.tgz",
+    "@tsengine/player-node": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-player-node-0.9.0.tgz",
+    "@tsengine/runtime": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-runtime-0.9.0.tgz"
+  },
+  "devDependencies": {
+    "@tsengine/cli": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-cli-0.9.0.tgz",
+    "@tsengine/testing": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-testing-0.9.0.tgz",
+    "@types/node": "^22.10.0"
+  },
+  "scripts": {
+    "build": "tse build",
+    "dev": "tse dev",
+    "check": "tse check",
+    "package": "tse package",
+    "install-engine": "node tools/install-engine.ts",
+    "test": "tse check"
+  },
+  "overrides": {
+    "@tsengine/runtime": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-runtime-0.9.0.tgz",
+    "@tsengine/compiler": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-compiler-0.9.0.tgz",
+    "@tsengine/player": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-player-0.9.0.tgz",
+    "@tsengine/player-node": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-player-node-0.9.0.tgz",
+    "@tsengine/player-web": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-player-web-0.9.0.tgz",
+    "@tsengine/native": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-native-0.9.0.tgz",
+    "@tsengine/testing": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-testing-0.9.0.tgz",
+    "@tsengine/cli": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-cli-0.9.0.tgz",
+    "@tsengine/language-server": "https://github.com/nengler/tse/releases/download/v0.9.0/tsengine-language-server-0.9.0.tgz"
+  }
+}
