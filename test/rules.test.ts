@@ -8,6 +8,7 @@ import {
   BLAST_BONUS,
   FRUIT_PRICE,
   JAR,
+  JUICER_BONUS,
   newRun,
   NO_KEYS,
   POINTS_PER_COIN,
@@ -314,7 +315,7 @@ test("the shop: up and down change rows, and the last action leaves for the next
 
 test("the Lid: bought in the shop, it holds one overflow in and is used up", () => {
   let run = inShop(ITEMS.lid.price);
-  assert.equal(run.shop!.item, "lid");
+  run.shop!.item = "lid";
   run.shop!.cursor = SHOP_ITEM;
   run = press(run, { confirm: true });
   assert.deepEqual(run.items, ["lid"]);
@@ -403,4 +404,51 @@ test("a Honeydew scores 2 a turn and honeys one fruit it touches each turn, whic
   resolve(run);
   assert.equal(run.cycleScore, 2 + 4);
   assert.equal(run.fruits.filter((f) => f.honeyed).length, 3);
+});
+
+test("the Juicer crushes what stands on the floor at Resolve, for its points and a bonus", () => {
+  const run = jarWith([fruit(1, "orange", 300, JAR.floor - 22, [2]), fruit(2, "grape", 310, JAR.floor - 70, [1])]);
+  run.items = ["juicer"];
+  run.turn = 1;
+  resolve(run);
+  assert.deepEqual(run.fruits.map((f) => f.kind), ["grape"]);
+  assert.equal(run.cycleScore, FRUITS.orange.points + JUICER_BONUS);
+});
+
+test("the Shaker throws every fruit once the hand has dropped", () => {
+  let run = newRun(5);
+  run.items = ["shaker"];
+  run.fruits = [fruit(1, "orange", 300, JAR.floor - 22)];
+  run = press(run, { drop: true });
+  for (let i = 0; i < 200 && run.phase === "drop"; i++) run = press(run, {});
+  assert.equal(run.phase, "settle");
+  assert.ok(run.fruits.every((f) => f.kicks === 1 && f.kickY < 0), "each thrown up");
+});
+
+test("the Preserves Jar: after the shop, the fruit kept stay in the jar for the next cycle", () => {
+  let run = inShop(0);
+  run.items = ["preserves"];
+  run.fruits = [fruit(1, "apple", 380, JAR.floor - 18), fruit(2, "cherry", 250, JAR.floor - 14), fruit(3, "grape", 300, JAR.floor - 18), fruit(4, "lemon", 340, JAR.floor - 14)];
+  run = press(run, { drop: true });
+  assert.equal(run.phase, "preserve");
+  // Left to right: cherry, grape, lemon, apple. Keep the cherry and the apple; a third is refused.
+  run = press(run, { confirm: true });
+  run = press(run, { right: true });
+  run = press(run, { right: true });
+  run = press(run, { right: true });
+  run = press(run, { confirm: true });
+  run = press(run, { left: true });
+  run = press(run, { confirm: true });
+  assert.deepEqual(run.kept, [2, 1]);
+  run = press(run, { drop: true });
+  assert.equal(run.phase, "order");
+  assert.equal(run.cycle, 2);
+  assert.deepEqual(run.fruits.map((f) => f.kind).sort(), ["apple", "cherry"]);
+});
+
+test("without fruit in the jar, the Preserves Jar asks nothing", () => {
+  let run = inShop(0);
+  run.items = ["preserves"];
+  run = press(run, { drop: true });
+  assert.equal(run.phase, "order");
 });

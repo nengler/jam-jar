@@ -48,7 +48,14 @@ const POPUP_LIFE = 0.9;
 /** How long a blast's explosion (9 frames) shows, in seconds. */
 export const BOOM_LIFE = 0.54;
 
-export type Phase = "order" | "drop" | "settle" | "pick" | "rent" | "shop" | "over" | "won";
+export type Phase = "order" | "drop" | "settle" | "pick" | "rent" | "shop" | "preserve" | "over" | "won";
+
+/** What the Juicer adds for each fruit it crushes, on top of the fruit's points. */
+export const JUICER_BONUS = 3;
+/** How hard the Shaker throws each fruit, at most, sideways and up (px/s). */
+const SHAKE = 260;
+/** How many fruit the Preserves Jar keeps. */
+export const PRESERVED = 2;
 
 /** What the shop charges, in coins: a fruit, taking a fruit out of the pool, and a reroll (one more each time, each visit). */
 export const FRUIT_PRICE = 3;
@@ -154,6 +161,9 @@ export interface Run {
   items: ItemKind[];
   /** The shop, while the phase is "shop". */
   shop: Shop | null;
+  /** With a Preserves Jar, after the shop: which of the jar's fruit the cursor is on (see `preservable`), and the ids kept so far. */
+  preserveCursor: number;
+  kept: number[];
   settleTime: number;
   calmTime: number;
   offers: FruitKind[];
@@ -238,6 +248,8 @@ export function newRun(seed: number): Run {
     bananaBonus: 0,
     items: [],
     shop: null,
+    preserveCursor: 0,
+    kept: [],
     settleTime: 0,
     calmTime: 0,
     offers: [],
@@ -266,6 +278,7 @@ function copy(run: Run): Run {
     queue: run.queue.slice(),
     fruits: run.fruits.map((f) => ({ ...f })),
     items: run.items.slice(),
+    kept: run.kept.slice(),
     shop: run.shop === null ? null : { ...run.shop, fruits: run.shop.fruits.slice() },
     offers: run.offers.slice(),
     popups: run.popups.map((p) => ({ ...p })),
@@ -395,6 +408,9 @@ export function advance(previous: Run, dt: number, keys: Keys, reports: readonly
     case "shop":
       shopStep(run, keys);
       break;
+    case "preserve":
+      preserveStep(run, keys);
+      break;
     case "over":
     case "won":
       break;
@@ -443,6 +459,7 @@ function dropStep(run: Run, dt: number): void {
   }
   simulate(run, dt);
   if (run.queue.length === 0 && run.dropTimer <= 0) {
+    if (run.items.includes("shaker")) shake(run);
     run.phase = "settle";
     run.settleTime = 0;
     run.calmTime = 0;
@@ -455,6 +472,14 @@ function settleStep(run: Run, dt: number): void {
   const calm = run.fruits.every((f) => f.speed < CALM_SPEED) && run.fruits.every((f) => !f.lit);
   run.calmTime = calm ? run.calmTime + dt : 0;
   if (run.calmTime >= CALM_TIME || run.settleTime >= SETTLE_LIMIT) resolve(run);
+}
+
+/** The Shaker: every fruit is thrown a random way, so the pile lands differently and touches something new. */
+function shake(run: Run): void {
+  const rng = new Rng(run.seed);
+  for (const f of run.fruits) kick(f, rng.range(-SHAKE, SHAKE), -rng.range(SHAKE / 2, SHAKE));
+  run.seed = rng.seed;
+  run.message = "The Shaker shakes the jar";
 }
 
 /** One frame of the jar, after the fruit reported where they are: landings, merges and blasts. */
@@ -655,6 +680,16 @@ export function resolve(run: Run): void {
     run.message = `${spilled.length} spilled over the rim`;
   }
 
+  // The Juicer crushes what stands on the floor: each scores its points (nothing if rotten) and a bonus, and is gone.
+  if (run.items.includes("juicer")) {
+    const crushed = run.fruits.filter((f) => f.landed && onFloor(f));
+    for (const f of crushed) score(run, (f.rotten ? 0 : FRUITS[f.kind].points) + JUICER_BONUS, f.x, f.y - f.r);
+    if (crushed.length > 0) {
+      run.fruits = run.fruits.filter((f) => !crushed.includes(f));
+      run.message = `The Juicer crushed ${crushed.length} fruit`;
+    }
+  }
+
   const near = links(run.fruits);
   run.fruits.forEach((f, i) => {
     const touched = (near[i] ?? []).map((j) => run.fruits[j] as Fruit);
@@ -842,7 +877,7 @@ function shopStep(run: Run, keys: Keys): void {
   shop.cursor = to;
 
   if (keys.drop) {
-    nextCycle(run);
+    leaveShop(run);
     return;
   }
   if (!keys.confirm) return;
@@ -877,6 +912,41 @@ function shopStep(run: Run, keys: Keys): void {
     run.message = "A new shelf";
     sound(run, "tick");
   } else {
+    leaveShop(run);
+  }
+}
+
+/** The jar's fruit in the order the Preserves Jar's cursor walks them: left to right. */
+export function preservable(run: Run): Fruit[] {
+  return run.fruits.slice().sort((a, b) => a.x - b.x || a.id - b.id);
+}
+
+/** Out of the shop: with a Preserves Jar and fruit in the jar, choose what to keep; otherwise the next cycle. */
+function leaveShop(run: Run): void {
+  run.shop = null;
+  run.kept = [];
+  if (!run.items.includes("preserves") || run.fruits.length === 0) {
+    nextCycle(run);
+    return;
+  }
+  run.preserveCursor = 0;
+  run.phase = "preserve";
+  run.message = `Preserves Jar: keep up to ${PRESERVED} fruit`;
+}
+
+function preserveStep(run: Run, keys: Keys): void {
+  const fruits = preservable(run);
+  const move = (keys.right || keys.down ? 1 : 0) - (keys.left || keys.up ? 1 : 0);
+  const to = Math.max(0, Math.min(fruits.length - 1, run.preserveCursor + move));
+  if (to !== run.preserveCursor) sound(run, "tick");
+  run.preserveCursor = to;
+  if (keys.confirm) {
+    const id = (fruits[run.preserveCursor] as Fruit).id;
+    if (run.kept.includes(id)) run.kept = run.kept.filter((k) => k !== id);
+    else if (run.kept.length < PRESERVED) run.kept.push(id);
+    else run.message = `The Preserves Jar holds ${PRESERVED}: let one go first`;
+    sound(run, "tick");
+  } else if (keys.drop) {
     nextCycle(run);
   }
 }
@@ -886,7 +956,8 @@ function nextCycle(run: Run): void {
   run.cycle += 1;
   run.turn = 1;
   run.cycleScore = 0;
-  run.fruits = [];
+  run.fruits = run.fruits.filter((f) => run.kept.includes(f.id));
+  run.kept = [];
   const rng = new Rng(run.seed);
   run.draw = rng.shuffle(run.pool);
   run.discard = [];

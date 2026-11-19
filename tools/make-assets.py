@@ -288,18 +288,70 @@ def key_pair(first: str, second: str) -> Image.Image:
     return doubled(out)
 
 
+# The items: each on a 24 x 20 art-pixel picture, standing on its bottom edge.
+ITEM_W, ITEM_H = 24, 20
+
+
 def item_lid() -> Image.Image:
-    """The Lid, 24 x 14 art pixels: a brass screw lid seen a little from above, its top lit and its side ridged."""
-    out = Image.new("RGBA", (24, 14))
+    """The Lid: a brass screw lid seen a little from above, its top lit and its side ridged."""
+    out = Image.new("RGBA", (ITEM_W, ITEM_H))
     draw = ImageDraw.Draw(out)
-    draw.rounded_rectangle((0, 4, 23, 13), radius=2, fill=colour("#341c27"))
-    draw.rectangle((1, 6, 22, 12), fill=colour("#be772b"))
+    draw.rounded_rectangle((0, 10, 23, 19), radius=2, fill=colour("#341c27"))
+    draw.rectangle((1, 12, 22, 18), fill=colour("#be772b"))
     for x in range(3, 22, 3):
-        draw.line((x, 8, x, 12), fill=colour("#884b2b"))
-    draw.ellipse((0, 0, 23, 8), fill=colour("#341c27"))
-    draw.ellipse((1, 1, 22, 7), fill=colour("#e8c170"))
-    draw.ellipse((4, 2, 19, 6), fill=colour("#de9e41"))
-    draw.line((6, 2, 12, 2), fill=colour("#e7d5b3"))
+        draw.line((x, 14, x, 18), fill=colour("#884b2b"))
+    draw.ellipse((0, 6, 23, 14), fill=colour("#341c27"))
+    draw.ellipse((1, 7, 22, 13), fill=colour("#e8c170"))
+    draw.ellipse((4, 8, 19, 12), fill=colour("#de9e41"))
+    draw.line((6, 8, 12, 8), fill=colour("#e7d5b3"))
+    return doubled(out)
+
+
+def item_juicer() -> Image.Image:
+    """The Juicer: a glass citrus reamer, a ridged cone standing in a dish."""
+    out = Image.new("RGBA", (ITEM_W, ITEM_H))
+    draw = ImageDraw.Draw(out)
+    draw.polygon(((11, 1), (12, 1), (18, 13), (5, 13)), fill=colour("#253a5e"))
+    draw.polygon(((11, 2), (12, 2), (17, 13), (6, 13)), fill=colour("#73bed3"))
+    for x, top in ((9, 6), (11, 3), (14, 7)):
+        draw.line((x, top, x, 13), fill=colour("#a4dddb"))
+    draw.line((12, 4, 16, 13), fill=colour("#4f8fba"))
+    draw.rounded_rectangle((0, 12, 23, 19), radius=3, fill=colour("#253a5e"))
+    draw.rounded_rectangle((1, 13, 22, 18), radius=2, fill=colour("#4f8fba"))
+    draw.line((2, 13, 21, 13), fill=colour("#a4dddb"))
+    draw.line((3, 17, 20, 17), fill=colour("#3c5e8b"))
+    return doubled(out)
+
+
+def item_shaker() -> Image.Image:
+    """The Shaker: a steel cocktail shaker, a tapered tin under a cap."""
+    out = Image.new("RGBA", (ITEM_W, ITEM_H))
+    draw = ImageDraw.Draw(out)
+    draw.polygon(((6, 7), (17, 7), (15, 19), (8, 19)), fill=colour("#202e37"))
+    draw.polygon(((7, 8), (16, 8), (14, 18), (9, 18)), fill=colour("#a8b5b2"))
+    draw.line((9, 8, 10, 18), fill=colour("#ebede9"))
+    draw.line((14, 8, 13, 18), fill=colour("#577277"))
+    draw.rounded_rectangle((7, 3, 16, 8), radius=1, fill=colour("#202e37"))
+    draw.rectangle((8, 4, 15, 7), fill=colour("#c7cfcc"))
+    draw.rounded_rectangle((9, 0, 14, 4), radius=1, fill=colour("#202e37"))
+    draw.rectangle((10, 1, 13, 3), fill=colour("#a8b5b2"))
+    draw.point((10, 1), fill=colour("#ebede9"))
+    return doubled(out)
+
+
+def item_preserves() -> Image.Image:
+    """The Preserves Jar: a small jar of red jam under a gingham cloth lid."""
+    out = Image.new("RGBA", (ITEM_W, ITEM_H))
+    draw = ImageDraw.Draw(out)
+    draw.rounded_rectangle((5, 6, 18, 19), radius=2, fill=colour("#341c27"))
+    draw.rounded_rectangle((6, 7, 17, 18), radius=1, fill=colour("#73bed3"))
+    draw.rectangle((6, 10, 17, 18), fill=colour("#a53030"))
+    draw.line((6, 10, 17, 10), fill=colour("#cf573c"))
+    draw.line((8, 9, 8, 16), fill=colour("#e7d5b3"))
+    draw.rounded_rectangle((4, 1, 19, 7), radius=1, fill=colour("#341c27"))
+    for y in range(2, 7):
+        for x in range(5, 19):
+            draw.point((x, y), fill=colour("#cf573c" if (x // 2 + y // 2) % 2 == 0 else "#e7d5b3"))
     return doubled(out)
 
 
@@ -348,7 +400,8 @@ def main() -> None:
     doubled(key_cap()).save(ASSETS / "key.png")
     key_pair("left", "right").save(ASSETS / "key-arrows.png")
     key_pair("up", "down").save(ASSETS / "key-updown.png")
-    item_lid().save(ASSETS / "item-lid.png")
+    for name, picture in (("lid", item_lid), ("juicer", item_juicer), ("shaker", item_shaker), ("preserves", item_preserves)):
+        picture().save(ASSETS / f"item-{name}.png")
     kitchen().save(ASSETS / "kitchen.png")
     back, front = jar_pictures()
     back.save(ASSETS / "jar-back.png")
