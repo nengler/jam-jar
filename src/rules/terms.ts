@@ -63,7 +63,7 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   rotten: { name: "Rotten", text: "Scores nothing and spreads. Still Merges." },
   rots: { name: "Rots", text: "Turns Rotten after this many turns." },
   ripen: { name: "Ripen", text: "Scores this much more each turn." },
-  honeyed: { name: "Honeyed", text: "Scores +4 at the end of every turn." },
+  honeyed: { name: "Honeyed", text: "+4 each turn. Sticks to what it touches." },
   honey: { name: "Honey", text: "Makes a fruit it touches Honeyed." },
   eat: { name: "Eat", text: "Removes one fruit it touches." },
   hatch: { name: "Hatch", text: "A new Fruit Fly appears where it ate." },
