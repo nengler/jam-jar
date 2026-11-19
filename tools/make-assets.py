@@ -121,13 +121,15 @@ PX = 2
 WIDTH, HEIGHT = 640, 360
 FONT_PX = 16
 ICON = 32
+# The pick screen's cards show each fruit at 4x.
+BIG = 64
 
 # UI Pixel Pack: 16 x 16 tiles, 2 pixels apart. Each image is (column, row, tiles across, tiles down) of the sheet, drawn as a
 # 9-slice in the game.
 UI_TILES = {
     "panel.png": (0, 13, 3, 3),  # cream panel: the side panels, the banner and the boxes
     "card.png": (9, 13, 3, 3),  # tan panel: hand rows, offers, menu buttons
-    "card-chosen.png": (6, 0, 3, 1),  # yellow button: the one chosen
+    "card-chosen.png": (9, 13, 3, 3),  # the same panel in amber: the one chosen
     "jar.png": (13, 20, 3, 3),  # blue-grey glass: the jar, drawn see-through
     "bar.png": (3, 13, 3, 3),  # grey panel: the rent bar's track
     "bar-fill.png": (0, 27, 3, 1),  # yellow bar: the rent paid so far
@@ -198,6 +200,7 @@ def main() -> None:
         size = round(16 * scale)
         sprite.resize((size, size), Image.NEAREST).save(ASSETS / f"fruit-{kind}.png")
         sprite.resize((ICON, ICON), Image.NEAREST).save(ASSETS / f"icon-{kind}.png")
+        sprite.resize((BIG, BIG), Image.NEAREST).save(ASSETS / f"big-{kind}.png")
         lines.append(f"  {kind}: {{ size: {size}, radius: {round(size * BALL_SHARE)} }},")
     SIZES_FILE.write_text(
         "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
@@ -218,7 +221,7 @@ def main() -> None:
     font_sheet().save(ASSETS / "font.png")
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
-    print(f"wrote {len(FRUIT_SPRITES) * 2} fruit images, the font, the background, {len(UI_TILES)} UI images, the coin, the blast and {len(SOUNDS)} sounds")
+    print(f"wrote {len(FRUIT_SPRITES) * 3} fruit images, the font, the background, {len(UI_TILES)} UI images, the coin, the blast and {len(SOUNDS)} sounds")
 
 
 if __name__ == "__main__":
