@@ -22,6 +22,7 @@ import {
   SHOP_LEAVE,
   SHOP_REMOVE,
   SHOP_REROLL,
+  shownScore,
   simulate,
   type Fruit,
   type Keys,
@@ -55,6 +56,8 @@ function fruit(id: number, kind: Fruit["kind"], x: number, y: number, touching: 
     landed: true,
     age: 0,
     rotten: kind === "prune",
+    pulse: 0,
+    pulseDelay: 0,
     honeyed: kind === "honeydew",
     lit: false,
     fuse: 0,
@@ -527,4 +530,88 @@ test("terms: card text keeps to the vocabulary: no scoring word, no other word f
     assert.ok(def.text.endsWith("."), `${def.name} ends with a full stop`);
   }
   for (const def of Object.values(KEYWORDS)) assert.ok(def.text.length <= 60, `${def.name}: ${def.text.length} characters`);
+});
+
+test("readability: a popup names what earned it, and says x2 when a Booster doubled it", () => {
+  const y = JAR.floor - 14;
+  const merged = jarWith([fruit(1, "cherry", 300, y, [2]), fruit(2, "cherry", 326, y, [1])]);
+  simulate(merged, DT);
+  assert.equal(merged.popups.at(-1)!.text, "Merge +3");
+  assert.ok(merged.fruits[0]!.pulse > 0, "the Grape it made lights up");
+
+  const doubled = jarWith([{ ...fruit(1, "orange", 300, JAR.floor - 22, [2]), landed: false }, fruit(2, "lemon", 340, y, [1])]);
+  simulate(doubled, DT);
+  assert.equal(doubled.popups.at(-1)!.text, "+16 x2");
+  assert.ok(doubled.fruits.every((f) => f.pulse > 0), "the Orange and the Lemon that doubled it light up");
+
+  const plain = jarWith([{ ...fruit(1, "orange", 300, JAR.floor - 22), landed: false }]);
+  simulate(plain, DT);
+  assert.equal(plain.popups.at(-1)!.text, "+8");
+  assert.equal(plain.fruits[0]!.pulse, 0, "a plain landing lights nothing up");
+
+  const spill = jarWith([fruit(1, "cherry", 300, RIM - 20)]);
+  resolve(spill);
+  assert.equal(spill.popups.at(-1)!.text, "Spill -5");
+});
+
+test("readability: what sets a Chili off lights up", () => {
+  const y = JAR.floor;
+  const run = jarWith([fruit(1, "chili", 160, y - 6, [2, 3]), fruit(2, "blueberry", 170, y - 4, [1]), fruit(3, "apple", 147, y - 7, [1])]);
+  simulate(run, DT);
+  assert.ok(run.fruits[1]!.pulse > 0 && run.fruits[2]!.pulse > 0);
+});
+
+test("the tally: Simmer fruit score one after another, the score on screen catching up, before the pick comes up", () => {
+  let run = newRun(7);
+  run.fruits = [fruit(1, "apple", 250, JAR.floor - 18), fruit(2, "apple", 300, JAR.floor - 18), fruit(3, "apple", 350, JAR.floor - 18)];
+  run.phase = "settle";
+  run.calmTime = 10;
+  run = press(run, {});
+  assert.equal(run.phase, "tally");
+  assert.equal(run.cycleScore, 15, "Resolve has scored all three (5 each, on the floor)");
+  assert.equal(shownScore(run), 0, "none has shown yet");
+  const delays = run.popups.map((p) => p.delay);
+  assert.ok(delays[0]! < delays[1]! && delays[1]! < delays[2]!, "each later than the last");
+  assert.ok(run.fruits.every((f) => f.pulseDelay > 0), "each lights up when its turn comes");
+
+  const seen = new Set<number>();
+  for (let i = 0; i < 300 && run.phase === "tally"; i++) {
+    run = press(run, {});
+    seen.add(shownScore(run));
+  }
+  assert.deepEqual([...seen], [0, 5, 10, 15], "counted up a fruit at a time");
+  assert.equal(run.phase, "pick");
+});
+
+test("the tally: a jar with nothing to tally goes straight on, and a long one is squeezed into about two seconds", () => {
+  let run = newRun(7);
+  run.fruits = [fruit(1, "cherry", 250, JAR.floor - 14)];
+  run.phase = "settle";
+  run.calmTime = 10;
+  run = press(run, {});
+  assert.equal(run.phase, "pick");
+
+  const many = jarWith(Array.from({ length: 30 }, (_, i) => fruit(i + 1, "apple", 230 + i * 6, JAR.floor - 18)));
+  many.turn = 1;
+  resolve(many);
+  assert.ok(many.tallyTime > 2 && many.tallyTime < 3, `${many.tallyTime}`);
+});
+
+test("the tally: the rent's sound waits for it to end", () => {
+  let run = newRun(7);
+  run.fruits = [fruit(1, "apple", 250, JAR.floor - 18)];
+  run.turn = 5;
+  run.cycleScore = RENT[0]!;
+  run.phase = "settle";
+  run.calmTime = 10;
+  run = press(run, {});
+  assert.equal(run.phase, "tally");
+  assert.ok(!run.sounds.includes("rent"));
+  let heard = false;
+  for (let i = 0; i < 300 && run.phase === "tally"; i++) {
+    run = press(run, {});
+    heard = heard || run.sounds.includes("rent");
+  }
+  assert.equal(run.phase, "rent");
+  assert.ok(heard, "played as the rent panel came up");
 });

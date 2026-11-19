@@ -98,6 +98,18 @@ reason.
 
 The screen is 640 x 360 (16:9), scaled up by whole multiples.
 
+## Reading a turn
+
+The design doc's biggest risk is that a pile of fruit is harder to read than a grid, so the screen says why you scored:
+
+- A popup names what earned its points when that has a name ("Merge +8", "Blast +14", "Spill -5", "Eat +8", "Crush +6"), and
+  ends "x2" when a Booster doubled them.
+- Fruit light up when something happens because of them: the Lemon that doubled a score, what set a Chili or a Durian off,
+  a fruit a Merge made, one that just rotted or was honeyed.
+- The end of a turn is a tally: each Simmer fruit lights up and scores in turn, with a tick, and the score counts up with them.
+  A long tally is squeezed into about two seconds. The rules have already scored it all (`resolve`); the "tally" phase only
+  shows it, then hands over to the pick or the rent.
+
 ## Balance
 
 `node tools/balance.ts` plays whole runs on the engine's physics with no window and prints what each cycle scored, for players

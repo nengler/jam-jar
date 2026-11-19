@@ -4,7 +4,7 @@
  * the component's state changes by assignment and renders). Nothing here knows about the engine, so it is tested with node:test.
  *
  * A turn: order (arrange the 4 dealt fruits) → drop (they fall one by one at random spots) → settle (physics; merges and blasts
- * score as they happen) → resolve (overflow, then Simmer fruit score) → pick (1 of 3, or skip). Five turns make a rent cycle,
+ * score as they happen) → resolve (overflow, then Simmer fruit score; shown one fruit after another, the tally) → pick (1 of 3, or skip). Five turns make a rent cycle,
  * and between cycles the shop sells fruit, an item, a removal and rerolls for the coins the rent left over.
  *
  * The physics is the engine's (`useBall`): each fruit is a component with a ball, and each step it reports where it is, how fast it
@@ -56,10 +56,16 @@ const COCONUT_TURNS = 3;
 /** What a honeyed fruit scores at each Resolve. */
 const HONEY_POINTS = 2;
 const POPUP_LIFE = 0.9;
+/** How long a fruit stays lit up after something happens to it, in seconds. */
+export const PULSE = 0.35;
+/** The tally: seconds between one fruit's score and the next, the most the whole of it takes, and the pause after its last. */
+const TALLY_STEP = 0.22;
+const TALLY_MOST = 2.2;
+const TALLY_HOLD = 0.5;
 /** How long a blast's explosion (9 frames) shows, in seconds. */
 export const BOOM_LIFE = 0.54;
 
-export type Phase = "order" | "drop" | "settle" | "pick" | "rent" | "shop" | "preserve" | "over" | "won";
+export type Phase = "order" | "drop" | "settle" | "tally" | "pick" | "rent" | "shop" | "preserve" | "over" | "won";
 
 /** What the Juicer adds for each fruit it crushes, on top of the fruit's points. */
 export const JUICER_BONUS = 3;
@@ -115,6 +121,9 @@ export interface Fruit {
   /** Resolves survived in the jar. */
   age: number;
   rotten: boolean;
+  /** Seconds left of being lit up, because something just happened to it or because of it; and seconds until that starts. */
+  pulse: number;
+  pulseDelay: number;
   /** Coated in honey (a Honeydew, or a fruit one has honeyed): it scores at every Resolve. */
   honeyed: boolean;
   /** A Chili or Durian about to go off, and the seconds left. */
@@ -126,8 +135,13 @@ export interface Popup {
   id: number;
   x: number;
   y: number;
+  /** What it says: the points, after what earned them if that has a name ("Blast +14"), and "x2" if a Booster doubled them. */
   text: string;
   life: number;
+  /** Seconds until it shows (the tally shows its scores one after another), and the points it stands for: until it shows, the
+   * score on screen is that much behind the run's (`shownScore`). */
+  delay: number;
+  points: number;
 }
 
 /** Something drawn for a moment: a blast's explosion. */
@@ -179,6 +193,10 @@ export interface Run {
   kept: number[];
   settleTime: number;
   calmTime: number;
+  /** While the tally plays: the seconds left of it, the phase that follows, and the sound that goes with that. */
+  tallyTime: number;
+  afterTally: Phase;
+  afterSound: Sound | null;
   offers: FruitKind[];
   offerCursor: number;
   popups: Popup[];
@@ -267,6 +285,9 @@ export function newRun(seed: number): Run {
     kept: [],
     settleTime: 0,
     calmTime: 0,
+    tallyTime: 0,
+    afterTally: "pick",
+    afterSound: null,
     offers: [],
     offerCursor: 0,
     popups: [],
@@ -327,15 +348,32 @@ function effect(run: Run, kind: Effect["kind"], x: number, y: number, size: numb
   run.effects.push({ id: run.nextId++, kind, x, y, age: 0, size });
 }
 
-function popup(run: Run, x: number, y: number, text: string): void {
-  run.popups.push({ id: run.nextId++, x, y, text, life: POPUP_LIFE });
+/** What a score is for, when that is worth saying: the keyword that earned it, and whether a Booster doubled it. */
+interface Why {
+  label?: string;
+  doubled?: boolean;
 }
 
-function score(run: Run, points: number, x: number, y: number): void {
-  if (points === 0) return;
+/** Add points to the cycle, with a popup where it happened. Returns the popup (null for no points), so the tally can time it. */
+function score(run: Run, points: number, x: number, y: number, why: Why = {}): Popup | null {
+  if (points === 0) return null;
   run.cycleScore += points;
   run.total += points;
-  popup(run, x, y, points > 0 ? `+${points}` : `${points}`);
+  const text = `${why.label === undefined ? "" : `${why.label} `}${points > 0 ? "+" : ""}${points}${why.doubled === true ? " x2" : ""}`;
+  const popup: Popup = { id: run.nextId++, x, y, text, life: POPUP_LIFE, delay: 0, points };
+  run.popups.push(popup);
+  return popup;
+}
+
+/** The cycle's score as the screen shows it: without the points of the tally's popups still to come. */
+export function shownScore(run: Run): number {
+  return run.cycleScore - run.popups.reduce((sum, p) => sum + (p.delay > 0 ? p.points : 0), 0);
+}
+
+/** Light a fruit up for a moment: something just happened to it, or because of it. */
+function pulse(f: Fruit, delay = 0): void {
+  f.pulse = PULSE;
+  f.pulseDelay = delay;
 }
 
 function makeFruit(run: Run, kind: FruitKind, x: number, y: number): Fruit {
@@ -355,6 +393,8 @@ function makeFruit(run: Run, kind: FruitKind, x: number, y: number): Fruit {
     landed: false,
     age: 0,
     rotten: kind === "prune",
+    pulse: 0,
+    pulseDelay: 0,
     honeyed: kind === "honeydew",
     lit: false,
     fuse: 0,
@@ -382,6 +422,25 @@ function boosted(fruits: readonly Fruit[], links: readonly number[][], i: number
   return (links[i] ?? []).some((j) => fruits[j]?.kind === "lemon" || fruits[j]?.kind === "cracked");
 }
 
+/** A score a fruit earned: its popup, whether a Booster doubled it, and the fruit it lit up (itself and those Boosters). */
+interface Earned {
+  popup: Popup;
+  doubled: boolean;
+  fruits: Fruit[];
+}
+
+/** Score what a fruit (by index) earns, doubled if it touches a Booster: the popup then says "x2" and the Boosters light up too. */
+function earn(run: Run, links: readonly number[][], i: number, points: number, label?: string): Earned | null {
+  const f = run.fruits[i] as Fruit;
+  const doubled = boosted(run.fruits, links, i);
+  const popup = score(run, points * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled });
+  if (popup === null) return null;
+  const boosters = doubled ? (links[i] ?? []).map((j) => run.fruits[j] as Fruit).filter((o) => o.kind === "lemon" || o.kind === "cracked") : [];
+  const fruits = [f, ...boosters];
+  for (const o of fruits) pulse(o);
+  return { popup, doubled, fruits };
+}
+
 /** Whether a fruit (by index) touches a Lemon: it cannot merge. */
 function nearLemon(fruits: readonly Fruit[], links: readonly number[][], i: number): boolean {
   return (links[i] ?? []).some((j) => fruits[j]?.kind === "lemon");
@@ -401,8 +460,18 @@ export function advance(previous: Run, dt: number, keys: Keys, reports: readonly
   const run = copy(previous);
   applyReports(run, reports);
   for (const p of run.popups) {
+    if (p.delay > 0) {
+      p.delay -= dt;
+      // The tally's next score shows: a tick for each.
+      if (p.delay <= 0) sound(run, "tick");
+      continue;
+    }
     p.life -= dt;
     p.y -= 36 * dt;
+  }
+  for (const f of run.fruits) {
+    if (f.pulseDelay > 0) f.pulseDelay -= dt;
+    else if (f.pulse > 0) f.pulse = Math.max(0, f.pulse - dt);
   }
   run.popups = run.popups.filter((p) => p.life > 0);
   for (const e of run.effects) e.age += dt;
@@ -417,6 +486,14 @@ export function advance(previous: Run, dt: number, keys: Keys, reports: readonly
       break;
     case "settle":
       settleStep(run, dt);
+      break;
+    case "tally":
+      run.tallyTime -= dt;
+      if (run.tallyTime <= 0) {
+        run.phase = run.afterTally;
+        if (run.afterSound !== null) sound(run, run.afterSound);
+        run.afterSound = null;
+      }
       break;
     case "pick":
       pickStep(run, keys);
@@ -491,7 +568,15 @@ function settleStep(run: Run, dt: number): void {
   run.settleTime += dt;
   const calm = run.fruits.every((f) => f.speed < CALM_SPEED) && run.fruits.every((f) => !f.lit);
   run.calmTime = calm ? run.calmTime + dt : 0;
-  if (run.calmTime >= CALM_TIME || run.settleTime >= SETTLE_LIMIT) resolve(run);
+  if (run.calmTime < CALM_TIME && run.settleTime < SETTLE_LIMIT) return;
+  resolve(run);
+  // Resolve has scored everything and moved on; the tally shows it happening, then hands over to where Resolve went.
+  if (run.tallyTime > 0) {
+    run.afterTally = run.phase;
+    run.afterSound = run.sounds.includes("rent") ? "rent" : run.sounds.includes("lose") ? "lose" : null;
+    run.sounds = run.sounds.filter((name) => name !== "rent" && name !== "lose");
+    run.phase = "tally";
+  }
 }
 
 /** The Shaker: every fruit is thrown a random way, so the pile lands differently and touches something new. */
@@ -520,7 +605,11 @@ function land(run: Run): void {
     f.landed = true;
     sound(run, "land");
     const def = FRUITS[f.kind];
-    if (def.scoring === "fresh") score(run, def.points * (boosted(run.fruits, near, i) ? 2 : 1), f.x, f.y - f.r);
+    if (def.scoring === "fresh") {
+      const earned = earn(run, near, i, def.points);
+      // Landing is the commonest score: only a doubled one lights anything up.
+      if (earned !== null && !earned.doubled) f.pulse = 0;
+    }
     if (f.kind === "peach") {
       // It bounces once, and shoves what it landed on away to each side.
       kick(f, 0, -PEACH_BOUNCE);
@@ -566,7 +655,7 @@ function merge(run: Run): void {
       const mx = (a.x + b.x) / 2;
       const my = (a.y + b.y) / 2;
       if (a.kind === "watermelon") {
-        score(run, 100, mx, my);
+        score(run, 100, mx, my, { label: "Merge" });
         run.message = "Two Watermelons: +100!";
       } else if (a.kind === "pomegranate") {
         born.push(...burst(run, mx, my));
@@ -575,8 +664,9 @@ function merge(run: Run): void {
         const into = FRUITS[a.kind].mergesInto as FruitKind;
         const f = makeFruit(run, into, mx, my);
         f.landed = true;
+        pulse(f);
         born.push(f);
-        score(run, FRUITS[into].points, mx, my - f.r);
+        score(run, FRUITS[into].points, mx, my - f.r, { label: "Merge" });
       }
       break;
     }
@@ -606,10 +696,17 @@ function light(run: Run): void {
     if (f.lit || !f.landed) return;
     if (f.kind === "chili") {
       const weight = (near[i] ?? []).reduce((sum, j) => sum + FRUITS[(run.fruits[j] as Fruit).kind].touchWeight, 0);
-      if (weight >= 4) ignite(f, 0.3);
+      if (weight >= 4) {
+        ignite(f, 0.3);
+        // What set it off lights up.
+        for (const j of near[i] ?? []) pulse(run.fruits[j] as Fruit);
+      }
     } else if (f.kind === "durian") {
-      const above = run.fruits.filter((o) => o !== f && o.landed && o.y < f.y - f.r * 0.5 && Math.abs(o.x - f.x) < f.r + o.r).length;
-      if (above >= 3) ignite(f, 0.3);
+      const above = run.fruits.filter((o) => o !== f && o.landed && o.y < f.y - f.r * 0.5 && Math.abs(o.x - f.x) < f.r + o.r);
+      if (above.length >= 3) {
+        ignite(f, 0.3);
+        for (const o of above) pulse(o);
+      }
     }
   });
 }
@@ -677,7 +774,7 @@ function explode(run: Run, bomb: Fruit): void {
     kick(f, (dx / d) * push, (dy / d) * push - 80);
   }
   run.fruits = [...kept, ...born];
-  score(run, points, bomb.x, bomb.y - radius / 2);
+  score(run, points, bomb.x, bomb.y - radius / 2, { label: "Blast" });
   effect(run, "boom", bomb.x, bomb.y, radius * 2);
   sound(run, "boom");
   run.message = `${FRUITS[bomb.kind].name} Blast: ${victims.length} fruit destroyed`;
@@ -689,6 +786,10 @@ function explode(run: Run, bomb: Fruit): void {
 
 /** The jar has settled: spill what is over the rim, Simmer fruit score, age and rot, then the pick (or rent after turn 5). */
 export function resolve(run: Run): void {
+  // What the tally shows one after another: each popup and each fruit to light up, with its place in the order.
+  const staged: { popup: Popup | null; fruits: Fruit[]; slot: number }[] = [];
+  let slot = 0;
+  const popupsBefore = run.popups.length;
   const spilled = run.fruits.filter((f) => f.y - f.r < RIM);
   if (spilled.length > 0 && run.items.includes("lid")) {
     // The Lid holds them in, once: nothing spills and nothing is lost, and the Lid is used up.
@@ -696,14 +797,14 @@ export function resolve(run: Run): void {
     run.message = `The Lid stopped a Spill of ${spilled.length}. It is used up`;
   } else if (spilled.length > 0) {
     run.fruits = run.fruits.filter((f) => f.y - f.r >= RIM);
-    for (const f of spilled) score(run, -OVERFLOW_PENALTY, f.x, RIM - 12);
+    for (const f of spilled) score(run, -OVERFLOW_PENALTY, f.x, RIM - 12, { label: "Spill" });
     run.message = `Spill: ${spilled.length} fruit lost, -${spilled.length * OVERFLOW_PENALTY}`;
   }
 
   // The Juicer crushes what stands on the floor: each scores its points (nothing if rotten) and a bonus, and is gone.
   if (run.items.includes("juicer")) {
     const crushed = run.fruits.filter((f) => f.landed && onFloor(f));
-    for (const f of crushed) score(run, (f.rotten ? 0 : FRUITS[f.kind].points) + JUICER_BONUS, f.x, f.y - f.r);
+    for (const f of crushed) score(run, (f.rotten ? 0 : FRUITS[f.kind].points) + JUICER_BONUS, f.x, f.y - f.r, { label: "Crush" });
     if (crushed.length > 0) {
       run.fruits = run.fruits.filter((f) => !crushed.includes(f));
       run.message = `Juicer: ${crushed.length} fruit Crushed`;
@@ -728,7 +829,10 @@ export function resolve(run: Run): void {
       points = FRUITS.pitaya.points + run.pitayaBonus;
     }
     if (f.honeyed) points += HONEY_POINTS;
-    score(run, points * (boosted(run.fruits, near, i) ? 2 : 1), f.x, f.y - f.r);
+    const earned = earn(run, near, i, points);
+    if (earned === null) return;
+    slot += 1;
+    staged.push({ popup: earned.popup, fruits: earned.fruits, slot });
   });
 
   // Each Fruit Fly eats one rotten fruit it touches (never a Prune) and a new Fly hatches where it was.
@@ -739,7 +843,9 @@ export function resolve(run: Run): void {
     const meal = (near[i] ?? []).map((j) => run.fruits[j] as Fruit).find((o) => o.rotten && o.kind !== "prune" && !eaten.has(o.id));
     if (meal === undefined) return;
     eaten.add(meal.id);
-    score(run, FRUITS.fruitfly.points * (boosted(run.fruits, near, i) ? 2 : 1), meal.x, meal.y - meal.r);
+    const earned = earn(run, near, i, FRUITS.fruitfly.points, "Eat");
+    slot += 1;
+    staged.push({ popup: earned?.popup ?? null, fruits: earned?.fruits ?? [f], slot });
     const fly = makeFruit(run, "fruitfly", meal.x, meal.y);
     fly.landed = true;
     hatched.push(fly);
@@ -757,6 +863,8 @@ export function resolve(run: Run): void {
     if (cherry === undefined) continue;
     swallowed.add(cherry.id);
     run.pitayaBonus += 1;
+    slot += 1;
+    staged.push({ popup: null, fruits: [f], slot });
   }
   if (swallowed.size > 0) {
     run.fruits = run.fruits.filter((f) => !swallowed.has(f.id));
@@ -768,6 +876,8 @@ export function resolve(run: Run): void {
     if (f.kind !== "coconut" || f.age < COCONUT_TURNS - 1) return f;
     const shell = makeFruit(run, "cracked", f.x, f.y);
     shell.landed = true;
+    slot += 1;
+    staged.push({ popup: null, fruits: [shell], slot });
     run.message = "A Coconut cracked";
     return shell;
   });
@@ -776,7 +886,11 @@ export function resolve(run: Run): void {
   for (const f of run.fruits) {
     if (f.kind !== "honeydew" || f.rotten) continue;
     const next = run.fruits.find((o) => !o.honeyed && !o.rotten && f.touching.includes(o.id));
-    if (next) next.honeyed = true;
+    if (next) {
+      next.honeyed = true;
+      slot += 1;
+      staged.push({ popup: null, fruits: [f, next], slot });
+    }
   }
 
   // Age; Bananas rot after 3 turns, and each rotten fruit but a Prune rots one fruit it touches (never a Lemon or a Fruit Fly).
@@ -787,8 +901,21 @@ export function resolve(run: Run): void {
   const rotten = run.fruits.filter((f) => f.rotten && f.kind !== "prune");
   for (const r of rotten) {
     const next = run.fruits.find((o) => !o.rotten && o.kind !== "lemon" && o.kind !== "fruitfly" && r.touching.includes(o.id));
-    if (next) next.rotten = true;
+    if (next) {
+      next.rotten = true;
+      slot += 1;
+      staged.push({ popup: null, fruits: [next], slot });
+    }
   }
+
+  // Time the tally: a step between each thing, shorter when there are many, and how long the whole takes.
+  const step = Math.min(TALLY_STEP, TALLY_MOST / Math.max(1, slot));
+  for (const s of staged) {
+    const delay = s.slot * step;
+    if (s.popup !== null) s.popup.delay = delay;
+    for (const f of s.fruits) pulse(f, delay);
+  }
+  run.tallyTime = run.popups.length > popupsBefore || slot > 0 ? slot * step + TALLY_HOLD : 0;
 
   if (run.turn >= TURNS_PER_CYCLE) {
     run.phase = "rent";
