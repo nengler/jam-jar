@@ -8,12 +8,13 @@ Built on the [tse engine](https://github.com/nengler/tse). The design doc is the
 
 ## Running it
 
-The engine isn't on npm yet, so it is installed from a sibling checkout of `tse`:
+The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.9.0), with
+`overrides` so the packs' own dependencies on each other resolve to the same release:
 
 ```sh
-# with ../tse checked out next to this repo (or TSE_DIR=/path/to/tse)
-npm run install-engine   # packs tse and installs it here (package.json keeps 0.0.0)
-npm run check            # compile, type-check, tests, parity
+npm install
+npm run check            # compile, type-check, tests, parity with the Rust host
+npm run install-engine   # optional: try an unreleased engine from ../tse (or TSE_DIR) without changing package.json
 npm run dev              # play in a window, with hot reload (needs tse's native build with a window: npm run native:build in tse)
 npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out shots   # a screenshot without a window
 ```
@@ -42,8 +43,8 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 - Rent: 25, 50, 100, 175 and 300 over 5 cycles. Points over rent become coins (1 per 5).
 
 Not built yet: the shop (coins pile up but can't be spent), items (Preserves Jar, Juicer and the rest), boss jars, Juice and
-grow, the rest of the Rot group (Fruit Fly, Fig, Prune), Kiwi, Peach, Honeydew, Snow Pear, and art for the jar and panels
-(they're still plain shapes).
+grow, the rest of the Rot group (Fruit Fly, Fig, Prune), Kiwi, Peach, Honeydew, Snow Pear, and art for the jar itself (still
+plain shapes).
 
 ## How it is built
 
@@ -65,8 +66,8 @@ grow, the rest of the Rot group (Fruit Fly, Fig, Prune), Kiwi, Peach, Honeydew, 
 - Fruit art: [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft, MIT licence (`tools/fluent/LICENSE`, which
   must ship with the game). There's no emoji for a Durian or a Pomegranate, so for now they use the Pineapple and a hue-shifted
   Red Apple.
-- Sounds: [Kenney](https://kenney.nl), CC0, taken from the tse repo's games.
-- Font: the tse engine template's.
+- Panels (UI Pixel Pack), font (Kenney Mini Square Mono) and sounds: [Kenney](https://kenney.nl), CC0. The full bundle is on
+  this repo's `Assets` release; `tools/kenney/README.md` says which file each came from.
 
 ## Engine notes
 
@@ -77,5 +78,5 @@ What the engine did and didn't cover for this game:
 - **The rules stay outside components.** Scoring, merges and blasts need every fruit at once, so the run is one plain object in
   `Play`'s state, fed by the fruit's reports a step behind. `advance` returns a copy each step, because render compares by `===`.
 - **Not on npm.** Hence `install-engine`, the same loop the engine's own Bramble game uses.
-- **Free assets.** kenney.nl, the engine's usual source, isn't reachable from the cloud environment this was built in, so the
-  fruit came from Fluent Emoji on GitHub, and the sounds are Kenney's from the tse repo.
+- **Free assets.** Kenney's Food Kit has only small low-poly renders and no Melon, Pomegranate, Durian, Blueberry or Seed, so
+  the fruit are Fluent Emoji; the panels, font and sounds are Kenney's.

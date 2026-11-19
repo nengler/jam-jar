@@ -4,7 +4,12 @@ Lays out the game's assets/ from the free art in tools/:
 - tools/fluent/: Microsoft Fluent Emoji 3D fruit (MIT licence, tools/fluent/LICENSE), 256 x 256. Each fruit is cropped to its
   pixels and scaled down (Lanczos) to its size in the jar, fruit-<kind>.png, and to a 14-pixel icon for the hand and pick lists,
   icon-<kind>.png. Sizes come from the radii in src/rules/fruits.ts, so changing a radius and rerunning keeps them in step.
-- tools/kenney/: Kenney's CC0 sounds (from the tse repo's games), copied as they are.
+- tools/kenney/: Kenney's CC0 assets (from the Kenney Game Assets All-in-1 bundle, and sounds from the tse repo's games):
+  - the sounds, copied as they are;
+  - `kenney-mini-square-mono.ttf` (Kenney Fonts), drawn at its pixel size (8) into `font.png`: the ASCII characters 32 to 127
+    in a 16 x 6 grid of 6 x 8 cells, as tse's `<Text font>` takes;
+  - `ui-pixel-pack-sheet.png` (UI Pixel Pack, 16 x 16 tiles 2 pixels apart): 3 x 3 tiles of a panel make a 48 x 48 frame,
+    drawn as a 9-slice (`<Flex backgroundImage slice>`): `panel-wood.png` and `panel-cream.png`.
 
     python3 tools/make-assets.py
 """
@@ -13,7 +18,7 @@ import re
 import shutil
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
@@ -80,6 +85,34 @@ def fit(image: Image.Image, size: int) -> Image.Image:
     return out
 
 
+# Panels in the UI Pixel Pack sheet: (column, row) of the top-left of their 3 x 3 tiles.
+PANELS = {"panel-wood.png": (6, 13), "panel-cream.png": (0, 13), "panel-tan.png": (9, 13)}
+
+
+def font_sheet() -> Image.Image:
+    """Kenney Mini Square Mono at 8 px, its pixel size: no anti-aliasing to drop. Its glyphs reach rows 2 to 9, so each is drawn 2 up."""
+    font = ImageFont.truetype(str(KENNEY / "kenney-mini-square-mono.ttf"), 8)
+    cell_w, cell_h = 6, 8
+    sheet = Image.new("L", (cell_w * 16, cell_h * 6), 0)
+    draw = ImageDraw.Draw(sheet)
+    for code in range(32, 128):
+        i = code - 32
+        draw.text(((i % 16) * cell_w, (i // 16) * cell_h - 2), chr(code), font=font, fill=255)
+    # White glyphs on transparency, every pixel fully on or off.
+    out = Image.new("RGBA", sheet.size, (255, 255, 255, 0))
+    out.putalpha(sheet.point(lambda v: 255 if v >= 128 else 0))
+    return out
+
+
+def panel(sheet: Image.Image, col: int, row: int) -> Image.Image:
+    out = Image.new("RGBA", (48, 48))
+    for dy in range(3):
+        for dx in range(3):
+            x, y = (col + dx) * 18, (row + dy) * 18
+            out.paste(sheet.crop((x, y, x + 16, y + 16)), (dx * 16, dy * 16))
+    return out
+
+
 def main() -> None:
     ASSETS.mkdir(exist_ok=True)
     sizes = radii()
@@ -90,9 +123,13 @@ def main() -> None:
         # A little bigger than the physics circle: emoji art is not round, and this keeps the pile looking snug.
         fit(image, sizes[kind] * 2 + 2).save(ASSETS / f"fruit-{kind}.png")
         fit(image, ICON).save(ASSETS / f"icon-{kind}.png")
+    font_sheet().save(ASSETS / "font.png")
+    ui = Image.open(KENNEY / "ui-pixel-pack-sheet.png").convert("RGBA")
+    for name, (col, row) in PANELS.items():
+        panel(ui, col, row).save(ASSETS / name)
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
-    print(f"wrote {len(SOURCES) * 2} images and {len(SOUNDS)} sounds to {ASSETS}")
+    print(f"wrote {len(SOURCES) * 2} fruit images, a font, {len(PANELS)} panels and {len(SOUNDS)} sounds to {ASSETS}")
 
 
 if __name__ == "__main__":
