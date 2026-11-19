@@ -51,7 +51,7 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Merge | Two that touch become the fruit named. |
 | Exploder | Explodes when touching this many fruit. |
 | Buried | Explodes, big, under this many fruit. |
-| Explode | Destroys nearby fruit for points +6 (big: +8). |
+| Explode | Destroys nearby fruit: points +10 (big +14). |
 | Exploded | When an explosion destroys it. |
 | Burst | Breaks into this many Cherries. |
 | Sprout | A Cherry, Grape or Orange grows here. |
@@ -59,7 +59,7 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Rots | Turns Rotten after this many turns. |
 | Ripen | Scores this much more each turn. |
 | Contained | Its rot does not spread. |
-| Honeyed / Honey | Scores +2 at the end of every turn / makes a fruit it touches Honeyed. |
+| Honeyed / Honey | Scores +4 at the end of every turn / makes a fruit it touches Honeyed. |
 | Eat / Hatch | Removes one fruit it touches / a new Fruit Fly appears where it ate. |
 | Grow | That kind scores this much more, all run. |
 | Heavy | Shoulders lighter fruit aside. |
@@ -89,13 +89,13 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   Booster: fruit touching it score double, and it blocks merges next to it.
 - The Boom group: Chili (explodes touching 4+ fruit), Durian (big blast once 3 fruit sit on it), Pomegranate (bursts into 5
   Cherries when hit; two that merge burst into 5 between them), Blueberry (counts as 3 fruit for touch checks) and Seed (sprouts a starter when blown up). Blasts
-  chain into other Chilis and Durians, and score a bonus for each fruit destroyed (6 for a Chili's, 8 for a Durian's).
-- Banana: 2, then +1 a turn, rots after 3 turns, and rot spreads to one touching fruit a turn.
-- The rest of the Rot group: Prune (rotten from the start, never spreads, +5 for each rotten fruit touching it), Fruit Fly (eats
-  one rotten fruit it touches a turn for 8, and another Fly hatches there; never a Prune) and Fig (blown up while rotten, it
+  chain into other Chilis and Durians, and score a bonus for each fruit destroyed (10 for a Chili's, 14 for a Durian's).
+- Banana: 4, then +2 a turn, rots after 3 turns, and rot spreads to one touching fruit a turn.
+- The rest of the Rot group: Prune (rotten from the start, never spreads, +10 for each rotten fruit touching it), Fruit Fly (eats
+  one rotten fruit it touches a turn for 18, and another Fly hatches there; never a Prune) and Fig (blown up while rotten, it
   gives every Banana +1 for the rest of the run).
 - Flex fruit: Kiwi (becomes a copy of the first landed fruit it touches), Peach (bounces once when it lands and shoves what it
-  landed on aside) and Honeydew (honeys one fruit it touches a turn; honeyed fruit, the Honeydew included, score 2 a turn and
+  landed on aside) and Honeydew (honeys one fruit it touches a turn; honeyed fruit, the Honeydew included, score 4 a turn and
   are tinted gold).
 - Snow Pear: at the end of each turn it and every fruit touching it turn Frozen. A Frozen fruit is held where it is (its
   ball is pinned, so it hangs there even if what was under it goes), an explosion does not destroy it, and it is tinted ice
@@ -126,7 +126,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   - The Peg jar has a round post in the middle that splits the pile.
   - In the Blind jar the hand is under cloths: it drops as it was dealt, and you cannot see or order it. (The Pool board
     still shows what is left, so the hand can be worked out.)
-- Rent: 100, 150, 200, 260 and 320 over 5 cycles. Points over rent become coins (1 per 10).
+- Rent: 120, 180, 240, 320 and 400 over 5 cycles. Points over rent become coins (1 per 10).
 - The shop, after each rent but the last: three fruit (3 coins each), one item, taking a fruit out of your pool (4 coins; the
   pool keeps at least one hand of 4) and a new shelf (1 coin, then 2, 3, … that visit).
 - Items, which stand on the counter once you own them:
@@ -175,17 +175,25 @@ The design doc's biggest risk is that a pile of fruit is harder to read than a g
 that never order a hand: one that never picks, one that picks at random, one per fruit that takes only that fruit, and
 `/thin` versions that spend their coins taking Cherries out of the pool. The rent curve is set against it:
 
-| Player (60 runs) | Median score, cycles 1 to 5 | Makes the last rent |
+| Player (24 runs) | Median score, cycles 1 to 5 | Makes the last rent |
 | --- | --- | --- |
-| Never picks | 219, 227, 186, 230, 227 | 0 in 60 |
-| Picks at random | 161, 142, 146, 146, 141 | 0 in 60 |
-| Never picks, thins the pool | 219, 249, 280, 296, 306 | 24 in 60 |
+| Never picks | 260, 257, 252, 265, 256 | 0 in 24 |
+| Picks at random | 199, 224, 210, 244, 257 | 4 in 24 |
+| Never picks, thins the pool | 260, 291, 327, 360, 347 | 7 in 24 |
+| Boom picks (Chili, Blueberry, Seed, Lime, Durian), thins | 243, 289, 328, 307, 304 | 3 in 24 |
+| Rot picks (Banana, Prune, Fruit Fly, Fig, Chili) | 233, 180, 194, 230, 201 | 0 in 24 |
+| Apple, Durian, Pomegranate, Pitaya, Kiwi, thins | 274, 344, 350, 410, 412 | 13 in 24 |
 
-Cycle 3 is the Peg jar, which is the dip in each row.
+Cycle 3 is a boss jar, which is the dip in some rows.
 
-What it showed: the starters' merge ladder is worth about 11 points a drop, so a fruit that scores less than that when it is
-dealt makes the pool worse. Most picks still do on their own (a lone Lemon, Seed or Blueberry costs the most, and the Rot
-group taken together sits near 110 a cycle); they are meant to pay in combination, and nothing here measures an ordered hand. Rerun it after changing a fruit.
+What it showed, and what was done about it. A never-pick cycle's points come mostly from the starters merging up (about 54
+from merges into Melon and 33 into Watermelon, of some 212), and those top merges are the first thing lost when other fruit
+take a share of the drops. So a pick had to be worth about twice an average starter drop to break even, and at first every
+fruit but the Kiwi cost 5 to 19 points for each time it was dropped. The synergy fruit's own numbers were raised until the
+ones that stand alone (Apple, Durian, Pomegranate, Pitaya, Honeydew) are about neutral taken alone, picking at random is no
+longer a trap, and a build of good picks beats never picking. The combo pieces (Seed, Fig, Fruit Fly, Lime, Blueberry, Lemon)
+still cost points alone, on purpose. The Rot group still loses taken together: rot blocks the starters' merges, and no bot
+plays it with any care. Nothing here measures an ordered hand. Rerun it after changing a fruit.
 
 ## How it is built
 

@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { FRUITS, LEGENDARY, LEGENDARY_CHANCE, OFFERABLE, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, FRUITS, HONEY, LEGENDARY, LEGENDARY_CHANCE, OFFERABLE, SPROUTS, type FruitKind } from "./fruits.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
 
@@ -58,7 +58,7 @@ export function bossNow(run: Run, cycle = run.cycle): Boss | null {
   return bossCycle(cycle) ? run.boss : null;
 }
 
-export const RENT: readonly number[] = [100, 150, 200, 260, 320];
+export const RENT: readonly number[] = [120, 180, 240, 320, 400];
 /** Points over the rent that make one coin. */
 export const POINTS_PER_COIN = 10;
 /** Seconds between drops in a hand, at the least: the next fruit also waits for the pile to have been calm for `DROP_CALM`
@@ -79,7 +79,7 @@ export const LIME_JUICE = 20;
 export const COCONUT_MILK = 20;
 export const JUICE_MOST = 120;
 /** What a honeyed fruit scores at each Resolve. */
-const HONEY_POINTS = 2;
+const HONEY_POINTS = HONEY;
 const POPUP_LIFE = 0.9;
 /** About how wide a popup's character is on screen, and a popup's line, in pixels. */
 const POPUP_CHAR = 13;
@@ -896,7 +896,7 @@ function burn(run: Run, dt: number): void {
 
 export const BLAST_RADIUS: Readonly<Partial<Record<FruitKind, number>>> = { chili: 52, durian: 80 };
 /** What a blast scores for each fruit it destroys, on top of the fruit's own points: a blast ends what they would have merged into. */
-export const BLAST_BONUS: Readonly<Partial<Record<FruitKind, number>>> = { chili: 6, durian: 8 };
+export const BLAST_BONUS: Readonly<Partial<Record<FruitKind, number>>> = { chili: 10, durian: 14 };
 
 function explode(run: Run, bomb: Fruit): void {
   const radius = BLAST_RADIUS[bomb.kind] ?? 48;
@@ -1014,9 +1014,9 @@ export function resolve(run: Run): void {
       return;
     } else if (f.kind === "apple") {
       const depth = (f.y - RIM) / (JAR.floor - RIM);
-      points = 2 + Math.floor(Math.max(0, Math.min(1, depth)) * 4);
+      points = APPLE.base + Math.floor(Math.max(0, Math.min(1, depth)) * APPLE.deep);
     } else if (f.kind === "banana") {
-      points = 2 + f.age + run.bananaBonus;
+      points = BANANA.base + f.age * BANANA.ripen + run.bananaBonus;
     } else if (f.kind === "pitaya") {
       points = FRUITS.pitaya.points + run.pitayaBonus;
     }
@@ -1098,7 +1098,7 @@ export function resolve(run: Run): void {
   for (const f of run.fruits) {
     if (f.pickled) continue;
     f.age += 1;
-    if (f.kind === "banana" && f.age >= 3 && !f.rotten) f.rotten = true;
+    if (f.kind === "banana" && f.age >= BANANA.rots && !f.rotten) f.rotten = true;
   }
   const rotten = run.fruits.filter((f) => f.rotten && f.kind !== "prune");
   for (const r of rotten) {

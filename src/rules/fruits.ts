@@ -55,31 +55,40 @@ export interface FruitDef {
   text: string;
 }
 
+/**
+ * The numbers of the fruit that score by a rule of their own (rules/jar.ts), kept here so their cards say the same.
+ * An Apple scores its base, and up to `deep` more the deeper it sits. A Banana scores its base and `ripen` more each turn, and
+ * rots after `rots` turns. A honeyed fruit scores `HONEY` each turn.
+ */
+export const APPLE = { base: 4, deep: 6 };
+export const BANANA = { base: 4, ripen: 2, rots: 3 };
+export const HONEY = 4;
+
 export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   cherry: { name: "Cherry", radius: FRUIT_ART.cherry.radius, points: 1, scoring: "fresh", mergesInto: "grape", touchWeight: 1, text: "Fresh 1. Merge: Grape." },
   grape: { name: "Grape", radius: FRUIT_ART.grape.radius, points: 3, scoring: "fresh", mergesInto: "orange", touchWeight: 1, text: "Fresh 3. Merge: Orange." },
   orange: { name: "Orange", radius: FRUIT_ART.orange.radius, points: 8, scoring: "fresh", mergesInto: "melon", touchWeight: 1, text: "Fresh 8. Merge: Melon." },
   melon: { name: "Melon", radius: FRUIT_ART.melon.radius, points: 20, scoring: "fresh", mergesInto: "watermelon", touchWeight: 1, text: "Fresh 20. Merge: Watermelon." },
   watermelon: { name: "Watermelon", radius: FRUIT_ART.watermelon.radius, points: 50, scoring: "fresh", touchWeight: 1, text: "Fresh 50. Merge: both vanish for +100." },
-  apple: { name: "Apple", radius: FRUIT_ART.apple.radius, points: 1, scoring: "simmer", touchWeight: 1, text: "Simmer 2. Deep 4." },
-  banana: { name: "Banana", radius: FRUIT_ART.banana.radius, points: 1, scoring: "simmer", touchWeight: 1, text: "Simmer 2. Ripen 1. Rots 3." },
-  chili: { name: "Chili", radius: FRUIT_ART.chili.radius, points: 2, scoring: "fresh", touchWeight: 1, text: "Fresh 2. Exploder 4." },
-  durian: { name: "Durian", radius: FRUIT_ART.durian.radius, points: 4, scoring: "fresh", touchWeight: 1, text: "Fresh 4. Buried 3." },
-  pomegranate: { name: "Pomegranate", radius: FRUIT_ART.pomegranate.radius, points: 3, scoring: "fresh", touchWeight: 1, text: "Fresh 3. Exploded or Merged: Burst 5." },
-  blueberry: { name: "Blueberry", radius: FRUIT_ART.blueberry.radius, points: 1, scoring: "fresh", touchWeight: 3, text: "Fresh 1. Dense 3." },
+  apple: { name: "Apple", radius: FRUIT_ART.apple.radius, points: 4, scoring: "simmer", touchWeight: 1, text: `Simmer ${APPLE.base}. Deep ${APPLE.deep}.` },
+  banana: { name: "Banana", radius: FRUIT_ART.banana.radius, points: 4, scoring: "simmer", touchWeight: 1, text: `Simmer ${BANANA.base}. Ripen ${BANANA.ripen}. Rots ${BANANA.rots}.` },
+  chili: { name: "Chili", radius: FRUIT_ART.chili.radius, points: 6, scoring: "fresh", touchWeight: 1, text: "Fresh 6. Exploder 4." },
+  durian: { name: "Durian", radius: FRUIT_ART.durian.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Buried 3." },
+  pomegranate: { name: "Pomegranate", radius: FRUIT_ART.pomegranate.radius, points: 6, scoring: "fresh", touchWeight: 1, text: "Fresh 6. Exploded or Merged: Burst 5." },
+  blueberry: { name: "Blueberry", radius: FRUIT_ART.blueberry.radius, points: 6, scoring: "fresh", touchWeight: 3, text: "Fresh 6. Dense 3." },
   lemon: { name: "Lemon", radius: FRUIT_ART.lemon.radius, points: 0, scoring: "booster", touchWeight: 1, text: "Booster. Double. Sour." },
-  prune: { name: "Prune", radius: FRUIT_ART.prune.radius, points: 5, scoring: "simmer", touchWeight: 1, text: "Rotten. Contained. Simmer 5 per Rotten neighbour." },
-  fig: { name: "Fig", radius: FRUIT_ART.fig.radius, points: 2, scoring: "fresh", touchWeight: 1, text: "Fresh 2. Exploded while Rotten: Bananas Grow 1." },
-  fruitfly: { name: "Fruit Fly", radius: FRUIT_ART.fruitfly.radius, points: 8, scoring: "simmer", touchWeight: 1, text: "Each turn, Eat a Rotten fruit: +8 and Hatch." },
+  prune: { name: "Prune", radius: FRUIT_ART.prune.radius, points: 10, scoring: "simmer", touchWeight: 1, text: "Rotten. Contained. Simmer 10 per Rotten neighbour." },
+  fig: { name: "Fig", radius: FRUIT_ART.fig.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Exploded while Rotten: Bananas Grow 1." },
+  fruitfly: { name: "Fruit Fly", radius: FRUIT_ART.fruitfly.radius, points: 18, scoring: "simmer", touchWeight: 1, text: "Each turn, Eat a Rotten fruit: +18 and Hatch." },
   kiwi: { name: "Kiwi", radius: FRUIT_ART.kiwi.radius, points: 2, scoring: "fresh", touchWeight: 1, text: "Fresh 2. Copy." },
-  peach: { name: "Peach", radius: FRUIT_ART.peach.radius, points: 4, scoring: "fresh", touchWeight: 1, text: "Fresh 4. Bouncy." },
+  peach: { name: "Peach", radius: FRUIT_ART.peach.radius, points: 12, scoring: "fresh", touchWeight: 1, text: "Fresh 12. Bouncy." },
   honeydew: { name: "Honeydew", radius: FRUIT_ART.honeydew.radius, points: 2, scoring: "simmer", touchWeight: 1, text: "Honeyed. Each turn, Honey a neighbour." },
-  pitaya: { name: "Pitaya", radius: FRUIT_ART.pitaya.radius, points: 2, scoring: "simmer", touchWeight: 1, text: "Simmer 2. Each turn, Eat a Cherry: Grow 1." },
-  coconut: { name: "Coconut", radius: FRUIT_ART.coconut.radius, points: 3, scoring: "fresh", touchWeight: 1, heavy: 5, text: "Fresh 3. Heavy. Crack 3: Milk 20." },
-  lime: { name: "Lime", radius: FRUIT_ART.lime.radius, points: 2, scoring: "fresh", touchWeight: 1, text: "Fresh 2. Exploded or Crushed: Juice 20." },
+  pitaya: { name: "Pitaya", radius: FRUIT_ART.pitaya.radius, points: 4, scoring: "simmer", touchWeight: 1, text: "Simmer 4. Each turn, Eat a Cherry: Grow 1." },
+  coconut: { name: "Coconut", radius: FRUIT_ART.coconut.radius, points: 8, scoring: "fresh", touchWeight: 1, heavy: 5, text: "Fresh 8. Heavy. Crack 3: Milk 20." },
+  lime: { name: "Lime", radius: FRUIT_ART.lime.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Exploded or Crushed: Juice 20." },
   dragonfruit: { name: "Dragonfruit", radius: FRUIT_ART.dragonfruit.radius, points: 0, scoring: "booster", touchWeight: 1, legendary: true, text: "Legendary. Booster. Skip." },
-  snowpear: { name: "Snow Pear", radius: FRUIT_ART.snowpear.radius, points: 2, scoring: "fresh", touchWeight: 1, text: "Fresh 2. Each turn, it and its neighbours turn Frozen." },
-  seed: { name: "Seed", radius: FRUIT_ART.seed.radius, points: 1, scoring: "fresh", touchWeight: 1, text: "Fresh 1. Exploded: Sprout." },
+  snowpear: { name: "Snow Pear", radius: FRUIT_ART.snowpear.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Each turn, it and its neighbours turn Frozen." },
+  seed: { name: "Seed", radius: FRUIT_ART.seed.radius, points: 6, scoring: "fresh", touchWeight: 1, text: "Fresh 6. Exploded: Sprout." },
 };
 
 /** What the 1-of-3 pick offers. */
