@@ -1,5 +1,6 @@
-import { Button, Entity, Flex, Menu, Sprite, Text } from "@tsengine/runtime/jsx";
+import { Button, Entity, Flex, Menu, Text } from "@tsengine/runtime/jsx";
 
+import { Backdrop } from "./Backdrop.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { BUTTON, BUTTON_GREY, BUTTON_SLICE, GOLD, INK, LIGHT_SOFT } from "./theme.ts";
@@ -9,7 +10,7 @@ export function Title({ name }: { name: string }) {
   const { start, openSettings } = useGame.actions();
   return (
     <Entity>
-      <Sprite image="background.png" />
+      <Backdrop />
       <FruitBall kind="watermelon" x={112} y={280} />
       <FruitBall kind="orange" x={160} y={296} />
       <FruitBall kind="cherry" x={72} y={304} />

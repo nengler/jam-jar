@@ -1,8 +1,11 @@
 import { Collider, Entity, Flex, Line, Shape, Sprite, Text, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
+import { Backdrop } from "./Backdrop.tsx";
 import { Fruit } from "./Fruit.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
+import { HudBox } from "./HudBox.tsx";
+import { poolLine } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { FRUITS } from "./rules/fruits.ts";
 import { advance, BOOM_LIFE, chosenRow, JAR, newRun, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
@@ -18,6 +21,10 @@ import {
   INK_SOFT,
   LIGHT,
   LIGHT_SOFT,
+  BAR_FILL,
+  GOOD_BRIGHT,
+  HUD_INSET,
+  HUD_LABEL,
   PANEL,
   PANEL_SLICE,
   RIM_LINE,
@@ -32,13 +39,10 @@ const GLASS = 8;
 /** The shelf above the jar: where the hand waits, left to right in the order it drops. */
 const SHELF_Y = 44;
 const SLOT = 48;
-/** The side cards: rent on the left, the pool on the right. */
-const SIDE_W = 184;
-const LEFT_X = 20;
-const RIGHT_X = 436;
-const CARD_Y = 56;
-const CARD_H = 248;
-const PAD = 16;
+/** The HUD on the left and the pool on the right: blocks 184 wide, 16 from the edges. */
+const HUD_W = 184;
+const HUD_X = 16;
+const POOL_X = 640 - 16 - HUD_W;
 /** The pick: three cards across the middle. */
 const OFFER_W = 168;
 const OFFER_H = 232;
@@ -109,11 +113,10 @@ export function Play() {
   const shelfLeft = jarMid - (shelf.length * SLOT) / 2;
   const turn = Math.min(run.turn, TURNS_PER_CYCLE);
   const offersLeft = 320 - (3 * OFFER_W + 2 * OFFER_GAP) / 2;
-  const sideInner = SIDE_W - PAD * 2;
 
   return (
     <Entity>
-      <Sprite image="background.png" />
+      <Backdrop />
 
       {/* The jar: Kenney's pixel glass, see-through, behind the fruit; the rim the fruit must stay under. */}
       <Entity opacity={0.6}>
@@ -169,7 +172,7 @@ export function Play() {
       </Text>
 
       {/* The shelf: the hand, in the order it drops. The chosen fruit sits on amber; a held one is lifted. */}
-      <Flex x={JAR.left - 24} y={SHELF_Y} width={jarWidth + 48} height={12} backgroundImage={CARD} slice={4} />
+      <HudBox x={JAR.left - 24} y={SHELF_Y} width={jarWidth + 48} height={12} />
       {shelf.map((kind, i) => (
         <Entity key={`${kind}${i}`} x={shelfLeft + i * SLOT + SLOT / 2} y={SHELF_Y - 20}>
           {i === chosenRow(run) && <Flex x={-20} y={-20} width={40} height={40} backgroundImage={cardFor(true)} slice={CARD_SLICE} />}
@@ -177,32 +180,49 @@ export function Play() {
         </Entity>
       ))}
 
-      {/* Left: the rent. */}
-      <Flex x={LEFT_X} y={CARD_Y} width={SIDE_W} height={CARD_H} backgroundImage={PANEL} slice={PANEL_SLICE} />
-      <Text x={LEFT_X + PAD} y={CARD_Y + PAD} color={INK_SOFT}>{`Cycle ${run.cycle} of ${RENT.length}`}</Text>
-      <Text x={LEFT_X + PAD} y={CARD_Y + 44} size={32} color={run.cycleScore >= rent ? GOOD : INK}>{`${run.cycleScore}`}</Text>
-      <Text x={LEFT_X + PAD} y={CARD_Y + 84} color={INK_SOFT}>{`rent ${rent}`}</Text>
-      <Flex x={LEFT_X + PAD} y={CARD_Y + 112} width={sideInner} height={24} backgroundImage="bar.png" slice={12} />
-      {filled > 0 && (
-        <Flex x={LEFT_X + PAD + 4} y={CARD_Y + 114} width={Math.max(20, Math.round((sideInner - 8) * filled))} height={20} backgroundImage="bar-fill.png" slice={8} />
-      )}
-      <Text x={LEFT_X + PAD} y={CARD_Y + 152} color={INK_SOFT}>
+      {/* Left: the HUD. Dark blocks, each a label and its value on an inset. */}
+      <HudBox x={HUD_X} y={16} width={HUD_W} height={40} />
+      <Text x={HUD_X + 12} y={28} color={HUD_LABEL}>
+        Cycle
+      </Text>
+      <HudBox x={HUD_X + 96} y={22} width={HUD_W - 104} height={28} color={HUD_INSET} edge={HUD_INSET} />
+      <Text x={HUD_X + HUD_W - 12} y={28} align="right" color={LIGHT}>{`${run.cycle}/${RENT.length}`}</Text>
+
+      <HudBox x={HUD_X} y={64} width={HUD_W} height={120} />
+      <Text x={HUD_X + 12} y={76} color={HUD_LABEL}>
+        Score
+      </Text>
+      <HudBox x={HUD_X + 8} y={96} width={HUD_W - 16} height={44} color={HUD_INSET} edge={HUD_INSET} />
+      <Text x={HUD_X + HUD_W / 2} y={102} size={32} align="center" color={run.cycleScore >= rent ? GOOD_BRIGHT : GOLD}>{`${run.cycleScore}`}</Text>
+      <Text x={HUD_X + 12} y={152} color={HUD_LABEL}>
+        Rent
+      </Text>
+      <Text x={HUD_X + HUD_W - 12} y={152} align="right" color={LIGHT}>{`${rent}`}</Text>
+      <Shape kind="rect" x={HUD_X + 8} y={172} width={HUD_W - 16} height={4} color={HUD_INSET} />
+      {filled > 0 && <Shape kind="rect" x={HUD_X + 8} y={172} width={Math.round((HUD_W - 16) * filled)} height={4} color={BAR_FILL} />}
+
+      <HudBox x={HUD_X} y={192} width={HUD_W} height={40} />
+      <Text x={HUD_X + 12} y={204} color={HUD_LABEL}>
         Turn
       </Text>
       {[1, 2, 3, 4, 5].map((t) => (
-        <Shape key={t} kind="rect" x={LEFT_X + PAD + 64 + (t - 1) * 20} y={CARD_Y + 154} width={12} height={12} color={t <= turn ? GOLD : DARK} />
+        <Shape key={t} kind="rect" x={HUD_X + 80 + (t - 1) * 18} y={206} width={12} height={12} color={t <= turn ? GOLD : HUD_INSET} />
       ))}
-      <Sprite image="coin.png" x={LEFT_X + PAD} y={CARD_Y + 188} />
-      <Text x={LEFT_X + PAD + 32} y={CARD_Y + 192} color={INK}>{`${run.coins}`}</Text>
-      <Text x={LEFT_X + PAD} y={CARD_Y + 220} color={INK_SOFT}>{`Total ${run.total}`}</Text>
 
-      {/* Right: every fruit you own. */}
-      <Flex x={RIGHT_X} y={CARD_Y} width={SIDE_W} height={CARD_H} backgroundImage={PANEL} slice={PANEL_SLICE} />
-      <Text x={RIGHT_X + PAD} y={CARD_Y + PAD} color={INK_SOFT}>{`Pool ${run.pool.length}`}</Text>
-      {run.pool.map((kind, i) => (
-        <FruitBall key={`${kind}${i}`} kind={kind} x={RIGHT_X + PAD + 16 + (i % 4) * 38} y={CARD_Y + 60 + Math.floor(i / 4) * 38} look="icon" />
+      <HudBox x={HUD_X} y={240} width={HUD_W} height={40} />
+      <Sprite image="coin.png" x={HUD_X + 10} y={248} />
+      <Text x={HUD_X + 44} y={252} color={GOLD}>{`${run.coins}`}</Text>
+      <Text x={HUD_X + HUD_W - 12} y={252} align="right" color={HUD_LABEL}>{`total ${run.total}`}</Text>
+
+      {/* Right: the pool, one line, fanned like a hand of cards; how many are still to deal. */}
+      <HudBox x={POOL_X} y={16} width={HUD_W} height={88} />
+      <Text x={POOL_X + 12} y={28} color={HUD_LABEL}>
+        Pool
+      </Text>
+      <Text x={POOL_X + HUD_W - 12} y={28} align="right" color={LIGHT}>{`${run.draw.length}/${run.pool.length}`}</Text>
+      {poolLine(run.pool, HUD_W - 56).map((p, i) => (
+        <FruitBall key={`${p.kind}${i}`} kind={p.kind} x={POOL_X + 28 + p.x} y={74} look="icon" />
       ))}
-      <Text x={RIGHT_X + PAD} y={CARD_Y + 220} color={INK_SOFT}>{`${run.draw.length} to deal`}</Text>
 
       {/* The keys for this moment. */}
       <Text x={320} y={336} align="center" color={LIGHT_SOFT}>

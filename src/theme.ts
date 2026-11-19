@@ -47,3 +47,15 @@ export function fruitImage(kind: FruitKind, look: FruitLook): string {
 export function fruitImageSize(kind: FruitKind, look: FruitLook): number {
   return look === "icon" ? 32 : look === "big" ? 64 : FRUIT_ART[kind].size;
 }
+
+/** The backdrop's plain colour, under its shader (and all a software renderer shows). */
+export const BACKDROP = "#172038";
+
+/** The HUD: dark blocks with a lighter edge, labels in soft light, values in light or gold, on dark insets. */
+export const HUD = "#10141f";
+export const HUD_EDGE = "#394a50";
+export const HUD_INSET = "#202e37";
+export const HUD_LABEL = "#819796";
+export const BAR_FILL = "#de9e41";
+/** Green on the dark HUD, for a score that covers the rent. */
+export const GOOD_BRIGHT = "#a8ca58";

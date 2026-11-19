@@ -8,8 +8,7 @@ Lays out the game's assets/ from the free art in tools/:
   - the sounds, copied as they are;
   - `kenney-mini-square-mono.ttf` (Kenney Fonts), drawn at twice its pixel size into `font.png`: the ASCII characters 32 to
     127 in a 16 x 6 grid of 12 x 16 cells, as tse's `<Text font>` takes;
-  - pixel art only, doubled with no smoothing: UI Pixel Pack panels and buttons (UI_TILES), Pixel Platformer's sky, clouds and
-    ground and its coin, and the Explosion Pack's pixel explosion.
+  - pixel art only, doubled with no smoothing: UI Pixel Pack panels and buttons (UI_TILES), Pixel Platformer's coin, and the Explosion Pack's pixel explosion.
 
     python3 tools/make-assets.py
 """
@@ -92,7 +91,6 @@ RAMPS = {
     "jar": hexes("#253a5e", "#3c5e8b", "#4f8fba", "#73bed3", "#a4dddb"),
     "bar": hexes("#241527", "#341c27", "#4d2b32", "#602c2c"),
     "bar-fill": hexes("#884b2b", "#be772b", "#de9e41", "#e8c170"),
-    "background": hexes("#151d28", "#172038", "#253a5e", "#3c5e8b"),
 }
 
 
@@ -162,26 +160,13 @@ def font_sheet() -> Image.Image:
     for code in range(32, 128):
         i = code - 32
         draw.text(((i % 16) * cell_w, (i // 16) * cell_h - 4), chr(code), font=font, fill=255)
+    # A dotted zero: the font's 0 is the same square ring as its O, which alone reads as an empty box.
+    zero = ord("0") - 32
+    zx, zy = (zero % 16) * cell_w, (zero // 16) * cell_h
+    draw.rectangle((zx + 4, zy + 6, zx + 5, zy + 7), fill=255)
     out = Image.new("RGBA", sheet.size, (255, 255, 255, 0))
     out.putalpha(sheet.point(lambda v: 255 if v >= 128 else 0))
     return out
-
-
-def background() -> Image.Image:
-    """Pixel Platformer's sky, clouds and ground (24 x 24 tiles, packed), laid across a 320 x 180 picture, then doubled."""
-    sheet = Image.open(KENNEY / "pixel-platformer-backgrounds.png").convert("RGBA")
-    tile = lambda col, row: sheet.crop((col * 24, row * 24, col * 24 + 24, row * 24 + 24))
-    w, h = WIDTH // PX, HEIGHT // PX
-    out = Image.new("RGBA", (w, h))
-    clouds_at = 96
-    for x in range(0, w, 24):
-        col = (x // 24) % 4
-        for y in range(0, clouds_at, 24):
-            out.paste(tile(col, 0), (x, y))
-        out.paste(tile(col, 1), (x, clouds_at))
-        for y in range(clouds_at + 24, h, 24):
-            out.paste(tile(col, 2), (x, y))
-    return doubled(out)
 
 
 def coin() -> Image.Image:
@@ -206,7 +191,6 @@ def main() -> None:
         "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
         "export const FRUIT_ART = {\n" + "\n".join(lines) + "\n} as const;\n"
     )
-    recolor(background(), RAMPS["background"]).save(ASSETS / "background.png")
     ui = Image.open(KENNEY / "ui-pixel-pack-sheet.png").convert("RGBA")
     for name, (col, row, across, down) in UI_TILES.items():
         piece = recolor(ui_image(ui, col, row, across, down), RAMPS[name.removesuffix(".png").replace("card-chosen", "chosen")])

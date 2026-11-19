@@ -1,5 +1,6 @@
-import { Button, Entity, Flex, Menu, Sprite, Text } from "@tsengine/runtime/jsx";
+import { Button, Entity, Flex, Menu, Text } from "@tsengine/runtime/jsx";
 
+import { Backdrop } from "./Backdrop.tsx";
 import { useGame } from "./GameState.ts";
 import { BUTTON, BUTTON_GREY, BUTTON_SLICE, GOLD, INK, PANEL, PANEL_SLICE } from "./theme.ts";
 
@@ -10,7 +11,7 @@ export function Settings() {
   const { changeVolume, toggleMusic, toTitle } = useGame.actions();
   return (
     <Entity>
-      <Sprite image="background.png" />
+      <Backdrop />
       <Flex direction="column" width={640} height={360} alignItems="center" justifyContent="center" gap={16}>
         <Text color={GOLD} shadow={INK} shadowX={2} shadowY={2}>
           Settings
