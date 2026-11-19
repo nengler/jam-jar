@@ -111,3 +111,26 @@ export function leaned<T extends { x: number; y: number }>(things: readonly T[],
   const sin = Math.sin(angle);
   return things.map((t) => ({ ...t, x: cx + (t.x - cx) * cos - (t.y - cy) * sin, y: cy + (t.x - cx) * sin + (t.y - cy) * cos }));
 }
+
+/** How often a heading's ripple starts, in seconds, and how many letters it passes a second. */
+const RIPPLE_EVERY = 5;
+const RIPPLE_SPEED = 14;
+
+/**
+ * A heading's letters, each with how far it is lifted now, in pixels: every few seconds a ripple runs through the heading, one
+ * letter hopping up an art pixel as it passes. `seed` staggers headings so they do not all ripple at once. A space is a letter
+ * too, so the ripple crosses it in step.
+ */
+export function ripple(text: string, time: number, seed: number): { at: number; letter: string; lift: number }[] {
+  const front = Math.floor(((time + seed * 1.7) % RIPPLE_EVERY) * RIPPLE_SPEED);
+  return [...text].map((letter, at) => ({ at, letter, lift: at === front ? 2 : 0 }));
+}
+
+/**
+ * How much more every fruit of a kind scores each turn than its card says, for what the run has grown: Bananas (a rotten Fig
+ * blown up) and Pitayas (a Cherry eaten). Growth is the kind's, not one fruit's: every Banana or Pitaya has it, in the jar now
+ * and dropped later.
+ */
+export function grownOf(run: Run, kind: FruitKind): number {
+  return kind === "banana" ? run.bananaBonus : kind === "pitaya" ? run.pitayaBonus : 0;
+}

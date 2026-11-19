@@ -7,7 +7,7 @@ import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
-import { atRest, cycleTitle, leaned, moment, placed, startingRun, poolRows } from "./layout.ts";
+import { atRest, cycleTitle, grownOf, leaned, moment, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { learn } from "./settings.ts";
@@ -247,7 +247,7 @@ export function Play() {
           {!blind && (
             <Flex x={-20} y={-20} width={40} height={40}>
               <Tooltip show={!paused && ordering && i === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - (shelfLeft + i * SLOT + SLOT / 2)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                <FruitTip kind={kind} note={!ordering ? "" : run.holding && i === run.cursor ? "Left / Right moves it. Enter puts it down." : "Drops left to right. Enter picks it up to move it."} />
+                <FruitTip kind={kind} grown={grownOf(run, kind)} note={!ordering ? "" : run.holding && i === run.cursor ? "Left / Right moves it. Enter puts it down." : "Drops left to right. Enter picks it up to move it."} />
               </Tooltip>
             </Flex>
           )}
@@ -255,24 +255,21 @@ export function Play() {
         </Entity>
       ))}
 
-      {/* Left: the rent board. The score against the rent, the turn, and the coins. */}
+      {/* Left: the rent board. This cycle's score, big, and under it the rent it is counted against ("64 of 120 rent"); a bar of
+          how much of the rent that is; the turn; and the coins. */}
       <Board x={HUD_X} y={BOARD_Y} width={BOARD_W} height={HUD_H} title={cycleTitle(run)} />
-      <Text x={HUD_X + 16} y={BOARD_Y + 22} color={INK_SOFT}>
-        Score
+      <Text x={HUD_X + BOARD_W / 2} y={BOARD_Y + 16} font={DISPLAY} size={DISPLAY_SIZE * 2} align="center" color={paid ? GOOD : INK}>{`${scored}`}</Text>
+      <Text x={HUD_X + BOARD_W / 2} y={BOARD_Y + 68} align="center" color={paid ? GOOD : INK_SOFT}>
+        {paid ? `Rent ${rent} made` : `of ${rent} rent`}
       </Text>
-      <Text x={HUD_X + BOARD_W - 16} y={BOARD_Y + 22} align="right" color={INK_SOFT}>{`Rent ${rent}`}</Text>
-      <Text x={HUD_X + BOARD_W / 2} y={BOARD_Y + 34} font={DISPLAY} size={DISPLAY_SIZE * 2} align="center" color={paid ? GOOD : INK}>{`${scored}`}</Text>
       <Shape kind="rect" x={HUD_X + 16} y={BOARD_Y + 92} width={BOARD_W - 32} height={8} color={WELL} />
       {filled > 0 && <Shape kind="rect" x={HUD_X + 16} y={BOARD_Y + 92} width={Math.round(((BOARD_W - 32) * filled) / 2) * 2} height={8} color={paid ? GOOD : BAR_FILL} />}
-      <Text x={HUD_X + 16} y={BOARD_Y + 106} color={INK_SOFT}>
+      <Text x={HUD_X + 16} y={BOARD_Y + 108} color={INK_SOFT}>
         Turn
       </Text>
-      {[1, 2, 3, 4, 5].map((t) => (
-        <Shape key={t} kind="rect" x={HUD_X + BOARD_W - 16 - (TURNS_PER_CYCLE - t + 1) * 18 + 6} y={BOARD_Y + 112} width={12} height={12} color={t <= turn ? BAD : WELL} />
-      ))}
-      <Sprite image="coin.png" x={HUD_X + 14} y={BOARD_Y + 128} />
-      <Text x={HUD_X + 46} y={BOARD_Y + 130} color={INK}>{`${run.coins}`}</Text>
-      <Text x={HUD_X + BOARD_W - 16} y={BOARD_Y + 130} align="right" color={INK_SOFT}>{`Total ${run.total - (run.cycleScore - scored)}`}</Text>
+      <Text x={HUD_X + BOARD_W - 16} y={BOARD_Y + 108} align="right" color={INK_SOFT}>{`${turn} of ${TURNS_PER_CYCLE}`}</Text>
+      <Sprite image="coin.png" x={HUD_X + 14} y={BOARD_Y + 130} />
+      <Text x={HUD_X + 46} y={BOARD_Y + 132} color={INK}>{`${run.coins} ${run.coins === 1 ? "coin" : "coins"}`}</Text>
 
       {/* Under it: the keys for this moment, the first time it comes up (the pause menu has them after that). */}
       <Flex x={HUD_X + 4} y={BOARD_Y + HUD_H + 12} direction="column" gap={4}>
@@ -294,7 +291,7 @@ export function Play() {
           {/* The mouse over a kind in the Pool shows what it does, to the board's left. */}
           <Flex width={32} height={32}>
             <Tooltip anchor="top-right" to="top-left" offsetX={-12} offsetY={0} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-              <FruitTip kind={row.kind} />
+              <FruitTip kind={row.kind} grown={grownOf(run, row.kind)} />
             </Tooltip>
           </Flex>
         </Entity>

@@ -278,16 +278,17 @@ def key_cap(width: int = 8, arrow: str = "") -> Image.Image:
     9-slice the game writes the key's name on; with one ("left", "right", "up", "down") it is 13 wide with the arrow on it."""
     out = Image.new("RGBA", (width, 13))
     draw = ImageDraw.Draw(out)
-    draw.rounded_rectangle((0, 0, width - 1, 12), radius=1, fill=colour("#202e37"))
-    draw.rectangle((1, 1, width - 2, 9), fill=colour("#c7cfcc"))
-    draw.line((1, 1, width - 2, 1), fill=colour("#ebede9"))
-    draw.rectangle((1, 10, width - 2, 11), fill=colour("#a8b5b2"))
+    # In the boards' own colours (ink outline, parchment face, a tan lip), so a key reads as part of the kitchen, not as grey metal.
+    draw.rounded_rectangle((0, 0, width - 1, 12), radius=1, fill=colour("#341c27"))
+    draw.rectangle((1, 1, width - 2, 9), fill=colour("#d7b594"))
+    draw.line((1, 1, width - 2, 1), fill=colour("#e7d5b3"))
+    draw.rectangle((1, 10, width - 2, 11), fill=colour("#ad7757"))
     # The arrow: a 5 x 3 wedge about (6, 5), pointing its way.
     for i in range(3):
         for j in range(-i, i + 1):
             dx, dy = {"left": (i - 1, j), "right": (1 - i, j), "up": (j, i - 1), "down": (j, 1 - i)}.get(arrow, (None, None))
             if dx is not None:
-                out.putpixel((6 + dx, 5 + dy), colour("#202e37"))
+                out.putpixel((6 + dx, 5 + dy), colour("#341c27"))
     return out
 
 
