@@ -6,6 +6,9 @@ type Screen = "title" | "settings" | "play";
  * The game's state, in one place: which screen shows, whether play is paused, and the settings. A component reads one value with
  * `useGame((s) => s.screen)` and takes the actions it calls with `const { start } = useGame.actions()`. An action is given the state
  * and writes it directly.
+ *
+ * The keys for a moment (ordering a hand, the pick, the shop, …) are shown the first time it comes up and not again: `learned`
+ * lists the moments the player has been through. The pause menu always shows them.
  */
 export const useGame = createGameState(
   {
@@ -16,17 +19,26 @@ export const useGame = createGameState(
     music: true,
     /** The seed of the current run; each new run takes the next one. */
     seed: 1,
+    /** The moments whose keys have been shown and used once ("title", "order", "pick", "shop", …): their hints are not drawn again. */
+    learned: [] as string[],
   },
   {
+    /** The player has got through this moment once, so they know its keys. */
+    learn(s, moment: string) {
+      if (moment !== "" && !s.learned.includes(moment)) s.learned = [...s.learned, moment];
+    },
     start(s) {
+      if (!s.learned.includes("title")) s.learned = [...s.learned, "title"];
       s.screen = "play";
       s.paused = false;
       s.seed += 1;
     },
     openSettings(s) {
+      if (!s.learned.includes("title")) s.learned = [...s.learned, "title"];
       s.screen = "settings";
     },
     toTitle(s) {
+      if (s.screen === "settings" && !s.learned.includes("settings")) s.learned = [...s.learned, "settings"];
       s.screen = "title";
       s.paused = false;
     },

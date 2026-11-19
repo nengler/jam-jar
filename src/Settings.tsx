@@ -10,6 +10,7 @@ import { BUTTON, BUTTON_GREY, BUTTON_SLICE, INK, LIGHT_SOFT, PANEL, PANEL_SLICE 
 export function Settings() {
   const volume = useGame((s) => s.volume);
   const music = useGame((s) => s.music);
+  const learned = useGame((s) => s.learned);
   const { changeVolume, toggleMusic, toTitle } = useGame.actions();
   return (
     <Entity>
@@ -26,9 +27,9 @@ export function Settings() {
             <Text color={INK}>Back</Text>
           </Button>
         </Menu>
-        <Flex direction="row" gap={20}>
-          <KeyHint name="arrows" label="Change" color={LIGHT_SOFT} />
-          <KeyHint name="Esc" label="Back" color={LIGHT_SOFT} />
+        <Flex direction="row" gap={20} height={26}>
+          {!learned.includes("settings") && <KeyHint name="arrows" label="Change" color={LIGHT_SOFT} />}
+          {!learned.includes("settings") && <KeyHint name="Esc" label="Back" color={LIGHT_SOFT} />}
         </Flex>
       </Flex>
       <Heading x={320} y={44} width={280} text="Settings" />

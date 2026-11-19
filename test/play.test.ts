@@ -61,3 +61,12 @@ test("Settings: right turns the volume up and Escape goes back", () => {
   assert.equal(last.volume, 10);
   assert.equal(last.screen, "title");
 });
+
+test("a moment's keys are learned once it has been played through: the title, then ordering, then the pick", () => {
+  const frames = parseInputScript("_*2, Enter, _*5, Space, _*330, Space, _*10", { bindings });
+  const { states } = runScript(gameConfig, frames, () => useGame.getState().learned);
+  assert.deepEqual(states[1], [], "nothing yet: every hint shows");
+  assert.deepEqual(states[5], ["title"], "Play was pressed");
+  assert.deepEqual(states[12], ["title", "order"], "the first hand was dropped");
+  assert.deepEqual(states[states.length - 1], ["title", "order", "pick"], "the first pick was skipped");
+});

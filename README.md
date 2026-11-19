@@ -31,6 +31,34 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 | Preserves Jar | Left/Right choose a fruit in the jar, Enter keep it or let it go, Space next cycle |
 | Any time | Esc pause |
 
+The keys for each moment are on screen the first time it comes up (ordering a hand, the pick, the shop, …) and not again
+that session; the pause menu always lists them.
+
+## Terms
+
+Cards are written in a fixed set of keywords, each with one meaning everywhere (`src/rules/terms.ts`), the way Slay the Spire's
+are: "Touching 4 fruit: **Blast**." A keyword is drawn in colour on the card, and the pick and the shop show what the chosen
+card's keywords mean under it. A fruit's chip says how it scores, so its text does not.
+
+| Keyword | Meaning |
+| --- | --- |
+| Fresh | Scores once, when it lands or a Merge makes it. The chip says how much: "Fresh 3". |
+| Simmer | Scores at the end of every turn it is in the jar. |
+| Booster | Scores nothing itself. It changes what others score. |
+| Merge | Two of a kind that touch become the next fruit up. |
+| Blast | Destroys nearby fruit. Each scores its points +6 (a big Blast, the Durian's, +8). |
+| Burst | Breaks apart into smaller fruit. |
+| Rotten | Scores nothing, can't Merge, and spreads by touch (one fruit a turn). |
+| Honeyed | Scores +2 at the end of every turn. |
+| Eat | Removes one fruit it touches from the jar. |
+| Heavy | Shoulders lighter fruit aside on its way down. |
+| Sprout | A Cherry, Grape or Orange grows in its place. |
+| Crush | Destroys a fruit for its points +3 (the Juicer). |
+| Spill | Fruit over the rim when a turn ends are lost: -5 each. |
+
+A new card should use these words and no others for the same thing ("Blast", never "explodes"), start an effect with its
+condition ("Blasted: Sprout a starter."), and fit four lines of a shop card. A test holds the texts to that.
+
 ## What's in this first slice
 
 - Starting pool: 1 Apple and 8 starters rolled from 3–5 Cherries, 2–4 Grapes and 0–2 Oranges. It's dealt like a deck and
@@ -94,13 +122,13 @@ group taken together sits near 110 a cycle); they are meant to pay in combinatio
 - `src/rules/` holds the whole game as plain TypeScript with no engine imports, so it is tested directly with `node:test`:
   - `jar.ts` is the run: deal, order, drop, settle, resolve, pick, rent and the shop. `advance(run, dt, keys, reports)` returns the next
     run. It never moves a fruit: it reads where each one reported being.
-  - `fruits.ts` is the fruit table and `items.ts` the item table. `rng.ts` is a seeded generator, so a seed plus the inputs replay a run exactly.
+  - `fruits.ts` is the fruit table, `items.ts` the item table and `terms.ts` the keywords their text is written in. `rng.ts` is a seeded generator, so a seed plus the inputs replay a run exactly.
 - `src/Fruit.tsx` is one fruit: a ball (the engine's `useBall`) that falls, piles up and is stopped by the jar's solid colliders.
   Each step it reports where it is, its speed and which fruit it touches; a blast reaches it as a kick through its props.
 - `src/Play.tsx` collects the reports, calls `advance` once a step and draws the result: the jar (walls are `<Collider solid>`),
   the fruit, the hand on its shelf, the rent board and the keys on the left, the pool by kind and a note of what just happened
   on the right, and the pick cards. `Shop.tsx` draws the shop and `Peg.tsx` is the boss jar's peg (a ball too heavy to move).
-  `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `Board.tsx` is a parchment board
+  `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `RuleText.tsx` draws card text with its keywords in colour. `Board.tsx` is a parchment board
   with a ribbon heading, `KeyHint.tsx` a key cap and what it does, `Backdrop.tsx` the kitchen behind every screen. `theme.ts`
   names the colours, the fonts and the Kenney frames every screen is made of.
 - `tools/install-engine.ts` packs `../tse` and installs it without saving. `tools/balance.ts` is the balance run above.
