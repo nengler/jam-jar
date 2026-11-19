@@ -47,6 +47,8 @@ export const BUTTON_SLICE = CARD_SLICE;
 
 /** A rotten fruit is tinted this brown. */
 export const ROTTEN = "#ad7757";
+/** A honeyed one is tinted this gold. */
+export const HONEYED = "#e8c170";
 
 /** On parchment: a bar's or a pip's empty colour, the rent bar's fill, and a thin rule between rows. */
 export const WELL = "#c09473";

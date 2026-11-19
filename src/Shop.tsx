@@ -68,7 +68,7 @@ export function Shop({ run, shop }: { run: Run; shop: ShopState }) {
             </Text>
           )}
           {kind !== null && (
-            <Text x={10} y={96} width={CARD_W - 20} maxWidth={CARD_W - 20} align="center" color={INK_SOFT}>
+            <Text x={6} y={96} width={CARD_W - 12} maxWidth={CARD_W - 12} align="center" color={INK_SOFT}>
               {offerText(FRUITS[kind].text)}
             </Text>
           )}
@@ -89,7 +89,7 @@ export function Shop({ run, shop }: { run: Run; shop: ShopState }) {
           </Text>
         )}
         {shop.item !== null && (
-          <Text x={10} y={96} width={CARD_W - 20} maxWidth={CARD_W - 20} align="center" color={INK_SOFT}>
+          <Text x={6} y={96} width={CARD_W - 12} maxWidth={CARD_W - 12} align="center" color={INK_SOFT}>
             {ITEMS[shop.item].text}
           </Text>
         )}

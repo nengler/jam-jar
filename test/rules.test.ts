@@ -51,7 +51,8 @@ function fruit(id: number, kind: Fruit["kind"], x: number, y: number, touching: 
     kickY: 0,
     landed: true,
     age: 0,
-    rotten: false,
+    rotten: kind === "prune",
+    honeyed: kind === "honeydew",
     lit: false,
     fuse: 0,
   };
@@ -340,4 +341,66 @@ test("paying the last rent wins the run without a shop", () => {
   resolve(run);
   run = press(run, { confirm: true });
   assert.equal(run.phase, "won");
+});
+
+test("a Prune is rotten from the start, does not spread, and scores for each other rotten fruit it touches", () => {
+  const y = JAR.floor - 14;
+  const banana = { ...fruit(2, "banana", 330, y, [1]), rotten: true };
+  const run = jarWith([fruit(1, "prune", 300, y, [2, 3]), banana, fruit(3, "cherry", 270, y, [1])]);
+  assert.equal(run.fruits[0]!.rotten, true);
+  resolve(run);
+  assert.equal(run.cycleScore, FRUITS.prune.points, "one rotten neighbour");
+  assert.equal(run.fruits.find((f) => f.id === 3)!.rotten, false, "the Prune rotted nothing");
+});
+
+test("a Fruit Fly eats a rotten fruit it touches and another hatches; it never eats a Prune", () => {
+  const y = JAR.floor - 10;
+  const banana = { ...fruit(2, "banana", 330, y, [1]), rotten: true };
+  const run = jarWith([fruit(1, "fruitfly", 300, y, [2, 3]), banana, fruit(3, "prune", 270, y, [1])]);
+  resolve(run);
+  assert.deepEqual(run.fruits.map((f) => f.kind).sort(), ["fruitfly", "fruitfly", "prune"]);
+  assert.equal(run.cycleScore, FRUITS.fruitfly.points);
+});
+
+test("a rotten Fig blown up makes every Banana score +1 for the rest of the run", () => {
+  const y = JAR.floor - 8;
+  const run = jarWith([{ ...fruit(1, "fig", 300, y), rotten: true }, fruit(3, "fig", 340, y)]);
+  run.fruits.push({ ...fruit(2, "chili", 320, y), lit: true, fuse: 0 });
+  simulate(run, DT);
+  assert.equal(run.bananaBonus, 1, "only the rotten one counts");
+  run.fruits = [fruit(4, "banana", 300, JAR.floor - 18)];
+  const before = run.cycleScore;
+  resolve(run);
+  assert.equal(run.cycleScore - before, 3);
+});
+
+test("a Kiwi becomes a copy of the landed fruit it touches, and stays a Kiwi on the bare floor", () => {
+  const y = JAR.floor - 18;
+  const run = jarWith([{ ...fruit(1, "kiwi", 300, y, [2]), landed: false }, fruit(2, "orange", 340, y, [1]), { ...fruit(3, "kiwi", 380, y), landed: false }]);
+  simulate(run, DT);
+  assert.deepEqual(run.fruits.map((f) => f.kind).sort(), ["kiwi", "orange", "orange"]);
+  assert.equal(run.cycleScore, FRUITS.kiwi.points + FRUITS.orange.points, "the one on the floor landed as a Kiwi, the copy as an Orange");
+});
+
+test("a Peach bounces when it lands and shoves what it landed on aside", () => {
+  const y = JAR.floor - 18;
+  const run = jarWith([{ ...fruit(1, "peach", 300, y - 30, [2, 3]), landed: false }, fruit(2, "grape", 282, y, [1]), fruit(3, "grape", 318, y, [1])]);
+  simulate(run, DT);
+  const [peach, left, right] = run.fruits as [Fruit, Fruit, Fruit];
+  assert.ok(peach.kicks === 1 && peach.kickY < 0, "up");
+  assert.ok(left.kickX < 0 && right.kickX > 0, "apart");
+});
+
+test("a Honeydew scores 2 a turn and honeys one fruit it touches each turn, which then scores 2 as well", () => {
+  const y = JAR.floor - 22;
+  const run = jarWith([fruit(1, "honeydew", 300, y, [2, 3]), fruit(2, "orange", 344, y, [1]), fruit(3, "orange", 256, y, [1])]);
+  run.turn = 1;
+  resolve(run);
+  assert.equal(run.cycleScore, 2);
+  assert.equal(run.fruits.filter((f) => f.honeyed).length, 2);
+  run.turn = 1;
+  run.phase = "settle";
+  resolve(run);
+  assert.equal(run.cycleScore, 2 + 4);
+  assert.equal(run.fruits.filter((f) => f.honeyed).length, 3);
 });

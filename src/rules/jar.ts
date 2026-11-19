@@ -42,6 +42,8 @@ const CALM_TIME = 0.4;
 /** Settling gives up after this long, so a jittering pile cannot stall a turn. */
 const SETTLE_LIMIT = 8;
 const OVERFLOW_PENALTY = 5;
+/** What a honeyed fruit scores at each Resolve. */
+const HONEY_POINTS = 2;
 const POPUP_LIFE = 0.9;
 /** How long a blast's explosion (9 frames) shows, in seconds. */
 export const BOOM_LIFE = 0.54;
@@ -95,6 +97,8 @@ export interface Fruit {
   /** Resolves survived in the jar. */
   age: number;
   rotten: boolean;
+  /** Coated in honey (a Honeydew, or a fruit one has honeyed): it scores at every Resolve. */
+  honeyed: boolean;
   /** A Chili or Durian about to go off, and the seconds left. */
   lit: boolean;
   fuse: number;
@@ -105,7 +109,6 @@ export interface Popup {
   x: number;
   y: number;
   text: string;
-  color: string;
   life: number;
 }
 
@@ -145,6 +148,8 @@ export interface Run {
   cycleScore: number;
   total: number;
   coins: number;
+  /** What every Banana scores on top of its own points: +1 for each Fig blown up while rotten. */
+  bananaBonus: number;
   /** The items owned, in the order they were bought. A used-up one (the Lid) is taken out. */
   items: ItemKind[];
   /** The shop, while the phase is "shop". */
@@ -230,6 +235,7 @@ export function newRun(seed: number): Run {
     cycleScore: 0,
     total: 0,
     coins: 0,
+    bananaBonus: 0,
     items: [],
     shop: null,
     settleTime: 0,
@@ -298,15 +304,15 @@ function effect(run: Run, kind: Effect["kind"], x: number, y: number, size: numb
   run.effects.push({ id: run.nextId++, kind, x, y, age: 0, size });
 }
 
-function popup(run: Run, x: number, y: number, text: string, color = "#ffd166"): void {
-  run.popups.push({ id: run.nextId++, x, y, text, color, life: POPUP_LIFE });
+function popup(run: Run, x: number, y: number, text: string): void {
+  run.popups.push({ id: run.nextId++, x, y, text, life: POPUP_LIFE });
 }
 
 function score(run: Run, points: number, x: number, y: number): void {
   if (points === 0) return;
   run.cycleScore += points;
   run.total += points;
-  popup(run, x, y, points > 0 ? `+${points}` : `${points}`, points > 0 ? "#ffd166" : "#ff6b6b");
+  popup(run, x, y, points > 0 ? `+${points}` : `${points}`);
 }
 
 function makeFruit(run: Run, kind: FruitKind, x: number, y: number): Fruit {
@@ -325,7 +331,8 @@ function makeFruit(run: Run, kind: FruitKind, x: number, y: number): Fruit {
     kickY: 0,
     landed: false,
     age: 0,
-    rotten: false,
+    rotten: kind === "prune",
+    honeyed: kind === "honeydew",
     lit: false,
     fuse: 0,
   };
@@ -457,6 +464,7 @@ function settleStep(run: Run, dt: number): void {
 
 /** One frame of the jar, after the fruit reported where they are: landings, merges and blasts. */
 export function simulate(run: Run, dt: number): void {
+  copyKiwis(run);
   land(run);
   merge(run);
   light(run);
@@ -473,6 +481,29 @@ function land(run: Run): void {
     sound(run, "land");
     const def = FRUITS[f.kind];
     if (def.scoring === "fresh") score(run, def.points * (nearLemon(run.fruits, near, i) ? 2 : 1), f.x, f.y - f.r);
+    if (f.kind === "peach") {
+      // It bounces once, and shoves what it landed on away to each side.
+      kick(f, 0, -PEACH_BOUNCE);
+      for (const j of near[i] ?? []) {
+        const o = run.fruits[j] as Fruit;
+        kick(o, (o.x < f.x ? -1 : 1) * PEACH_SHOVE, -PEACH_SHOVE / 3);
+      }
+    }
+  });
+}
+
+/** How hard a Peach bounces when it lands, and shoves each fruit it landed on sideways (px/s). */
+const PEACH_BOUNCE = 380;
+const PEACH_SHOVE = 180;
+
+/** A Kiwi touching a landed fruit of another kind becomes a copy of it: a new fruit where it was, which lands and scores as one. */
+function copyKiwis(run: Run): void {
+  const near = links(run.fruits);
+  run.fruits = run.fruits.map((f, i) => {
+    if (f.kind !== "kiwi") return f;
+    const on = (near[i] ?? []).map((j) => run.fruits[j] as Fruit).find((o) => o.landed && o.kind !== "kiwi");
+    if (on === undefined) return f;
+    return makeFruit(run, on.kind, f.x, f.y);
   });
 }
 
@@ -567,6 +598,7 @@ function explode(run: Run, bomb: Fruit): void {
   const kept: Fruit[] = [];
   const born: Fruit[] = [];
   let points = 0;
+  let figs = 0;
   for (const f of run.fruits) {
     if (f === bomb) continue;
     const dx = f.x - bomb.x;
@@ -586,6 +618,7 @@ function explode(run: Run, bomb: Fruit): void {
     const value = FRUITS[f.kind].scoring === "booster" || f.rotten ? 0 : FRUITS[f.kind].points;
     points += (value + (BLAST_BONUS[bomb.kind] ?? 0)) * (doubled.has(f.id) ? 2 : 1);
     if (f.kind === "pomegranate") born.push(...burst(run, f.x, f.y));
+    if (f.kind === "fig" && f.rotten) figs += 1;
     if (f.kind === "seed") {
       const rng = new Rng(run.seed);
       const sprout = makeFruit(run, rng.pick(SPROUTS), f.x, f.y);
@@ -608,6 +641,10 @@ function explode(run: Run, bomb: Fruit): void {
   effect(run, "boom", bomb.x, bomb.y, radius * 2);
   sound(run, "boom");
   run.message = `${FRUITS[bomb.kind].name} blew up ${victims.length} fruit`;
+  if (figs > 0) {
+    run.bananaBonus += figs;
+    run.message = `A rotten Fig went up: every Banana scores +${run.bananaBonus} now`;
+  }
 }
 
 /** The jar has settled: spill what is over the rim, Simmer fruit score, age and rot, then the pick (or rent after turn 5). */
@@ -625,25 +662,56 @@ export function resolve(run: Run): void {
 
   const near = links(run.fruits);
   run.fruits.forEach((f, i) => {
-    if (FRUITS[f.kind].scoring !== "simmer" || f.rotten) return;
+    const touched = (near[i] ?? []).map((j) => run.fruits[j] as Fruit);
     let points = 0;
-    if (f.kind === "apple") {
+    if (f.kind === "prune") {
+      // Rotten from the start, and the one rotten fruit that scores: for the rot around it.
+      points = FRUITS.prune.points * touched.filter((o) => o.rotten).length;
+    } else if (f.rotten) {
+      return;
+    } else if (f.kind === "apple") {
       const depth = (f.y - RIM) / (JAR.floor - RIM);
       points = 2 + Math.floor(Math.max(0, Math.min(1, depth)) * 4);
     } else if (f.kind === "banana") {
-      points = 2 + f.age;
+      points = 2 + f.age + run.bananaBonus;
     }
+    if (f.honeyed) points += HONEY_POINTS;
     score(run, points * (nearLemon(run.fruits, near, i) ? 2 : 1), f.x, f.y - f.r);
   });
 
-  // Age; Bananas rot after 3 turns, and each rotten fruit rots one fruit it touches.
+  // Each Fruit Fly eats one rotten fruit it touches (never a Prune) and a new Fly hatches where it was.
+  const eaten = new Set<number>();
+  const hatched: Fruit[] = [];
+  run.fruits.forEach((f, i) => {
+    if (f.kind !== "fruitfly") return;
+    const meal = (near[i] ?? []).map((j) => run.fruits[j] as Fruit).find((o) => o.rotten && o.kind !== "prune" && !eaten.has(o.id));
+    if (meal === undefined) return;
+    eaten.add(meal.id);
+    score(run, FRUITS.fruitfly.points * (nearLemon(run.fruits, near, i) ? 2 : 1), meal.x, meal.y - meal.r);
+    const fly = makeFruit(run, "fruitfly", meal.x, meal.y);
+    fly.landed = true;
+    hatched.push(fly);
+  });
+  if (eaten.size > 0) {
+    run.fruits = [...run.fruits.filter((f) => !eaten.has(f.id)), ...hatched];
+    run.message = eaten.size === 1 ? "A Fruit Fly ate a rotten fruit" : `Fruit Flies ate ${eaten.size} rotten fruit`;
+  }
+
+  // Each Honeydew honeys one fruit it touches.
+  for (const f of run.fruits) {
+    if (f.kind !== "honeydew" || f.rotten) continue;
+    const next = run.fruits.find((o) => !o.honeyed && !o.rotten && f.touching.includes(o.id));
+    if (next) next.honeyed = true;
+  }
+
+  // Age; Bananas rot after 3 turns, and each rotten fruit but a Prune rots one fruit it touches (never a Lemon or a Fruit Fly).
   for (const f of run.fruits) {
     f.age += 1;
     if (f.kind === "banana" && f.age >= 3 && !f.rotten) f.rotten = true;
   }
-  const rotten = run.fruits.filter((f) => f.rotten);
+  const rotten = run.fruits.filter((f) => f.rotten && f.kind !== "prune");
   for (const r of rotten) {
-    const next = run.fruits.find((o) => !o.rotten && o.kind !== "lemon" && r.touching.includes(o.id));
+    const next = run.fruits.find((o) => !o.rotten && o.kind !== "lemon" && o.kind !== "fruitfly" && r.touching.includes(o.id));
     if (next) next.rotten = true;
   }
 
