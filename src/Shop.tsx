@@ -9,7 +9,7 @@ import { FRUITS } from "./rules/fruits.ts";
 import { ITEMS } from "./rules/items.ts";
 import { RuleText } from "./RuleText.tsx";
 import { Terms } from "./Terms.tsx";
-import { FRUIT_PRICE, REMOVAL_PRICE, rerollPrice, SHOP_ITEM, SHOP_LEAVE, SHOP_REMOVE, SHOP_REROLL, type Run, type Shop as ShopState } from "./rules/jar.ts";
+import { FRUIT_PRICE, removalPrice, rerollPrice, SHOP_ITEM, SHOP_LEAVE, SHOP_REMOVE, SHOP_REROLL, type Run, type Shop as ShopState } from "./rules/jar.ts";
 import { BAD, cardFor, CARD_SLICE, INK, INK_SOFT, KEYWORD, KEYWORD_LIGHT, LIGHT, SELECT, SHADE, WELL } from "./theme.ts";
 
 /** The shelf: four cards across the middle. */
@@ -128,14 +128,14 @@ export function Shop({ run, shop, hints, onPoint, onClick }: ShopProps) {
         <Text x={14} y={10} color={INK}>
           Remove one
         </Text>
-        <Price x={ACTION_W - 32} y={6} price={REMOVAL_PRICE} afford={run.coins >= REMOVAL_PRICE} />
+        <Price x={ACTION_W - 32} y={6} price={removalPrice(run)} afford={run.coins >= removalPrice(run)} />
       </Entity>
       <Entity x={ACTIONS_X + ACTION_W + ACTION_GAP} y={ACTIONS_Y}>
         <Flex width={ACTION_W} height={ACTION_H} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_REROLL)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(SHOP_REROLL)} onPress={() => onClick(SHOP_REROLL)} />
         <Text x={14} y={10} color={INK}>
           New shelf
         </Text>
-        <Price x={ACTION_W - 32} y={6} price={rerollPrice(shop)} afford={run.coins >= rerollPrice(shop)} />
+        <Price x={ACTION_W - 32} y={6} price={rerollPrice(run)} afford={run.coins >= rerollPrice(run)} />
       </Entity>
       <Entity x={ACTIONS_X + 2 * (ACTION_W + ACTION_GAP)} y={ACTIONS_Y}>
         <Flex width={ACTION_W} height={ACTION_H} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_LEAVE)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(SHOP_LEAVE)} onPress={() => onClick(SHOP_LEAVE)} />
