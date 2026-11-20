@@ -35,6 +35,8 @@ interface FruitProps {
   onReport: (report: FruitReport) => void;
 }
 
+/** How much of the turning a rolling wheel of its size would do a fruit shows: a full roll made every fruit spin like a tyre. */
+const ROLL = 0.3;
 /** How much of its speed a fruit in juice loses each step. */
 const JUICE_DRAG = 0.12;
 
@@ -75,7 +77,7 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
     }
     const touching = contacts("fruit").map((c) => c.data.id);
     // It rolls: while it touches a fruit or the floor, it turns by how far it moved across, as a wheel of its size would.
-    if (touching.length > 0 || y + FRUITS[kind].radius >= JAR.floor - 2) s.turn += (((x - s.lastX) / FRUITS[kind].radius) * 180) / Math.PI;
+    if (touching.length > 0 || y + FRUITS[kind].radius >= JAR.floor - 2) s.turn += (((x - s.lastX) / FRUITS[kind].radius) * 180 * ROLL) / Math.PI;
     s.lastX = x;
     s.lastY = y;
     onReport({ id: id, x: x, y: y, speed: speed(), touching: touching });

@@ -7,7 +7,7 @@ import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { KeyHint, TapButton } from "./KeyHint.tsx";
-import { atRest, cycleTitle, grownOf, leaned, moment, placed, startingRun, poolRows } from "./layout.ts";
+import { atRest, cycleTitle, grownOf, leaned, moment, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { learn } from "./settings.ts";
@@ -84,7 +84,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, drag: false, dragMoved: false, dragX: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -108,6 +108,30 @@ export function Play() {
     const looking = s.whole;
     if (looking && (input.pressed("Enter") || input.pressed("Space") || input.pressed("D"))) s.whole = false;
     else if (!looking && input.pressed("D")) s.whole = true;
+    // Dragging a fruit along the shelf. A press on a fruit picks it up; while the button or finger stays down it goes where the
+    // pointer goes, the others making room; letting go puts it down. A press and release in one place is a tap: the fruit stays
+    // picked up, and the next tap says where it goes. The rules know none of this: they are told a place and a confirm.
+    if (s.run.phase === "order" && !looking) {
+      const count = s.run.hand.length;
+      const left = (JAR.left + JAR.right) / 2 - (count * SLOT) / 2;
+      const over = shelfSlot(input.pointerX, input.pointerY, left, SLOT, count, SHELF_Y - 44, SHELF_Y + 8, false);
+      if (input.pressed("MouseLeft") && over >= 0) {
+        s.point = over;
+        s.click = true;
+        s.drag = !s.run.holding;
+        s.dragMoved = false;
+      } else if (s.drag && input.down("MouseLeft")) {
+        const to = shelfSlot(input.pointerX, input.pointerY, left, SLOT, count, 0, 0, true);
+        if (to !== s.run.cursor) {
+          s.point = to;
+          s.dragMoved = true;
+        }
+      } else if (s.drag) {
+        if (s.dragMoved) s.click = true;
+        s.drag = false;
+      }
+      s.dragX = input.pointerX;
+    } else s.drag = false;
     s.run = advance(
       s.run,
       dt,
@@ -204,6 +228,8 @@ export function Play() {
   /** On the shelf: the hand while ordering, then what is left of it while dropping. */
   const shelf = ordering ? run.hand : run.queue;
   const shelfLeft = jarMid - (shelf.length * SLOT) / 2;
+  /** A fruit is being dragged along the shelf: it is drawn under the pointer, not in its place. */
+  const dragging = s.drag && ordering && run.holding;
   // Resolve has already counted the next turn; the pips wait for the tally to finish before showing it.
   const turn = Math.min(run.turn - (run.phase === "tally" && run.afterTally === "pick" ? 1 : 0), TURNS_PER_CYCLE);
   // The board shows what is still to be dealt this shuffle: the hand is on the shelf, and the rest has been played.
@@ -271,17 +297,17 @@ export function Play() {
           jar each is under a cloth. */}
       <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y} />
       {placed(shelf).map((slot) => (
-        <Entity key={`${slot.card}${slot.at}`} x={shelfLeft + slot.at * SLOT + SLOT / 2} y={SHELF_Y - 18}>
+        <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} y={SHELF_Y - 18}>
           {ordering && !blind && slot.at === run.cursor && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
           {!blind && <FruitBall kind={slot.card} x={0} y={ordering && run.holding && slot.at === run.cursor ? -8 : 0} look="icon" />}
-          {/* The mouse over a fruit moves the cursor to it, and a click or a tap picks it up or puts the held one down there.
-              What it does shows under the shelf: for the fruit the cursor is on, and for one the mouse is over. While ordering it also
+          {/* A fruit is dragged along the shelf, or tapped and then tapped where it should go (see the update above); a held one
+              is drawn under the pointer. What it does shows under the shelf: for the fruit the cursor is on, and for one the mouse is over. While ordering it also
               says, every time, that the hand can be reordered and how: the keys' own hints show only the first time. It sits over the middle of
               the jar whichever fruit it is for, so it never covers the boards either side. */}
           {!blind && (
-            <Flex x={-20} y={-20} width={40} height={40} focusable={false} onPointerEnter={() => point(slot.at)} onPress={() => click(slot.at)}>
-              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - (shelfLeft + slot.at * SLOT + SLOT / 2)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} note={!ordering ? "" : run.holding && slot.at === run.cursor ? "Left / Right or tap: place it. Enter: put it down." : "Enter or tap: move it. Space or tap the jar: drop."} />
+            <Flex x={-20} y={-20} width={40} height={40}>
+              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} note={!ordering ? "" : run.holding && slot.at === run.cursor ? "Let go, or tap, where it should stand." : "Drag it along the shelf to move it. Tap the jar to drop."} />
               </Tooltip>
             </Flex>
           )}

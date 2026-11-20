@@ -22,8 +22,8 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 
 ## Controls
 
-Everything can also be done with the mouse or a finger, with no keyboard: tap a fruit on the shelf to pick it up and tap where
-it should stand, tap the jar to drop the hand into it, and tap the buttons for what Space, Esc and Enter do elsewhere (Skip,
+Everything can also be done with the mouse or a finger, with no keyboard: drag a fruit along the shelf to where it should stand (or tap it,
+then tap the place), tap the jar to drop the hand into it, and tap the buttons for what Space, Esc and Enter do elsewhere (Skip,
 Done, Back, and Pause on the Pool board). Cards, the shop's actions, a kind in the take-out dialog and a
 fruit the Preserves Jar can keep are tapped directly. The Pool board shows what is still to be dealt; its "See all" button
 (or D) opens a board of every fruit in the pool.

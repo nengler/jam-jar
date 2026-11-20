@@ -262,6 +262,37 @@ test("in the Flip jar gravity turns over after every second drop: the hand ends 
   player.close();
 });
 
+test("the hand is reordered by dragging: a fruit follows the pointer along the shelf and stays where it is let go; a tap picks one up", () => {
+  const backend = new RecordingBackend();
+  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
+  const step = (script: string) => {
+    for (const frame of parseInputScript(script, { bindings })) {
+      backend.queueInput(frame);
+      player.step();
+    }
+  };
+  step("_*2, Enter, _*5");
+  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
+  play.s.run = { ...play.s.run, hand: ["cherry", "grape", "orange", "apple"] };
+  // The four stand 48 apart, centred on 320: at 248, 296, 344 and 392, on the shelf at about y = 30. A step sees the frame
+  // before it, so each stretch ends with one more frame of the same.
+  // (One script for the whole drag: a new script would press the button again.)
+  step("mouse@248,30, mouse@248,30+MouseLeft, mouse@300,30+MouseLeft, mouse@350,60+MouseLeft, mouse@392,30+MouseLeft, mouse@392,30+MouseLeft");
+  assert.equal(play.s.run.holding, true, "a press picks the first one up, and it is held while the button is");
+  assert.deepEqual(play.s.run.hand, ["grape", "orange", "apple", "cherry"], "it went along the shelf, past each of the others");
+  step("mouse@392,30, mouse@392,30");
+  assert.equal(play.s.run.holding, false, "and stays where it was let go");
+  assert.equal(play.s.run.phase, "order");
+
+  // A press and a release in one place is a tap: the fruit stays picked up, and a tap elsewhere puts it there.
+  step("mouse@248,30+MouseLeft, mouse@248,30, mouse@248,30");
+  assert.equal(play.s.run.holding, true);
+  step("mouse@296,30+MouseLeft, mouse@296,30, mouse@296,30");
+  assert.deepEqual(play.s.run.hand, ["orange", "grape", "apple", "cherry"]);
+  assert.equal(play.s.run.holding, false);
+  player.close();
+});
+
 test("honey is sticky: a fruit touching a Honeyed one hangs from it, where a plain one would let it fall", () => {
   const hangs = (honeyed: boolean): number => {
     const backend = new RecordingBackend();

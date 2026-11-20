@@ -134,3 +134,21 @@ export function ripple(text: string, time: number, seed: number): { at: number; 
 export function grownOf(run: Run, kind: FruitKind): number {
   return kind === "banana" ? run.bananaBonus : kind === "pitaya" ? run.pitayaBonus : 0;
 }
+
+/**
+ * Which fruit on the shelf the pointer is on: the shelf's fruit stand `slot` apart from `left`, `count` of them. With `along`
+ * it is the nearest place whatever the pointer's height, for a fruit being dragged; without, -1 when the pointer is not on the
+ * shelf (between `top` and `bottom`, and over one of its fruit).
+ */
+export function shelfSlot(x: number, y: number, left: number, slot: number, count: number, top: number, bottom: number, along: boolean): number {
+  if (count === 0) return -1;
+  const at = Math.floor((x - left) / slot);
+  if (along) return Math.max(0, Math.min(count - 1, at));
+  return y >= top && y <= bottom && at >= 0 && at < count ? at : -1;
+}
+
+/** Where a fruit on the shelf is drawn across: in its place, or under the pointer (kept over the shelf) while it is dragged. */
+export function shelfX(at: number, left: number, slot: number, count: number, dragged: boolean, pointerX: number): number {
+  const home = left + at * slot + slot / 2;
+  return dragged ? Math.max(left + slot / 2, Math.min(left + count * slot - slot / 2, pointerX)) : home;
+}
