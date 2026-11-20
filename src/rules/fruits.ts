@@ -57,10 +57,10 @@ export interface FruitDef {
 
 /**
  * The numbers of the fruit that score by a rule of their own (rules/jar.ts), kept here so their cards say the same.
- * An Apple scores its base, and up to `deep` more the deeper it sits. A Banana scores its base and `ripen` more each turn, and
+ * An Apple scores its base, and `edge` more while it touches the jar's floor or a wall. A Banana scores its base and `ripen` more each turn, and
  * rots after `rots` turns. A honeyed fruit scores `HONEY` each turn.
  */
-export const APPLE = { base: 4, deep: 6 };
+export const APPLE = { base: 4, edge: 5 };
 export const BANANA = { base: 4, ripen: 2, rots: 3 };
 export const HONEY = 4;
 
@@ -70,7 +70,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   orange: { name: "Orange", radius: FRUIT_ART.orange.radius, points: 8, scoring: "fresh", mergesInto: "melon", touchWeight: 1, text: "Fresh 8. Merge: Melon." },
   melon: { name: "Melon", radius: FRUIT_ART.melon.radius, points: 20, scoring: "fresh", mergesInto: "watermelon", touchWeight: 1, text: "Fresh 20. Merge: Watermelon." },
   watermelon: { name: "Watermelon", radius: FRUIT_ART.watermelon.radius, points: 50, scoring: "fresh", touchWeight: 1, text: "Fresh 50. Merge: both vanish for +100." },
-  apple: { name: "Apple", radius: FRUIT_ART.apple.radius, points: 4, scoring: "simmer", touchWeight: 1, text: `Simmer ${APPLE.base}. Deep ${APPLE.deep}.` },
+  apple: { name: "Apple", radius: FRUIT_ART.apple.radius, points: 4, scoring: "simmer", touchWeight: 1, text: `Simmer ${APPLE.base}. Edge ${APPLE.edge}.` },
   banana: { name: "Banana", radius: FRUIT_ART.banana.radius, points: 4, scoring: "simmer", touchWeight: 1, text: `Simmer ${BANANA.base}. Ripen ${BANANA.ripen}. Rots ${BANANA.rots}.` },
   chili: { name: "Chili", radius: FRUIT_ART.chili.radius, points: 6, scoring: "fresh", touchWeight: 1, text: "Fresh 6. Exploder 4." },
   durian: { name: "Durian", radius: FRUIT_ART.durian.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Buried 3." },

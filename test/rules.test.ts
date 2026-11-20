@@ -22,6 +22,7 @@ import {
   keeps,
   newRun,
   NO_KEYS,
+  onEdge,
   topEarners,
   POINTS_PER_COIN,
   REMOVAL_PRICE,
@@ -222,13 +223,13 @@ test("a blast kicks what it does not destroy away from it", () => {
   assert.ok(melon.kickX > 0, "pushed right, away from the blast");
 });
 
-test("Resolve: fruit over the rim spill and cost points; an Apple deeper scores more", () => {
+test("Resolve: fruit over the rim spill and cost points; an Apple touching the jar's floor scores more", () => {
   const run = jarWith([fruit(1, "apple", 250, JAR.floor - 18), fruit(2, "apple", 300, RIM + 20), fruit(3, "cherry", 350, RIM - 2)]);
   run.cycleScore = 10;
   resolve(run);
   assert.equal(run.fruits.length, 2, "the cherry spilled");
-  // -5 for the spill, then the deep Apple (its base and 5 of its Deep 6) and the shallow one (its base alone).
-  assert.equal(run.cycleScore, 10 - 5 + (APPLE.base + 5) + APPLE.base);
+  // -5 for the spill, then the Apple on the floor (its base and its Edge) and the one in mid air (its base alone).
+  assert.equal(run.cycleScore, 10 - 5 + (APPLE.base + APPLE.edge) + APPLE.base);
 });
 
 test("a Banana scores more each turn and rots after 3", () => {
@@ -607,8 +608,8 @@ test("a Coconut cracks at its third Resolve and is gone, leaving milk; fruit tha
   assert.equal(run.juice, COCONUT_MILK);
   assert.equal(run.milk, true);
   assert.equal(run.lime, false);
-  // The deep Apple scores 9 and the high one 6; from the turn after the Coconut cracks, the deep one sits in milk: 18.
-  assert.deepEqual(scores, [15, 15, 15, 24]);
+  // Each Apple scores 9, one on the floor and one against the right wall; from the turn after the Coconut cracks, the low one sits in milk: 18.
+  assert.deepEqual(scores, [18, 18, 18, 27]);
   assert.equal(run.popups.find((p) => p.points === 18)!.text, "+18 x2");
 });
 
@@ -1048,7 +1049,7 @@ test("a Snow Pear freezes itself and what it touches at the end of a turn; Froze
 });
 
 test("the cards of the fruit with rules of their own say the rules' numbers", () => {
-  assert.equal(FRUITS.apple.text, `Simmer ${APPLE.base}. Deep ${APPLE.deep}.`);
+  assert.equal(FRUITS.apple.text, `Simmer ${APPLE.base}. Edge ${APPLE.edge}.`);
   assert.equal(FRUITS.banana.text, `Simmer ${BANANA.base}. Ripen ${BANANA.ripen}. Rots ${BANANA.rots}.`);
   assert.match(KEYWORDS.honeyed.text, new RegExp(`\\+${HONEY} `));
   assert.match(KEYWORDS.explode.text, new RegExp(`\\+${BLAST_BONUS.chili} \\(big \\+${BLAST_BONUS.durian}\\)`));
@@ -1118,4 +1119,22 @@ test("the tutorial's lessons: each waits for its moment, and is done when the pl
   assert.equal(lessonDone(lesson("shop"), at("shop"), { ...none, acted: true }), true, "it lies over the shop's words, so it goes when there is something to read");
   // Every lesson fits its card: a title, and words for the pointer and for the keyboard.
   for (const l of LESSONS) assert.ok(l.title.length <= 14 && l.text.length <= 90 && l.keysText.length <= 90, l.id);
+});
+
+test("an Apple's Edge: it scores more touching the jar's floor or either wall, and not in the middle of the pile", () => {
+  const mid = (JAR.left + JAR.right) / 2;
+  const r = FRUITS.apple.radius;
+  const score = (x: number, y: number): number => {
+    const run = jarWith([fruit(1, "apple", x, y)]);
+    run.turn = 1;
+    resolve(run);
+    return run.cycleScore;
+  };
+  assert.equal(score(mid, JAR.floor - r), APPLE.base + APPLE.edge, "on the floor");
+  assert.equal(score(JAR.left + r, 200), APPLE.base + APPLE.edge, "against the left wall, off the floor");
+  assert.equal(score(JAR.right - r, 200), APPLE.base + APPLE.edge, "against the right wall");
+  assert.equal(score(mid, 200), APPLE.base, "in the middle, touching neither");
+  const flipped = jarWith([fruit(1, "apple", mid, RIM + r)]);
+  flipped.flipped = true;
+  assert.equal(onEdge(flipped, flipped.fruits[0]!), true, "the Flip jar's lid is its floor while it is turned over");
 });

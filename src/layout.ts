@@ -203,7 +203,7 @@ export function kindAt(rows: readonly PoolRow[], at: number): FruitKind | null {
  * A run's opening, in seconds from its start: the boards pop in from the sides, the shelf comes down, the jar falls into its
  * place and bounces, and then the first hand rolls onto the shelf. It is only drawn: the run can be played from its first step.
  */
-export const INTRO = { left: 0, right: 0.1, shelf: 0.2, jar: 0.3, fall: 0.6, hand: 0.95, end: 1.7, pop: 0.35 } as const;
+export const INTRO = { left: 0, right: 0.25, shelf: 0.5, jar: 0.8, fall: 1.1, hand: 2.0, end: 3.2, pop: 0.7 } as const;
 
 /** 0 to 1 over `seconds` from `at`, overshooting a little before it settles: how a board pops into place. */
 export function popIn(time: number, at: number, seconds: number): number {
@@ -223,8 +223,8 @@ export function jarDrop(time: number, from: number): number {
 }
 
 /** Seconds a fruit takes to roll along the shelf to its place, and how long after the one before it each sets off. */
-const ROLL_TIME = 0.45;
-const ROLL_GAP = 0.07;
+const ROLL_TIME = 0.7;
+const ROLL_GAP = 0.14;
 
 /**
  * How far right of its place a fruit of a newly dealt hand still is, `time` after the deal: each rolls in from `from` pixels to the
