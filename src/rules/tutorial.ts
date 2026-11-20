@@ -46,7 +46,7 @@ export const LESSONS: readonly Lesson[] = [
     title: "Scoring",
     text: "Matching fruit that touch merge. When the jar is still, everything in it scores.",
     keysText: "Matching fruit that touch merge. When the jar is still, everything in it scores.",
-    target: null,
+    target: "jar",
   },
   {
     id: "rent",
