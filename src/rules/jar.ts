@@ -29,6 +29,14 @@ const FLOOR_TOLERANCE = 1.5;
 export const RIM = 104;
 /** Where dropped fruit appear. */
 export const DROP_Y = 72;
+/**
+ * An experiment, off in the game: the tray drop. The shelf is a tray over the jar with a slot per lane, and the whole hand is
+ * released together, hand index 0 in the leftmost lane, so where a fruit stands on the shelf decides where it lands (today the
+ * order decides only when it falls, and each lands at a random spot). Each fruit wobbles up to `wobble` px within its lane, so a
+ * setup is never pixel-perfect. Only the balance bots turn it on (`tools/balance.ts`, "/tray"), to see whether arranging the hand
+ * matters more this way.
+ */
+export const TRAY = { on: false, wobble: 4 };
 export const HAND_SIZE = 4;
 export const TURNS_PER_CYCLE = 5;
 /**
@@ -803,6 +811,8 @@ function dropStep(run: Run, dt: number): void {
     run.dropTimer = DROP_GAP;
     run.dropWait = 0;
     run.calmTime = 0;
+  } else if (TRAY.on && run.dropTimer <= 0 && run.queue.length > 0) {
+    trayRelease(run, flip);
   } else if (run.dropTimer <= 0 && ready && run.queue.length > 0) {
     const kind = run.queue.shift() as FruitKind;
     const r = FRUITS[kind].radius;
@@ -826,6 +836,27 @@ function dropStep(run: Run, dt: number): void {
     run.settleTime = 0;
     run.calmTime = 0;
   }
+}
+
+/** The tray drop (`TRAY`): every fruit left in the queue appears at once, one per lane, left to right. */
+function trayRelease(run: Run, flip: boolean): void {
+  const lanes = Math.max(HAND_SIZE, run.queue.length);
+  const width = (JAR.right - JAR.left) / lanes;
+  const rng = new Rng(run.seed);
+  run.queue.forEach((kind, lane) => {
+    const r = FRUITS[kind].radius;
+    const middle = JAR.left + width * (lane + 0.5);
+    const x = Math.max(JAR.left + r, Math.min(JAR.right - r, middle + rng.range(-TRAY.wobble, TRAY.wobble)));
+    const y = !flip ? DROP_Y : run.flipped ? JAR.floor - r - 2 : RIM + r + 2;
+    run.fruits.push(makeFruit(run, kind, x, y));
+    run.drops += 1;
+    run.discard.push(kind);
+  });
+  run.seed = rng.seed;
+  run.queue = [];
+  run.dropTimer = DROP_GAP;
+  run.dropWait = 0;
+  run.calmTime = 0;
 }
 
 function settleStep(run: Run, dt: number): void {

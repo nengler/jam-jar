@@ -42,6 +42,7 @@ import {
   surface,
   type Fruit,
   type Keys,
+  TRAY,
   type Run,
 } from "../src/rules/jar.ts";
 import { ITEMS, offerable } from "../src/rules/items.ts";
@@ -112,6 +113,24 @@ test("the same seed and keys play the same run", () => {
     b = press(b, keys);
   }
   assert.deepEqual(a, b);
+});
+
+test("the tray drop (off in the game): the whole hand appears at once, a fruit per lane, left to right", () => {
+  TRAY.on = true;
+  try {
+    let run = newRun(3);
+    run.hand = ["apple", "cherry", "chili", "grape"];
+    run = press(run, { drop: true });
+    run = press(run, {});
+    assert.deepEqual(run.fruits.map((f) => f.kind), ["apple", "cherry", "chili", "grape"]);
+    assert.equal(run.queue.length, 0);
+    const lane = (JAR.right - JAR.left) / 4;
+    run.fruits.forEach((f, i) => {
+      assert.ok(Math.abs(f.x - (JAR.left + lane * (i + 0.5))) <= TRAY.wobble, `${f.kind} stays in lane ${i}`);
+    });
+  } finally {
+    TRAY.on = false;
+  }
 });
 
 test("ordering: pick up the first fruit, move it down, and it drops second", () => {
