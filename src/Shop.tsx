@@ -4,7 +4,7 @@ import { Letters, Panel } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { KeyHint, TapButton } from "./KeyHint.tsx";
-import { ENTER, entered, placed, popIn, poolRows } from "./layout.ts";
+import { chosenName, ENTER, entered, placed, popIn, poolRows } from "./layout.ts";
 import { FRUITS } from "./rules/fruits.ts";
 import { ITEMS } from "./rules/items.ts";
 import { RuleText } from "./RuleText.tsx";
@@ -34,6 +34,8 @@ interface ShopProps {
   onClick: (place: number) => void;
   /** A tap landed on none of the shelf's cards: nothing on it is chosen any more. */
   onAway: () => void;
+  /** The take-out dialog's button was pressed: what Enter does there, with no place pointed at. */
+  onConfirm: () => void;
   /** A button that does what Space does was pressed: leave the shop, or back out of taking a fruit out. */
   onSpace: () => void;
 }
@@ -57,7 +59,7 @@ const ACTION_RISE = 120;
  * The rules (rules/jar.ts, `Shop`) hold what is for sale and where the cursor is; this draws them. `hints` is whether the keys are
  * shown: the first visit, and the first time a fruit is taken out.
  */
-export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: ShopProps) {
+export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, onSpace }: ShopProps) {
   // The card the cursor is on shows what its keywords mean, but not over the pause menu.
   const paused = useGame((g) => g.paused);
   const kinds = poolRows(run.pool);
@@ -189,7 +191,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
               <Panel heading="Take out one">
                 <Flex direction="row" wrap justifyContent="center" rowGap={4} columnGap={0}>
                   {placed(kinds).map((cell) => (
-                    <Flex key={cell.card.kind} width={CELL} direction="column" alignItems="center" focusable={false} onPointerEnter={() => onPoint(cell.at)} onPress={() => onClick(cell.at)}>
+                    <Flex key={cell.card.kind} width={CELL} direction="column" alignItems="center" focusable={false} onPress={() => onClick(cell.at)}>
                       <Flex width={40} height={40} backgroundImage={cell.at === shop.removeCursor ? SELECT : undefined} slice={CARD_SLICE}>
                         <FruitBall kind={cell.card.kind} x={20} y={20} look="icon" />
                       </Flex>
@@ -197,13 +199,18 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
                     </Flex>
                   ))}
                 </Flex>
+                {/* A tap on a kind only chooses it. What takes it out is this button (or Enter), which names it and its price,
+                    so nothing leaves the pool by a slip of the finger. */}
+                <Flex direction="row" justifyContent="center" alignItems="center" gap={12} paddingTop={6}>
+                  {shop.removeCursor >= 0 && <TapButton label={`Take out ${chosenName(kinds, shop.removeCursor)}`} keyName={hints ? "Enter" : ""} onPress={onConfirm} />}
+                  {shop.removeCursor < 0 && <Text color={INK_SOFT}>Choose a fruit</Text>}
+                  <TapButton label="Back" keyName={hints ? "Space" : ""} onPress={onSpace} />
+                </Flex>
               </Panel>
             </Flex>
           </Flex>
           <Flex left={0} right={0} bottom={2} direction="row" justifyContent="center" alignItems="center" gap={20}>
             {hints && <KeyHint name="arrows" label="Choose" />}
-            {hints && <KeyHint name="Enter" label="Take out" />}
-            <TapButton label="Back" keyName={hints ? "Space" : ""} onPress={onSpace} />
           </Flex>
         </Entity>
       )}

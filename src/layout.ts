@@ -311,3 +311,9 @@ export const ENTER = { pop: 0.6, gap: 0.12, jar: 0.5 } as const;
 export function entered(time: number, n: number, from = 0): number {
   return time >= from + n * ENTER.gap ? 1 : 0;
 }
+
+/** The name of the kind chosen in the take-out dialog (a row of the pool's kinds), or "" when none is. */
+export function chosenName(rows: readonly PoolRow[], at: number): string {
+  const kind = rows[at]?.kind;
+  return kind === undefined ? "" : FRUITS[kind].name;
+}

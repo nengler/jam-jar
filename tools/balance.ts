@@ -80,9 +80,9 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     } else if (run.phase === "shop") {
       const shop = run.shop!;
       const canThin = thin && run.coins >= removalPrice(run) && run.pool.length > 4 && run.pool.includes("cherry");
-      // Thinning: down to the actions (Remove is the first), Enter to open it, Enter on the first kind (Cherry).
+      // Thinning: down to the actions (Remove is the first), Enter to open it, Right to the first kind (Cherry), Enter to take it out.
       if (!canThin) queued = [SPACE];
-      else if (shop.removing) queued = [ENTER];
+      else if (shop.removing) queued = shop.removeCursor < 0 ? [RIGHT] : [ENTER];
       else if (shop.cursor !== SHOP_REMOVE) queued = [DOWN];
       else queued = [ENTER];
       coins = run.coins;
