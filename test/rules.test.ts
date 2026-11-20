@@ -827,11 +827,15 @@ test("the tally: Simmer fruit score one after another, the score on screen catch
   assert.ok(run.fruits.every((f) => f.pulseDelay > 0), "each lights up when its turn comes");
 
   const seen = new Set<number>();
+  const notes: number[] = [];
   for (let i = 0; i < 300 && run.phase === "tally"; i++) {
     run = press(run, {});
     seen.add(shownScore(run));
+    if (run.sounds.includes("score")) notes.push(run.scoreNote);
   }
+  assert.deepEqual(notes, [1, 2, 3], "a note for each score as it shows, one step up each time");
   assert.deepEqual([...seen], [0, 9, 18, 27], "counted up a fruit at a time");
+  assert.equal(run.scoreNote, 3, "and each score rang the next note up");
   assert.equal(run.phase, "pick");
 });
 

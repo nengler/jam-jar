@@ -86,15 +86,15 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Edge | Scores this more touching the floor or a wall. |
 | Copy | Becomes the first fruit it lands on. |
 | Bouncy | Bounces, shoving its neighbours. |
-| Crack | Breaks open after this many turns. |
-| Juice / Milk | Lime juice this deep: fruit in it float / milk this deep: fruit in it score x2. |
+| Crack | After this many turns it breaks open, then: |
+| Juice / Milk | Pours juice in the jar: fruit in it float / pours milk in the jar: fruit in it score x2. |
 | Skip | A Merge touching it skips a size. |
 | Legendary | Rare, and never in the shop. |
 | Crush, Shake, Preserve, Pickled, Once | The items' words: the Juicer, the Shaker, the jars and the Lid. |
 | Frozen | Held in place. Explosions can't destroy it. |
 | Spill | Fruit over the rim are lost: -5 each. |
 
-A new card is a row of these, how it scores first ("Fresh 3. Heavy. Crack 3: Milk 20."), with a trigger before a colon ("Exploded:
+A new card is a row of these, how it scores first ("Fresh 8. Heavy. Crack 3: Milk."), with a trigger before a colon ("Exploded:
 Sprout."). A new effect gets a keyword and a definition of at most 46 characters, not a sentence on one card. A card holds
 at most four keywords, which is what a tooltip has room for. Tests hold the cards to this, and to the rules' own numbers.
 
