@@ -530,3 +530,17 @@ test("the first game's tutorial: a card says one thing at a time and moves on as
   assert.equal(settings.get().tutorial, 8, "over, and kept that way between launches");
   game.close();
 });
+
+test("the last turn of a cycle is announced: a banner crosses the screen as its hand comes up, and not on the turns before", () => {
+  const game = startRun();
+  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run; last: number } };
+  game.input("_*5");
+  assert.ok(play.s.last >= 99, "the first turn: no banner");
+  play.s.run = { ...play.s.run, turn: 5 };
+  game.input("_*3");
+  assert.ok(play.s.last < 0.2, "the fifth: it has just begun");
+  game.stepUntil(() => play.s.last >= 1.28, { maxSteps: 200 });
+  game.input("_*3");
+  assert.ok(play.s.last >= 1.28, "and it is over in about a second and a quarter, once");
+  game.close();
+});

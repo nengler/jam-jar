@@ -317,3 +317,23 @@ export function chosenName(rows: readonly PoolRow[], at: number): string {
   const kind = rows[at]?.kind;
   return kind === undefined ? "" : FRUITS[kind].name;
 }
+
+/** The banner that crosses the screen as a cycle's last turn begins: seconds to come in, to hold, and to go out. */
+export const SWEEP = { in: 0.18, hold: 0.9, out: 0.2 } as const;
+export const SWEEP_TIME = SWEEP.in + SWEEP.hold + SWEEP.out;
+
+/**
+ * Where the last turn's banner is, `time` seconds after the turn began: how far its words are from the middle of the screen
+ * (they shoot in from the left, drift a little while they are read, and shoot out to the right) and how open its band is, 0
+ * to 1 (it snaps open and shut). `shown` is false before and after.
+ */
+export function sweep(time: number): { shown: boolean; x: number; open: number } {
+  if (time < 0 || time >= SWEEP_TIME) return { shown: false, x: 0, open: 0 };
+  if (time < SWEEP.in) {
+    const t = time / SWEEP.in;
+    return { shown: true, x: -520 * (1 - t) * (1 - t) - 12, open: t };
+  }
+  if (time < SWEEP.in + SWEEP.hold) return { shown: true, x: -12 + (24 * (time - SWEEP.in)) / SWEEP.hold, open: 1 };
+  const t = (time - SWEEP.in - SWEEP.hold) / SWEEP.out;
+  return { shown: true, x: 12 + 520 * t * t, open: 1 - t };
+}

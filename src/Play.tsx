@@ -9,7 +9,7 @@ import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { TapButton } from "./KeyHint.tsx";
-import { atRest, blastBits, blastFlash, blastJolt, cycleTitle, INTRO, jarDrop, kindAt, popIn, rollIn, rollStarted, grownOf, leaned, moment, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
+import { atRest, sweep, SWEEP_TIME, blastBits, blastFlash, blastJolt, cycleTitle, INTRO, jarDrop, kindAt, popIn, rollIn, rollStarted, grownOf, leaned, moment, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/tutorial.ts";
@@ -64,6 +64,8 @@ const POOL_TIGHT = { columns: 4, cell: 40 };
 const POOL_ROW = 32;
 /** The note of what just happened: a slate at the right, its foot this far above the foot of the screen (just above the counter). */
 const NOTE_FOOT = 36;
+/** The band behind the last turn's banner: the darkest Apollo colour, nearly solid. */
+const SWEEP_BAND = "#090a14e6";
 /** How loud a note of the tally is, of the sounds' volume. */
 const SCORE_VOLUME = 0.7;
 /** Seconds between the ticks of a fruit dragged along the shelf, at the least. */
@@ -108,7 +110,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -116,6 +118,7 @@ export function Play() {
   const playRent = useSound("rent.wav");
   const playLose = useSound("lose.wav");
   const playTick = useSound("tick.wav");
+  const playLast = useSound("last.wav");
   // The tally's notes, low to high: each score rings one step up from the last (tools/make-assets.py makes them).
   const playScore0 = useSound("score-0.wav");
   const playScore1 = useSound("score-1.wav");
@@ -156,7 +159,13 @@ export function Play() {
     if (s.run.phase === "order" && deal !== s.dealt) {
       s.dealt = deal;
       s.roll = Math.min(0, s.intro - INTRO.hand);
+      // The last turn of a cycle is announced: a banner crosses the screen as its hand comes up.
+      if (s.run.turn >= TURNS_PER_CYCLE) {
+        s.last = 0;
+        playLast(0.8);
+      }
     } else if (s.roll < 2) s.roll += dt;
+    if (s.last < SWEEP_TIME) s.last += dt;
     s.run = advance(
       s.run,
       dt,
@@ -368,6 +377,8 @@ export function Play() {
   const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
   const finished = run.phase === "over" || run.phase === "won";
+  /** The last turn's banner, while it crosses the screen. */
+  const banner = sweep(s.last);
   /** How bright the jar is lit by a blast this instant. */
   const flash = blastFlash(run.effects);
   /** The tutorial's lesson, while it is its moment and nothing is over the play screen. */
@@ -481,8 +492,8 @@ export function Play() {
             {filled > 0 && <Flex left={2} top={2} bottom={2} width={Math.round(((BOARD_W - 36) * filled) / 2) * 2} background={paid ? BAR_PAID : BAR_GOLD} />}
           </Flex>
           <Flex direction="row" justifyContent="space-between" paddingTop={6}>
-            <Text color={INK_SOFT}>Turn</Text>
-            <Text color={INK_SOFT}>{`${turn} of ${TURNS_PER_CYCLE}`}</Text>
+            <Text color={turn >= TURNS_PER_CYCLE && !paid ? BAD : INK_SOFT}>{turn >= TURNS_PER_CYCLE ? "Last turn" : "Turn"}</Text>
+            <Text color={turn >= TURNS_PER_CYCLE && !paid ? BAD : INK_SOFT}>{turn >= TURNS_PER_CYCLE ? `${turn}/${TURNS_PER_CYCLE}` : `${turn} of ${TURNS_PER_CYCLE}`}</Text>
           </Flex>
           <Flex direction="row" alignItems="center" gap={6}>
             <Sprite image="coin.png" />
@@ -646,6 +657,28 @@ export function Play() {
         <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center">
           <Coach wide lesson={coached} keys={keys} width={620} onNext={lessonNext} onSkip={lessonSkip} />
         </Flex>
+      )}
+      {/* The last turn of a cycle: a dark band snaps open across the screen and "Last turn" shoots through it, with what is
+          still owed. It is only drawn, so the hand can be ordered under it. */}
+      {banner.shown && (
+        <Entity>
+          <Shape kind="rect" x={0} y={180 - 34 * banner.open} width={640} height={68 * banner.open} color={SWEEP_BAND} />
+          <Shape kind="rect" x={0} y={180 - 34 * banner.open - 2} width={640} height={2} color={GOLD} />
+          <Shape kind="rect" x={0} y={180 + 34 * banner.open} width={640} height={2} color={GOLD} />
+          {/* Each line is centred across the screen and moved within its row: the words one way, what is owed the other. */}
+          <Flex left={0} right={0} top={146} direction="row" justifyContent="center">
+            <Flex x={banner.x}>
+              <Text font={DISPLAY} size={DISPLAY_SIZE * 2} color={GOLD} shadow={INK} shadowX={4} shadowY={4}>
+                Last turn
+              </Text>
+            </Flex>
+          </Flex>
+          <Flex left={0} right={0} top={194} direction="row" justifyContent="center">
+            <Flex x={-banner.x}>
+              <Text color={LIGHT}>{paid ? "The rent is made" : `${rent - scored} more to make the rent`}</Text>
+            </Flex>
+          </Flex>
+        </Entity>
       )}
       {paused && <Pause />}
     </Entity>
