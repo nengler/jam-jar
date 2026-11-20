@@ -112,55 +112,47 @@ export function leaned<T extends { x: number; y: number }>(things: readonly T[],
   return things.map((t) => ({ ...t, x: cx + (t.x - cx) * cos - (t.y - cy) * sin, y: cy + (t.x - cx) * sin + (t.y - cy) * cos }));
 }
 
-/** How many letters a heading's ripple passes a second, and the longest it waits before the next one starts, in seconds. */
-const RIPPLE_SPEED = 2.2;
-const RIPPLE_WAIT = 2.5;
+/** How many letters a heading's wave passes a second, and the longest it waits before the next one starts, in seconds. */
+const RIPPLE_SPEED = 7;
+const RIPPLE_WAIT = 3.5;
+/** How high the wave lifts a letter at its crest, in pixels, and how many letters the wave is across. */
+const WAVE_HEIGHT = 2;
+const WAVE_WIDTH = 4;
 
-/** A number from 0 up to 1 that looks random, the same each time for the same `n`: which ripple of a heading waits how long. */
+/** A number from 0 up to 1 that looks random, the same each time for the same `n`: which wave of a heading waits how long. */
 function chance(n: number): number {
   const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 }
 
-/** A heading's letter as it is drawn now: how far it is lifted, in pixels, and how it is squashed or stretched (1 is its own size). */
+/** A heading's letter as it is drawn now: how far it is lifted, in whole pixels, and whether the glint is on it. */
 export interface RippleLetter {
   at: number;
   letter: string;
   lift: number;
-  scaleX: number;
-  scaleY: number;
+  lit: boolean;
 }
 
-/** How high a letter hops, in pixels; how much taller it is stretched in the air and shorter it is squashed as it lands (of its
- * height); and how far under the line it sinks as it lands, in pixels. */
-const HOP = 4;
-const STRETCH = 0.1;
-const LAND_SQUASH = 0.28;
-const LAND_SINK = 2;
-
 /**
- * A heading's letters as they are drawn now: a ripple runs slowly through the heading, one letter hopping as it passes, then
- * after a short wait, a different length each time, it runs again. The hop has squash and stretch, as a bouncing ball is
- * animated: the letter squats before it jumps, is stretched tall in the air, and squats again as it lands. `seed` sets one
- * heading's waits apart from another's. A space is a letter too, so the ripple crosses it in step.
+ * A heading's letters as they are drawn now. Every few seconds, a different wait each time, a soft wave runs along the
+ * heading: each letter rises a pixel or two as it passes and settles again, and the one on the crest catches the light. The
+ * letters move by whole pixels and are never stretched, so the pixel lettering stays crisp. `seed` sets one heading's waits
+ * apart from another's. A space is a letter too, so the wave crosses it in step.
  */
 export function ripple(text: string, time: number, seed: number): RippleLetter[] {
   const letters = [...text];
   // Time is cut into turns, each long enough for one pass and the longest wait; the pass starts a random way into its turn.
-  const turn = letters.length / RIPPLE_SPEED + RIPPLE_WAIT;
+  const pass = (letters.length + WAVE_WIDTH) / RIPPLE_SPEED;
+  const turn = pass + RIPPLE_WAIT;
   const which = Math.floor(time / turn);
   const since = time - which * turn - chance(which + seed * 13) * RIPPLE_WAIT;
-  const front = since < 0 ? -1 : Math.floor(since * RIPPLE_SPEED);
-  // How far through its hop the letter at the front is, 0 to 1: the squat, the jump, the landing.
-  const p = since < 0 ? 0 : since * RIPPLE_SPEED - front;
-  // A fifth of the hop is the squat, three fifths the jump, and the last fifth the landing: the letter is stretched a little in
-  // the air and squashed harder as it lands, sinking a couple of pixels under the line before it comes back up.
-  const air = Math.max(0, Math.min(1, (p - 0.2) / 0.6));
-  const land = p > 0.8 ? Math.sin((Math.PI * (p - 0.8)) / 0.2) : 0;
-  const tall = p < 0.2 ? 1 - 0.14 * Math.sin((Math.PI * p) / 0.2) : p > 0.8 ? 1 - LAND_SQUASH * land : 1 + STRETCH * Math.sin(Math.PI * air);
-  return letters.map((letter, at) =>
-    at === front ? { at, letter, lift: HOP * Math.sin(Math.PI * air) - LAND_SINK * land, scaleX: 1 - (tall - 1) * 0.7, scaleY: tall } : { at, letter, lift: 0, scaleX: 1, scaleY: 1 }
-  );
+  // Where the wave's crest is, in letters: from before the first to past the last.
+  const crest = since < 0 || since > pass ? Number.NEGATIVE_INFINITY : since * RIPPLE_SPEED - WAVE_WIDTH / 2;
+  return letters.map((letter, at) => {
+    const away = Math.abs(at - crest);
+    const lift = away < WAVE_WIDTH / 2 ? Math.round(WAVE_HEIGHT * Math.cos((away / (WAVE_WIDTH / 2)) * (Math.PI / 2))) : 0;
+    return { at, letter, lift, lit: away < 0.6 };
+  });
 }
 
 /**
