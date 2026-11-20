@@ -3,7 +3,7 @@
  * rent and the 1-of-3 pick. `advance` takes the run, the frame's time and the keys pressed, and returns the next run (a copy, so
  * the component's state changes by assignment and renders). Nothing here knows about the engine, so it is tested with node:test.
  *
- * A turn: order (arrange the 4 dealt fruits) → drop (they fall one by one at random spots, each once the last has come to rest) → settle (physics; merges and blasts
+ * A turn: order (arrange the 4 dealt fruits on the tray) → drop (all 4 fall together, each down its slot's lane) → settle (physics; merges and blasts
  * score as they happen) → resolve (overflow, then Simmer fruit score; shown one fruit after another, the tally) → pick (1 of 3, or skip). Five turns make a rent cycle,
  * and between cycles the shop sells fruit, an item, a removal and rerolls for the coins the rent left over.
  *
@@ -30,13 +30,12 @@ export const RIM = 104;
 /** Where dropped fruit appear. */
 export const DROP_Y = 72;
 /**
- * An experiment, off in the game: the tray drop. The shelf is a tray over the jar with a slot per lane, and the whole hand is
- * released together, hand index 0 in the leftmost lane, so where a fruit stands on the shelf decides where it lands (today the
- * order decides only when it falls, and each lands at a random spot). Each fruit wobbles up to `wobble` px within its lane, so a
- * setup is never pixel-perfect. Only the balance bots turn it on (`tools/balance.ts`, "/tray"), to see whether arranging the hand
- * matters more this way.
+ * The tray drop. The shelf is a tray over the jar with a slot per lane, and the whole hand is released together, hand index 0 in
+ * the leftmost lane, so where a fruit stands on the shelf decides where it lands. Each fruit wobbles up to `wobble` px within its
+ * lane, so a setup is never pixel-perfect. Chosen on 20 November over dropping one at a time at random spots, where arranging the
+ * hand did nothing measurable; the balance bots can still play that way ("/spots" in `tools/balance.ts`).
  */
-export const TRAY = { on: false, wobble: 4 };
+export const TRAY = { on: true, wobble: 4 };
 /**
  * For the balance bots: where dropped fruit land (today's random spots, or the tray's wobble) is drawn from another stream when
  * `salt` is not 0. The run's own stream still moves on exactly as with 0, so the rest of the run is unchanged: a bot can try a
@@ -67,15 +66,16 @@ export function bossCycle(cycle: number): boolean {
 }
 
 /**
- * The boss jars. The Peg jar has a round post in the middle that splits the pile. In the Blind jar the hand is covered: it
- * drops as it was dealt, and you cannot see or order it. The Tilted jar leans, and everything in it rolls to the low side. The
- * Flip jar has a lid on, and its gravity turns over after every second drop: the pile falls to the lid, then back to the floor.
+ * The boss jars. The Peg jar has a round post in the middle that splits the pile. In the Blind jar the hand is covered: you
+ * cannot see or arrange it, and the tray is shuffled before it drops. The Tilted jar leans, and everything in it rolls to the low
+ * side. The Flip jar has a lid on, and its gravity turns over before every turn's drop but the cycle's first: the pile falls to
+ * the lid, then back to the floor.
  */
 export type Boss = "peg" | "blind" | "tilt" | "flip";
 export const BOSS_NAME: Readonly<Record<Boss, string>> = { peg: "Peg jar", blind: "Blind jar", tilt: "Tilted jar", flip: "Flip jar" };
-const BOSS_RULE: Readonly<Record<Boss, string>> = { peg: "A post splits the pile.", blind: "The hand is covered.", tilt: "Everything rolls right.", flip: "Gravity flips every 2 drops." };
+const BOSS_RULE: Readonly<Record<Boss, string>> = { peg: "A post splits the pile.", blind: "The hand is covered.", tilt: "Everything rolls right.", flip: "Gravity flips every turn." };
 const BOSSES: readonly Boss[] = ["blind", "peg", "tilt", "flip"];
-/** In the Flip jar, how many fruit drop between one turn of its gravity and the next. */
+/** In the Flip jar, how many fruit drop between one turn of its gravity and the next (when they drop one at a time, not on the tray). */
 export const FLIP_EVERY = 2;
 
 /** The boss jar a run meets: one of them, by its seed. */
@@ -817,14 +817,15 @@ function dropStep(run: Run, dt: number): void {
   run.calmTime = calm ? run.calmTime + dt : 0;
   const ready = run.fruits.length === 0 || run.calmTime >= DROP_CALM || run.dropWait >= DROP_LIMIT;
   const flip = bossNow(run) === "flip";
-  if (run.dropTimer <= 0 && ready && run.queue.length > 0 && flip && run.drops > 0 && run.drops % FLIP_EVERY === 0 && run.flipped === (Math.floor(run.drops / FLIP_EVERY) % 2 === 0)) {
-    // The Flip jar: every second drop its gravity turns over, and the pile is left to fall and come to rest before the next.
+  if (run.dropTimer <= 0 && ready && run.queue.length > 0 && flip && run.drops > 0 && flipDue(run)) {
+    // The Flip jar: its gravity turns over (see `flipDue`), and the pile is left to fall and come to rest before the next drop.
     run.flipped = !run.flipped;
     run.message = run.flipped ? "Gravity flips: everything falls to the lid" : "Gravity flips back";
     run.dropTimer = DROP_GAP;
     run.dropWait = 0;
     run.calmTime = 0;
-  } else if (TRAY.on && run.dropTimer <= 0 && run.queue.length > 0) {
+  } else if (TRAY.on && run.dropTimer <= 0 && run.queue.length > 0 && !(flip && (!ready || (run.drops > 0 && flipDue(run))))) {
+    // In the Flip jar the tray waits for its gravity to turn over (above), and for the pile to come to rest after it.
     trayRelease(run, flip);
   } else if (run.dropTimer <= 0 && ready && run.queue.length > 0) {
     const kind = run.queue.shift() as FruitKind;
@@ -851,8 +852,25 @@ function dropStep(run: Run, dt: number): void {
   }
 }
 
-/** The tray drop (`TRAY`): every fruit left in the queue appears at once, one per lane, left to right. */
+/**
+ * Whether the Flip jar's gravity turns over before the next drop. On the tray: before every release but the cycle's first, so the
+ * pile lies on the floor, then the lid, then the floor. One at a time: after every `FLIP_EVERY` drops.
+ */
+function flipDue(run: Run): boolean {
+  if (TRAY.on) return run.flipped !== (Math.ceil(run.drops / HAND_SIZE) % 2 === 1);
+  return run.drops % FLIP_EVERY === 0 && run.flipped === (Math.floor(run.drops / FLIP_EVERY) % 2 === 0);
+}
+
+/**
+ * The tray drop (`TRAY`): every fruit left in the queue appears at once, one per lane, left to right. In the Blind jar the tray is
+ * shuffled first, so the covered hand is not simply dropped as dealt.
+ */
 function trayRelease(run: Run, flip: boolean): void {
+  if (bossNow(run) === "blind") {
+    const shuffler = new Rng(run.seed);
+    run.queue = shuffler.shuffle(run.queue);
+    run.seed = shuffler.seed;
+  }
   const lanes = Math.max(HAND_SIZE, run.queue.length);
   const width = (JAR.right - JAR.left) / lanes;
   const rng = new Rng(run.seed);

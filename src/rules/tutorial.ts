@@ -31,16 +31,16 @@ export const LESSONS: readonly Lesson[] = [
   },
   {
     id: "order",
-    title: "Order matters",
-    text: "Fruit drop left to right and score by what they touch. Drag one to reorder.",
-    keysText: "Fruit drop left to right and score by what they touch. Enter picks one up to move it.",
+    title: "Placement",
+    text: "Each fruit falls straight down from its spot and scores by what it touches. Drag to move.",
+    keysText: "Each fruit falls straight down from its spot. Enter picks one up to move it.",
     target: "shelf",
   },
   {
     id: "drop",
     title: "Drop them in",
-    text: "Happy with the order? Tap the jar to drop them in.",
-    keysText: "Happy with the order? Press Space to drop them in.",
+    text: "Happy with the tray? Tap the jar to drop them in.",
+    keysText: "Happy with the tray? Press Space to drop them in.",
     target: "jar",
   },
   {

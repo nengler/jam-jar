@@ -4,7 +4,7 @@
  * each fruit takes that fruit whenever it is offered and nothing else, which shows what the fruit is worth next to "skip"
  * ("chili+blueberry+seed" takes any of those). They drop each hand as dealt, unless the player says how to arrange it:
  *
- * - "/order" ("random/order") arranges it greedily first (`orderHand`, or `trayHand` with "/tray"), which shows what a
+ * - "/order" ("random/order") arranges it greedily first (`trayHand`, or `orderHand` with "/spots"), which shows what a
  *   sensible arrangement is worth.
  * - "/best" plays the turn once for every arrangement of the hand (the physics is seeded, so each is played exactly as it would
  *   be), then plays the one that scored most that turn; "/worst" the one that scored least. They see what a player cannot, so
@@ -12,7 +12,8 @@
  * - "/fair" is "/best" without the luck: it plays each arrangement 3 times (BALANCE_TRIES), each with other landing spots or
  *   another wobble (`SPOTS` in jar.ts), takes the one with the best average, and plays it with luck none of the tries saw. What
  *   it gains is what a player who reads the jar perfectly could gain; "/best" minus "/fair" is what seeing the luck was worth.
- * - "/tray" plays with the tray drop (`TRAY` in jar.ts): the hand is released together, a fruit per lane, left to right.
+ * - "/spots" plays the drop the game had before the tray (`TRAY` in jar.ts): a fruit at a time, each at a random spot. "/tray",
+ *   the game's drop, is accepted and changes nothing, so older result files still read.
  *   "/wobble8" sets how far a fruit may wander in its lane (default 4 px; "/wobble0" lands every fruit mid-lane).
  *
  * A player ending "/thin" ("skip/thin") spends its coins in the shop taking Cherries out of its pool; the others buy nothing.
@@ -229,11 +230,11 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   const thin = plan.includes("/thin");
   const order = plan.includes("/order");
   const search = plan.includes("/best") ? "best" : plan.includes("/worst") ? "worst" : plan.includes("/fair") ? "fair" : null;
-  TRAY.on = plan.includes("/tray");
+  TRAY.on = !plan.includes("/spots");
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
   // With no luck to average over (a tray with no wobble), one try is the whole story.
   const tries = TRAY.on && TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
-  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+)/g, "");
+  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
