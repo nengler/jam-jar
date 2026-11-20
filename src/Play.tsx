@@ -87,7 +87,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, tapped: false, drag: false, dragMoved: false, dragX: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, drag: false, dragMoved: false, dragX: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -112,11 +112,7 @@ export function Play() {
     if (looking && (input.pressed("Enter") || input.pressed("Space") || input.pressed("D"))) s.whole = false;
     else if (!looking && input.pressed("D")) s.whole = true;
     if (s.run.phase !== "order" || looking) s.drag = false;
-    // A tap on a fruit of the shelf shows what it does; a tap anywhere else puts that away. The same goes for a pick's cards
-    // and the shop's: a tap that lands on none of them leaves nothing chosen (`away`).
-    const away = input.pressed("MouseLeft") && !s.tapped;
-    if (input.pressed("MouseLeft")) s.tip = s.tapped;
-    s.tapped = false;
+    if (s.run.phase !== "order") s.tip = false;
     s.run = advance(
       s.run,
       dt,
@@ -128,7 +124,7 @@ export function Play() {
         confirm: !looking && (input.pressed("Enter") || s.click),
         drop: !looking && (input.pressed("Space") || s.drop),
         point: looking ? -1 : s.point,
-        away: !looking && away,
+        away: !looking && s.away,
       },
       s.reports
     );
@@ -136,6 +132,7 @@ export function Play() {
     s.point = -1;
     s.click = false;
     s.drop = false;
+    s.away = false;
     // Through a moment once (a hand dropped, a pick made, the shop left), its keys are known: they are not shown again.
     if (moment(s.run) !== before) learn(before);
     // Each time the run comes to rest where the player acts, it is kept for "Continue"; once it is over there is nothing to keep.
@@ -169,7 +166,14 @@ export function Play() {
   const click = (card: number) => {
     s.point = card;
     s.click = true;
-    s.tapped = true;
+  };
+  // A tap that landed on none of a pick's cards, or of the shop's: nothing is chosen any more (the boxes around the cards hear it).
+  const away = () => {
+    s.away = true;
+  };
+  // And one that landed off the shelf puts away the tooltip of the fruit that was tapped.
+  const untip = () => {
+    s.tip = false;
   };
   // Dragging a fruit along the shelf (the box over the shelf hears it). A press on a fruit picks it up; while the button or finger
   // stays down it goes where the pointer goes, the others making room; letting go puts it down. A press and release in one place
@@ -182,7 +186,7 @@ export function Play() {
   const dragStart = (x: number) => {
     s.point = shelfAt(x);
     s.click = true;
-    s.tapped = true;
+    s.tip = true;
     s.drag = !s.run.holding;
     s.dragMoved = false;
     s.dragX = x;
@@ -315,7 +319,7 @@ export function Play() {
           jar each is under a cloth. */}
       <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y} />
       {/* The box that hears the hand being dragged and tapped: over the fruit on the shelf, and under their tooltips' boxes. */}
-      {ordering && !s.whole && <Flex x={shelfLeft} y={SHELF_Y - 44} width={shelf.length * SLOT} height={52} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} />}
+      {ordering && !s.whole && <Flex x={shelfLeft} y={SHELF_Y - 44} width={shelf.length * SLOT} height={52} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} onPressOutside={untip} />}
       {placed(shelf).map((slot) => (
         <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} y={SHELF_Y - 18}>
           {ordering && !blind && slot.at === run.cursor && (keys || s.tip) && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
@@ -417,7 +421,7 @@ export function Play() {
             <Flex direction="row" justifyContent="center" height={32}>
               <Letters text="Pick a fruit" seed={5} />
             </Flex>
-            <Flex direction="row" gap={OFFER_GAP}>
+            <Flex direction="row" gap={OFFER_GAP} onPressOutside={away}>
               {placed(run.offers).map((offer) => (
                 <Flex key={offer.at} height={OFFER_H + OFFER_LIFT} direction="column" justifyContent={offer.at === run.offerCursor ? "start" : "end"}>
                   {/* What a card's keywords mean shows beside it while it is the chosen one, and only then. A tap or a click
@@ -527,7 +531,7 @@ export function Play() {
           </Flex>
         </Entity>
       )}
-      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} onPoint={point} onClick={click} onSpace={tapDrop} />}
+      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} onPoint={point} onClick={click} onAway={away} onSpace={tapDrop} />}
       {paused && <Pause />}
     </Entity>
   );

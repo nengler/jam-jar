@@ -32,6 +32,8 @@ interface ShopProps {
   /** The mouse came over a card or an action (its place in the shop's cursor order), or pressed it. */
   onPoint: (place: number) => void;
   onClick: (place: number) => void;
+  /** A tap landed on none of the shelf's cards: nothing on it is chosen any more. */
+  onAway: () => void;
   /** A button that does what Space does was pressed: leave the shop, or back out of taking a fruit out. */
   onSpace: () => void;
 }
@@ -51,7 +53,7 @@ function Price({ price, afford }: { price: number; afford: boolean }) {
  * The rules (rules/jar.ts, `Shop`) hold what is for sale and where the cursor is; this draws them. `hints` is whether the keys are
  * shown: the first visit, and the first time a fruit is taken out.
  */
-export function Shop({ run, shop, hints, onPoint, onClick, onSpace }: ShopProps) {
+export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: ShopProps) {
   // The card the cursor is on shows what its keywords mean, but not over the pause menu.
   const paused = useGame((g) => g.paused);
   const kinds = poolRows(run.pool);
@@ -69,7 +71,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onSpace }: ShopProps)
 
         {/* The shelf. Each place is a little taller than its card, and the chosen card stands at the top of its place. A tap or a
             click chooses a card and a second buys it; the pointer coming over one does not choose it (see the pick). */}
-        <Flex direction="row" gap={CARD_GAP}>
+        <Flex direction="row" gap={CARD_GAP} onPressOutside={onAway}>
           {placed(shop.fruits).map((slot) => (
             <Flex key={slot.at} height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === slot.at ? "start" : "end"}>
               <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={8} backgroundImage={cardFor(!shop.removing && shop.cursor === slot.at)} slice={CARD_SLICE} focusable={false} onPress={() => onClick(slot.at)}>
