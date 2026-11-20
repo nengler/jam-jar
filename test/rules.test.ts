@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import { motes, poolRows, termsOf } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
+import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
 import { APPLE, BANANA, FRUITS, HONEY } from "../src/rules/fruits.ts";
 import {
   advance,
@@ -1089,4 +1090,31 @@ test("the run keeps what its end board shows: its best turn, and what earned its
     ["Apple", "Merge", "Crush"],
     "the three that scored most; what lost points is left out"
   );
+});
+
+test("the tutorial's lessons: each waits for its moment, and is done when the player has done it or the moment has passed", () => {
+  const none = { looked: false, moved: false, acted: false };
+  const at = (phase: Run["phase"]): Run => ({ ...newRun(7), phase });
+  const lesson = (id: string) => LESSONS.find((l) => l.id === id)!;
+  assert.equal(lessonAt(0)!.id, "shelf");
+  assert.equal(lessonAt(LESSONS.length), null, "past the last: the tutorial is over");
+
+  // The shelf's lesson shows while ordering, and is done once a fruit has been looked at, or the hand dropped.
+  assert.equal(lessonNow(0, at("order"))!.id, "shelf");
+  assert.equal(lessonNow(0, at("drop")), null);
+  assert.equal(lessonDone(lesson("shelf"), at("order"), none), false);
+  assert.equal(lessonDone(lesson("shelf"), at("order"), { ...none, looked: true }), true);
+  assert.equal(lessonDone(lesson("shelf"), at("drop"), none), true, "its moment passed");
+  assert.equal(lessonDone(lesson("order"), at("order"), { ...none, looked: true }), false, "looking is not reordering");
+  assert.equal(lessonDone(lesson("order"), at("order"), { ...none, moved: true }), true);
+  assert.equal(lessonDone(lesson("drop"), at("order"), { looked: true, moved: true, acted: true }), false, "only dropping ends it");
+
+  // The pick's and the shop's wait for the first pick and the first shop.
+  assert.equal(lessonShows(lesson("pick"), at("order")), false);
+  assert.equal(lessonShows(lesson("pick"), at("pick")), true);
+  assert.equal(lessonShows(lesson("score"), at("settle")), true);
+  assert.equal(lessonShows(lesson("shop"), at("shop")), true);
+  assert.equal(lessonDone(lesson("shop"), at("shop"), { ...none, acted: true }), true, "it lies over the shop's words, so it goes when there is something to read");
+  // Every lesson fits its card: a title, and words for the pointer and for the keyboard.
+  for (const l of LESSONS) assert.ok(l.title.length <= 14 && l.text.length <= 90 && l.keysText.length <= 90, l.id);
 });

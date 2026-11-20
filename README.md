@@ -23,12 +23,17 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 
 ## Controls
 
-Everything can also be done with the mouse or a finger, with no keyboard: drag a fruit along the shelf to where it should stand (or tap it,
-then tap the place), tap the jar to drop the hand into it, and tap the buttons for what Space, Esc and Enter do elsewhere (Skip,
+Everything can also be done with the mouse or a finger, with no keyboard: drag a fruit along the shelf to where it should stand, tap the jar to drop the hand into it, and tap the buttons for what Space, Esc and Enter do elsewhere (Skip,
 Done, Back, and Pause on the Pool board). A tap on a card (in the pick or the shop) chooses it and shows what its keywords mean; a second tap takes or buys it.
 No card is chosen until you choose one. The shop's actions, a kind in the take-out dialog and a fruit the Preserves Jar can
 keep act on one tap. The Pool board shows what is still to be dealt; its "See all" button
-(or D) opens a board of every fruit in the pool.
+(or D) opens a board of every fruit in the pool, where a tap on a kind shows all it does beside the board. A fruit's tooltip, on
+the shelf and in the Pool, says what each of its keywords means, as a pick's card does.
+
+The first game has a tutorial (`src/rules/tutorial.ts`, `src/Coach.tsx`). It is not a game of its own: a card beside the jar
+says one thing at a time about the run being played (the shelf, the order, dropping, scoring, the rent, the pick, the pool, the
+shop), frames what it is about, and moves on when the player has done it or tapped "Got it". A lesson waits for its moment,
+so the card is away in between. "No tips" ends it, and the settings' Tips row turns it off or starts it again.
 
 `npx tse package . --engine web` builds the game as a web page in `dist/jam-jar-web`, and `.github/workflows/pages.yml`
 publishes it to GitHub Pages on every push to `main` (once Settings -> Pages -> Source is set to "GitHub Actions"). The
@@ -45,9 +50,8 @@ screen fills the window at any size, a phone's included.
 | Any time | Esc pause, D the whole pool |
 
 The screens word their prompts by what the player is using, whichever was pressed last: a keyboard is told its keys, a
-mouse or a finger to tap and drag, and no key is named to a player who has not pressed one (`keys` in `src/GameState.ts`).
-For a player at a keyboard, the keys for the pick and the shop are on screen the first time each comes up and not again; how to move a fruit and drop
-the hand is on the fruit's card under the shelf every time;
+mouse or a finger to tap and drag, and no key is named to a player who has not pressed one (the engine's `useInputDevice`).
+For a player at a keyboard, the keys for the pick and the shop are on screen the first time each comes up and not again;
 the pause menu always lists them. That, and the two volumes on the settings screen (music and sounds, 0 to 10), are the
 player's settings (`src/settings.ts`), which the engine keeps between launches.
 

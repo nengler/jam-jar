@@ -489,3 +489,39 @@ test("the end of a run: Play again starts a new one from its board, and Escape g
   assert.equal(useGame.getState().screen, "title");
   game.close();
 });
+
+test("the first game's tutorial: a card says one thing at a time and moves on as the player does it; No tips ends it", () => {
+  settings.set({ tutorial: 0 });
+  const game = startRun();
+  const step = () => useGame.getState().tutorial;
+  const coach = () => findComponent("Coach", game.player.world.root);
+  game.input("_*2");
+  assert.equal(step(), 0, "the shelf's lesson");
+  assert.ok(coach() !== null, "its card is up");
+  // Tap a fruit on the shelf: that is what the first lesson asks.
+  game.input("click@296,30, _*3");
+  assert.equal(step(), 1, "on to how the order matters");
+  // Drag the first fruit along the shelf: the second.
+  game.input("mouse@248,30, mouse@248,30+MouseLeft, mouse@300,30+MouseLeft, mouse@350,30+MouseLeft, mouse@350,30, _*3");
+  assert.equal(step(), 2, "on to dropping the hand");
+  game.input("Space, _*3");
+  assert.equal(step(), 3, "dropped: how it merges and scores, while it does");
+  playedOut(game);
+  game.input("_*3");
+  assert.equal(step(), 4, "the next hand: the rent");
+  // Got it goes on without doing anything; the pick's lesson then waits for the first pick, its card away.
+  const next = findComponent("Coach", game.player.world.root) as unknown as { props: { onNext: () => void; onSkip: () => void } };
+  next.props.onNext();
+  game.input("_*3");
+  assert.equal(step(), 5);
+  assert.equal(coach(), null, "nothing to say until the pick");
+  game.input("Space, _*3");
+  assert.equal(playedOut(game).phase, "pick");
+  game.input("_*3");
+  assert.ok(coach() !== null, "the pick's lesson");
+  (coach() as unknown as { props: { onSkip: () => void } }).props.onSkip();
+  game.input("_*3");
+  assert.equal(coach(), null);
+  assert.equal(settings.get().tutorial, 8, "over, and kept that way between launches");
+  game.close();
+});
