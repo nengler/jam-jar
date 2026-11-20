@@ -94,6 +94,35 @@ def write_score_notes() -> None:
             out.writeframes(struct.pack(f"<{len(samples)}h", *samples))
 
 
+def write_last_turn() -> None:
+    """The last turn's sound: a quick rising whoosh of filtered noise into two struck low notes a fifth apart, a drum roll's weight without a drum."""
+    import math
+    import random
+    import struct
+    import wave
+
+    rng = random.Random(5)
+    frames = int(SCORE_RATE * 0.7)
+    samples = []
+    smooth = 0.0
+    for n in range(frames):
+        t = n / SCORE_RATE
+        # The whoosh: noise through a low-pass that opens, swelling over the first 0.22 s and cut off as the notes strike.
+        swell = min(1.0, t / 0.22) ** 2 if t < 0.22 else math.exp(-(t - 0.22) * 30.0)
+        smooth += (rng.uniform(-1.0, 1.0) - smooth) * (0.05 + 0.5 * min(1.0, t / 0.22))
+        whoosh = 0.5 * swell * smooth
+        # The strike: G3 and D4 together, with a little of the octave, dying away.
+        s = max(0.0, t - 0.22)
+        struck = 0.0 if t < 0.22 else math.exp(-s * 6.0) * (math.sin(2 * math.pi * 196.0 * s) + 0.7 * math.sin(2 * math.pi * 293.66 * s) + 0.3 * math.sin(2 * math.pi * 392.0 * s))
+        fade = min(1.0, (frames - n) / (SCORE_RATE * 0.03))
+        samples.append(int(max(-1.0, min(1.0, fade * (whoosh + 0.4 * struck))) * 32767))
+    with wave.open(str(ASSETS / "last.wav"), "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(SCORE_RATE)
+        out.writeframes(struct.pack(f"<{len(samples)}h", *samples))
+
+
 SOUNDS = {
     "merge.wav": "interface-sounds-glass-001.wav",
     "land.wav": "impact-sounds-impact-soft-medium-000.wav",
@@ -517,6 +546,7 @@ def main() -> None:
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
     write_score_notes()
+    write_last_turn()
     print(f"wrote {len(sprites) * 3} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds (the music among them)")
 
 
