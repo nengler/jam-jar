@@ -6,7 +6,7 @@ import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
-import { KeyHint, TapButton } from "./KeyHint.tsx";
+import { TapButton } from "./KeyHint.tsx";
 import { atRest, cycleTitle, grownOf, leaned, moment, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
@@ -400,10 +400,11 @@ export function Play() {
             <Flex direction="row" gap={OFFER_GAP}>
               {placed(run.offers).map((offer) => (
                 <Flex key={offer.at} height={OFFER_H + OFFER_LIFT} direction="column" justifyContent={offer.at === run.offerCursor ? "start" : "end"}>
-                  {/* What a card's keywords mean shows beside it while it is the chosen one or the mouse is over it; the mouse over
-                      a card chooses it, and a click takes it. */}
-                  <Flex width={OFFER_W} height={OFFER_H} direction="column" alignItems="center" paddingTop={18} gap={4} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => point(offer.at)} onPress={() => click(offer.at)}>
-                    <Tooltip show={!paused && offer.at === run.offerCursor ? true : undefined} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                  {/* What a card's keywords mean shows beside it while it is the chosen one, and only then. A tap or a click
+                      chooses a card and a second takes it. The pointer coming over a card does not choose it: on a touchscreen
+                      the pointer stays where the last tap was, which would choose a card before the player had. */}
+                  <Flex width={OFFER_W} height={OFFER_H} direction="column" alignItems="center" paddingTop={18} gap={4} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPress={() => click(offer.at)}>
+                    <Tooltip show={!paused && offer.at === run.offerCursor} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                       <Terms text={FRUITS[offer.card].text} />
                     </Tooltip>
                     <Flex width={64} height={64}>
@@ -418,11 +419,13 @@ export function Play() {
               ))}
             </Flex>
           </Flex>
+          {/* Until a card is chosen, how to choose one; then how to take it. */}
+          <Flex right={16} bottom={6} direction="row">
+            <Text color={LIGHT}>{run.offerCursor < 0 ? "Tap a card to see what it does" : "Tap it again, or Enter, to take it"}</Text>
+          </Flex>
           {/* The way out, always there, in the bottom left corner: a card's keywords open to its side, never over this. */}
           <Flex left={16} bottom={2} direction="row" alignItems="center" gap={20}>
             <TapButton label="Skip for 1 coin" keyName={hints ? "Space" : ""} onPress={tapDrop} />
-            {hints && <KeyHint name="arrows" label="Choose" />}
-            {hints && <KeyHint name="Enter" label="Take" />}
           </Flex>
         </Entity>
       )}

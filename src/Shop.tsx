@@ -67,13 +67,14 @@ export function Shop({ run, shop, hints, onPoint, onClick, onSpace }: ShopProps)
           <Letters text="Shop" seed={3} />
         </Flex>
 
-        {/* The shelf. Each place is a little taller than its card, and the chosen card stands at the top of its place. */}
+        {/* The shelf. Each place is a little taller than its card, and the chosen card stands at the top of its place. A tap or a
+            click chooses a card and a second buys it; the pointer coming over one does not choose it (see the pick). */}
         <Flex direction="row" gap={CARD_GAP}>
           {placed(shop.fruits).map((slot) => (
             <Flex key={slot.at} height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === slot.at ? "start" : "end"}>
-              <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={8} backgroundImage={cardFor(!shop.removing && shop.cursor === slot.at)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(slot.at)} onPress={() => onClick(slot.at)}>
+              <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={8} backgroundImage={cardFor(!shop.removing && shop.cursor === slot.at)} slice={CARD_SLICE} focusable={false} onPress={() => onClick(slot.at)}>
                 {slot.card !== null && (
-                  <Tooltip show={!paused && !shop.removing && shop.cursor === slot.at ? true : undefined} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                  <Tooltip show={!paused && !shop.removing && shop.cursor === slot.at} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                     <Terms text={FRUITS[slot.card].text} />
                   </Tooltip>
                 )}
@@ -102,9 +103,9 @@ export function Shop({ run, shop, hints, onPoint, onClick, onSpace }: ShopProps)
             </Flex>
           ))}
           <Flex height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === SHOP_ITEM ? "start" : "end"}>
-            <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={8} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_ITEM)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(SHOP_ITEM)} onPress={() => onClick(SHOP_ITEM)}>
+            <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={8} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_ITEM)} slice={CARD_SLICE} focusable={false} onPress={() => onClick(SHOP_ITEM)}>
               {shop.item !== null && (
-                <Tooltip show={!paused && !shop.removing && shop.cursor === SHOP_ITEM ? true : undefined} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                <Tooltip show={!paused && !shop.removing && shop.cursor === SHOP_ITEM} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                   <Terms text={ITEMS[shop.item].text} />
                 </Tooltip>
               )}

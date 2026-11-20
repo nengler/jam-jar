@@ -24,8 +24,9 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 
 Everything can also be done with the mouse or a finger, with no keyboard: drag a fruit along the shelf to where it should stand (or tap it,
 then tap the place), tap the jar to drop the hand into it, and tap the buttons for what Space, Esc and Enter do elsewhere (Skip,
-Done, Back, and Pause on the Pool board). Cards, the shop's actions, a kind in the take-out dialog and a
-fruit the Preserves Jar can keep are tapped directly. The Pool board shows what is still to be dealt; its "See all" button
+Done, Back, and Pause on the Pool board). A tap on a card (in the pick or the shop) chooses it and shows what its keywords mean; a second tap takes or buys it.
+No card is chosen until you choose one. The shop's actions, a kind in the take-out dialog and a fruit the Preserves Jar can
+keep act on one tap. The Pool board shows what is still to be dealt; its "See all" button
 (or D) opens a board of every fruit in the pool.
 
 `npx tse package . --engine web` builds the game as a web page in `dist/jam-jar-web`, and `.github/workflows/pages.yml`

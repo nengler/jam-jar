@@ -69,7 +69,8 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     else if (run.phase === "pick") {
       const wanted = picks.split("+");
       const at = picks === "random" ? rng.int(0, 2) : run.offers.findIndex((kind) => wanted.includes(kind));
-      queued = at < 0 ? [SPACE] : [...Array<typeof NONE>(at).fill(RIGHT).flatMap((f) => [f, NONE]), ENTER];
+      // No card is chosen at first: one press of Right goes to the first, so the card at `at` is `at + 1` presses away.
+      queued = at < 0 ? [SPACE] : [...Array<typeof NONE>(at + 1).fill(RIGHT).flatMap((f) => [f, NONE]), ENTER];
     } else if (run.phase === "rent") {
       // The coins the real rent would have left (the run itself was paid for a rent of 0).
       const due = rent[scores.length] as number;

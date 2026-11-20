@@ -399,7 +399,7 @@ export function newRun(seed: number): Run {
     afterTally: "pick",
     afterSound: null,
     offers: [],
-    offerCursor: 0,
+    offerCursor: -1,
     popups: [],
     links: [],
     effects: [],
@@ -1208,18 +1208,23 @@ function offer(run: Run): void {
   // Now and then a Legendary takes the last place.
   if (rng.next() < LEGENDARY_CHANCE) run.offers[2] = rng.pick(LEGENDARY);
   run.seed = rng.seed;
-  run.offerCursor = 0;
+  run.offerCursor = -1;
   run.phase = "pick";
 }
 
 function pickStep(run: Run, keys: Keys): void {
   const move = (keys.right || keys.down ? 1 : 0) - (keys.left || keys.up ? 1 : 0);
-  const to = keys.point >= 0 && keys.point < run.offers.length ? keys.point : Math.max(0, Math.min(run.offers.length - 1, run.offerCursor + move));
+  // No card is chosen until the player chooses one (the cursor is -1): an arrow goes to the first, the pointer to the one it is on.
+  const pointed = keys.point >= 0 && keys.point < run.offers.length;
+  // A tap on a card that was not the chosen one only chooses it, so what it does can be read; a second tap takes it. With a
+  // mouse the card is chosen as the pointer comes over it, so one click takes it.
+  const fresh = pointed && keys.point !== run.offerCursor;
+  const to = pointed ? keys.point : move === 0 ? run.offerCursor : Math.max(0, Math.min(run.offers.length - 1, run.offerCursor + move));
   if (to !== run.offerCursor) {
     run.offerCursor = to;
     sound(run, "tick");
   }
-  if (keys.confirm) {
+  if (keys.confirm && !fresh && run.offerCursor >= 0) {
     const kind = run.offers[run.offerCursor] as FruitKind;
     run.pool.push(kind);
     // Shuffled into what is still to be dealt, so a new fruit shows up soon.
@@ -1264,7 +1269,7 @@ function leaveRent(run: Run): void {
     run.message = "You paid every rent. The jar is yours!";
     return;
   }
-  run.shop = { fruits: [], item: null, cursor: 0, removing: false, removeCursor: 0 };
+  run.shop = { fruits: [], item: null, cursor: -1, removing: false, removeCursor: 0 };
   stock(run, run.shop);
   run.phase = "shop";
   const next = bossNow(run, run.cycle + 1);
@@ -1318,9 +1323,15 @@ function shopStep(run: Run, keys: Keys): void {
 
   // The shelf (0 to SHOP_ITEM) is the top row and the three actions the bottom one: left and right walk along both, up and
   // down change rows, keeping roughly the same place across.
-  let to = keys.point >= 0 && keys.point <= SHOP_LEAVE ? keys.point : Math.max(0, Math.min(SHOP_LEAVE, shop.cursor + across));
-  if (down > 0 && to <= SHOP_ITEM) to = SHOP_REMOVE + Math.min(2, Math.floor((to * 3) / (SHOP_ITEM + 1)));
-  else if (down < 0 && to > SHOP_ITEM) to = Math.round(((to - SHOP_REMOVE) * SHOP_ITEM) / 2);
+  // As in the pick: nothing is chosen at first (-1), an arrow goes to the first card, and a tap on a card that was not the
+  // chosen one only chooses it, so it can be read before it is bought. The three actions say all they do, and act on one tap.
+  const pointed = keys.point >= 0 && keys.point <= SHOP_LEAVE;
+  const fresh = pointed && keys.point !== shop.cursor && keys.point <= SHOP_ITEM;
+  let to = pointed ? keys.point : shop.cursor < 0 ? (across !== 0 || down !== 0 ? 0 : -1) : Math.max(0, Math.min(SHOP_LEAVE, shop.cursor + across));
+  if (shop.cursor >= 0 && !pointed) {
+    if (down > 0 && to <= SHOP_ITEM) to = SHOP_REMOVE + Math.min(2, Math.floor((to * 3) / (SHOP_ITEM + 1)));
+    else if (down < 0 && to > SHOP_ITEM) to = Math.round(((to - SHOP_REMOVE) * SHOP_ITEM) / 2);
+  }
   if (to !== shop.cursor) sound(run, "tick");
   shop.cursor = to;
 
@@ -1328,7 +1339,7 @@ function shopStep(run: Run, keys: Keys): void {
     leaveShop(run);
     return;
   }
-  if (!keys.confirm) return;
+  if (!keys.confirm || fresh || shop.cursor < 0) return;
   if (shop.cursor < SHOP_FRUITS) {
     const kind = shop.fruits[shop.cursor];
     if (kind == null || !pay(run, FRUIT_PRICE)) return;

@@ -287,6 +287,10 @@ test("the shop: a fruit costs coins, joins the pool and leaves a gap on the shel
   let run = inShop(10);
   const kind = run.shop!.fruits[1]!;
   const before = run.pool.length;
+  assert.equal(run.shop!.cursor, -1, "nothing is chosen at first");
+  run = press(run, { confirm: true });
+  assert.equal(run.coins, 10, "and Enter on nothing buys nothing");
+  run = press(run, { right: true });
   run = press(run, { right: true });
   run = press(run, { confirm: true });
   assert.equal(run.coins, 10 - FRUIT_PRICE);
@@ -369,6 +373,8 @@ test("the shop: removal takes one of the chosen kind out of the pool, and Space 
 
 test("the shop: up and down change rows, and the last action leaves for the next cycle", () => {
   let run = inShop(0);
+  run = press(run, { down: true });
+  assert.equal(run.shop!.cursor, 0, "the first arrow goes to the first card");
   run = press(run, { down: true });
   assert.equal(run.shop!.cursor, SHOP_REMOVE);
   run = press(run, { right: true });
@@ -696,14 +702,18 @@ test("terms: cards keep to the vocabulary, every keyword is used, and a definiti
   }
 });
 
-test("the mouse: coming over a card chooses it, in the pick and in the shop, and a click is Enter on it", () => {
+test("the mouse: coming over a card chooses it, in the pick and in the shop, and a click on the chosen one is Enter on it", () => {
   let run = jarWith([]);
   run.turn = 1;
   resolve(run);
   assert.equal(run.phase, "pick");
+  assert.equal(run.offerCursor, -1, "no card is chosen at first");
+  run = press(run, { confirm: true });
+  assert.equal(run.phase, "pick", "and Enter on nothing takes nothing");
   run = press(run, { point: 2 });
   assert.equal(run.offerCursor, 2);
   const kind = run.offers[1]!;
+  run = press(run, { point: 1 });
   run = press(run, { point: 1, confirm: true });
   assert.equal(run.pool.at(-1), kind, "clicked: taken");
 
@@ -711,7 +721,27 @@ test("the mouse: coming over a card chooses it, in the pick and in the shop, and
   shop = press(shop, { point: SHOP_REROLL });
   assert.equal(shop.shop!.cursor, SHOP_REROLL);
   shop = press(shop, { point: SHOP_LEAVE, confirm: true });
-  assert.equal(shop.phase, "order");
+  assert.equal(shop.phase, "order", "an action acts on one tap");
+});
+
+test("a finger: the first tap on a card chooses it, so it can be read, and a second takes or buys it", () => {
+  let run = jarWith([]);
+  run.turn = 1;
+  resolve(run);
+  const before = run.pool.length;
+  run = press(run, { point: 0, confirm: true });
+  assert.deepEqual([run.phase, run.offerCursor, run.pool.length], ["pick", 0, before], "chosen, not taken");
+  run = press(run, { point: 2, confirm: true });
+  assert.deepEqual([run.phase, run.offerCursor, run.pool.length], ["pick", 2, before], "another card: chosen again");
+  const kind = run.offers[2]!;
+  run = press(run, { point: 2, confirm: true });
+  assert.equal(run.pool.at(-1), kind, "the same card again: taken");
+
+  let shop = inShop(10);
+  shop = press(shop, { point: 1, confirm: true });
+  assert.deepEqual([shop.shop!.cursor, shop.coins], [1, 10], "chosen, not bought");
+  shop = press(shop, { point: 1, confirm: true });
+  assert.equal(shop.coins, 10 - FRUIT_PRICE);
 });
 
 test("readability: a popup names what earned it, and says x2 when a Booster doubled it", () => {
