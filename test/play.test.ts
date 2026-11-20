@@ -1,32 +1,53 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { createPlayer, parseInputScript, playGame, RecordingBackend, runScript, type GamePlay, type Player } from "@tsengine/player";
+import { parseInputScript, playGame, runScript, type GamePlay, type Player } from "@tsengine/player";
 import { getInputDevice } from "@tsengine/runtime";
 import { findComponent } from "@tsengine/testing";
 
 import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
 import { settings } from "../src/settings.ts";
-import { JAR, RIM, type Fruit, type Run } from "../src/rules/jar.ts";
+import { JAR, RIM, type Run } from "../src/rules/jar.ts";
+import { fruit, litChili } from "./helpers.ts";
 
-/** Which screen shows, whether play is paused, and the run's phase and jar when a run is on. */
-function seen(player: Player): { screen: string; paused: boolean; phase?: string; fruits?: number; hand?: number; dealt?: number } {
-  const { screen, paused } = useGame.getState();
-  const play = findComponent("Play", player.world.root) as { s: { run: Run } } | null;
-  if (play === null) return { screen, paused };
-  const run = play.s.run;
-  return { screen, paused, phase: run.phase, fruits: run.fruits.length, hand: run.hand.length, dealt: run.discard.length };
+/** What the Play screen keeps that the tests look at: the run, whether a fruit's tooltip shows, and how long since the last turn's banner began. */
+type PlayState = { run: Run; tip: boolean; last: number };
+
+/** The Play screen's state, or null when it is not up. */
+function playOf(player: Player): PlayState | null {
+  const play = findComponent("Play", player.world.root) as unknown as { s: PlayState } | null;
+  return play === null ? null : play.s;
 }
 
 /** The run of a game in play. */
 function runOf(game: GamePlay): Run {
-  return (findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } }).s.run;
+  return playOf(game.player)!.run;
+}
+
+/** Change the run of a game in play. */
+function patch(game: GamePlay, changes: Partial<Run>): void {
+  const play = playOf(game.player)!;
+  play.run = { ...play.run, ...changes };
+}
+
+/** Which screen shows, whether play is paused, and the run's phase and jar when a run is on. */
+function seen(player: Player): { screen: string; paused: boolean; phase?: string; fruits?: number; hand?: number; dealt?: number } {
+  const { screen, paused } = useGame.getState();
+  const play = playOf(player);
+  if (play === null) return { screen, paused };
+  const run = play.run;
+  return { screen, paused, phase: run.phase, fruits: run.fruits.length, hand: run.hand.length, dealt: run.discard.length };
+}
+
+/** The game launched, at its title, on the files a launch before left (none by default). */
+function boot(storage?: Record<string, string>): GamePlay {
+  return playGame(gameConfig, { bindings, ...(storage === undefined ? {} : { storage }) });
 }
 
 /** A game started from the title: a new run, its first hand on the shelf. */
 function startRun(): GamePlay {
-  return playGame(gameConfig, { bindings }).input("_*2, Enter, _*5");
+  return boot().input("_*2, Enter, _*5");
 }
 
 /** Wait for a hand that was dropped to be played out: the run is at rest where the player acts next (a hand, a pick, the rent, the end). */
@@ -35,7 +56,7 @@ function playedOut(game: GamePlay): Run {
   return runOf(game);
 }
 
-test("Play starts a run with a hand of 4; Space drops it into the jar", () => {
+test("Play starts a run with a hand of 4; Space drops it, and on the engine's physics the fruit fall into the jar, settle and the next hand comes up", () => {
   const game = startRun();
   const first = seen(game.player);
   assert.equal(first.screen, "play");
@@ -43,22 +64,13 @@ test("Play starts a run with a hand of 4; Space drops it into the jar", () => {
   assert.equal(first.hand, 4);
   // A fruit drops once the last has landed and come to rest, so a hand of 4 takes a few seconds.
   game.input("Space, _*2");
-  playedOut(game);
-  const last = seen(game.player);
-  game.close();
-  assert.equal(last.phase, "order", "no pick after the first turn: the next hand is dealt");
-  assert.equal(last.hand, 4);
-  assert.equal(last.dealt, 4, "all four dropped");
-  assert.ok(last.fruits! >= 1 && last.fruits! <= 4, "in the jar (some may have merged)");
-});
-
-test("on the engine's physics, a turn's fruit fall into the jar, settle and the next hand comes up", () => {
-  const game = startRun().input("Space, _*2");
   const last = playedOut(game);
   game.close();
-  assert.equal(last.phase, "order");
+  assert.equal(last.phase, "order", "no pick after the first turn: the next hand is dealt");
   assert.equal(last.turn, 2);
-  assert.ok(last.fruits.length >= 1);
+  assert.equal(last.hand.length, 4);
+  assert.equal(last.discard.length, 4, "all four dropped");
+  assert.ok(last.fruits.length >= 1 && last.fruits.length <= 4, "in the jar (some may have merged)");
   for (const f of last.fruits) {
     assert.ok(f.landed, `${f.kind} landed`);
     assert.ok(f.x - f.r >= JAR.left - 0.5 && f.x + f.r <= JAR.right + 0.5, `${f.kind} inside the walls (x = ${f.x})`);
@@ -84,7 +96,7 @@ test("Settings: left turns the sounds down, the next row is the speed, and Escap
 });
 
 test("a moment's keys are learned once it has been played through: the title, then ordering, then the pick", () => {
-  const game = playGame(gameConfig, { bindings }).input("_");
+  const game = boot().input("_");
   assert.deepEqual(settings.get().learned, [], "nothing yet: every hint shows");
   game.input("_, Enter, _*5");
   assert.deepEqual(settings.get().learned, ["title"], "Play was pressed");
@@ -98,47 +110,30 @@ test("a moment's keys are learned once it has been played through: the title, th
   game.close();
 });
 
-/** Launch the game on a backend, press these keys, and close it. */
-function launch(backend: RecordingBackend, script: string): void {
-  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
-  for (const frame of parseInputScript(script, { bindings })) {
-    backend.queueInput(frame);
-    player.step();
-  }
-  player.close();
-}
-
 test("the settings are kept between launches: the volumes and the keys already shown come back", () => {
   // The first launch: into the settings, the sounds up a step, and back.
-  const first = new RecordingBackend();
-  launch(first, "_*2, down, _*2, Enter, _*3, right, _*2, Escape, _*3");
-  assert.equal(first.storageOpenedFor, "jam-jar");
-  assert.ok(first.stored.has("settings"), "written as they change");
+  const first = boot().input("_*2, down, _*2, Enter, _*3, right, _*2, Escape, _*3");
+  first.close();
+  assert.equal(first.backend.storageOpenedFor, "jam-jar");
+  assert.ok(first.backend.stored.has("settings"), "written as they change");
 
   // The second, with the files the first left: the title is up before the settings are read, and must still follow them.
-  const second = new RecordingBackend({ storage: Object.fromEntries(first.stored) });
-  const player = createPlayer(second, { ...gameConfig, warn: () => {} });
-  second.queueInput(parseInputScript("_", { bindings })[0]!);
-  player.step();
+  const second = boot(Object.fromEntries(first.backend.stored));
   assert.equal(settings.get().effects, 0.9);
   assert.deepEqual(useGame.getState().learned, ["title", "settings"], "the title knows its keys were shown");
   assert.equal(useGame.getState().effects, 9);
-  player.close();
+  second.close();
 });
 
 test("a chain of Blasts plays in slow motion, then the game runs at full speed again", () => {
   const frames = parseInputScript("_*2, Enter, _*200", { bindings });
   const speeds: number[] = [];
   runScript(gameConfig, frames, (player) => {
-    const play = findComponent("Play", player.world.root) as { s: { run: Run } } | null;
+    const play = playOf(player);
     if (play === null) return null;
     // Once the run is on, put two lit Chilis in the jar, far enough apart to go off one after the other.
     if (speeds.length === 0) {
-      const chili = (id: number, x: number, fuse: number): Fruit => ({
-        ...{ id, kind: "chili", x0: x, y0: JAR.floor - 16, x, y: JAR.floor - 16, r: 14, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
-        ...{ landed: true, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: false, pickled: false, frozen: false, lit: true, fuse },
-      });
-      play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, fruits: [chili(801, 250, 0.05), chili(802, 390, 0.5)] };
+      play.run = { ...play.run, phase: "settle", hand: [], nextId: 900, fruits: [litChili(801, 250, JAR.floor - 16, 0.05), litChili(802, 390, JAR.floor - 16, 0.5)] };
     }
     speeds.push(useGame.getState().speed);
     return null;
@@ -151,38 +146,24 @@ test("a chain of Blasts plays in slow motion, then the game runs at full speed a
 
 test("a run is kept as it goes and continued from the title after a relaunch, the jar as it was", () => {
   // The first launch: a hand dropped, up to the next one, then closed without a word.
-  const first = new RecordingBackend();
-  const player = createPlayer(first, { ...gameConfig, warn: () => {} });
-  let before: Run | null = null;
-  for (const frame of parseInputScript("_*2, Enter, _*5, Space, _*330", { bindings })) {
-    first.queueInput(frame);
-    player.step();
-    const play = findComponent("Play", player.world.root) as { s: { run: Run } } | null;
-    if (play !== null) before = play.s.run;
-  }
-  player.close();
-  assert.equal(before!.phase, "order");
-  assert.equal(before!.turn, 2);
-  assert.ok(first.stored.has("run"));
+  const first = startRun().input("Space, _*2");
+  const before = playedOut(first);
+  first.close();
+  assert.equal(before.phase, "order");
+  assert.equal(before.turn, 2);
+  assert.ok(first.backend.stored.has("run"));
 
   // The second, on the files the first left: the title offers Continue first, and Enter takes it.
-  const second = new RecordingBackend({ storage: Object.fromEntries(first.stored) });
-  const again = createPlayer(second, { ...gameConfig, warn: () => {} });
-  let after: Run | null = null;
-  for (const frame of parseInputScript("_*2, Enter, _*4", { bindings })) {
-    second.queueInput(frame);
-    again.step();
-    const play = findComponent("Play", again.world.root) as { s: { run: Run } } | null;
-    if (play !== null) after = play.s.run;
-  }
+  const again = boot(Object.fromEntries(first.backend.stored)).input("_*2, Enter, _*4");
+  const after = runOf(again);
   assert.equal(useGame.getState().hasSave, true);
-  assert.equal(after!.phase, "order");
-  assert.equal(after!.cycleScore, before!.cycleScore);
-  assert.deepEqual(after!.hand, before!.hand);
-  assert.deepEqual(after!.pool, before!.pool);
-  assert.equal(after!.fruits.length, before!.fruits.length);
-  for (const [i, f] of after!.fruits.entries()) {
-    const was = before!.fruits[i]!;
+  assert.equal(after.phase, "order");
+  assert.equal(after.cycleScore, before.cycleScore);
+  assert.deepEqual(after.hand, before.hand);
+  assert.deepEqual(after.pool, before.pool);
+  assert.equal(after.fruits.length, before.fruits.length);
+  for (const [i, f] of after.fruits.entries()) {
+    const was = before.fruits[i]!;
     assert.equal(f.kind, was.kind);
     assert.ok(Math.abs(f.x - was.x) < 2 && Math.abs(f.y - was.y) < 2, `${f.kind} lies where it lay (${f.x}, ${f.y} against ${was.x}, ${was.y})`);
   }
@@ -190,92 +171,59 @@ test("a run is kept as it goes and continued from the title after a relaunch, th
 });
 
 test("a run is kept once a hand has been played, and one that ends leaves nothing to continue", () => {
-  const backend = new RecordingBackend();
-  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
-  const step = (script: string) => {
-    for (const frame of parseInputScript(script, { bindings })) {
-      backend.queueInput(frame);
-      player.step();
-    }
-  };
-  step("_*2, Enter, _*5");
+  const game = startRun();
   assert.equal(useGame.getState().hasSave, false, "a run with nothing done yet is not worth keeping");
-  step("Space, _*330");
+  game.input("Space, _*2");
+  playedOut(game);
   assert.equal(useGame.getState().hasSave, true, "kept once its first hand has been played");
   // Lose it: the last turn of a cycle with no score.
-  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
-  play.s.run = { ...play.s.run, turn: 5, phase: "settle", hand: [], calmTime: 10 };
-  step("_*5");
-  assert.equal(play.s.run.phase, "over");
+  patch(game, { turn: 5, phase: "settle", hand: [], calmTime: 10 });
+  game.input("_*5");
+  assert.equal(runOf(game).phase, "over");
   assert.equal(useGame.getState().hasSave, false);
-  assert.ok(!backend.stored.has("run"));
-  player.close();
+  assert.ok(!game.backend.stored.has("run"));
+  game.close();
 });
 
 test("the title shows a jar filling up by itself, and it does not touch what is kept", () => {
-  const backend = new RecordingBackend();
-  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
+  const game = boot();
   let most = 0;
   let turned = false;
-  for (const frame of parseInputScript("_*600", { bindings })) {
-    backend.queueInput(frame);
-    player.step();
-    const demo = findComponent("DemoJar", player.world.root) as unknown as { s: { run: Run } };
+  for (let i = 0; i < 600; i++) {
+    game.input("_");
+    const demo = findComponent("DemoJar", game.player.world.root) as unknown as { s: { run: Run } };
     most = Math.max(most, demo.s.run.fruits.length);
     for (const f of demo.s.run.fruits) assert.ok(f.x - f.r >= JAR.left - 0.5 && f.x + f.r <= JAR.right + 0.5, "inside its walls, wherever the jar is drawn");
-    const fruit = findComponent("Fruit", player.world.root) as unknown as { s: { turn: number } } | null;
-    turned = turned || (fruit !== null && fruit.s.turn !== 0);
+    const ball = findComponent("Fruit", game.player.world.root) as unknown as { s: { turn: number } } | null;
+    turned = turned || (ball !== null && ball.s.turn !== 0);
   }
   assert.ok(most >= 4, `fruit pile up (${most})`);
   assert.ok(turned, "and roll as they land on each other");
   assert.equal(useGame.getState().screen, "title");
   assert.equal(useGame.getState().hasSave, false);
-  assert.ok(!backend.stored.has("run"), "the demo's run is not kept");
+  assert.ok(!game.backend.stored.has("run"), "the demo's run is not kept");
   assert.deepEqual(settings.get().learned, []);
-  player.close();
+  game.close();
 });
 
 test("a Frozen fruit is held where it is: what was under it can go, and it does not fall", () => {
-  const backend = new RecordingBackend();
-  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
-  const step = (script: string) => {
-    for (const frame of parseInputScript(script, { bindings })) {
-      backend.queueInput(frame);
-      player.step();
-    }
-  };
-  step("_*2, Enter, _*5");
-  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
-  const base = play.s.run.fruits;
-  const make = (id: number, kind: Fruit["kind"], y: number, frozen: boolean): Fruit => ({
-    ...{ id, kind, x0: 320, y0: y, x: 320, y, r: 18, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
-    ...{ landed: true, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: false, pickled: false, frozen, lit: false, fuse: 0 },
-  });
+  const game = startRun();
   // An Apple on the floor, and a frozen one and a loose one in mid air above it.
-  play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, fruits: [...base, make(801, "apple", JAR.floor - 18, false), make(802, "apple", 200, true), make(803, "apple", 140, false)] };
-  step("_*90");
-  const at = (id: number) => play.s.run.fruits.find((f) => f.id === id);
-  assert.ok(Math.abs(at(802)!.y - 200) < 0.01, `the frozen one hangs where it was (y = ${at(802)!.y})`);
-  assert.ok(at(803)!.y > 150 && at(803)!.y < 200, `the loose one fell onto it and rests there (y = ${at(803)!.y})`);
-  player.close();
+  const r = runOf(game);
+  patch(game, { phase: "settle", hand: [], nextId: 900, fruits: [...r.fruits, fruit(801, "apple", 320, JAR.floor - 18), { ...fruit(802, "apple", 320, 200), frozen: true }, fruit(803, "apple", 320, 140)] });
+  game.input("_*90");
+  const at = (id: number) => runOf(game).fruits.find((f) => f.id === id)!;
+  assert.ok(Math.abs(at(802).y - 200) < 0.01, `the frozen one hangs where it was (y = ${at(802).y})`);
+  assert.ok(at(803).y > 150 && at(803).y < 200, `the loose one fell onto it and rests there (y = ${at(803).y})`);
+  game.close();
 });
 
 test("in the Flip jar gravity turns over after every second drop: the hand ends on the lid, inside the jar, and still settles", () => {
-  const backend = new RecordingBackend();
-  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
-  const step = (script: string) => {
-    for (const frame of parseInputScript(script, { bindings })) {
-      backend.queueInput(frame);
-      player.step();
-    }
-  };
-  step("_*2, Enter, _*5");
-  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
-  play.s.run = { ...play.s.run, boss: "flip", cycle: 3 };
-  step("Space, _*30");
-  assert.equal(play.s.run.flipped, false, "the first falls to the floor");
-  for (let i = 0; i < 1200 && ["drop", "settle", "tally"].includes(play.s.run.phase); i++) step("_");
-  const run = play.s.run;
+  const game = startRun();
+  patch(game, { boss: "flip", cycle: 3 });
+  game.input("Space, _*30");
+  assert.equal(runOf(game).flipped, false, "the first falls to the floor");
+  const run = playedOut(game);
   assert.deepEqual([run.phase, run.turn], ["order", 2], "it came to rest");
   assert.equal(run.drops, 4);
   assert.equal(run.flipped, true, "turned over after the second drop");
@@ -285,7 +233,7 @@ test("in the Flip jar gravity turns over after every second drop: the hand ends 
     assert.ok(f.y - f.r >= RIM - 0.5, `${f.kind} under the lid (y = ${f.y})`);
     assert.ok(f.x - f.r >= JAR.left - 0.5 && f.x + f.r <= JAR.right + 0.5, `${f.kind} inside the walls (x = ${f.x})`);
   }
-  player.close();
+  game.close();
 });
 
 test("the prompts follow what the player is using: keys once a key is pressed, the pointer once the mouse or a finger is", () => {
@@ -298,121 +246,91 @@ test("the prompts follow what the player is using: keys once a key is pressed, t
 });
 
 test("the hand is reordered by dragging: a fruit follows the pointer along the shelf and stays where it is let go; a tap only shows what a fruit does", () => {
-  const backend = new RecordingBackend();
-  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
-  const step = (script: string) => {
-    for (const frame of parseInputScript(script, { bindings })) {
-      backend.queueInput(frame);
-      player.step();
-    }
-  };
-  step("_*2, Enter, _*5");
-  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run; tip: boolean } };
-  play.s.run = { ...play.s.run, hand: ["cherry", "grape", "orange", "apple"] };
+  const game = startRun();
+  const play = playOf(game.player)!;
+  patch(game, { hand: ["cherry", "grape", "orange", "apple"] });
   // The four stand 48 apart, centred on 320: at 248, 296, 344 and 392, on the shelf at about y = 30. A step sees the frame
   // before it, so each stretch ends with one more frame of the same.
   // (One script for the whole drag: a new script would press the button again.)
-  step("mouse@248,30, mouse@248,30+MouseLeft, mouse@300,30+MouseLeft, mouse@350,60+MouseLeft, mouse@392,30+MouseLeft, mouse@392,30+MouseLeft");
-  assert.equal(play.s.run.holding, true, "a press picks the first one up, and it is held while the button is");
-  assert.deepEqual(play.s.run.hand, ["grape", "orange", "apple", "cherry"], "it went along the shelf, past each of the others");
-  step("mouse@392,30, mouse@392,30");
-  assert.equal(play.s.run.holding, false, "and stays where it was let go");
-  assert.equal(play.s.run.phase, "order");
+  game.input("mouse@248,30, mouse@248,30+MouseLeft, mouse@300,30+MouseLeft, mouse@350,60+MouseLeft, mouse@392,30+MouseLeft, mouse@392,30+MouseLeft");
+  assert.equal(play.run.holding, true, "a press picks the first one up, and it is held while the button is");
+  assert.deepEqual(play.run.hand, ["grape", "orange", "apple", "cherry"], "it went along the shelf, past each of the others");
+  game.input("mouse@392,30, mouse@392,30");
+  assert.equal(play.run.holding, false, "and stays where it was let go");
+  assert.equal(play.run.phase, "order");
 
   // A press and a release in one place is a tap: nothing is picked up or moved, and the fruit shows what it does.
-  step("mouse@296,30+MouseLeft, mouse@296,30, mouse@296,30");
-  assert.equal(play.s.run.holding, false);
-  assert.equal(play.s.run.cursor, 1);
-  assert.equal(play.s.tip, true, "its tooltip shows");
-  assert.deepEqual(play.s.run.hand, ["grape", "orange", "apple", "cherry"]);
+  game.input("mouse@296,30+MouseLeft, mouse@296,30, mouse@296,30");
+  assert.equal(play.run.holding, false);
+  assert.equal(play.run.cursor, 1);
+  assert.equal(play.tip, true, "its tooltip shows");
+  assert.deepEqual(play.run.hand, ["grape", "orange", "apple", "cherry"]);
   // A second tap on the same fruit puts the tooltip away again; a tap on another shows that one's.
-  step("mouse@296,30+MouseLeft, mouse@296,30, mouse@296,30");
-  assert.equal(play.s.tip, false, "tapped again: deselected");
-  step("mouse@296,30+MouseLeft, mouse@296,30, mouse@296,30");
-  assert.equal(play.s.tip, true);
-  step("mouse@344,30+MouseLeft, mouse@344,30, mouse@344,30");
-  assert.deepEqual([play.s.tip, play.s.run.cursor], [true, 2], "another fruit: its tooltip, not none");
+  game.input("mouse@296,30+MouseLeft, mouse@296,30, mouse@296,30");
+  assert.equal(play.tip, false, "tapped again: deselected");
+  game.input("mouse@296,30+MouseLeft, mouse@296,30, mouse@296,30");
+  assert.equal(play.tip, true);
+  game.input("mouse@344,30+MouseLeft, mouse@344,30, mouse@344,30");
+  assert.deepEqual([play.tip, play.run.cursor], [true, 2], "another fruit: its tooltip, not none");
   // A tap anywhere else puts the tooltip away, and moves nothing.
-  step("mouse@100,300+MouseLeft, mouse@100,300, mouse@100,300");
-  assert.equal(play.s.tip, false);
-  assert.equal(play.s.run.phase, "order");
-  assert.deepEqual(play.s.run.hand, ["grape", "orange", "apple", "cherry"]);
-  player.close();
+  game.input("mouse@100,300+MouseLeft, mouse@100,300, mouse@100,300");
+  assert.equal(play.tip, false);
+  assert.equal(play.run.phase, "order");
+  assert.deepEqual(play.run.hand, ["grape", "orange", "apple", "cherry"]);
+  game.close();
 });
 
 test("honey is sticky: a fruit touching a Honeyed one hangs from it, where a plain one would let it fall", () => {
   const hangs = (honeyed: boolean): number => {
-    const backend = new RecordingBackend();
-    const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
-    const step = (script: string) => {
-      for (const frame of parseInputScript(script, { bindings })) {
-        backend.queueInput(frame);
-        player.step();
-      }
-    };
-    step("_*2, Enter, _*5");
-    const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
-    const make = (id: number, y: number, frozen: boolean, honey: boolean): Fruit => ({
-      ...{ id, kind: "apple", x0: 320, y0: y, x: 320, y, r: 18, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
-      ...{ landed: true, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: honey, pickled: false, frozen, lit: false, fuse: 0 },
-    });
+    const game = startRun();
     // One Apple held in mid air (frozen), and a loose one just under it, touching.
-    play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, fruits: [make(801, 150, true, honeyed), make(802, 186, false, false)] };
-    step("_*60");
-    const y = play.s.run.fruits.find((f) => f.id === 802)!.y;
-    player.close();
+    patch(game, { phase: "settle", hand: [], nextId: 900, fruits: [{ ...fruit(801, "apple", 320, 150), frozen: true, honeyed }, fruit(802, "apple", 320, 186)] });
+    game.input("_*60");
+    const y = runOf(game).fruits.find((f) => f.id === 802)!.y;
+    game.close();
     return y;
   };
-  assert.ok(hangs(true) < 190, `it hangs from the Honeyed one (y = ${hangs(true)})`);
-  assert.ok(hangs(false) > 250, `and falls from a plain one (y = ${hangs(false)})`);
+  const sticky = hangs(true);
+  const plain = hangs(false);
+  assert.ok(sticky < 190, `it hangs from the Honeyed one (y = ${sticky})`);
+  assert.ok(plain > 250, `and falls from a plain one (y = ${plain})`);
 });
 
 test("in the Tilted jar the fruit roll to the low side, stay inside the walls, and the jar still settles", () => {
-  const backend = new RecordingBackend();
-  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
-  const step = (script: string) => {
-    for (const frame of parseInputScript(script, { bindings })) {
-      backend.queueInput(frame);
-      player.step();
-    }
-  };
-  step("_*2, Enter, _*5");
-  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
-  play.s.run = { ...play.s.run, boss: "tilt", cycle: 3 };
-  step("Space, _*2");
-  for (let i = 0; i < 1200 && ["drop", "settle", "tally"].includes(play.s.run.phase); i++) step("_");
-  const run = play.s.run;
+  const game = startRun();
+  patch(game, { boss: "tilt", cycle: 3 });
+  game.input("Space, _*2");
+  const run = playedOut(game);
   assert.deepEqual([run.phase, run.turn], ["order", 2], "it came to rest");
   const mid = (JAR.left + JAR.right) / 2;
   const mean = run.fruits.reduce((sum, f) => sum + f.x, 0) / run.fruits.length;
   assert.ok(mean > mid + 20, `the pile lies to the right (mean x = ${mean}, middle ${mid})`);
   for (const f of run.fruits) assert.ok(f.x - f.r >= JAR.left - 0.5 && f.x + f.r <= JAR.right + 0.5, `${f.kind} inside the walls (x = ${f.x})`);
-  player.close();
+  game.close();
 });
 
-/** Play a new run's first hand to the next one, with these keys held from the drop on, and say how many frames it took and how it ended. */
-function firstHand(prepare: () => void, held: string): { frames: number; run: Run; speeds: Set<number> } {
-  const backend = new RecordingBackend();
-  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
+/**
+ * Play a new run's first hand to the next one, with these keys held from the drop on, and say how many frames it took, the
+ * speeds it played at, how it ended, and the speed once the next hand was up.
+ */
+function firstHand(prepare: () => void, held: string): { frames: number; run: Run; speeds: Set<number>; after: number } {
+  const game = startRun();
   prepare();
   const speeds = new Set<number>();
-  let run: Run | null = null;
   let frames = 0;
-  const script = `_*2, Enter, _*5, Space, ${held}*900`;
-  for (const frame of parseInputScript(script, { bindings })) {
-    backend.queueInput(frame);
-    player.step();
-    const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } } | null;
-    if (play === null) continue;
-    run = play.s.run;
+  for (let i = 0; i < 900; i++) {
+    game.input(i === 0 ? "Space" : held);
+    const run = runOf(game);
     if (run.turn > 1 && run.phase === "order") break;
     if (run.phase !== "order") {
       frames += 1;
       speeds.add(useGame.getState().speed);
     }
   }
-  player.close();
-  return { frames, run: run!, speeds };
+  const run = runOf(game);
+  const after = useGame.getState().speed;
+  game.close();
+  return { frames, run, speeds, after };
 }
 
 test("pace: the Speed setting plays the jar twice as fast and F three times, and the hand ends exactly as it would have", () => {
@@ -429,66 +347,54 @@ test("pace: the Speed setting plays the jar twice as fast and F three times, and
   assert.deepEqual(places(fast.run), places(normal.run));
   assert.deepEqual(places(hurried.run), places(normal.run));
   assert.equal(fast.run.cycleScore, normal.run.cycleScore);
-  assert.equal(useGame.getState().speed, 1, "back to normal speed for the pick");
+  // Ordering the next hand is never hurried, with the setting on or F still held.
+  assert.deepEqual([fast.after, hurried.after], [1, 1], "back to normal speed for the next hand");
 });
 
 test("in lime juice a fruit floats: it comes to rest half out of the juice, a Heavy one sinks, and the jar still settles", () => {
-  const backend = new RecordingBackend();
-  const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
-  const step = (script: string) => {
-    for (const frame of parseInputScript(script, { bindings })) {
-      backend.queueInput(frame);
-      player.step();
-    }
-  };
-  step("_*2, Enter, _*5");
-  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
-  const make = (id: number, kind: Fruit["kind"], x: number, r: number): Fruit => ({
-    ...{ id, kind, x0: x, y0: 150, x, y: 150, r, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
-    ...{ landed: false, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: false, pickled: false, frozen: false, lit: false, fuse: 0 },
-  });
-  play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, juice: 80, lime: true, fruits: [make(801, "orange", 270, 22), make(802, "coconut", 370, 22)] };
-  step("_*400");
-  const run = play.s.run;
+  const game = startRun();
+  const falling = (id: number, kind: "orange" | "coconut", x: number) => ({ ...fruit(id, kind, x, 150), landed: false });
+  patch(game, { phase: "settle", hand: [], nextId: 900, juice: 80, lime: true, fruits: [falling(801, "orange", 270), falling(802, "coconut", 370)] });
+  game.input("_*400");
+  const run = runOf(game);
   const orange = run.fruits.find((f) => f.id === 801)!;
   const coconut = run.fruits.find((f) => f.id === 802)!;
   const top = JAR.floor - 80;
   assert.ok(Math.abs(orange.y - top) < 6, `the Orange floats at the surface (y = ${orange.y}, surface ${top})`);
   assert.ok(coconut.y > JAR.floor - 24, `the Coconut is on the floor (y = ${coconut.y})`);
   assert.notEqual(run.phase, "settle", "and the jar came to rest");
-  player.close();
+  game.close();
 });
 
 test("a tap off the cards of a pick leaves nothing chosen", () => {
   const game = startRun();
-  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
   // Straight to a pick: the second turn of a cycle, already settled.
-  play.s.run = { ...play.s.run, turn: 2, phase: "settle", hand: [], calmTime: 10 };
-  game.stepUntil(() => play.s.run.phase === "pick");
-  assert.equal(play.s.run.offerCursor, -1);
+  patch(game, { turn: 2, phase: "settle", hand: [], calmTime: 10 });
+  game.stepUntil(() => runOf(game).phase === "pick");
+  assert.equal(runOf(game).offerCursor, -1);
   // The three cards stand in the middle of the screen; the first tap on one only chooses it.
   game.input("click@320,150, _*2");
-  assert.equal(play.s.run.offerCursor, 1, "the middle card is chosen");
-  assert.equal(play.s.run.phase, "pick");
+  assert.equal(runOf(game).offerCursor, 1, "the middle card is chosen");
+  assert.equal(runOf(game).phase, "pick");
   game.input("click@320,335, _*2");
-  assert.equal(play.s.run.offerCursor, -1, "a tap under the cards, on nothing: none is chosen");
-  assert.equal(play.s.run.phase, "pick");
+  assert.equal(runOf(game).offerCursor, -1, "a tap under the cards, on nothing: none is chosen");
+  assert.equal(runOf(game).phase, "pick");
   game.close();
 });
 
 test("the end of a run: Play again starts a new one from its board, and Escape goes to the title", () => {
   const game = startRun();
-  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
   const lose = () => {
-    play.s.run = { ...play.s.run, turn: 5, phase: "settle", hand: [], calmTime: 10 };
-    game.stepUntil(() => play.s.run.phase === "over");
+    patch(game, { turn: 5, phase: "settle", hand: [], calmTime: 10 });
+    game.stepUntil(() => runOf(game).phase === "over");
   };
   lose();
   assert.ok(findComponent("EndBoard", game.player.world.root) !== null, "the board is up");
   const seed = useGame.getState().seed;
   game.input("Enter, _*3");
-  assert.deepEqual([play.s.run.phase, play.s.run.cycle, play.s.run.turn, play.s.run.total], ["order", 1, 1, 0], "a new run, its first hand dealt");
-  assert.equal(play.s.run.hand.length, 4);
+  const run = runOf(game);
+  assert.deepEqual([run.phase, run.cycle, run.turn, run.total], ["order", 1, 1, 0], "a new run, its first hand dealt");
+  assert.equal(run.hand.length, 4);
   assert.equal(useGame.getState().seed, seed + 1, "from a new seed");
   assert.equal(findComponent("EndBoard", game.player.world.root), null);
   lose();
@@ -533,20 +439,20 @@ test("the first game's tutorial: a card says one thing at a time and moves on as
 
 test("the last turn of a cycle is announced: a banner crosses the screen as its hand comes up, and not on the turns before", () => {
   const game = startRun();
-  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run; last: number } };
+  const play = playOf(game.player)!;
   game.input("_*5");
-  assert.ok(play.s.last >= 99, "the first turn: no banner");
-  play.s.run = { ...play.s.run, turn: 5 };
+  assert.ok(play.last >= 99, "the first turn: no banner");
+  patch(game, { turn: 5 });
   game.input("_*3");
-  assert.ok(play.s.last < 0.2, "the fifth: it has just begun");
-  game.stepUntil(() => play.s.last >= 1.28, { maxSteps: 200 });
+  assert.ok(play.last < 0.2, "the fifth: it has just begun");
+  game.stepUntil(() => play.last >= 1.28, { maxSteps: 200 });
   game.input("_*3");
-  assert.ok(play.s.last >= 1.28, "and it is over in about a second and a quarter, once");
+  assert.ok(play.last >= 1.28, "and it is over in about a second and a quarter, once");
   game.close();
 });
 
 test("things arriving make a sound: the title's name and jar land and its buttons bloop; a run's boards bloop, its jar lands and its hand knocks onto the shelf", () => {
-  const game = playGame(gameConfig, { bindings });
+  const game = boot();
   const heard = () => game.backend.plays;
   const count = (name: string) => heard().filter((s) => s === `assets/${name}`).length;
   game.input("_*120");

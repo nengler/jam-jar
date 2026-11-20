@@ -5,15 +5,18 @@ import { blastBits, blastFlash, blastJolt, motes, poolRows, termsOf } from "../s
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
 import { APPLE, BANANA, FRUITS, HONEY } from "../src/rules/fruits.ts";
+import { JAR_ART } from "../src/rules/sizes.ts";
 import {
   advance,
   BLAST_BONUS,
+  BOOM_LIFE,
   BOSS_NAME,
   bossCycle,
   bossFor,
   bossNow,
   COCONUT_MILK,
   dramatic,
+  DROP_Y,
   FRUIT_PRICE,
   JAR,
   JUICER_BONUS,
@@ -22,7 +25,9 @@ import {
   keeps,
   newRun,
   NO_KEYS,
+  OVERFLOW_PENALTY,
   onEdge,
+  PEG,
   topEarners,
   POINTS_PER_COIN,
   REMOVAL_PRICE,
@@ -41,55 +46,13 @@ import {
   simulate,
   surface,
   type Fruit,
-  type Keys,
   type Run,
 } from "../src/rules/jar.ts";
 import { ITEMS, offerable } from "../src/rules/items.ts";
 import { Rng } from "../src/rules/rng.ts";
 import { keywordOf, KEYWORDS, keywordsIn, ruleWords } from "../src/rules/terms.ts";
+import { DT, fruit, inPick, inShop, jarWith, litChili, press } from "./helpers.ts";
 
-const DT = 1 / 60;
-
-function press(run: Run, keys: Partial<Keys>): Run {
-  return advance(run, DT, { ...NO_KEYS, ...keys });
-}
-
-/** A landed fruit at rest at (x, y), touching the fruit with these ids (what its component would report). */
-function fruit(id: number, kind: Fruit["kind"], x: number, y: number, touching: number[] = []): Fruit {
-  return {
-    id,
-    kind,
-    x0: x,
-    y0: y,
-    x,
-    y,
-    r: FRUITS[kind].radius,
-    speed: 0,
-    touching,
-    kicks: 0,
-    kickX: 0,
-    kickY: 0,
-    landed: true,
-    age: 0,
-    rotten: kind === "prune",
-    pulse: 0,
-    pulseDelay: 0,
-    honeyed: kind === "honeydew",
-    pickled: false,
-    frozen: false,
-    lit: false,
-    fuse: 0,
-  };
-}
-
-/** A run whose jar holds exactly these fruit, settling. */
-function jarWith(fruits: Fruit[]): Run {
-  const run = newRun(7);
-  run.fruits = fruits;
-  run.nextId = 100;
-  run.phase = "settle";
-  return run;
-}
 
 test("the starting pool is 9: one Apple and 8 starters within their ranges", () => {
   for (let seed = 1; seed < 200; seed++) {
@@ -100,7 +63,28 @@ test("the starting pool is 9: one Apple and 8 starters within their ranges", () 
     assert.ok(count("cherry") >= 3 && count("cherry") <= 5);
     assert.ok(count("grape") >= 2 && count("grape") <= 4);
     assert.ok(count("orange") <= 2);
+    assert.equal(count("cherry") + count("grape") + count("orange"), 8, "the 8 starters");
   }
+});
+
+test("advance leaves the run it is given as it was", () => {
+  let run = newRun(5);
+  run.hand = ["orange", "orange", "orange", "orange"];
+  run = press(run, { drop: true });
+  run = press(run, {});
+  const dropped = run.fruits[0]!;
+  assert.equal(dropped.landed, false, "mid-drop");
+  const before = structuredClone(run);
+  const next = advance(run, DT, NO_KEYS, [{ id: dropped.id, x: dropped.x, y: JAR.floor - dropped.r, speed: 0, touching: [] }]);
+  assert.notDeepEqual(next.earned, run.earned, "the landing scored");
+  assert.deepEqual(run, before);
+});
+
+test("the jar the art is drawn to is the rules' jar", () => {
+  assert.deepEqual([JAR_ART.left, JAR_ART.right, JAR_ART.floor], [JAR.left, JAR.right, JAR.floor]);
+  assert.equal(JAR_ART.rim, RIM);
+  assert.equal(JAR_ART.top, DROP_Y);
+  assert.equal(JAR_ART.pegRadius, PEG.r);
 });
 
 test("the same seed and keys play the same run", () => {
@@ -189,6 +173,7 @@ test("a Chili touching 4 fruit explodes and scores what it destroys, with the ex
   const run = jarWith([fruit(1, "chili", 160, y - 6, [2, 3]), fruit(2, "blueberry", 170, y - 4, [1]), fruit(3, "apple", 147, y - 7, [1])]);
   simulate(run, DT);
   assert.equal(run.fruits[0]!.lit, true, "lit");
+  assert.ok(run.fruits[1]!.pulse > 0 && run.fruits[2]!.pulse > 0, "what set it off lights up");
   for (let i = 0; i < 30; i++) simulate(run, DT);
   assert.equal(run.fruits.length, 0, "the chili and both neighbours are gone");
   assert.equal(run.cycleScore, FRUITS.blueberry.points + FRUITS.apple.points + 2 * BLAST_BONUS.chili!);
@@ -197,7 +182,7 @@ test("a Chili touching 4 fruit explodes and scores what it destroys, with the ex
 test("a Pomegranate caught in a blast bursts into 5 Cherries", () => {
   const y = JAR.floor - 8;
   const run = jarWith([fruit(1, "pomegranate", 160, y)]);
-  run.fruits.push({ ...fruit(2, "chili", 172, y), lit: true, fuse: 0 });
+  run.fruits.push(litChili(2, 172, y));
   simulate(run, DT);
   assert.equal(run.fruits.filter((f) => f.kind === "cherry").length, 5);
 });
@@ -216,7 +201,7 @@ test("a blast kicks what it does not destroy away from it", () => {
   const y = JAR.floor - 8;
   // Outside the Chili's blast (52 px) but inside the reach of its push (104 px).
   const run = jarWith([fruit(1, "melon", 250, y - 4)]);
-  run.fruits.push({ ...fruit(2, "chili", 165, y), lit: true, fuse: 0 });
+  run.fruits.push(litChili(2, 165, y));
   simulate(run, DT);
   const melon = run.fruits.find((f) => f.id === 1)!;
   assert.equal(melon.kicks, 1);
@@ -276,16 +261,6 @@ test("poolRows groups the pool by kind, in the fruit table's order", () => {
     { kind: "apple", count: 1 },
   ]);
 });
-
-/** A run in the shop after its first rent, with this many coins. */
-function inShop(coins: number): Run {
-  const run = jarWith([]);
-  run.turn = 5;
-  run.cycleScore = RENT[0]!;
-  resolve(run);
-  run.coins = coins;
-  return press(run, { confirm: true });
-}
 
 test("the shop: a fruit costs coins, joins the pool and leaves a gap on the shelf", () => {
   let run = inShop(10);
@@ -467,7 +442,7 @@ test("a Fruit Fly eats a rotten fruit it touches and another hatches; it never e
 test("a rotten Fig blown up makes every Banana score +1 for the rest of the run", () => {
   const y = JAR.floor - 8;
   const run = jarWith([{ ...fruit(1, "fig", 300, y), rotten: true }, fruit(3, "fig", 340, y)]);
-  run.fruits.push({ ...fruit(2, "chili", 320, y), lit: true, fuse: 0 });
+  run.fruits.push(litChili(2, 320, y));
   simulate(run, DT);
   assert.equal(run.bananaBonus, 1, "only the rotten one counts");
   run.fruits = [fruit(4, "banana", 300, JAR.floor - 18)];
@@ -627,7 +602,7 @@ test("a Coconut cracks at its third Resolve and is gone, leaving milk; fruit tha
 test("a Lime that is Exploded or Crushed leaves lime juice, which rises with each and is gone with the rent", () => {
   const y = JAR.floor - 18;
   let run = jarWith([fruit(1, "lime", 300, y), fruit(2, "lime", 330, y)]);
-  run.fruits.push({ ...fruit(9, "chili", 316, y), lit: true, fuse: 0 });
+  run.fruits.push(litChili(9, 316, y));
   simulate(run, DT);
   assert.equal(run.juice, 2 * LIME_JUICE);
   assert.equal(run.lime, true);
@@ -697,12 +672,29 @@ test("terms: a card's tooltip is every keyword in its text, in order, each with 
 });
 
 test("terms: the numbers on the cards are the rules' numbers", () => {
-  for (const [kind, def] of Object.entries(FRUITS)) {
-    if (def.scoring === "fresh") assert.ok(def.text.startsWith(`Fresh ${def.points}.`), `${kind}: "${def.text}"`);
-  }
   assert.match(FRUITS.blueberry.text, new RegExp(`Dense ${FRUITS.blueberry.touchWeight}\\.`));
   assert.match(ITEMS.preserves.text, new RegExp(`Preserve ${ITEMS.preserves.keeps}\\.`));
   assert.match(ITEMS.bigpreserves.text, new RegExp(`Preserve ${ITEMS.bigpreserves.keeps}\\.`));
+});
+
+test("terms: a fruit card that leads with its scoring says its points", () => {
+  const unnumbered: string[] = [];
+  for (const [kind, def] of Object.entries(FRUITS)) {
+    const lead = /^(Fresh|Simmer) (\d+)\./.exec(def.text);
+    if (lead === null) {
+      unnumbered.push(kind);
+      continue;
+    }
+    assert.equal(lead[1]!.toLowerCase(), def.scoring, `${kind}: "${def.text}"`);
+    assert.equal(Number(lead[2]), def.points, `${kind}: "${def.text}"`);
+  }
+  // These lead with another word: their points are said further on, or they have none of their own.
+  assert.deepEqual(unnumbered.sort(), ["dragonfruit", "fruitfly", "honeydew", "lemon", "prune"]);
+});
+
+test("terms: the Crush and Spill keywords say the rules' numbers", () => {
+  assert.match(KEYWORDS.crush.text, new RegExp(`\\+${JUICER_BONUS}(?!\\d)`));
+  assert.match(KEYWORDS.spill.text, new RegExp(`-${OVERFLOW_PENALTY}(?!\\d)`));
 });
 
 test("terms: cards keep to the vocabulary, every keyword is used, and a definition fits its tooltip", () => {
@@ -723,9 +715,7 @@ test("terms: cards keep to the vocabulary, every keyword is used, and a definiti
 });
 
 test("the mouse: coming over a card chooses it, in the pick and in the shop, and a click on the chosen one is Enter on it", () => {
-  let run = jarWith([]);
-  run.turn = 2;
-  resolve(run);
+  let run = inPick();
   assert.equal(run.phase, "pick");
   assert.equal(run.offerCursor, -1, "no card is chosen at first");
   run = press(run, { confirm: true });
@@ -745,9 +735,7 @@ test("the mouse: coming over a card chooses it, in the pick and in the shop, and
 });
 
 test("a finger: the first tap on a card chooses it, so it can be read, and a second takes or buys it", () => {
-  let run = jarWith([]);
-  run.turn = 2;
-  resolve(run);
+  let run = inPick();
   const before = run.pool.length;
   run = press(run, { point: 0, confirm: true });
   assert.deepEqual([run.phase, run.offerCursor, run.pool.length], ["pick", 0, before], "chosen, not taken");
@@ -765,9 +753,7 @@ test("a finger: the first tap on a card chooses it, so it can be read, and a sec
 });
 
 test("a tap that lands on no card leaves nothing chosen, in the pick and in the shop: the next tap on that card only chooses it again", () => {
-  let run = jarWith([]);
-  run.turn = 2;
-  resolve(run);
+  let run = inPick();
   const before = run.pool.length;
   run = press(run, { point: 1, confirm: true });
   run = press(run, { away: true });
@@ -803,13 +789,6 @@ test("readability: a popup names what earned it, and says x2 when a Booster doub
   const spill = jarWith([fruit(1, "cherry", 300, RIM - 20)]);
   resolve(spill);
   assert.equal(spill.popups.at(-1)!.text, "Spill -5");
-});
-
-test("readability: what sets a Chili off lights up", () => {
-  const y = JAR.floor;
-  const run = jarWith([fruit(1, "chili", 160, y - 6, [2, 3]), fruit(2, "blueberry", 170, y - 4, [1]), fruit(3, "apple", 147, y - 7, [1])]);
-  simulate(run, DT);
-  assert.ok(run.fruits[1]!.pulse > 0 && run.fruits[2]!.pulse > 0);
 });
 
 test("the tally: Simmer fruit score one after another, the score on screen catching up, before the pick comes up", () => {
@@ -895,7 +874,7 @@ test("readability: two popups in one place are stacked, not drawn on each other,
 test("a second Blast soon after the first is a chain: it says so, and both a chain and a big Blast are worth slowing down for", () => {
   const y = JAR.floor - 8;
   let run = jarWith([fruit(1, "cherry", 300, y)]);
-  run.fruits.push({ ...fruit(2, "chili", 280, y), lit: true, fuse: 0 }, { ...fruit(3, "chili", 400, y), lit: true, fuse: 0.2 });
+  run.fruits.push(litChili(2, 280, y), litChili(3, 400, y, 0.2));
   run = press(run, {});
   assert.equal(run.chain, 1);
   assert.equal(dramatic(run), false, "one small Blast is not");
@@ -911,7 +890,7 @@ test("a second Blast soon after the first is a chain: it says so, and both a cha
   assert.equal(run.chain, 0, "the chain ends when no Blast follows");
 
   const big = jarWith([1, 2, 3, 4, 5].map((id) => fruit(id, "cherry", 290 + id * 4, y)));
-  big.fruits.push({ ...fruit(9, "chili", 300, y), lit: true, fuse: 0 });
+  big.fruits.push(litChili(9, 300, y));
   assert.equal(dramatic(press(big, {})), true, "one Blast that destroys 5");
 });
 
@@ -966,10 +945,7 @@ test("a Merge that touches a Dragonfruit skips a size: two Cherries make an Oran
 test("a Legendary is offered now and then, in the last place of a pick", () => {
   let seen = 0;
   for (let seed = 1; seed <= 400; seed++) {
-    const run = jarWith([]);
-    run.seed = seed * 7919;
-    run.turn = 2;
-    resolve(run);
+    const run = inPick(seed * 7919);
     assert.ok(!run.offers.slice(0, 2).includes("dragonfruit"));
     if (run.offers[2] === "dragonfruit") seen += 1;
   }
@@ -1062,20 +1038,17 @@ test("a Snow Pear freezes itself and what it touches at the end of a turn; Froze
   assert.ok(run.links.some((l) => l.kind === "freeze"));
 
   run.phase = "settle";
-  run.fruits.push({ ...fruit(9, "chili", 350, y), lit: true, fuse: 0 });
+  run.fruits.push(litChili(9, 350, y));
   simulate(run, DT);
   assert.deepEqual(run.fruits.map((f) => f.id).sort(), [1, 2], "the frozen two are left; the other Cherry is gone");
   assert.ok(run.fruits.every((f) => f.kicks === 0), "and not thrown");
 });
 
 test("the cards of the fruit with rules of their own say the rules' numbers", () => {
-  assert.equal(FRUITS.apple.text, `Simmer ${APPLE.base}. Edge ${APPLE.edge}.`);
-  assert.equal(FRUITS.banana.text, `Simmer ${BANANA.base}. Ripen ${BANANA.ripen}. Rots ${BANANA.rots}.`);
   assert.match(KEYWORDS.honeyed.text, new RegExp(`\\+${HONEY} `));
   assert.match(KEYWORDS.explode.text, new RegExp(`\\+${BLAST_BONUS.chili} \\(big \\+${BLAST_BONUS.durian}\\)`));
   assert.match(FRUITS.prune.text, new RegExp(`Simmer ${FRUITS.prune.points} per`));
   assert.match(FRUITS.fruitfly.text, new RegExp(`\\+${FRUITS.fruitfly.points} and Hatch`));
-  assert.match(FRUITS.pitaya.text, new RegExp(`^Simmer ${FRUITS.pitaya.points}\\.`));
 });
 
 test("a pick comes after every second turn of a cycle, and the next hand is dealt straight away after the others", () => {
@@ -1160,13 +1133,13 @@ test("an Apple's Edge: it scores more touching the jar's floor or either wall, a
 });
 
 test("a blast's sparks and ring: the same every time for the same blast, flying out, and gone by its end", () => {
-  const at = (age: number) => blastBits([{ id: 7, x: 300, y: 200, age }], 0.54);
+  const at = (age: number) => blastBits([{ id: 7, x: 300, y: 200, age }], BOOM_LIFE);
   assert.deepEqual(at(0.1), at(0.1), "nothing random: a replay shows the same blast");
   assert.ok(at(0.05).some((b) => b.id.includes("r")), "the ring runs out at first");
   assert.ok(!at(0.4).some((b) => b.id.includes("r")), "and is gone before the sparks");
   const spread = (age: number) => Math.max(...at(age).map((b) => Math.hypot(b.x - 300, b.y - 200)));
   assert.ok(spread(0.3) > spread(0.05) + 30, "the sparks fly outwards");
-  assert.equal(at(0.54).length, 0, "nothing is left when the blast is over");
+  assert.equal(at(BOOM_LIFE).length, 0, "nothing is left when the blast is over");
   assert.ok(blastFlash([{ age: 0 }]) === 1 && blastFlash([{ age: 0.2 }]) === 0, "the jar is lit for an instant");
   assert.ok(Math.abs(blastJolt([{ age: 0 }])) > 2 && blastJolt([{ age: 0.3 }]) === 0, "and jolted, briefly");
 });
