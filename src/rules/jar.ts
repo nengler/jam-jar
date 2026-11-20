@@ -273,6 +273,8 @@ export interface Run {
    * earned them: a fruit's name for what it scored itself ("Apple"), or the keyword for the rest ("Merge", "Explode", "Crush").
    */
   turnScore: number;
+  /** How many of this tally's scores have shown so far: the first plays the lowest note, and each after it the next one up. */
+  scoreNote: number;
   bestTurn: number;
   earned: Record<string, number>;
   coins: number;
@@ -316,8 +318,8 @@ export interface Run {
   sounds: Sound[];
 }
 
-/** "tick" is the cursor going somewhere or a fruit picked up or put down; "move" a held fruit changing its place on the shelf. */
-export type Sound = "land" | "merge" | "boom" | "pick" | "rent" | "lose" | "tick" | "move";
+/** "score" is one of the tally's scores showing (which one it is in the tally is `Run.scoreNote`). "tick" is the cursor going somewhere or a fruit picked up or put down; "move" a held fruit changing its place on the shelf. */
+export type Sound = "land" | "merge" | "boom" | "pick" | "rent" | "lose" | "tick" | "move" | "score";
 
 declare global {
   /** What each ball and collider tag carries, so a fruit's `contacts("fruit")` has typed `data` (the engine's `ColliderData`). */
@@ -399,6 +401,7 @@ export function newRun(seed: number): Run {
     cycleScore: 0,
     total: 0,
     turnScore: 0,
+    scoreNote: 0,
     bestTurn: 0,
     earned: {},
     coins: 0,
@@ -683,8 +686,14 @@ export function advance(previous: Run, dt: number, keys: Keys, reports: readonly
   for (const p of run.popups) {
     if (p.delay > 0) {
       p.delay -= dt;
-      // The tally's next score shows: a tick for each.
-      if (p.delay <= 0) sound(run, "tick");
+      // The tally's next score shows: a note for each, one step up the scale from the last (`scoreNote`), so a long tally
+      // climbs. Points lost (a spill) only tick.
+      if (p.delay <= 0) {
+        if (p.points > 0) {
+          run.scoreNote += 1;
+          sound(run, "score");
+        } else sound(run, "tick");
+      }
       continue;
     }
     p.life -= dt;
@@ -1218,6 +1227,7 @@ export function resolve(run: Run): void {
     for (const l of s.links) l.delay = delay;
   }
   run.tallyTime = run.popups.length > popupsBefore || slot > 0 ? slot * step + TALLY_HOLD : 0;
+  run.scoreNote = 0;
 
   run.bestTurn = Math.max(run.bestTurn, run.turnScore);
   run.turnScore = 0;

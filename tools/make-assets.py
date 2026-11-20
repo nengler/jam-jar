@@ -63,6 +63,37 @@ SIZES_FILE = ROOT / "src" / "rules" / "sizes.ts"
 BALL_SHARE = 0.45
 FLY_SHARE = 0.3
 
+# The tally's notes, made here and not taken from a pack: eight steps up a pentatonic scale from C5, so each score of a tally
+# rings one higher than the last and any run of them is in tune. Each is a small bell: the note, an octave and a fifth over it
+# and a faint inharmonic partial, struck at once and dying away in about a third of a second.
+SCORE_NOTES = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66, 1318.51]
+SCORE_RATE = 22050
+
+
+def write_score_notes() -> None:
+    import math
+    import struct
+    import wave
+
+    for index, pitch in enumerate(SCORE_NOTES):
+        frames = int(SCORE_RATE * 0.42)
+        samples = []
+        for n in range(frames):
+            t = n / SCORE_RATE
+            # Struck at once, and faded to nothing over its last 30 ms so it does not end on a click.
+            attack = min(1.0, t / 0.004) * min(1.0, (frames - n) / (SCORE_RATE * 0.03))
+            body = math.sin(2 * math.pi * pitch * t) * math.exp(-t * 9.0)
+            octave = 0.35 * math.sin(2 * math.pi * pitch * 2 * t) * math.exp(-t * 13.0)
+            fifth = 0.2 * math.sin(2 * math.pi * pitch * 3 * t) * math.exp(-t * 18.0)
+            ring = 0.12 * math.sin(2 * math.pi * pitch * 4.2 * t) * math.exp(-t * 26.0)
+            samples.append(int(max(-1.0, min(1.0, 0.55 * attack * (body + octave + fifth + ring))) * 32767))
+        with wave.open(str(ASSETS / f"score-{index}.wav"), "wb") as out:
+            out.setnchannels(1)
+            out.setsampwidth(2)
+            out.setframerate(SCORE_RATE)
+            out.writeframes(struct.pack(f"<{len(samples)}h", *samples))
+
+
 SOUNDS = {
     "merge.wav": "interface-sounds-glass-001.wav",
     "land.wav": "impact-sounds-impact-soft-medium-000.wav",
@@ -485,6 +516,7 @@ def main() -> None:
         square.save(ASSETS / f"boom-{i}.png")
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
+    write_score_notes()
     print(f"wrote {len(sprites) * 3} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds (the music among them)")
 
 

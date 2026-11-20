@@ -64,6 +64,8 @@ const POOL_TIGHT = { columns: 4, cell: 40 };
 const POOL_ROW = 32;
 /** The note of what just happened: a slate at the right, its foot this far above the foot of the screen (just above the counter). */
 const NOTE_FOOT = 36;
+/** How loud a note of the tally is, of the sounds' volume. */
+const SCORE_VOLUME = 0.7;
 /** Seconds between the ticks of a fruit dragged along the shelf, at the least. */
 const MOVE_QUIET = 0.12;
 /** Where across the screen a newly dealt fruit starts its roll along the shelf: at the shelf's right end. */
@@ -114,6 +116,15 @@ export function Play() {
   const playRent = useSound("rent.wav");
   const playLose = useSound("lose.wav");
   const playTick = useSound("tick.wav");
+  // The tally's notes, low to high: each score rings one step up from the last (tools/make-assets.py makes them).
+  const playScore0 = useSound("score-0.wav");
+  const playScore1 = useSound("score-1.wav");
+  const playScore2 = useSound("score-2.wav");
+  const playScore3 = useSound("score-3.wav");
+  const playScore4 = useSound("score-4.wav");
+  const playScore5 = useSound("score-5.wav");
+  const playScore6 = useSound("score-6.wav");
+  const playScore7 = useSound("score-7.wav");
 
   useInput((input) => {
     const over = s.run.phase === "over" || s.run.phase === "won";
@@ -201,6 +212,18 @@ export function Play() {
     if (heard.includes("boom")) playBoom();
     if (heard.includes("pick")) playPick();
     if (heard.includes("rent")) playRent();
+    // A score of the tally: the next note up, and the top one again for any past the eighth.
+    if (heard.includes("score")) {
+      const note = Math.min(7, s.run.scoreNote - 1);
+      if (note <= 0) playScore0(SCORE_VOLUME);
+      else if (note === 1) playScore1(SCORE_VOLUME);
+      else if (note === 2) playScore2(SCORE_VOLUME);
+      else if (note === 3) playScore3(SCORE_VOLUME);
+      else if (note === 4) playScore4(SCORE_VOLUME);
+      else if (note === 5) playScore5(SCORE_VOLUME);
+      else if (note === 6) playScore6(SCORE_VOLUME);
+      else playScore7(SCORE_VOLUME);
+    }
     if (heard.includes("lose")) playLose();
     // The shelf is quiet under a finger or the mouse: looking at a fruit or picking it up says nothing there (the fruit is in the
     // player's hand, which is feedback enough), and a fruit dragged past its neighbours ticks softly, and not in a rattle. At a
