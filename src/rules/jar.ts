@@ -85,11 +85,12 @@ export function bossFor(seed: number): Boss {
 
 /** How far the Tilted jar is drawn leaning to the right, in degrees, and how hard its fruit are pulled sideways, in pixels per
  * second per second. The fruit are moved in the jar's own frame, where its walls stand straight, and the whole jar is drawn
- * leaning. The pull is gravity's share along a floor leaning `TILT_FELT`, twice the drawn lean: at 6 degrees the pile hardly
- * moved (63% of the fruit in the right half after 3 turns, against 53% level), and drawing it leaning further would push the
- * jar's raised rim up through the shelf. A pull of 10 degrees put 76% on the right, 14 degrees 81%. */
+ * leaning. The pull is gravity's share along a floor leaning `TILT_FELT`, three times the drawn lean: at 6 degrees the pile
+ * hardly moved (63% of the fruit in the right half after 3 turns, against 53% level), and drawing it leaning further would push
+ * the jar's raised rim up through the shelf. A pull of 10 degrees put 76% on the right, 14 degrees 81%, 18 degrees 88%; at 18 a
+ * fruit dropped in the left lane reaches the pile in about half a second. (The fruit also slide easily there: `TILT_FRICTION`.) */
 export const TILT = 6;
-const TILT_FELT = 12;
+const TILT_FELT = 18;
 export const TILT_PULL = Math.round(GRAVITY * Math.sin((TILT_FELT * Math.PI) / 180));
 
 /** How far the jar leans now, in radians: nothing but in the Tilted jar. */
