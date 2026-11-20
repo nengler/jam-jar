@@ -2,22 +2,39 @@
  * Plays whole runs on the engine's physics with no window and prints what each cycle scored, to tune the rent curve against.
  * The players are not clever: "skip" drops each hand as dealt and never picks; "random" takes a random offer; and one player for
  * each fruit takes that fruit whenever it is offered and nothing else, which shows what the fruit is worth next to "skip"
- * ("chili+blueberry+seed" takes any of those). They drop each hand as dealt, unless the player ends "/order" ("random/order"):
- * then it orders the hand greedily first (see `orderHand`), which shows what ordering is worth. A player ending "/thin"
- * ("skip/thin") spends its coins in the shop taking Cherries out of its pool; the others buy nothing. "/order/thin" does both. A player with "@" owns those items from the start
- * ("skip@juicer", "random@shaker+lid"). The rent is ignored (set to 0), so every run plays all its cycles.
+ * ("chili+blueberry+seed" takes any of those). They drop each hand as dealt, unless the player says how to arrange it:
  *
- *     node tools/balance.ts [runs per player, default 20] [players, e.g. skip,random,chili]
+ * - "/order" ("random/order") arranges it greedily first (`trayHand`, or `orderHand` with "/spots"), which shows what a
+ *   sensible arrangement is worth.
+ * - "/best" plays the turn once for every arrangement of the hand (the physics is seeded, so each is played exactly as it would
+ *   be), then plays the one that scored most that turn; "/worst" the one that scored least. They see what a player cannot, so
+ *   the gap between them is the most arranging the hand could be worth. 24 tries a turn: about 25 times slower.
+ * - "/fair" is "/best" without the luck: it plays each arrangement 3 times (BALANCE_TRIES), each with other landing spots or
+ *   another wobble (`SPOTS` in jar.ts), takes the one with the best average, and plays it with luck none of the tries saw. What
+ *   it gains is what a player who reads the jar perfectly could gain; "/best" minus "/fair" is what seeing the luck was worth.
+ * - "/spots" plays the drop the game had before the tray (`TRAY` in jar.ts): a fruit at a time, each at a random spot. "/tray",
+ *   the game's drop, is accepted and changes nothing, so older result files still read.
+ *   "/wobble8" sets how far a fruit may wander in its lane (default 4 px; "/wobble0" lands every fruit mid-lane).
+ *
+ * A player ending "/thin" ("skip/thin") spends its coins in the shop taking Cherries out of its pool; the others buy nothing.
+ * The flags combine ("random/tray/best/thin"). A player with "@" owns those items from the start ("skip@juicer",
+ * "random@shaker+lid"). The rent is ignored (set to 0), so every run plays all its cycles.
+ *
+ *     node tools/balance.ts [runs per player, default 20] [players, e.g. skip,random,chili] [full] [first seed, default 1]
  *     BALANCE_BOSS=flip node tools/balance.ts 18 skip     (every run meets that boss jar)
+ *     BALANCE_JSON=out.json node tools/balance.ts ...      (also writes every run's cycle scores, for tools/compare.ts)
  */
-import { createPlayer, parseInputScript, RecordingBackend } from "@tsengine/player";
+import { writeFileSync } from "node:fs";
+
+import { createPlayer, parseInputScript, RecordingBackend, type Player } from "@tsengine/player";
+import { captureHotState, type HotState } from "@tsengine/runtime";
 import { findComponent } from "@tsengine/testing";
 
 import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
 import { FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
-import { bossNow, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, type Boss, type Run } from "../src/rules/jar.ts";
+import { bossNow, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
 
 type Strategy = string;
@@ -52,11 +69,151 @@ function orderHand(hand: readonly FruitKind[]): FruitKind[] {
   return order;
 }
 
+/** Every different arrangement of a hand (fewer than 24 when it holds two of a kind). */
+function arrangements(hand: readonly FruitKind[]): FruitKind[][] {
+  if (hand.length <= 1) return [hand.slice()];
+  const out = new Map<string, FruitKind[]>();
+  hand.forEach((kind, i) => {
+    for (const rest of arrangements([...hand.slice(0, i), ...hand.slice(i + 1)])) out.set([kind, ...rest].join(), [kind, ...rest]);
+  });
+  return [...out.values()];
+}
+
+/**
+ * A greedy arrangement for the tray drop, index 0 in the leftmost lane. Lanes side by side land touching, so it scores each
+ * arrangement by its neighbours and lanes and takes the best: two of a kind that merge side by side, a Kiwi or a Lemon beside
+ * the fruit worth most, the Apple in an outer lane (Edge: it scores more against a wall), the Chili in a middle one (it explodes
+ * once it touches 4), Blueberries (Dense) beside the Chili.
+ */
+function trayHand(hand: readonly FruitKind[]): FruitKind[] {
+  const worth = (kind: FruitKind) => (kind === "kiwi" || kind === "lemon" ? 0 : FRUITS[kind].points);
+  const pair = (a: FruitKind, b: FruitKind): number => {
+    if (a === b && (FRUITS[a].mergesInto !== undefined || a === "watermelon" || a === "pomegranate")) return 20;
+    if (a === "kiwi" || a === "lemon") return worth(b);
+    if (b === "kiwi" || b === "lemon") return worth(a);
+    if ((a === "chili" && b === "blueberry") || (a === "blueberry" && b === "chili")) return 4;
+    return 0;
+  };
+  const value = (lanes: FruitKind[]): number => {
+    let total = 0;
+    lanes.forEach((kind, i) => {
+      const outer = i === 0 || i === lanes.length - 1;
+      if (kind === "apple" && outer) total += 6;
+      if (kind === "chili" && !outer) total += 5;
+      if (i > 0) total += pair(lanes[i - 1] as FruitKind, kind);
+    });
+    return total;
+  };
+  let best = hand.slice();
+  for (const lanes of arrangements(hand)) if (value(lanes) > value(best)) best = lanes;
+  return best;
+}
+
+/** Everything that decides the next frame: the game state, the tree's state and the player's clock (as rewind keeps them). */
+interface Snapshot {
+  game: Record<string, unknown>;
+  hot: HotState;
+  clock: ReturnType<Player["snapshotClock"]>;
+}
+
+function copyState(saved: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(saved)) {
+    try {
+      out[key] = structuredClone(value);
+    } catch {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
+function takeSnapshot(player: Player): Snapshot {
+  const hot = new Map<string, Record<string, unknown>>();
+  const root = player.world.root.children[0];
+  if (root !== undefined) for (const [path, saved] of captureHotState(root)) hot.set(path, copyState(saved));
+  return { game: structuredClone(useGame.store.values()), hot, clock: player.snapshotClock() };
+}
+
+function restoreSnapshot(player: Player, snapshot: Snapshot): void {
+  useGame.store.restore(structuredClone(snapshot.game));
+  const hot = new Map<string, Record<string, unknown>>();
+  for (const [path, saved] of snapshot.hot) hot.set(path, copyState(saved));
+  if (!player.restoreTo(gameConfig, hot, snapshot.clock)) throw new Error("balance: could not restore a snapshot");
+}
+
+type Found = { s: { run: Run } };
+const findPlay = (player: Player) => findComponent("Play", player.world.root) as Found | null;
+
+/**
+ * Drop `hand` and play until the turn is scored and over (the pick, the rent or the next hand): the points it added. Phases
+ * the turn passes through are order (until the drop key is read), drop, settle and tally. A try stops at the tally, which only
+ * shows points already counted.
+ */
+/**
+ * One frame. The recording backend keeps every frame it draws and every sound it plays, which the bots never read: over the
+ * thousands of trial turns a run plays, that grew a process past 3 GB, so it is dropped as it goes.
+ */
+function advance(player: Player, backend: RecordingBackend): void {
+  player.step();
+  backend.frames.length = 0;
+  backend.textMeasures.length = 0;
+  backend.plays.length = 0;
+  backend.playVolumes.length = 0;
+}
+
+function playTurn(player: Player, backend: RecordingBackend, hand: FruitKind[], settles?: number[], trial = false): number {
+  const start = findPlay(player)!;
+  const before = start.s.run.total;
+  start.s.run = { ...start.s.run, hand };
+  backend.queueInput(SPACE);
+  advance(player, backend);
+  let left = false;
+  let settled = -1;
+  for (let step = 0; step < 6000; step++) {
+    const run = findPlay(player)?.s.run;
+    if (run === undefined) break;
+    if (run.phase === "settle") settled = run.settleTime;
+    if (trial && run.phase === "tally") return run.total - before;
+    const playing = run.phase === "drop" || run.phase === "settle" || run.phase === "tally";
+    if (playing) left = true;
+    else if (left || run.phase !== "order") {
+      if (settled >= 0) settles?.push(settled);
+      return run.total - before;
+    }
+    backend.queueInput(NONE);
+    advance(player, backend);
+  }
+  return (findPlay(player)?.s.run.total ?? before) - before;
+}
+
+/**
+ * The arrangement of the hand that scores most this turn ("best") or least ("worst"), found by playing each from a snapshot, with
+ * the turn's own luck. "fair" plays each `tries` times with other luck (`SPOTS.salt` 1, 2, ...) and takes the best average.
+ */
+function searchHand(player: Player, backend: RecordingBackend, hand: readonly FruitKind[], want: "best" | "worst" | "fair", tries: number): { hand: FruitKind[]; points: number } {
+  const snapshot = takeSnapshot(player);
+  let chosen = { hand: hand.slice(), points: want === "worst" ? Infinity : -Infinity };
+  for (const tried of arrangements(hand)) {
+    let points = 0;
+    for (let k = 1; k <= (want === "fair" ? tries : 1); k++) {
+      restoreSnapshot(player, snapshot);
+      SPOTS.salt = want === "fair" ? k : 0;
+      points += playTurn(player, backend, tried, undefined, true);
+    }
+    SPOTS.salt = 0;
+    if (want === "fair") points /= tries;
+    if (want === "worst" ? points < chosen.points : points > chosen.points) chosen = { hand: tried, points };
+  }
+  restoreSnapshot(player, snapshot);
+  return chosen;
+}
+
 const rent = RENT.slice();
 (RENT as number[]).fill(0);
 
 /** One run: each cycle's score, the pool's size at the end, and how long each turn's settle took. */
-function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[] } {
+function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[]; mismatches: number } {
   const backend = new RecordingBackend();
   const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
   // After the player is made (making it resets the game's state): Play adds one to the seed when a run starts.
@@ -66,17 +223,23 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   let pool = 0;
   const settles: number[] = [];
   let settling = -1;
+  let mismatches = 0;
   let wait = 0;
   let coins = 0;
   const [plan = "", owned = ""] = strategy.split("@");
   const thin = plan.includes("/thin");
   const order = plan.includes("/order");
-  const picks = plan.replace("/thin", "").replace("/order", "");
+  const search = plan.includes("/best") ? "best" : plan.includes("/worst") ? "worst" : plan.includes("/fair") ? "fair" : null;
+  TRAY.on = !plan.includes("/spots");
+  TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
+  // With no luck to average over (a tray with no wobble), one try is the whole story.
+  const tries = TRAY.on && TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
+  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
     backend.queueInput(queued.shift() ?? NONE);
-    player.step();
+    advance(player, backend);
     const found = findComponent("Play", player.world.root) as { s: { run: Run } } | null;
     // Every frame, not only the ones a key is chosen on: the settle's length is the last time seen before the phase moved on.
     if (found !== null && found.s.run.phase === "settle") settling = found.s.run.settleTime;
@@ -96,7 +259,17 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     }
     wait = 3;
     if (run.phase === "order") {
-      if (order && bossNow(run) !== "blind") found.s.run = { ...run, hand: orderHand(run.hand) };
+      const blind = bossNow(run) === "blind";
+      if (search !== null && !blind) {
+        // The tries leave the player as they found it; the chosen hand is then played for real, which must score the same.
+        const chosen = searchHand(player, backend, run.hand, search, tries);
+        const points = playTurn(player, backend, chosen.hand, settles);
+        // "fair" plays with luck its tries did not see, so only the others must match.
+        if (search !== "fair" && points !== chosen.points) mismatches += 1;
+        wait = 0;
+        continue;
+      }
+      if (order && !blind) found.s.run = { ...run, hand: TRAY.on ? trayHand(run.hand) : orderHand(run.hand) };
       queued = [SPACE];
     }
     else if (run.phase === "pick") {
@@ -125,22 +298,32 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     else wait = 0;
   }
   player.close();
-  return { scores, pool, settles };
+  return { scores, pool, settles, mismatches };
 }
 
 const runs = Number(process.argv[2] ?? 20);
+const firstSeed = Number(process.argv[5] ?? 1);
+const json = process.env["BALANCE_JSON"];
 console.log(`rent now: ${rent.join(", ")}\n`);
 const players = (process.argv[3]?.split(",") ?? ["skip", "random", ...OFFERABLE]) as Strategy[];
+const written: Record<string, { seed: number; scores: number[] }[]> = {};
 for (const strategy of players) {
   const all: number[][] = [];
   let pool = 0;
+  let mismatches = 0;
   const settles: number[] = [];
-  for (let seed = 1; seed <= runs; seed++) {
+  written[strategy] = [];
+  for (let seed = firstSeed; seed < firstSeed + runs; seed++) {
     const result = play(seed, strategy);
     all.push(result.scores);
     pool += result.pool;
+    mismatches += result.mismatches;
     settles.push(...result.settles);
+    written[strategy]!.push({ seed, scores: result.scores });
+    if (json !== undefined) writeFileSync(json, JSON.stringify(written));
   }
+  // A searched turn played for real must score what its try did; if not, a snapshot missed something and "/best" is not exact.
+  if (mismatches > 0) console.log(`${strategy}: ${mismatches} turns played differently from their tries`);
   settles.sort((a, b) => a - b);
   // A frame short of the limit counts: the settle gives up on the frame that reaches it.
   const stuck = settles.filter((t) => t >= SETTLE_LIMIT - 0.05).length;

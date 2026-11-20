@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { blastBits, blastFlash, blastJolt, motes, poolRows, termsOf } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
-import { APPLE, BANANA, FRUITS, HONEY } from "../src/rules/fruits.ts";
+import { APPLE, BANANA, FRUITS, HONEY, type FruitKind } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
@@ -42,6 +42,7 @@ import {
   surface,
   type Fruit,
   type Keys,
+  TRAY,
   type Run,
 } from "../src/rules/jar.ts";
 import { ITEMS, offerable } from "../src/rules/items.ts";
@@ -112,6 +113,34 @@ test("the same seed and keys play the same run", () => {
     b = press(b, keys);
   }
   assert.deepEqual(a, b);
+});
+
+test("the tray drop: the whole hand appears at once, a fruit per lane, left to right", () => {
+  let run = newRun(3);
+  run.hand = ["apple", "cherry", "chili", "grape"];
+  run = press(run, { drop: true });
+  run = press(run, {});
+  assert.deepEqual(run.fruits.map((f) => f.kind), ["apple", "cherry", "chili", "grape"]);
+  assert.equal(run.queue.length, 0);
+  const lane = (JAR.right - JAR.left) / 4;
+  run.fruits.forEach((f, i) => {
+    assert.ok(Math.abs(f.x - (JAR.left + lane * (i + 0.5))) <= TRAY.wobble, `${f.kind} stays in lane ${i}`);
+  });
+});
+
+test("in the Blind jar the tray is shuffled before it drops: the same fruit, not always in the order dealt", () => {
+  const hand: FruitKind[] = ["apple", "cherry", "chili", "grape"];
+  let reordered = 0;
+  for (let seed = 1; seed <= 8; seed++) {
+    let run: Run = { ...newRun(seed), boss: "blind", cycle: 3 };
+    run.hand = [...hand];
+    run = press(run, { drop: true });
+    run = press(run, {});
+    const kinds = run.fruits.map((f) => f.kind);
+    assert.deepEqual([...kinds].sort(), [...hand].sort(), "the whole hand drops");
+    if (kinds.join() !== hand.join()) reordered += 1;
+  }
+  assert.ok(reordered >= 4, `shuffled in ${reordered} of 8 runs`);
 });
 
 test("ordering: pick up the first fruit, move it down, and it drops second", () => {
@@ -930,25 +959,30 @@ test("readability: a line joins a Booster to the fruit it doubled, and rot to th
   assert.equal(later.links.length, 0, "and gone afterwards");
 });
 
-test("a hand drops a fruit at a time: the next waits for the last to land and the pile to rest, but not for ever", () => {
-  let run = newRun(3);
-  run = press(run, { drop: true });
-  run = press(run, {});
-  assert.equal(run.fruits.length, 1, "the first drops at once");
-  for (let i = 0; i < 60; i++) run = press(run, {});
-  assert.equal(run.fruits.length, 1, "the second waits: the first is still falling");
+test("without the tray (the bots' /spots), a hand drops a fruit at a time: the next waits for the last to land and the pile to rest, but not for ever", () => {
+  TRAY.on = false;
+  try {
+    let run = newRun(3);
+    run = press(run, { drop: true });
+    run = press(run, {});
+    assert.equal(run.fruits.length, 1, "the first drops at once");
+    for (let i = 0; i < 60; i++) run = press(run, {});
+    assert.equal(run.fruits.length, 1, "the second waits: the first is still falling");
 
-  // The first reports landing and lying still: the second follows.
-  const first = run.fruits[0]!;
-  const still = { id: first.id, x: first.x, y: JAR.floor - first.r, speed: 0, touching: [] };
-  for (let i = 0; i < 20 && run.fruits.length === 1; i++) run = advance(run, DT, NO_KEYS, [still]);
-  assert.equal(run.fruits.length, 2);
+    // The first reports landing and lying still: the second follows.
+    const first = run.fruits[0]!;
+    const still = { id: first.id, x: first.x, y: JAR.floor - first.r, speed: 0, touching: [] };
+    for (let i = 0; i < 20 && run.fruits.length === 1; i++) run = advance(run, DT, NO_KEYS, [still]);
+    assert.equal(run.fruits.length, 2);
 
-  // The second never reports anything: the third drops anyway after 3 seconds.
-  let frames = 0;
-  for (; frames < 400 && run.fruits.length === 2; frames++) run = press(run, {});
-  assert.equal(run.fruits.length, 3);
-  assert.ok(frames > 150 && frames < 200, `${frames} frames`);
+    // The second never reports anything: the third drops anyway after 3 seconds.
+    let frames = 0;
+    for (; frames < 400 && run.fruits.length === 2; frames++) run = press(run, {});
+    assert.equal(run.fruits.length, 3);
+    assert.ok(frames > 150 && frames < 200, `${frames} frames`);
+  } finally {
+    TRAY.on = true;
+  }
 });
 
 test("a Merge that touches a Dragonfruit skips a size: two Cherries make an Orange, two Melons a Watermelon all the same", () => {

@@ -260,7 +260,7 @@ test("a Frozen fruit is held where it is: what was under it can go, and it does 
   player.close();
 });
 
-test("in the Flip jar gravity turns over after every second drop: the hand ends on the lid, inside the jar, and still settles", () => {
+test("in the Flip jar gravity turns over before every turn's drop but the first: the second hand ends on the lid, inside the jar, and still settles", () => {
   const backend = new RecordingBackend();
   const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
   const step = (script: string) => {
@@ -272,13 +272,16 @@ test("in the Flip jar gravity turns over after every second drop: the hand ends 
   step("_*2, Enter, _*5");
   const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
   play.s.run = { ...play.s.run, boss: "flip", cycle: 3 };
-  step("Space, _*30");
-  assert.equal(play.s.run.flipped, false, "the first falls to the floor");
-  for (let i = 0; i < 1200 && ["drop", "settle", "tally"].includes(play.s.run.phase); i++) step("_");
+  const playTurn = () => {
+    step("Space, _*30");
+    for (let i = 0; i < 1200 && ["drop", "settle", "tally", "pick"].includes(play.s.run.phase); i++) step(play.s.run.phase === "pick" ? "Escape" : "_");
+  };
+  playTurn();
+  assert.deepEqual([play.s.run.phase, play.s.run.turn, play.s.run.drops, play.s.run.flipped], ["order", 2, 4, false], "the first hand falls to the floor");
+  playTurn();
   const run = play.s.run;
-  assert.deepEqual([run.phase, run.turn], ["order", 2], "it came to rest");
-  assert.equal(run.drops, 4);
-  assert.equal(run.flipped, true, "turned over after the second drop");
+  assert.equal(run.drops, 8, "it came to rest");
+  assert.equal(run.flipped, true, "turned over before the second hand dropped");
   const mid = (RIM + JAR.floor) / 2;
   for (const f of run.fruits) {
     assert.ok(f.y < mid, `${f.kind} lies at the lid's end (y = ${f.y})`);

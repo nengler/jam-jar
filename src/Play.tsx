@@ -53,7 +53,7 @@ const BOOM_FRAMES = 9;
 const BOOM_SIZE = 96;
 /** A blast's sparks, from the hottest to the last embers: Apollo's light, gold, orange and red. */
 const SPARK = [LIGHT, GOLD, BAR_FILL, BAD];
-/** The shelf above the jar: its plank's top, and how far apart the hand's fruit stand on it, left to right in the order they drop. */
+/** The shelf above the jar: its plank's top, and how far apart the hand's fruit stand on it, left to right, a slot over each of the jar's lanes. */
 const SHELF_Y = 48;
 const SLOT = 48;
 /** The boards either side of the jar: 192 wide, 12 from the screen's edges, each under its heading. */
@@ -467,7 +467,7 @@ export function Play() {
         <Sprite key={item} image={`item-${item}.png`} x={16 + i * 50} y={COUNTER_Y - 38} />
       ))}
 
-      {/* The shelf: the hand, in the order it drops. The chosen fruit is framed in amber; a held one is lifted. In the Blind
+      {/* The shelf: the hand, each fruit over the lane it drops down. The chosen fruit is framed in amber; a held one is lifted. In the Blind
           jar each is under a cloth. */}
       <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y - 80 * (1 - popIn(s.intro, INTRO.shelf, INTRO.pop))} />
       {/* The box that hears the hand being dragged and tapped: over the fruit on the shelf, and under their tooltips' boxes. */}
