@@ -5,7 +5,7 @@ import { FruitBall } from "./FruitBall.tsx";
 import { TapButton } from "./KeyHint.tsx";
 import { countUp, earnerKind } from "./layout.ts";
 import { RENT, topEarners, type Run } from "./rules/jar.ts";
-import { BAR_FILL, DISPLAY, DISPLAY_SIZE, GOOD, INK, INK_SOFT, WELL } from "./theme.ts";
+import { BAR_GOLD, BAR_WELL, DISPLAY, DISPLAY_SIZE, GOOD, INK, INK_SOFT, WELL } from "./theme.ts";
 
 /** The board's width, and the width of each of the three tiles in a row across it (the board's padding and two gaps taken off). */
 const END_W = 360;
@@ -57,8 +57,8 @@ export function EndBoard({ run, rent, keys, onAgain, onTitle }: { run: Run; rent
           </Flex>
         )}
         {!won && (
-          <Flex height={8} background={WELL}>
-            {near > 0 && <Flex left={0} top={0} bottom={0} width={Math.round(((END_W - 32) * near) / 2) * 2} background={BAR_FILL} />}
+          <Flex height={10} background={BAR_WELL}>
+            {near > 0 && <Flex left={2} top={2} bottom={2} width={Math.round(((END_W - 36) * near) / 2) * 2} background={BAR_GOLD} />}
           </Flex>
         )}
         <Flex direction="row" gap={TILE_GAP} paddingTop={8}>
