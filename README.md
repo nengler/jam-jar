@@ -2,7 +2,8 @@
 
 A roguelike where you build a pool of fruit and the jar plays it. Each turn you're dealt 4 fruits from your pool and you set the
 order they drop in. They fall at random spots, physics settles the pile, merges and blasts score, and then Simmer fruit score at
-Resolve. After that you pick 1 of 3 new fruits, or skip for a coin. Five turns make a rent cycle; miss rent and the run ends.
+Resolve. After every second turn you pick 1 of 3 new fruits, or skip for a coin (two picks a cycle, so the pool stays small enough
+that every fruit in it comes up). Five turns make a rent cycle; miss rent and the run ends.
 Between cycles the shop sells fruit, an item, a removal and rerolls for the coins the rent left over.
 
 Built on the [tse engine](https://github.com/nengler/tse). The design doc is the "Jam Jar: Game Design Outline" artifact.
