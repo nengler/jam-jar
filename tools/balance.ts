@@ -67,7 +67,6 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   const settles: number[] = [];
   let settling = -1;
   let wait = 0;
-  let coins = 0;
   const [plan = "", owned = ""] = strategy.split("@");
   const thin = plan.includes("/thin");
   const order = plan.includes("/order");
@@ -105,10 +104,13 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
       // No card is chosen at first: one press of Right goes to the first, so the card at `at` is `at + 1` presses away.
       queued = at < 0 ? [SPACE] : [...Array<typeof NONE>(at + 1).fill(RIGHT).flatMap((f) => [f, NONE]), ENTER];
     } else if (run.phase === "rent") {
-      // The coins the real rent would have left (the run itself was paid for a rent of 0).
-      const due = rent[scores.length] as number;
-      found.s.run = { ...run, coins: coins + Math.max(0, Math.floor((run.cycleScore - due) / POINTS_PER_COIN)) };
-      scores.push(run.cycleScore);
+      // Once per cycle: the run was paid for a rent of 0, so swap that pay for what the real rent would have left.
+      if (scores.length === run.cycle - 1) {
+        const due = rent[scores.length] as number;
+        const paid = Math.floor(run.cycleScore / POINTS_PER_COIN);
+        found.s.run = { ...run, coins: run.coins - paid + Math.max(0, Math.floor((run.cycleScore - due) / POINTS_PER_COIN)) };
+        scores.push(run.cycleScore);
+      }
       queued = [ENTER];
     } else if (run.phase === "shop") {
       const shop = run.shop!;
@@ -118,7 +120,6 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
       else if (shop.removing) queued = shop.removeCursor < 0 ? [RIGHT] : [ENTER];
       else if (shop.cursor !== SHOP_REMOVE) queued = [DOWN];
       else queued = [ENTER];
-      coins = run.coins;
     }
     else if (run.phase === "preserve") queued = [SPACE];
     else if (run.phase === "won" || run.phase === "over") break;

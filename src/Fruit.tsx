@@ -2,7 +2,7 @@ import { useBall, useMutable, useUpdate } from "@tsengine/runtime/jsx";
 
 import { FruitBall } from "./FruitBall.tsx";
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
-import { leanX, leanY } from "./layout.ts";
+import { leanPoint } from "./layout.ts";
 import { GRAVITY, JAR, type FruitReport } from "./rules/jar.ts";
 
 interface FruitProps {
@@ -49,14 +49,15 @@ const JUICE_DRAG = 0.12;
 export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surface, pull, flipped, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
   // `turn` is how far it has rolled, in degrees; `lastX` where it was a step ago.
   const s = useMutable({ kicked: 0, turn: 0, lastX: x0, lastY: y0 });
+  const { radius, heavy } = FRUITS[kind];
   const { x, y, contacts, push, speed, pin, setGravity, setGravityX, stick } = useBall({
     x: x0,
     y: y0,
-    radius: FRUITS[kind].radius,
-    mass: FRUITS[kind].radius * FRUITS[kind].radius * (FRUITS[kind].heavy ?? 1),
+    radius,
+    mass: radius * radius * (heavy ?? 1),
     gravity: GRAVITY,
     tag: "fruit",
-    data: { id: id },
+    data: { id },
     // A fruit that comes back from a save frozen is held from its first step.
     pinned: frozen,
   });
@@ -66,8 +67,7 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
     if (honeyed) stick("fruit");
     // In lime juice it floats: the more of it is under the surface, the less it weighs, down to rising as hard as it would fall,
     // so it comes to rest half out of the juice. The juice also slows it, or it would bob for ever. A Heavy fruit sinks.
-    const radius = FRUITS[kind].radius;
-    const under = FRUITS[kind].heavy === undefined ? Math.max(0, Math.min(1, (y + radius - surface) / (radius * 2))) : 0;
+    const under = heavy === undefined ? Math.max(0, Math.min(1, (y + radius - surface) / (radius * 2))) : 0;
     setGravity(flipped ? -GRAVITY : GRAVITY * (1 - 2 * under));
     if (under > 0 && !flipped) push(-(x - s.lastX) * 60 * JUICE_DRAG, -(y - s.lastY) * 60 * JUICE_DRAG);
     setGravityX(pull);
@@ -77,10 +77,11 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
     }
     const touching = contacts("fruit").map((c) => c.data.id);
     // It rolls: while it touches a fruit or the floor, it turns by how far it moved across, as a wheel of its size would.
-    if (touching.length > 0 || y + FRUITS[kind].radius >= JAR.floor - 2) s.turn += (((x - s.lastX) / FRUITS[kind].radius) * 180 * ROLL) / Math.PI;
+    if (touching.length > 0 || y + radius >= JAR.floor - 2) s.turn += (((x - s.lastX) / radius) * 180 * ROLL) / Math.PI;
     s.lastX = x;
     s.lastY = y;
-    onReport({ id: id, x: x, y: y, speed: speed(), touching: touching });
+    onReport({ id, x, y, speed: speed(), touching });
   });
-  return <FruitBall kind={kind} x={leanX(x, y, lean, JAR.right, JAR.floor)} y={leanY(x, y, lean, JAR.right, JAR.floor)} turn={s.turn + (lean * 180) / Math.PI} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} />;
+  const drawn = leanPoint(x, y, lean, JAR.right, JAR.floor);
+  return <FruitBall kind={kind} x={drawn.x} y={drawn.y} turn={s.turn + (lean * 180) / Math.PI} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} />;
 }

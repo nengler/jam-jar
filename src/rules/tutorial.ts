@@ -13,9 +13,9 @@ export type LessonTarget = "shelf" | "jar" | "rent" | "pool" | null;
 export interface Lesson {
   id: LessonId;
   title: string;
-  /** What the card says to a player using the pointer (a mouse or a finger), and at a keyboard. */
+  /** What the card says to a player using the pointer (a mouse or a finger), and at a keyboard when that differs. */
   text: string;
-  keysText: string;
+  keysText?: string;
   target: LessonTarget;
   /** It asks for nothing, only tells: its card has a "Got it" to put it away with. The others go when the player does what they say. */
   told?: boolean;
@@ -47,14 +47,12 @@ export const LESSONS: readonly Lesson[] = [
     id: "score",
     title: "Scoring",
     text: "Matching fruit that touch merge. When the jar is still, everything in it scores.",
-    keysText: "Matching fruit that touch merge. When the jar is still, everything in it scores.",
     target: "jar",
   },
   {
     id: "rent",
     title: "The rent",
     text: "Score the rent within 5 turns or you are evicted. Every 10 points over it is a coin.",
-    keysText: "Score the rent within 5 turns or you are evicted. Every 10 points over it is a coin.",
     target: "rent",
     told: true,
   },
@@ -69,7 +67,6 @@ export const LESSONS: readonly Lesson[] = [
     id: "pool",
     title: "Your pool",
     text: "Every fruit you own. Each turn deals four, so what you add keeps coming back.",
-    keysText: "Every fruit you own. Each turn deals four, so what you add keeps coming back.",
     target: "pool",
     told: true,
   },
@@ -77,7 +74,6 @@ export const LESSONS: readonly Lesson[] = [
     id: "shop",
     title: "The shop",
     text: "Coins buy fruit and items. Remove weak fruit to see your best more often.",
-    keysText: "Coins buy fruit and items. Remove weak fruit to see your best more often.",
     target: null,
   },
 ];

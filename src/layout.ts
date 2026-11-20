@@ -1,6 +1,7 @@
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
-import { BOSS_NAME, bossNow, newRun, RENT, type Run } from "./rules/jar.ts";
+import { BOSS_NAME, bossNow, newRun, poolKinds, RENT, type Run } from "./rules/jar.ts";
 import { KEYWORDS, keywordsIn } from "./rules/terms.ts";
+import { SCREEN_W } from "./theme.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
 export interface PoolRow {
@@ -10,12 +11,7 @@ export interface PoolRow {
 
 /** The pool by kind, in the fruit table's order (Cherry, Grape, …): only the kinds it holds. */
 export function poolRows(pool: readonly FruitKind[]): PoolRow[] {
-  const rows: PoolRow[] = [];
-  for (const kind of Object.keys(FRUITS) as FruitKind[]) {
-    const count = pool.filter((k) => k === kind).length;
-    if (count > 0) rows.push({ kind, count });
-  }
-  return rows;
+  return poolKinds(pool).map((kind) => ({ kind, count: pool.filter((k) => k === kind).length }));
 }
 
 /** A keyword and what it means, for a card's tooltip. */
@@ -29,7 +25,6 @@ export interface Term {
 export function termsOf(text: string): Term[] {
   return keywordsIn(text).map((keyword) => ({ id: keyword, name: KEYWORDS[keyword].name, text: KEYWORDS[keyword].text }));
 }
-
 
 /** Whether a run is at rest at a point the player acts from: where it is kept for "Continue" (GameState.ts, `save`). */
 export function atRest(run: Run): boolean {
@@ -47,7 +42,6 @@ export function moment(run: Run): string {
 export function startingRun(saved: unknown, seed: number): Run {
   return saved === null || saved === undefined ? newRun(seed) : (JSON.parse(JSON.stringify(saved)) as Run);
 }
-
 
 /** A mote of dust in the kitchen's air: where it is, and which of the two shades it is drawn in. */
 export interface Mote {
@@ -72,7 +66,7 @@ export function motes(time: number): Mote[] {
     const start = (id * 97) % MOTE_FIELD;
     const sway = Math.sin(time * (0.3 + (id % 5) * 0.07) + id * 1.7) * 6;
     const rise = (start + time * speed) % MOTE_FIELD;
-    out.push({ id, x: Math.round(((id * 151 + 23) % 640) + sway), y: Math.round(MOTE_FIELD - rise), shade: id % 3 === 0 ? 1 : 0 });
+    out.push({ id, x: Math.round(((id * 151 + 23) % SCREEN_W) + sway), y: Math.round(MOTE_FIELD - rise), shade: id % 3 === 0 ? 1 : 0 });
   }
   return out;
 }
@@ -93,23 +87,20 @@ export function cycleTitle(run: Run): string {
   return `${boss === null ? "Cycle" : BOSS_NAME[boss]} ${run.cycle} of ${RENT.length}`;
 }
 
-/** Where a point in the jar is on screen when the jar leans by `angle` radians about its low right corner (`cx`, `cy`). */
-export function leanX(x: number, y: number, angle: number, cx: number, cy: number): number {
-  return angle === 0 ? x : cx + (x - cx) * Math.cos(angle) - (y - cy) * Math.sin(angle);
-}
-export function leanY(x: number, y: number, angle: number, cx: number, cy: number): number {
-  return angle === 0 ? y : cy + (x - cx) * Math.sin(angle) + (y - cy) * Math.cos(angle);
-}
-
 /**
  * Where things in the jar are on screen when the jar leans by `angle` radians about its low right corner (`cx`, `cy`): the same
  * things, moved. For what is drawn over a leaning jar but stays upright itself, like the score popups.
  */
 export function leaned<T extends { x: number; y: number }>(things: readonly T[], angle: number, cx: number, cy: number): T[] {
-  if (angle === 0) return things.slice();
+  return things.map((t) => ({ ...t, ...leanPoint(t.x, t.y, angle, cx, cy) }));
+}
+
+/** Where one point in the jar is on screen when the jar leans by `angle` radians about (`cx`, `cy`). */
+export function leanPoint(x: number, y: number, angle: number, cx: number, cy: number): { x: number; y: number } {
+  if (angle === 0) return { x, y };
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
-  return things.map((t) => ({ ...t, x: cx + (t.x - cx) * cos - (t.y - cy) * sin, y: cy + (t.x - cx) * sin + (t.y - cy) * cos }));
+  return { x: cx + (x - cx) * cos - (y - cy) * sin, y: cy + (x - cx) * sin + (y - cy) * cos };
 }
 
 /** How many letters a heading's wave passes a second, and the longest it waits before the next one starts, in seconds. */
@@ -175,7 +166,6 @@ export function shelfX(at: number, left: number, slot: number, count: number, dr
   return dragged ? Math.max(left + slot / 2, Math.min(left + count * slot - slot / 2, pointerX)) : home;
 }
 
-
 /** A number counting up to `total` over `seconds`, fast at first and slowing as it arrives: what the end board's total shows at `time`. */
 export function countUp(total: number, time: number, seconds: number): number {
   const t = Math.max(0, Math.min(1, time / seconds));
@@ -186,11 +176,6 @@ export function countUp(total: number, time: number, seconds: number): number {
 export function earnerKind(label: string): FruitKind | null {
   for (const kind of Object.keys(FRUITS) as FruitKind[]) if (FRUITS[kind].name === label) return kind;
   return null;
-}
-
-/** The kind at a place of the whole-pool board, or null when none is chosen there (-1) or the place is gone. */
-export function kindAt(rows: readonly PoolRow[], at: number): FruitKind | null {
-  return rows[at]?.kind ?? null;
 }
 
 /**
@@ -312,12 +297,6 @@ export function entered(time: number, n: number, from = 0): number {
   return time >= from + n * ENTER.gap ? 1 : 0;
 }
 
-/** The name of the kind chosen in the take-out dialog (a row of the pool's kinds), or "" when none is. */
-export function chosenName(rows: readonly PoolRow[], at: number): string {
-  const kind = rows[at]?.kind;
-  return kind === undefined ? "" : FRUITS[kind].name;
-}
-
 /** The banner that crosses the screen as a cycle's last turn begins: seconds to come in, to hold, and to go out. */
 export const SWEEP = { in: 0.18, hold: 0.9, out: 0.2 } as const;
 export const SWEEP_TIME = SWEEP.in + SWEEP.hold + SWEEP.out;
@@ -359,3 +338,9 @@ export function rolledIn(before: number, after: number, count: number): boolean 
 
 /** When the jar (or the title's name) first touches down, in seconds into its fall: the first of the bounce's three arcs. */
 export const LANDS = INTRO.fall / 2.75;
+
+/** The name of the kind at a row of the pool (the take-out dialog's choice), or "" when none is chosen. */
+export function chosenName(rows: readonly PoolRow[], at: number): string {
+  const kind = rows[at]?.kind;
+  return kind === undefined ? "" : FRUITS[kind].name;
+}

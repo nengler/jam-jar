@@ -39,7 +39,7 @@ function Stat({ value, label, shown }: { value: string; label: string; shown: bo
 export function EndBoard({ run, rent, keys, onAgain, onTitle }: { run: Run; rent: number; keys: boolean; onAgain: () => void; onTitle: () => void }) {
   const time = useTime();
   const won = run.phase === "won";
-  const earners = topEarners(run, 3);
+  const earners = topEarners(run, 3).map((e) => ({ ...e, kind: earnerKind(e.label) }));
   const near = Math.max(0, Math.min(1, rent === 0 ? 1 : run.cycleScore / rent));
   return (
     <Flex width={END_W} direction="column" alignItems="stretch">
@@ -79,8 +79,8 @@ export function EndBoard({ run, rent, keys, onAgain, onTitle }: { run: Run; rent
             <Flex key={e.label} width={TILE_W} height={52} direction="column" alignItems="center" justifyContent="center" opacity={time >= EARNERS_AT ? 1 : 0}>
               {/* A fruit by its picture; a keyword (Merge, Explode) by its name. */}
               <Flex width={32} height={32} direction="row" alignItems="center" justifyContent="center">
-                {earnerKind(e.label) !== null && <FruitBall kind={earnerKind(e.label) ?? "cherry"} x={16} y={16} look="icon" />}
-                {earnerKind(e.label) === null && <Text color={INK_SOFT}>{e.label}</Text>}
+                {e.kind !== null && <FruitBall kind={e.kind} x={16} y={16} look="icon" />}
+                {e.kind === null && <Text color={INK_SOFT}>{e.label}</Text>}
               </Flex>
               <Flex height={26} direction="row" alignItems="center">
                 <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`${e.points}`}</Text>

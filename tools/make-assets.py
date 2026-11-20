@@ -15,7 +15,11 @@ The text is the engine's built-in fonts (m5x7 and Jersey 10), so there is no fon
 
     python3 tools/make-assets.py
 """
+import math
+import random
 import shutil
+import struct
+import wave
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -70,42 +74,36 @@ SCORE_NOTES = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66, 1318.51]
 SCORE_RATE = 22050
 
 
-def write_score_notes() -> None:
-    import math
-    import struct
-    import wave
+def write_wave(name: str, samples: list[float], tail: float = 0.02) -> None:
+    """Writes 16-bit mono samples to assets/, faded to nothing over the last `tail` seconds so the sound does not end on a click."""
+    fade = SCORE_RATE * tail
+    out = [int(max(-1.0, min(1.0, v * min(1.0, (len(samples) - n) / fade))) * 32767) for n, v in enumerate(samples)]
+    with wave.open(str(ASSETS / name), "wb") as file:
+        file.setnchannels(1)
+        file.setsampwidth(2)
+        file.setframerate(SCORE_RATE)
+        file.writeframes(struct.pack(f"<{len(out)}h", *out))
 
+
+def write_score_notes() -> None:
     for index, pitch in enumerate(SCORE_NOTES):
-        frames = int(SCORE_RATE * 0.42)
         samples = []
-        for n in range(frames):
+        for n in range(int(SCORE_RATE * 0.42)):
             t = n / SCORE_RATE
-            # Struck at once, and faded to nothing over its last 30 ms so it does not end on a click.
-            attack = min(1.0, t / 0.004) * min(1.0, (frames - n) / (SCORE_RATE * 0.03))
             body = math.sin(2 * math.pi * pitch * t) * math.exp(-t * 9.0)
             octave = 0.35 * math.sin(2 * math.pi * pitch * 2 * t) * math.exp(-t * 13.0)
             fifth = 0.2 * math.sin(2 * math.pi * pitch * 3 * t) * math.exp(-t * 18.0)
             ring = 0.12 * math.sin(2 * math.pi * pitch * 4.2 * t) * math.exp(-t * 26.0)
-            samples.append(int(max(-1.0, min(1.0, 0.55 * attack * (body + octave + fifth + ring))) * 32767))
-        with wave.open(str(ASSETS / f"score-{index}.wav"), "wb") as out:
-            out.setnchannels(1)
-            out.setsampwidth(2)
-            out.setframerate(SCORE_RATE)
-            out.writeframes(struct.pack(f"<{len(samples)}h", *samples))
+            samples.append(0.55 * min(1.0, t / 0.004) * (body + octave + fifth + ring))
+        write_wave(f"score-{index}.wav", samples, tail=0.03)
 
 
 def write_last_turn() -> None:
     """The last turn's sound: a quick rising whoosh of filtered noise into two struck low notes a fifth apart, a drum roll's weight without a drum."""
-    import math
-    import random
-    import struct
-    import wave
-
     rng = random.Random(5)
-    frames = int(SCORE_RATE * 0.7)
     samples = []
     smooth = 0.0
-    for n in range(frames):
+    for n in range(int(SCORE_RATE * 0.7)):
         t = n / SCORE_RATE
         # The whoosh: noise through a low-pass that opens, swelling over the first 0.22 s and cut off as the notes strike.
         swell = min(1.0, t / 0.22) ** 2 if t < 0.22 else math.exp(-(t - 0.22) * 30.0)
@@ -114,34 +112,13 @@ def write_last_turn() -> None:
         # The strike: G3 and D4 together, with a little of the octave, dying away.
         s = max(0.0, t - 0.22)
         struck = 0.0 if t < 0.22 else math.exp(-s * 6.0) * (math.sin(2 * math.pi * 196.0 * s) + 0.7 * math.sin(2 * math.pi * 293.66 * s) + 0.3 * math.sin(2 * math.pi * 392.0 * s))
-        fade = min(1.0, (frames - n) / (SCORE_RATE * 0.03))
-        samples.append(int(max(-1.0, min(1.0, fade * (whoosh + 0.4 * struck))) * 32767))
-    with wave.open(str(ASSETS / "last.wav"), "wb") as out:
-        out.setnchannels(1)
-        out.setsampwidth(2)
-        out.setframerate(SCORE_RATE)
-        out.writeframes(struct.pack(f"<{len(samples)}h", *samples))
-
-
-def write_wave(name: str, samples: list[float]) -> None:
-    import struct
-    import wave
-
-    tail = int(SCORE_RATE * 0.02)
-    out = [int(max(-1.0, min(1.0, v * min(1.0, (len(samples) - n) / tail))) * 32767) for n, v in enumerate(samples)]
-    with wave.open(str(ASSETS / name), "wb") as file:
-        file.setnchannels(1)
-        file.setsampwidth(2)
-        file.setframerate(SCORE_RATE)
-        file.writeframes(struct.pack(f"<{len(out)}h", *out))
+        samples.append(whoosh + 0.4 * struck)
+    write_wave("last.wav", samples, tail=0.03)
 
 
 def write_entrance_sounds() -> None:
     """Sounds for things arriving: five bloops, each higher than the last, for boards, cards and buttons popping in one after
     another; a soft wooden tock for a fruit rolling to its place on the shelf; and a low thud for the jar landing."""
-    import math
-    import random
-
     # A bloop: a round tone that starts a third high and drops to its note in a twentieth of a second, like a bubble.
     for index, pitch in enumerate([392.0, 440.0, 523.25, 587.33, 659.25]):
         samples = []
@@ -219,8 +196,7 @@ def hexes(*codes: str) -> list[tuple[int, int, int]]:
 # ordered by brightness, are spread over the ramp (`recolor`).
 RAMPS = {
     "frame": hexes("#341c27", "#7a4841", "#ad7757", "#e7d5b3"),
-    "frame-chosen": hexes("#602c2c", "#be772b", "#de9e41", "#e8c170"),
-    "select": hexes("#602c2c", "#be772b", "#de9e41", "#e8c170"),
+    "amber": hexes("#602c2c", "#be772b", "#de9e41", "#e8c170"),
     "plaque": hexes("#090a14", "#10141f", "#151d28", "#394a50"),
     "wallpaper": hexes("#151d28", "#172038"),
 }
@@ -229,8 +205,8 @@ RAMPS = {
 # they are used as they are. Each piece is (column, row, tiles across, ramp), drawn as a 9-slice in the game.
 ADVENTURE = {
     "frame.png": (0, 0, 1, "frame"),  # parchment in a wooden frame: boards, cards, menu buttons
-    "frame-chosen.png": (0, 0, 1, "frame-chosen"),  # the same in amber: the chosen one
-    "select.png": (6, 2, 1, "select"),  # an empty amber frame: around the chosen fruit on the shelf
+    "frame-chosen.png": (0, 0, 1, "amber"),  # the same in amber: the chosen one
+    "select.png": (6, 2, 1, "amber"),  # an empty amber frame: around the chosen fruit on the shelf
     "plaque.png": (3, 0, 1, "plaque"),  # dark slate: the note of what just happened
 }
 # Pattern Pack Pixel, greyscale: 16 x 16 tiles, packed. The wallpaper is tile (0, 2), a thin trellis, in two close navy blues.
@@ -277,9 +253,12 @@ def colour(code: str) -> tuple[int, int, int, int]:
     return (*rgb, 255)
 
 
-# The jar, as src/rules/jar.ts has it (JAR and RIM), in art pixels (half the screen's): its inside, the line fruit must stay
-# under, and where its glass starts. The glass is 3 art pixels thick, and the pictures reach MARGIN art pixels outside the walls.
-JAR_LEFT, JAR_RIGHT, JAR_FLOOR, JAR_RIM, JAR_TOP = 112, 208, 168, 52, 36
+# The jar the art is drawn to, in screen pixels, written to src/rules/sizes.ts as JAR_ART so a test can hold it to
+# src/rules/jar.ts: its inside (JAR), the line fruit must stay under (RIM), where its glass starts (DROP_Y), the boss peg's
+# radius (PEG.r) and half the shelf's width.
+JAR_ART = {"left": 224, "right": 416, "floor": 336, "rim": 104, "top": 72, "pegRadius": 22, "shelfHalfWidth": 104}
+# The same in art pixels. The glass is 3 art pixels thick, and the pictures reach MARGIN art pixels outside the walls.
+JAR_LEFT, JAR_RIGHT, JAR_FLOOR, JAR_RIM, JAR_TOP = (JAR_ART[k] // PX for k in ("left", "right", "floor", "rim", "top"))
 GLASS = 3
 MARGIN = 6
 # How far the mouth's rim reaches above and below the glass's top.
@@ -491,15 +470,16 @@ def item_pickling() -> Image.Image:
 
 
 def peg() -> Image.Image:
-    """The boss jar's peg, 22 x 22 art pixels (PEG.r in src/rules/jar.ts is its radius on screen): a wooden post seen end on."""
-    out = Image.new("RGBA", (22, 22))
+    """The boss jar's peg, a wooden post seen end on: its radius on screen is its width in art pixels."""
+    d = JAR_ART["pegRadius"] * 2 // PX
+    out = Image.new("RGBA", (d, d))
     draw = ImageDraw.Draw(out)
-    draw.ellipse((0, 0, 21, 21), fill=colour("#341c27"))
-    draw.ellipse((1, 1, 20, 20), fill=colour("#ad7757"))
-    draw.ellipse((4, 4, 17, 17), outline=colour("#7a4841"))
-    draw.ellipse((7, 7, 14, 14), outline=colour("#7a4841"))
-    draw.rectangle((10, 10, 11, 11), fill=colour("#7a4841"))
-    draw.arc((1, 1, 20, 20), 180, 280, fill=colour("#d7b594"))
+    draw.ellipse((0, 0, d - 1, d - 1), fill=colour("#341c27"))
+    draw.ellipse((1, 1, d - 2, d - 2), fill=colour("#ad7757"))
+    draw.ellipse((4, 4, d - 5, d - 5), outline=colour("#7a4841"))
+    draw.ellipse((7, 7, d - 8, d - 8), outline=colour("#7a4841"))
+    draw.rectangle((d // 2 - 1, d // 2 - 1, d // 2, d // 2), fill=colour("#7a4841"))
+    draw.arc((1, 1, d - 2, d - 2), 180, 280, fill=colour("#d7b594"))
     return doubled(out)
 
 
@@ -563,6 +543,8 @@ def main() -> None:
     SIZES_FILE.write_text(
         "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
         "export const FRUIT_ART = {\n" + "\n".join(lines) + "\n} as const;\n"
+        "\n/** Written by tools/make-assets.py: the jar the art is drawn to, in screen pixels; src/rules/jar.ts must agree. Do not edit. */\n"
+        "export const JAR_ART = { " + ", ".join(f"{k}: {v}" for k, v in JAR_ART.items()) + " } as const;\n"
     )
     to_palette(coin()).save(ASSETS / "coin.png")
     adventure = Image.open(KENNEY / "ui-pixel-adventure-large-thick.png").convert("RGBA")
@@ -588,7 +570,7 @@ def main() -> None:
     back, front = jar_pictures()
     back.save(ASSETS / "jar-back.png")
     front.save(ASSETS / "jar-front.png")
-    shelf(104).save(ASSETS / "shelf.png")
+    shelf(JAR_ART["shelfHalfWidth"] * 2 // PX).save(ASSETS / "shelf.png")
     # The explosion's frames (96 x 91) are centred on a 96 x 96 square so they share one origin.
     for i in range(EXPLOSION_FRAMES):
         frame = to_palette(Image.open(KENNEY / f"explosion-pixel-0{i}.png"))

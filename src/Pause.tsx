@@ -1,8 +1,8 @@
-import { Button, Entity, Flex, Menu, Text, useInputDevice, useSound } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Menu, Text, useInputDevice } from "@tsengine/runtime/jsx";
 
-import { KeyHint } from "./KeyHint.tsx";
+import { KeyHint, MenuButton } from "./KeyHint.tsx";
 import { useGame } from "./GameState.ts";
-import { CLICK_VOLUME, BUTTON, BUTTON_GREY, BUTTON_SLICE, DISPLAY, DISPLAY_SIZE, INK, PANEL, PANEL_SLICE, SHADE } from "./theme.ts";
+import { DISPLAY, DISPLAY_SIZE, INK, PANEL, PANEL_SLICE, SCREEN_H, SCREEN_W, SHADE } from "./theme.ts";
 
 /**
  * The pause menu, over the game, set a little above the middle so the keys under it stay clear of the foot of the screen. It is `modal`: while it is open only it hears the keys, so Escape here closes the menu
@@ -13,10 +13,9 @@ export function Pause() {
   const device = useInputDevice();
   const keys = device === "keyboard";
   const { resume, toTitle } = useGame.actions();
-  const playClick = useSound("click.wav");
   return (
     <Entity>
-      <Flex modal width={640} height={360} paddingBottom={56} background={SHADE} alignItems="center" justifyContent="center">
+      <Flex modal width={SCREEN_W} height={SCREEN_H} paddingBottom={56} background={SHADE} alignItems="center" justifyContent="center">
         <Menu
           gap={8}
           padding={16}
@@ -32,18 +31,8 @@ export function Pause() {
               Paused
             </Text>
           </Flex>
-          <Button autoFocus onPress={() => {
-              playClick(CLICK_VOLUME);
-              resume();
-            }} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
-            <Text color={INK}>Resume</Text>
-          </Button>
-          <Button onPress={() => {
-              playClick(CLICK_VOLUME);
-              toTitle();
-            }} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
-            <Text color={INK}>Quit to title</Text>
-          </Button>
+          <MenuButton autoFocus label="Resume" onPress={resume} />
+          <MenuButton label="Quit to title" onPress={toTitle} />
         </Menu>
       </Flex>
       {/* The keys, for a player at a keyboard: always here, as the play screen shows each moment's only the first time. */}

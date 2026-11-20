@@ -1,7 +1,7 @@
 import { createGameState, createSave } from "@tsengine/runtime";
 
 import type { Run } from "./rules/jar.ts";
-import { effectsLevel, fastPlay, learn, learnedMoments, musicLevel, settings, setTutorialStep, stepVolume, toggleFast, tutorialStep } from "./settings.ts";
+import { effectsLevel, fastPlay, learn, learnedMoments, settings, setTutorialStep, stepVolume, toggleFast, tutorialStep } from "./settings.ts";
 import { LESSONS } from "./rules/tutorial.ts";
 
 type Screen = "title" | "settings" | "play";
@@ -26,9 +26,8 @@ export const useGame = createGameState(
     savedRun: null as Run | null,
     /** Whether there is a run to continue: the title shows "Continue". */
     hasSave: false,
-    /** The player's settings as the screens show them (settings.ts keeps them): the volumes, 0 to 10, and the moments whose keys
+    /** The player's settings as the screens show them (settings.ts keeps them): the sounds' volume, 0 to 10, the speed, and the moments whose keys
      * have been shown and used once ("title", "order", "pick", "shop", …), whose hints are not drawn again. */
-    music: musicLevel(),
     effects: effectsLevel(),
     fast: fastPlay(),
     learned: learnedMoments(),
@@ -40,7 +39,6 @@ export const useGame = createGameState(
   {
     /** The settings changed, or were read from the player's files: show them. */
     settingsChanged(s) {
-      s.music = musicLevel();
       s.effects = effectsLevel();
       s.fast = fastPlay();
       s.learned = learnedMoments();
@@ -86,10 +84,7 @@ export const useGame = createGameState(
     resume(s) {
       s.paused = false;
     },
-    /** The settings screen's rows: the volumes are the player's settings (settings.ts), kept between launches. */
-    changeMusic(_s, by: number) {
-      stepVolume("music", by);
-    },
+    /** The settings screen's rows, kept between launches (settings.ts). */
     changeEffects(_s, by: number) {
       stepVolume("effects", by);
     },

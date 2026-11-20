@@ -3,6 +3,7 @@ import { Collider, Entity, Shape, Sprite } from "@tsengine/runtime/jsx";
 import { Fruit } from "./Fruit.tsx";
 import { Peg } from "./Peg.tsx";
 import { JAR, PULSE, RIM, TILT_PULL, bossNow, lean, surface, type FruitReport, type Run } from "./rules/jar.ts";
+import { JAR_ART } from "./rules/sizes.ts";
 import { JUICE } from "./theme.ts";
 
 /** The jar's pictures reach this far outside its walls and above its glass, which starts this far above the rim. */
@@ -28,7 +29,8 @@ export function Jar({ run, onReport, lift = 0 }: JarProps) {
   const width = JAR.right - JAR.left;
   const top = surface(run);
   const angle = lean(run);
-  const pull = bossNow(run) === "tilt" ? TILT_PULL : 0;
+  const boss = bossNow(run);
+  const pull = boss === "tilt" ? TILT_PULL : 0;
   const liquid = run.lime && run.milk ? "both" : run.milk ? "milk" : "lime";
   return (
     <Entity>
@@ -46,10 +48,10 @@ export function Jar({ run, onReport, lift = 0 }: JarProps) {
       <Collider x={JAR.left - 8} y={JAR.floor} width={width + 16} height={16} solid />
       <Collider x={JAR.left - 16} y={0} width={16} height={JAR.floor + 16} solid />
       <Collider x={JAR.right} y={0} width={16} height={JAR.floor + 16} solid />
-      {bossNow(run) === "peg" && <Peg />}
+      {boss === "peg" && <Peg />}
       {/* The Flip jar's lid: a plank across the rim that the pile falls to when its gravity turns over. */}
-      {bossNow(run) === "flip" && <Collider x={JAR.left - 8} y={RIM - 16} width={width + 16} height={16} solid />}
-      {bossNow(run) === "flip" && <Sprite image="shelf.png" x={(JAR.left + JAR.right) / 2 - 104} y={RIM - 12} />}
+      {boss === "flip" && <Collider x={JAR.left - 8} y={RIM - 16} width={width + 16} height={16} solid />}
+      {boss === "flip" && <Sprite image="shelf.png" x={(JAR.left + JAR.right) / 2 - JAR_ART.shelfHalfWidth} y={RIM - 12} />}
       {run.fruits.map((f) => (
         <Fruit
           key={f.id}

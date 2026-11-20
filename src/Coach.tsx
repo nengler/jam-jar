@@ -3,7 +3,7 @@ import { Entity, Flex, Shape, Text, useTime } from "@tsengine/runtime/jsx";
 import { Panel } from "./Board.tsx";
 import { TapButton } from "./KeyHint.tsx";
 import type { Lesson } from "./rules/tutorial.ts";
-import { CARD_SLICE, DIM, GOLD, LIGHT, PLAQUE, SELECT } from "./theme.ts";
+import { CARD_SLICE, DIM, GOLD, LIGHT, PLAQUE, SCREEN_H, SCREEN_W, SELECT } from "./theme.ts";
 
 /**
  * The tutorial's card, in the first game: one lesson on a dark slate, its title in gold. It does not count the lessons, and
@@ -22,7 +22,7 @@ export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { l
               <Text color={GOLD}>{lesson.title}</Text>
             )}
             <Text width={wide ? width - 32 - WIDE_BUTTONS : width - 32} maxWidth={wide ? width - 32 - WIDE_BUTTONS : width - 32} color={LIGHT}>
-              {keys ? lesson.keysText : lesson.text}
+              {keys ? (lesson.keysText ?? lesson.text) : lesson.text}
             </Text>
           </Flex>
           {/* "No tips" ends the tutorial. Only a lesson that asks for nothing has a "Got it": the others go when the player does what they say. */}
@@ -48,10 +48,10 @@ export function Spotlight({ x, y, width, height }: { x: number; y: number; width
   const time = useTime();
   return (
     <Entity>
-      <Shape kind="rect" x={0} y={0} width={640} height={Math.max(0, y)} color={DIM} />
-      <Shape kind="rect" x={0} y={y + height} width={640} height={Math.max(0, 360 - y - height)} color={DIM} />
+      <Shape kind="rect" x={0} y={0} width={SCREEN_W} height={Math.max(0, y)} color={DIM} />
+      <Shape kind="rect" x={0} y={y + height} width={SCREEN_W} height={Math.max(0, SCREEN_H - y - height)} color={DIM} />
       <Shape kind="rect" x={0} y={y} width={Math.max(0, x)} height={height} color={DIM} />
-      <Shape kind="rect" x={x + width} y={y} width={Math.max(0, 640 - x - width)} height={height} color={DIM} />
+      <Shape kind="rect" x={x + width} y={y} width={Math.max(0, SCREEN_W - x - width)} height={height} color={DIM} />
       <Flex x={x} y={y} width={width} height={height} backgroundImage={SELECT} slice={CARD_SLICE} opacity={0.55 + 0.45 * Math.sin(time * 5)} />
     </Entity>
   );

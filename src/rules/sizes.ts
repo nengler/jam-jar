@@ -25,3 +25,6 @@ export const FRUIT_ART = {
   snowpear: { size: 40, radius: 18 },
   fruitfly: { size: 32, radius: 10 },
 } as const;
+
+/** Written by tools/make-assets.py: the jar the art is drawn to, in screen pixels; src/rules/jar.ts must agree. Do not edit. */
+export const JAR_ART = { left: 224, right: 416, floor: 336, rim: 104, top: 72, pegRadius: 22, shelfHalfWidth: 104 } as const;

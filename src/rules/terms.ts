@@ -1,55 +1,16 @@
 /**
  * The game's terms: the keywords its cards are written in, each with one meaning everywhere. A card is a row of them, often with
- * a number, the way Slay the Spire's say "Block 5": the Chili is "Fresh 2. Exploder 4." What a keyword means is said once, here,
+ * a number, the way Slay the Spire's say "Block 5": the Chili is "Fresh 6. Exploder 4." What a keyword means is said once, here,
  * and shown in a tooltip beside the card. A keyword is written with a capital in card text, in one of its `FORMS`, so the screen
  * can find it, colour it (and the number after it) and explain it.
  */
-export type Keyword =
-  | "fresh"
-  | "simmer"
-  | "booster"
-  | "merge"
-  | "exploder"
-  | "buried"
-  | "explode"
-  | "exploded"
-  | "burst"
-  | "sprout"
-  | "rotten"
-  | "rots"
-  | "ripen"
-  | "honeyed"
-  | "honey"
-  | "eat"
-  | "hatch"
-  | "grow"
-  | "heavy"
-  | "double"
-  | "sour"
-  | "dense"
-  | "edge"
-  | "copy"
-  | "bouncy"
-  | "crack"
-  | "juice"
-  | "milk"
-  | "skip"
-  | "legendary"
-  | "crush"
-  | "shake"
-  | "preserve"
-  | "pickled"
-  | "frozen"
-  | "once"
-  | "spill";
-
 export interface KeywordDef {
   name: string;
   /** What it means. "This" is the number after it on the card. At most 46 characters: two lines of a tooltip. */
   text: string;
 }
 
-export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
+export const KEYWORDS = {
   fresh: { name: "Fresh", text: "Scores this once, when it lands or is made." },
   simmer: { name: "Simmer", text: "Scores this at the end of every turn." },
   booster: { name: "Booster", text: "Scores nothing itself." },
@@ -87,7 +48,10 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   pickled: { name: "Pickled", text: "Never ages, never Rotten." },
   once: { name: "Once", text: "Used up the first time it works." },
   spill: { name: "Spill", text: "Fruit over the rim are lost: -5 each." },
-};
+} satisfies Record<string, KeywordDef>;
+
+/** A keyword of the game's terms. */
+export type Keyword = keyof typeof KEYWORDS;
 
 /** Every way a keyword is written in card text, beside its name. */
 const OTHER_FORMS: Readonly<Record<string, Keyword>> = {

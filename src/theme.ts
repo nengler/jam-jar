@@ -6,6 +6,10 @@ import { FRUIT_ART } from "./rules/sizes.ts";
  * snapped to or drawn in as well (tools/make-assets.py), and every picture is pixel art at 2x. The text is the engine's built-in
  * pixel fonts at 2x too: m5x7 for reading, Jersey 10 for headings and numbers.
  */
+/** The screen, in the game's own pixels (Main.tsx's <Game> must repeat them as literals). */
+export const SCREEN_W = 640;
+export const SCREEN_H = 360;
+
 export const INK = "#341c27";
 export const INK_SOFT = "#7a4841";
 export const LIGHT = "#ebede9";
@@ -15,14 +19,14 @@ export const GOOD = "#468232";
 export const BAD = "#a53030";
 /** Over the jar while a menu or the pick is up: the darkest Apollo colour, see-through. */
 export const SHADE = "#090a14c0";
+/** SHADE twice over, for the shop, which covers the whole screen. */
+export const SHADE_DEEP = "#090a14ef";
 /** Over everything a tutorial lesson is not about: the same dark, lighter, so the rest can still be made out. */
 export const DIM = "#090a14a0";
 /** The shadow a board or a heading casts on the wall, and the colour behind the kitchen while it loads. */
 export const WALL_SHADOW = "#10141f";
 
-/** The fonts (built into the engine) and their sizes: each is drawn at twice its own pixel size. */
-export const BODY = "tse:m5x7";
-export const BODY_SIZE = 20;
+/** The heading font (built into the engine) and its size, drawn at twice its own pixel size. The body font is set on <Game> in Main.tsx. */
 export const DISPLAY = "tse:jersey10";
 export const DISPLAY_SIZE = 28;
 
@@ -63,7 +67,6 @@ export const BAR_FILL = "#be772b";
 export const BAR_WELL = "#4d2b32";
 export const BAR_GOLD = "#e8c170";
 export const BAR_PAID = "#75a743";
-export const RULE = "#d7b594";
 
 /** The line drawn between two fruit when one does something to the other, by what it did (rules/jar.ts, `Link`). */
 export const LINK: Readonly<Record<"boost" | "rot" | "honey" | "eat" | "freeze", string>> = {

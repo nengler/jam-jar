@@ -103,8 +103,6 @@ const COCONUT_TURNS = 3;
 export const LIME_JUICE = 20;
 export const COCONUT_MILK = 20;
 export const JUICE_MOST = 120;
-/** What a honeyed fruit scores at each Resolve. */
-const HONEY_POINTS = HONEY;
 const POPUP_LIFE = 0.9;
 /** About how wide a popup's character is on screen, and a popup's line, in pixels. */
 const POPUP_CHAR = 13;
@@ -129,6 +127,9 @@ export type Phase = "order" | "drop" | "settle" | "tally" | "pick" | "rent" | "s
 export const JUICER_BONUS = 3;
 /** How hard the Shaker throws each fruit, at most, sideways and up (px/s). */
 const SHAKE = 260;
+/** How hard a Peach bounces when it lands, and shoves each fruit it landed on sideways (px/s). */
+const PEACH_BOUNCE = 380;
+const PEACH_SHOVE = 180;
 /** How many fruit the run's keeping jar (the Preserves Jar or its upgrade) holds; 0 without one. */
 export function keeps(run: Run): number {
   const jar = keepingJar(run.items);
@@ -450,6 +451,7 @@ function copy(run: Run): Run {
     hand: run.hand.slice(),
     queue: run.queue.slice(),
     fruits: run.fruits.map((f) => ({ ...f })),
+    earned: { ...run.earned },
     items: run.items.slice(),
     kept: run.kept.slice(),
     shop: run.shop === null ? null : { ...run.shop, fruits: run.shop.fruits.slice() },
@@ -461,19 +463,25 @@ function copy(run: Run): Run {
   };
 }
 
-function deal(run: Run): void {
+/** Roll with the run's seed, and keep where the rolls left it. */
+function withRng<T>(run: Run, roll: (rng: Rng) => T): T {
   const rng = new Rng(run.seed);
+  const out = roll(rng);
+  run.seed = rng.seed;
+  return out;
+}
+
+function deal(run: Run): void {
   run.hand = [];
   for (let i = 0; i < HAND_SIZE; i++) {
     if (run.draw.length === 0) {
-      run.draw = rng.shuffle(run.discard);
+      run.draw = withRng(run, (rng) => rng.shuffle(run.discard));
       run.discard = [];
     }
     const next = run.draw.shift();
     if (next === undefined) break;
     run.hand.push(next);
   }
-  run.seed = rng.seed;
   run.cursor = 0;
   run.holding = false;
 }
@@ -622,8 +630,8 @@ function kick(f: Fruit, vx: number, vy: number): void {
   f.kickY = vy;
 }
 
-/** Whether a fruit (by index) touches a Booster, a Lemon or a Cracked Coconut: what it scores is doubled. */
-function boosted(fruits: readonly Fruit[], links: readonly number[][], i: number): boolean {
+/** Whether a fruit (by index) touches a Lemon: what it scores is doubled, and it cannot merge. */
+function touchesLemon(fruits: readonly Fruit[], links: readonly number[][], i: number): boolean {
   return (links[i] ?? []).some((j) => fruits[j]?.kind === "lemon");
 }
 
@@ -656,18 +664,13 @@ interface Earned {
 function earn(run: Run, links: readonly number[][], i: number, points: number, label?: string): Earned | null {
   const f = run.fruits[i] as Fruit;
   // Doubled by a Lemon it touches, or by Coconut milk it sits in (once, not twice over).
-  const doubled = boosted(run.fruits, links, i) || (run.milk && soaked(run, f));
+  const doubled = touchesLemon(run.fruits, links, i) || (run.milk && soaked(run, f));
   const popup = score(run, points * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled, earner: FRUITS[f.kind].name });
   if (popup === null) return null;
   const boosters = doubled ? (links[i] ?? []).map((j) => run.fruits[j] as Fruit).filter((o) => o.kind === "lemon") : [];
   const fruits = [f, ...boosters];
   for (const o of fruits) pulse(o);
   return { popup, doubled, fruits, links: boosters.map((booster) => link(run, "boost", booster, f)) };
-}
-
-/** Whether a fruit (by index) touches a Lemon: it cannot merge. */
-function nearLemon(fruits: readonly Fruit[], links: readonly number[][], i: number): boolean {
-  return (links[i] ?? []).some((j) => fruits[j]?.kind === "lemon");
 }
 
 /** Where each fruit is, as its component reported: what the rest of the step reads. */
@@ -796,19 +799,19 @@ function dropStep(run: Run, dt: number): void {
   run.calmTime = calm ? run.calmTime + dt : 0;
   const ready = run.fruits.length === 0 || run.calmTime >= DROP_CALM || run.dropWait >= DROP_LIMIT;
   const flip = bossNow(run) === "flip";
-  if (run.dropTimer <= 0 && ready && run.queue.length > 0 && flip && run.drops > 0 && run.drops % FLIP_EVERY === 0 && run.flipped === (Math.floor(run.drops / FLIP_EVERY) % 2 === 0)) {
-    // The Flip jar: every second drop its gravity turns over, and the pile is left to fall and come to rest before the next.
-    run.flipped = !run.flipped;
+  // The Flip jar: its gravity turns over every `FLIP_EVERY` drops, and the pile is left to come to rest before the next.
+  const wantFlipped = flip && Math.floor(run.drops / FLIP_EVERY) % 2 === 1;
+  const canDrop = run.dropTimer <= 0 && ready && run.queue.length > 0;
+  if (canDrop && run.flipped !== wantFlipped) {
+    run.flipped = wantFlipped;
     run.message = run.flipped ? "Gravity flips: everything falls to the lid" : "Gravity flips back";
     run.dropTimer = DROP_GAP;
     run.dropWait = 0;
     run.calmTime = 0;
-  } else if (run.dropTimer <= 0 && ready && run.queue.length > 0) {
+  } else if (canDrop) {
     const kind = run.queue.shift() as FruitKind;
     const r = FRUITS[kind].radius;
-    const rng = new Rng(run.seed);
-    const x = rng.range(JAR.left + r, JAR.right - r);
-    run.seed = rng.seed;
+    const x = withRng(run, (rng) => rng.range(JAR.left + r, JAR.right - r));
     // Under its lid, a fruit starts inside the jar, at the end it will fall away from.
     const y = !flip ? DROP_Y : run.flipped ? JAR.floor - r - 2 : RIM + r + 2;
     run.fruits.push(makeFruit(run, kind, x, y));
@@ -831,7 +834,7 @@ function dropStep(run: Run, dt: number): void {
 function settleStep(run: Run, dt: number): void {
   simulate(run, dt);
   run.settleTime += dt;
-  const calm = run.fruits.every((f) => f.speed < SETTLE_SPEED) && run.fruits.every((f) => !f.lit);
+  const calm = run.fruits.every((f) => f.speed < SETTLE_SPEED && !f.lit);
   run.calmTime = calm ? run.calmTime + dt : 0;
   if (run.calmTime < CALM_TIME && run.settleTime < SETTLE_LIMIT) return;
   resolve(run);
@@ -846,9 +849,9 @@ function settleStep(run: Run, dt: number): void {
 
 /** The Shaker: every fruit is thrown a random way, so the pile lands differently and touches something new. */
 function shake(run: Run): void {
-  const rng = new Rng(run.seed);
-  for (const f of run.fruits) kick(f, rng.range(-SHAKE, SHAKE), -rng.range(SHAKE / 2, SHAKE));
-  run.seed = rng.seed;
+  withRng(run, (rng) => {
+    for (const f of run.fruits) kick(f, rng.range(-SHAKE, SHAKE), -rng.range(SHAKE / 2, SHAKE));
+  });
   run.message = "The Shaker shakes the jar";
 }
 
@@ -889,10 +892,6 @@ function land(run: Run): void {
   });
 }
 
-/** How hard a Peach bounces when it lands, and shoves each fruit it landed on sideways (px/s). */
-const PEACH_BOUNCE = 380;
-const PEACH_SHOVE = 180;
-
 /** A Kiwi touching a landed fruit of another kind becomes a copy of it: a new fruit where it was, which lands and scores as one. */
 function copyKiwis(run: Run): void {
   const near = links(run.fruits);
@@ -914,10 +913,10 @@ function merge(run: Run): void {
   const born: Fruit[] = [];
   for (let i = 0; i < run.fruits.length; i++) {
     const a = run.fruits[i] as Fruit;
-    if (gone.has(a.id) || !canMerge(a) || nearLemon(run.fruits, near, i)) continue;
+    if (gone.has(a.id) || !canMerge(a) || touchesLemon(run.fruits, near, i)) continue;
     for (const j of near[i] ?? []) {
       const b = run.fruits[j] as Fruit;
-      if (j <= i || gone.has(b.id) || b.kind !== a.kind || !canMerge(b) || nearLemon(run.fruits, near, j)) continue;
+      if (j <= i || gone.has(b.id) || b.kind !== a.kind || !canMerge(b) || touchesLemon(run.fruits, near, j)) continue;
       gone.add(a.id);
       gone.add(b.id);
       const mx = (a.x + b.x) / 2;
@@ -1004,7 +1003,7 @@ export const BLAST_BONUS: Readonly<Partial<Record<FruitKind, number>>> = { chili
 function explode(run: Run, bomb: Fruit): void {
   const radius = BLAST_RADIUS[bomb.kind] ?? 48;
   const near = links(run.fruits);
-  const doubled = new Set(run.fruits.filter((_, i) => boosted(run.fruits, near, i)).map((f) => f.id));
+  const doubled = new Set(run.fruits.filter((_, i) => touchesLemon(run.fruits, near, i)).map((f) => f.id));
   const victims: Fruit[] = [];
   const kept: Fruit[] = [];
   const born: Fruit[] = [];
@@ -1038,9 +1037,7 @@ function explode(run: Run, bomb: Fruit): void {
     if (f.kind === "fig" && f.rotten) figs += 1;
     if (f.kind === "lime") limes += 1;
     if (f.kind === "seed") {
-      const rng = new Rng(run.seed);
-      const sprout = makeFruit(run, rng.pick(SPROUTS), f.x, f.y);
-      run.seed = rng.seed;
+      const sprout = makeFruit(run, withRng(run, (rng) => rng.pick(SPROUTS)), f.x, f.y);
       sprout.landed = true;
       born.push(sprout);
     }
@@ -1123,7 +1120,7 @@ export function resolve(run: Run): void {
     } else if (f.kind === "pitaya") {
       points = FRUITS.pitaya.points + run.pitayaBonus;
     }
-    if (f.honeyed) points += HONEY_POINTS;
+    if (f.honeyed) points += HONEY;
     const earned = earn(run, near, i, points);
     if (earned === null) return;
     slot += 1;
@@ -1254,11 +1251,12 @@ export function resolve(run: Run): void {
 }
 
 function offer(run: Run): void {
-  const rng = new Rng(run.seed);
-  run.offers = rng.shuffle(OFFERABLE).slice(0, 3);
-  // Now and then a Legendary takes the last place.
-  if (rng.next() < LEGENDARY_CHANCE) run.offers[2] = rng.pick(LEGENDARY);
-  run.seed = rng.seed;
+  run.offers = withRng(run, (rng) => {
+    const offers = rng.shuffle(OFFERABLE).slice(0, 3);
+    // Now and then a Legendary takes the last place.
+    if (rng.next() < LEGENDARY_CHANCE) offers[2] = rng.pick(LEGENDARY);
+    return offers;
+  });
   run.offerCursor = -1;
   run.phase = "pick";
 }
@@ -1281,9 +1279,7 @@ function pickStep(run: Run, keys: Keys): void {
     const kind = run.offers[run.offerCursor] as FruitKind;
     run.pool.push(kind);
     // Shuffled into what is still to be dealt, so a new fruit shows up soon.
-    const rng = new Rng(run.seed);
-    run.draw.splice(rng.int(0, run.draw.length), 0, kind);
-    run.seed = rng.seed;
+    run.draw.splice(withRng(run, (rng) => rng.int(0, run.draw.length)), 0, kind);
     run.message = `${FRUITS[kind].name} added to your pool`;
     sound(run, "pick");
     startTurn(run);
@@ -1340,11 +1336,11 @@ function leaveRent(run: Run): void {
 
 /** Fill the shop's shelf: three different fruit, and an item the player can use (none when there is none: `offerable`). */
 function stock(run: Run, shop: Shop): void {
-  const rng = new Rng(run.seed);
-  shop.fruits = rng.shuffle(OFFERABLE).slice(0, SHOP_FRUITS);
   const choices = offerable(run.items);
-  shop.item = choices.length === 0 ? null : rng.pick(choices);
-  run.seed = rng.seed;
+  withRng(run, (rng) => {
+    shop.fruits = rng.shuffle(OFFERABLE).slice(0, SHOP_FRUITS);
+    shop.item = choices.length === 0 ? null : rng.pick(choices);
+  });
 }
 
 /** Pay `price` coins if the run has them; says so and returns false if not. */
@@ -1482,7 +1478,6 @@ function preserveStep(run: Run, keys: Keys): void {
 }
 
 function nextCycle(run: Run): void {
-  run.shop = null;
   run.cycle += 1;
   run.turn = 1;
   run.cycleScore = 0;
@@ -1495,10 +1490,8 @@ function nextCycle(run: Run): void {
   // What a Pickling Jar keeps is Pickled: it does not age, and rot it had is gone.
   if (run.items.includes("pickling")) for (const f of run.fruits) Object.assign(f, { pickled: true, rotten: f.kind === "prune" });
   run.kept = [];
-  const rng = new Rng(run.seed);
-  run.draw = rng.shuffle(run.pool);
+  run.draw = withRng(run, (rng) => rng.shuffle(run.pool));
   run.discard = [];
-  run.seed = rng.seed;
   const boss = bossNow(run);
   run.message = boss === null ? `Cycle ${run.cycle}: rent is ${rentFor(run.cycle)}` : `The ${BOSS_NAME[boss]}! ${BOSS_RULE[boss]} Rent is ${rentFor(run.cycle)}`;
   deal(run);

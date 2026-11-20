@@ -15,10 +15,6 @@ function level(volume: number): number {
   return Math.round(volume * 10);
 }
 
-export function musicLevel(): number {
-  return level(settings.get().music);
-}
-
 export function effectsLevel(): number {
   return level(settings.get().effects);
 }

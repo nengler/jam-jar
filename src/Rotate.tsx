@@ -1,6 +1,6 @@
 import { Entity, Flex, Line, Shape, Text } from "@tsengine/runtime/jsx";
 
-import { DISPLAY, GOLD, INK, LIGHT, LIGHT_SOFT, WALL_SHADOW } from "./theme.ts";
+import { DISPLAY, GOLD, INK, LIGHT, LIGHT_SOFT, SCREEN_H, SCREEN_W, WALL_SHADOW } from "./theme.ts";
 
 /**
  * Over everything while the window is taller than it is wide, as a phone held upright is: Jam Jar is laid out on its side, and
@@ -12,7 +12,7 @@ import { DISPLAY, GOLD, INK, LIGHT, LIGHT_SOFT, WALL_SHADOW } from "./theme.ts";
 export function Rotate() {
   return (
     <Entity>
-      <Flex modal width={640} height={360} background={WALL_SHADOW} direction="column" alignItems="center" justifyContent="center" gap={28}>
+      <Flex modal width={SCREEN_W} height={SCREEN_H} background={WALL_SHADOW} direction="column" alignItems="center" justifyContent="center" gap={28}>
         <Flex direction="row" alignItems="center" gap={36} height={96}>
           <Phone width={52} height={92} color={LIGHT_SOFT} />
           <Flex width={48} height={32}>

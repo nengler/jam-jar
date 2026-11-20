@@ -19,9 +19,11 @@ if (!existsSync(join(tse, "tools", "pack.ts"))) throw new Error(`no tse checkout
 execFileSync("npm", ["ci", "--no-audit", "--no-fund"], { cwd: tse, stdio: "inherit" });
 if (!existsSync(join(tse, "native", "build-headless")))
   execFileSync("npm", ["run", "-s", "native:build:headless"], { cwd: tse, stdio: "inherit" });
+// Packs left from an earlier version would be picked up beside the new ones, so start from an empty folder.
+const packs = join(tse, "dist", "packs");
+rmSync(packs, { recursive: true, force: true });
 execFileSync("npm", ["run", "-s", "pack"], { cwd: tse, stdio: "inherit" });
 
-const packs = join(tse, "dist", "packs");
 const tarballs = new Map(
   readdirSync(packs)
     .map((file) => [/^tsengine-(.+)-\d+\.\d+\.\d+.*\.tgz$/.exec(file)?.[1], join(packs, file)] as const)
@@ -48,6 +50,8 @@ writeFileSync(
   manifestPath,
   JSON.stringify({ ...pkg, dependencies: local(pkg["dependencies"]), devDependencies: local(pkg["devDependencies"]), overrides: local(pkg["overrides"]) }, null, 2)
 );
+// Ctrl-C reaches npm too: ignore it here so this process lives on to put package.json back once npm stops.
+process.on("SIGINT", () => {});
 try {
   execFileSync("npm", ["install", "--no-audit", "--no-fund"], { cwd: root, stdio: "inherit" });
 } finally {
@@ -55,4 +59,4 @@ try {
   if (lock === null) rmSync(lockPath, { force: true });
   else writeFileSync(lockPath, lock);
 }
-console.log("engine installed from ../tse: npm run check");
+console.log(`engine installed from ${tse}: npm run check`);

@@ -59,7 +59,7 @@ player's settings (`src/settings.ts`), which the engine keeps between launches.
 ## Terms
 
 Cards are written the way Slay the Spire's are: a row of keywords, each with one meaning everywhere and often a number, like
-"Block 5". The Chili is "**Fresh 2**. **Exploder 4**." A keyword and its number are drawn in colour, and what each keyword
+"Block 5". The Chili is "**Fresh 6**. **Exploder 4**." A keyword and its number are drawn in colour, and what each keyword
 means is in a tooltip beside the card, which shows for the card chosen with the keys and for one the mouse is over
 (the mouse over a card also chooses it; a click takes or buys it). The keywords are in `src/rules/terms.ts`.
 

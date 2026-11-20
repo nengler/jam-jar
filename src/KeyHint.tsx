@@ -1,4 +1,4 @@
-import { Flex, Text, useSound } from "@tsengine/runtime/jsx";
+import { Button, Flex, Text, useSound } from "@tsengine/runtime/jsx";
 
 import { CLICK_VOLUME, BUTTON, BUTTON_GREY, BUTTON_SLICE, INK, LIGHT } from "./theme.ts";
 
@@ -10,18 +10,13 @@ interface KeyHintProps {
   color?: string;
 }
 
-
-/** A key and what it does (the font's capitals are the top 14 pixels of its 20-pixel line, so the name is set 4 down), for a row of hints: a key cap with the key's name on it, then the label. */
+/** A key and what it does, for a row of hints: a key cap with the key's name on it, then the label. */
 export function KeyHint({ name, label, color = LIGHT }: KeyHintProps) {
   return (
     <Flex direction="row" alignItems="center" gap={6} height={26}>
       {name === "arrows" && <Flex width={54} height={26} backgroundImage="key-arrows.png" />}
       {name === "updown" && <Flex width={54} height={26} backgroundImage="key-updown.png" />}
-      {name !== "arrows" && name !== "updown" && (
-        <Flex height={26} minWidth={26} paddingX={8} paddingTop={4} paddingBottom={2} backgroundImage="key.png" sliceTop={4} sliceBottom={8} sliceLeft={4} sliceRight={4} alignItems="center" justifyContent="center">
-          <Text color={INK}>{name}</Text>
-        </Flex>
-      )}
+      {name !== "arrows" && name !== "updown" && <KeyCap name={name} />}
       <Text color={color}>{label}</Text>
     </Flex>
   );
@@ -40,12 +35,45 @@ export function TapButton({ label, keyName = "", onPress }: { label: string; key
   };
   return (
     <Flex direction="row" alignItems="center" gap={6} height={30} paddingX={8} paddingTop={2} backgroundImage={BUTTON_GREY} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} focusable={false} onPress={press}>
-      {keyName !== "" && (
-        <Flex height={26} minWidth={26} paddingX={8} paddingTop={4} paddingBottom={2} backgroundImage="key.png" sliceTop={4} sliceBottom={8} sliceLeft={4} sliceRight={4} alignItems="center" justifyContent="center">
-          <Text color={INK}>{keyName}</Text>
-        </Flex>
-      )}
+      {keyName !== "" && <KeyCap name={keyName} />}
       <Text color={INK}>{label}</Text>
     </Flex>
+  );
+}
+
+/** A key's name on a key cap (the font's capitals are the top 14 pixels of its 20-pixel line, so the name is set 4 down). */
+function KeyCap({ name }: { name: string }) {
+  return (
+    <Flex height={26} minWidth={26} paddingX={8} paddingTop={4} paddingBottom={2} backgroundImage="key.png" sliceTop={4} sliceBottom={8} sliceLeft={4} sliceRight={4} alignItems="center" justifyContent="center">
+      <Text color={INK}>{name}</Text>
+    </Flex>
+  );
+}
+
+/** A row of a menu (the title's, the pause menu): it clicks as it is pressed. `x` and `opacity` are for a menu's entrance. */
+export function MenuButton({ label, onPress, autoFocus = false, x = 0, opacity = 1 }: { label: string; onPress: () => void; autoFocus?: boolean; x?: number; opacity?: number }) {
+  const playClick = useSound("click.wav");
+  const press = () => {
+    playClick(CLICK_VOLUME);
+    onPress();
+  };
+  return (
+    <Button x={x} opacity={opacity} autoFocus={autoFocus} onPress={press} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
+      <Text color={INK}>{label}</Text>
+    </Button>
+  );
+}
+
+/** A settings row, `Name < value >`: Enter steps it on, and left and right step it either way (`onAdjust`), each with a click. */
+export function SettingRow({ label, onAdjust, autoFocus = false }: { label: string; onAdjust: (direction: number) => void; autoFocus?: boolean }) {
+  const playClick = useSound("click.wav");
+  const adjust = (direction: number) => {
+    playClick(CLICK_VOLUME);
+    onAdjust(direction);
+  };
+  return (
+    <Button autoFocus={autoFocus} onPress={() => adjust(1)} onAdjust={adjust} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
+      <Text color={INK}>{label}</Text>
+    </Button>
   );
 }

@@ -1138,7 +1138,7 @@ test("the tutorial's lessons: each waits for its moment, and is done when the pl
   assert.equal(lessonShows(lesson("shop"), at("shop")), true);
   assert.equal(lessonDone(lesson("shop"), at("shop"), { ...none, acted: true }), true, "it lies over the shop's words, so it goes when there is something to read");
   // Every lesson fits its card: a title, and words for the pointer and for the keyboard.
-  for (const l of LESSONS) assert.ok(l.title.length <= 14 && l.text.length <= 90 && l.keysText.length <= 90, l.id);
+  for (const l of LESSONS) assert.ok(l.title.length <= 14 && l.text.length <= 90 && (l.keysText ?? l.text).length <= 90, l.id);
 });
 
 test("an Apple's Edge: it scores more touching the jar's floor or either wall, and not in the middle of the pile", () => {

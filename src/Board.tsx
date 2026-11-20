@@ -1,8 +1,8 @@
-import { Entity, Flex, Text, useTime, type Child } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Shape, Text, useTime, type Child } from "@tsengine/runtime/jsx";
 
 import { ripple } from "./layout.ts";
 
-import { DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT, PANEL, PANEL_SLICE, WALL_SHADOW } from "./theme.ts";
+import { DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT, PANEL, PANEL_SLICE, SCREEN_H, SCREEN_W, SHADE, WALL_SHADOW } from "./theme.ts";
 
 /** How far a titled board's frame starts below its top: the heading takes the top of the space the board is given. */
 const TITLE_ROOM = 12;
@@ -64,4 +64,9 @@ export function Letters({ text, seed }: { text: string; seed: number }) {
       ))}
     </Flex>
   );
+}
+
+/** The screen dimmed under a dialog: a see-through dark over all of it. */
+export function Shade({ color = SHADE }: { color?: string }) {
+  return <Shape kind="rect" x={0} y={0} width={SCREEN_W} height={SCREEN_H} color={color} />;
 }
