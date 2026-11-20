@@ -195,15 +195,16 @@ that never order a hand: one that never picks, one that picks at random, one per
 
 | Player (24 runs) | Median score, cycles 1 to 5 | Makes the last rent |
 | --- | --- | --- |
-| Never picks | 260, 257, 252, 265, 256 | 0 in 24 |
-| Picks at random | 216, 224, 210, 237, 257 | 4 in 24 |
-| Never picks, thins the pool | 260, 281, 302, 291, 307 | 4 in 24 |
+| Never picks | 260, 237, 225, 251, 258 | 0 in 24 |
+| Picks at random | 233, 235, 202, 229, 247 | 0 in 24 |
+| Never picks, thins the pool | 260, 257, 279, 316, 313 | 6 in 24 |
 | Boom picks (Chili, Blueberry, Seed, Lime, Durian), thins | 243, 289, 328, 307, 304 | 3 in 24 |
 | Rot picks (Banana, Prune, Fruit Fly, Fig, Chili) | 233, 238, 261, 255, 240 | 1 in 24 |
-| Prune only, thins | 238, 242, 304, 363, 390 | 8 in 24 |
-| Apple, Durian, Pomegranate, Pitaya, Kiwi, thins | 274, 314, 333, 366, 376 | 9 in 24 |
+| Prune only, thins | 260, 257, 275, 297, 313 | 8 in 24 |
+| Apple, Durian, Pomegranate, Pitaya, Kiwi, thins | 241, 270, 314, 363, 387 | 10 in 24 |
 
-Cycle 3 is a boss jar, which is the dip in some rows.
+Cycle 3 is a boss jar, which is the dip in some rows. The Boom and Rot rows were measured with a pick after every turn; the
+others with a pick after every second turn, as the game now plays.
 
 What it showed, and what was done about it. A never-pick cycle's points come mostly from the starters merging up (about 54
 from merges into Melon and 33 into Watermelon, of some 212), and those top merges are the first thing lost when other fruit
