@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { motes, poolRows, termsOf } from "../src/layout.ts";
+import { blastBits, blastFlash, blastJolt, motes, poolRows, termsOf } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
 import { APPLE, BANANA, FRUITS, HONEY } from "../src/rules/fruits.ts";
@@ -1137,4 +1137,16 @@ test("an Apple's Edge: it scores more touching the jar's floor or either wall, a
   const flipped = jarWith([fruit(1, "apple", mid, RIM + r)]);
   flipped.flipped = true;
   assert.equal(onEdge(flipped, flipped.fruits[0]!), true, "the Flip jar's lid is its floor while it is turned over");
+});
+
+test("a blast's sparks and ring: the same every time for the same blast, flying out, and gone by its end", () => {
+  const at = (age: number) => blastBits([{ id: 7, x: 300, y: 200, age }], 0.54);
+  assert.deepEqual(at(0.1), at(0.1), "nothing random: a replay shows the same blast");
+  assert.ok(at(0.05).some((b) => b.id.includes("r")), "the ring runs out at first");
+  assert.ok(!at(0.4).some((b) => b.id.includes("r")), "and is gone before the sparks");
+  const spread = (age: number) => Math.max(...at(age).map((b) => Math.hypot(b.x - 300, b.y - 200)));
+  assert.ok(spread(0.3) > spread(0.05) + 30, "the sparks fly outwards");
+  assert.equal(at(0.54).length, 0, "nothing is left when the blast is over");
+  assert.ok(blastFlash([{ age: 0 }]) === 1 && blastFlash([{ age: 0.2 }]) === 0, "the jar is lit for an instant");
+  assert.ok(Math.abs(blastJolt([{ age: 0 }])) > 2 && blastJolt([{ age: 0.3 }]) === 0, "and jolted, briefly");
 });

@@ -9,7 +9,7 @@ import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { TapButton } from "./KeyHint.tsx";
-import { atRest, cycleTitle, INTRO, jarDrop, kindAt, popIn, rollIn, rollStarted, grownOf, leaned, moment, pickNote, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
+import { atRest, blastBits, blastFlash, blastJolt, cycleTitle, INTRO, jarDrop, kindAt, popIn, rollIn, rollStarted, grownOf, leaned, moment, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/tutorial.ts";
@@ -45,6 +45,8 @@ import {
 /** The pixel explosion's frames (Kenney Explosion Pack), each centred on a 96-pixel square, drawn at 2x like all the art. */
 const BOOM_FRAMES = 9;
 const BOOM_SIZE = 96;
+/** A blast's sparks, from the hottest to the last embers: Apollo's light, gold, orange and red. */
+const SPARK = [LIGHT, GOLD, BAR_FILL, BAD];
 /** The shelf above the jar: its plank's top, and how far apart the hand's fruit stand on it, left to right in the order they drop. */
 const SHELF_Y = 48;
 const SLOT = 48;
@@ -323,6 +325,8 @@ export function Play() {
   const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
   const finished = run.phase === "over" || run.phase === "won";
+  /** How bright the jar is lit by a blast this instant. */
+  const flash = blastFlash(run.effects);
   /** The tutorial's lesson, while it is its moment and nothing is over the play screen. */
   const coached = paused || s.whole || s.intro < INTRO.end ? null : lessonNow(tutorial, run);
   /** The slate that says what just happened shows when there is something to say and no lesson in its place. */
@@ -332,7 +336,7 @@ export function Play() {
     <Entity>
       <Backdrop />
 
-      <Jar run={run} onReport={report} lift={s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)} />
+      <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(run.effects)} />
       {/* What is drawn on the jar turns with it, about its low corner, when it leans (the Tilted jar). */}
       <Entity x={JAR.right} y={JAR.floor} rotation={lean(run)}>
         <Entity x={-JAR.right} y={-JAR.floor}>
@@ -349,6 +353,11 @@ export function Play() {
             </>
           )}
           {preserving && chosen !== undefined && <Sprite image="pointer.png" x={Math.round(chosen.x) - 9} y={Math.round(chosen.y - chosen.r) - 20} />}
+          {/* A blast: the whole jar is lit for an instant, then its picture, a ring running out from it and sparks thrown every way. */}
+          {flash > 0 && <Shape kind="rect" x={JAR.left} y={RIM - 24} width={JAR.right - JAR.left} height={JAR.floor - RIM + 24} color={LIGHT} opacity={0.45 * flash} />}
+          {blastBits(run.effects, BOOM_LIFE).map((bit) => (
+            <Shape key={bit.id} kind="rect" x={bit.x - bit.size / 2} y={bit.y - bit.size / 2} width={bit.size} height={bit.size} color={SPARK[bit.shade] ?? LIGHT} />
+          ))}
           {run.effects.map((e) => (
             <Sprite
               key={e.id}
@@ -521,12 +530,6 @@ export function Play() {
               ))}
             </Flex>
           </Flex>
-          {/* Until a card is chosen, how to choose one; then how to take it. */}
-          {coached === null && (
-            <Flex right={16} bottom={6} direction="row">
-              <Text color={LIGHT}>{pickNote(keys, run.offerCursor >= 0)}</Text>
-            </Flex>
-          )}
           {/* The first pick of the first game: the tutorial's lesson says it, along the foot of the screen. */}
           {coached !== null && (
             <Flex right={8} bottom={2}>
