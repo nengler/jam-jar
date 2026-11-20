@@ -148,7 +148,7 @@ const TALLY_HOLD = 0.5;
 /** How long a blast's explosion (9 frames) shows, in seconds. */
 export const BOOM_LIFE = 0.54;
 
-export type Phase = "order" | "drop" | "settle" | "tally" | "pick" | "rent" | "shop" | "preserve" | "over" | "won";
+export type Phase = "order" | "drop" | "settle" | "tally" | "pick" | "rent" | "shop" | "preserve" | "clear" | "over" | "won";
 
 /** What the Juicer adds for each fruit it crushes, on top of the fruit's points. */
 export const JUICER_BONUS = 3;
@@ -254,7 +254,8 @@ export interface Link {
 /** Something drawn for a moment: a blast's explosion. */
 export interface Effect {
   id: number;
-  kind: "boom";
+  /** "boom": a Blast. "pop": a fruit cleared out of the jar between cycles (smaller, no flash or jolt). */
+  kind: "boom" | "pop";
   x: number;
   y: number;
   /** Seconds since it started. */
@@ -323,6 +324,10 @@ export interface Run {
   preserveCursor: number;
   kept: number[];
   settleTime: number;
+  /** Between cycles ("clear"): seconds since the clear-out began, how many fruit it had to pop, and the seconds between pops. */
+  clearTime: number;
+  clearFrom: number;
+  clearGap: number;
   calmTime: number;
   /** Blasts so far in the chain going on (0 when none is), the seconds since the last, and how many fruit the last destroyed. */
   chain: number;
@@ -442,6 +447,9 @@ export function newRun(seed: number): Run {
     preserveCursor: 0,
     kept: [],
     settleTime: 0,
+    clearTime: 0,
+    clearFrom: 0,
+    clearGap: 0,
     calmTime: 0,
     chain: 0,
     sinceBlast: 0,
@@ -769,6 +777,9 @@ export function advance(previous: Run, dt: number, keys: Keys, reports: readonly
       break;
     case "preserve":
       preserveStep(run, keys);
+      break;
+    case "clear":
+      clearStep(run, dt);
       break;
     case "over":
     case "won":
@@ -1523,12 +1534,12 @@ export function preservable(run: Run): Fruit[] {
   return run.fruits.slice().sort((a, b) => a.x - b.x || a.id - b.id);
 }
 
-/** Out of the shop: with a Preserves Jar and fruit in the jar, choose what to keep; otherwise the next cycle. */
+/** Out of the shop: with a Preserves Jar and fruit in the jar, choose what to keep; otherwise the jar is cleared for the next cycle. */
 function leaveShop(run: Run): void {
   run.shop = null;
   run.kept = [];
   if (keeps(run) === 0 || run.fruits.length === 0) {
-    nextCycle(run);
+    startClear(run);
     return;
   }
   run.preserveCursor = 0;
@@ -1549,8 +1560,42 @@ function preserveStep(run: Run, keys: Keys): void {
     else run.message = `It holds ${keeps(run)}: let one go first`;
     sound(run, "tick");
   } else if (keys.drop) {
-    nextCycle(run);
+    startClear(run);
   }
+}
+
+/** Seconds the clear-out takes at the least (the board's score counts down to 0 and the rent up to the next one meanwhile), and at most between the first fruit's pop and the last. */
+export const CLEAR_TIME = 1.2;
+const CLEAR_POPS = 0.6;
+/** Seconds between one fruit's pop and the next, at the most. */
+const CLEAR_GAP = 0.08;
+
+/**
+ * Between cycles, before the next hand: the jar's fruit (but what a Preserves Jar keeps) pop one after another, left to right,
+ * while the rent board counts the score down to 0 and the rent up to the next cycle's. Nothing scores.
+ */
+function startClear(run: Run): void {
+  const doomed = run.fruits.filter((f) => !run.kept.includes(f.id)).length;
+  run.phase = "clear";
+  run.message = "";
+  run.clearTime = 0;
+  run.clearFrom = doomed;
+  run.clearGap = doomed <= 1 ? 0 : Math.min(CLEAR_GAP, CLEAR_POPS / (doomed - 1));
+  // The first pops as the shop closes.
+  clearStep(run, 0);
+}
+
+function clearStep(run: Run, dt: number): void {
+  run.clearTime += dt;
+  const doomed = run.fruits.filter((f) => !run.kept.includes(f.id)).sort((a, b) => a.x - b.x || a.id - b.id);
+  const due = run.clearGap === 0 ? run.clearFrom : Math.min(run.clearFrom, Math.floor(run.clearTime / run.clearGap) + 1);
+  const popping = doomed.slice(0, due - (run.clearFrom - doomed.length));
+  for (const f of popping) effect(run, "pop", f.x, f.y, f.r * 2);
+  if (popping.length > 0) {
+    sound(run, "merge");
+    run.fruits = run.fruits.filter((f) => !popping.includes(f));
+  }
+  if (run.clearTime >= CLEAR_TIME && run.fruits.every((f) => run.kept.includes(f.id))) nextCycle(run);
 }
 
 function nextCycle(run: Run): void {

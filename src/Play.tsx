@@ -18,7 +18,7 @@ import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, newRun, BOOM_LIFE, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, newRun, BOOM_LIFE, CLEAR_TIME, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -49,6 +49,8 @@ import {
 /** The pixel explosion's frames (Kenney Explosion Pack), each centred on a 96-pixel square, drawn at 2x like all the art. */
 const BOOM_FRAMES = 9;
 const BOOM_SIZE = 96;
+/** How much wider than the fruit a pop of the clear-out between cycles is drawn. */
+const POP_SCALE = 1.8;
 /** A blast's sparks, from the hottest to the last embers: Apollo's light, gold, orange and red. */
 const SPARK = [LIGHT, GOLD, BAR_FILL, BAD];
 /** The shelf above the jar: its plank's top, and how far apart the hand's fruit stand on it, left to right, a slot over each of the jar's lanes. */
@@ -368,6 +370,7 @@ export function Play() {
   const jarMid = (JAR.left + JAR.right) / 2;
   // The score on screen runs behind the run's while the tally's popups are still to come, and catches up as each shows.
   const scored = shownScore(run);
+  const clearing = run.phase === "clear";
   const popups = leaned(run.popups.filter((p) => p.delay <= 0), lean(run), JAR.right, JAR.floor);
   const links = run.links.filter((l) => l.delay <= 0);
   const paid = scored >= rent;
@@ -399,7 +402,9 @@ export function Play() {
   /** The last turn's banner, while it crosses the screen. */
   const banner = sweep(s.last);
   /** How bright the jar is lit by a blast this instant. */
-  const flash = blastFlash(run.effects);
+  // Only a Blast lights the jar up, knocks it and throws sparks; the pops of the clear-out between cycles are quieter.
+  const booms = run.effects.filter((e) => e.kind === "boom");
+  const flash = blastFlash(booms);
   /** The tutorial's lesson, while it is its moment and nothing is over the play screen. */
   const coached = paused || s.whole || s.intro < INTRO.end ? null : lessonNow(tutorial, run);
   /** The slate that says what just happened shows when there is something to say and no lesson in its place. */
@@ -409,7 +414,7 @@ export function Play() {
     <Entity>
       <Backdrop />
 
-      <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(run.effects)} />
+      <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(booms)} />
       {/* What is drawn on the jar turns with it, about its low corner, when it leans (the Tilted jar). */}
       <Entity x={JAR.right} y={JAR.floor} rotation={lean(run)}>
         <Entity x={-JAR.right} y={-JAR.floor}>
@@ -428,7 +433,7 @@ export function Play() {
           {preserving && chosen !== undefined && <Sprite image="pointer.png" x={Math.round(chosen.x) - 9} y={Math.round(chosen.y - chosen.r) - 20} />}
           {/* A blast: the whole jar is lit for an instant, then its picture, a ring running out from it and sparks thrown every way. */}
           {flash > 0 && <Shape kind="rect" x={JAR.left} y={RIM - 24} width={JAR.right - JAR.left} height={JAR.floor - RIM + 24} color={LIGHT} opacity={0.45 * flash} />}
-          {blastBits(run.effects, BOOM_LIFE).map((bit) => (
+          {blastBits(booms, BOOM_LIFE).map((bit) => (
             <Shape key={bit.id} kind="rect" x={bit.x - bit.size / 2} y={bit.y - bit.size / 2} width={bit.size} height={bit.size} color={SPARK[bit.shade] ?? LIGHT} />
           ))}
           {run.effects.map((e) => (
@@ -439,8 +444,8 @@ export function Play() {
               y={e.y}
               originX={BOOM_SIZE / 2}
               originY={BOOM_SIZE / 2}
-              scaleX={2}
-              scaleY={2}
+              scaleX={e.kind === "pop" ? (e.size * POP_SCALE) / BOOM_SIZE : 2}
+              scaleY={e.kind === "pop" ? (e.size * POP_SCALE) / BOOM_SIZE : 2}
             />
           ))}
           {/* A line between two fruit while one does something to the other: a dark one under a coloured one, so it shows on any fruit. */}
@@ -506,7 +511,8 @@ export function Play() {
           coins. Nothing else is on this side: how to move a fruit and drop the hand is said on the fruit's card under the shelf. */}
       <Flex left={HUD_X - 240 * (1 - popIn(s.intro, INTRO.left, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch" gap={12}>
         <Panel title={cycleTitle(run)}>
-          <RentScore key={run.cycle} scored={scored} rent={rent} width={BOARD_W - 36} />
+          {/* Between cycles (the clear-out) it counts the score down to 0 and the rent up to the next cycle's, at the clear-out's pace. */}
+          <RentScore key={run.cycle} scored={clearing ? 0 : scored} rent={clearing ? rentFor(run.cycle + 1) : rent} width={BOARD_W - 36} time={clearing ? CLEAR_TIME * 0.8 : undefined} />
           <Flex direction="row" justifyContent="space-between" paddingTop={6}>
             <Text color={turn >= TURNS_PER_CYCLE && !paid ? BAD : INK_SOFT}>{turn >= TURNS_PER_CYCLE ? "Last turn" : "Turn"}</Text>
             <Text color={turn >= TURNS_PER_CYCLE && !paid ? BAD : INK_SOFT}>{turn >= TURNS_PER_CYCLE ? `${turn}/${TURNS_PER_CYCLE}` : `${turn} of ${TURNS_PER_CYCLE}`}</Text>
