@@ -37,6 +37,19 @@ export const DROP_Y = 72;
  * matters more this way.
  */
 export const TRAY = { on: false, wobble: 4 };
+/**
+ * For the balance bots: where dropped fruit land (today's random spots, or the tray's wobble) is drawn from another stream when
+ * `salt` is not 0. The run's own stream still moves on exactly as with 0, so the rest of the run is unchanged: a bot can try a
+ * turn with other luck, and then play it for real with luck it has not seen. 0 in the game.
+ */
+export const SPOTS = { salt: 0 };
+
+/** Where the next fruit lands: from the run's stream, or (`SPOTS.salt`) from another one, the run's stream moving on the same. */
+function spot(rng: Rng, low: number, high: number): number {
+  const own = rng.range(low, high);
+  if (SPOTS.salt === 0) return own;
+  return new Rng((rng.seed ^ Math.imul(SPOTS.salt, 0x9e3779b1)) >>> 0).range(low, high);
+}
 export const HAND_SIZE = 4;
 export const TURNS_PER_CYCLE = 5;
 /**
@@ -817,7 +830,7 @@ function dropStep(run: Run, dt: number): void {
     const kind = run.queue.shift() as FruitKind;
     const r = FRUITS[kind].radius;
     const rng = new Rng(run.seed);
-    const x = rng.range(JAR.left + r, JAR.right - r);
+    const x = spot(rng, JAR.left + r, JAR.right - r);
     run.seed = rng.seed;
     // Under its lid, a fruit starts inside the jar, at the end it will fall away from.
     const y = !flip ? DROP_Y : run.flipped ? JAR.floor - r - 2 : RIM + r + 2;
@@ -846,7 +859,7 @@ function trayRelease(run: Run, flip: boolean): void {
   run.queue.forEach((kind, lane) => {
     const r = FRUITS[kind].radius;
     const middle = JAR.left + width * (lane + 0.5);
-    const x = Math.max(JAR.left + r, Math.min(JAR.right - r, middle + rng.range(-TRAY.wobble, TRAY.wobble)));
+    const x = Math.max(JAR.left + r, Math.min(JAR.right - r, middle + spot(rng, -TRAY.wobble, TRAY.wobble)));
     const y = !flip ? DROP_Y : run.flipped ? JAR.floor - r - 2 : RIM + r + 2;
     run.fruits.push(makeFruit(run, kind, x, y));
     run.drops += 1;

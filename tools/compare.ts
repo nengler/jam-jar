@@ -26,7 +26,7 @@ const due = RENT[last] as number;
 const sum = (scores: number[]) => scores.reduce((a, b) => a + b, 0);
 const median = (values: number[]) => values.slice().sort((a, b) => a - b)[Math.floor(values.length / 2)] ?? 0;
 /** The arrangement flags taken off: the same player dropping each hand as dealt. */
-const asDealt = (strategy: string) => strategy.replace(/\/(order|best|worst)/g, "");
+const asDealt = (strategy: string) => strategy.replace(/\/(order|best|worst|fair)/g, "");
 
 console.log(`${"player".padEnd(60)} runs  cycle ${last + 1} median  scores ${due}  run total vs as dealt (95%)`);
 for (const strategy of [...all.keys()].sort()) {
