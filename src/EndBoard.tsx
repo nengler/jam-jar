@@ -3,6 +3,7 @@ import { Flex, Text, useTime } from "@tsengine/runtime/jsx";
 import { Panel } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { TapButton } from "./KeyHint.tsx";
+import { Bloops } from "./Sounds.tsx";
 import { countUp, earnerKind } from "./layout.ts";
 import { RENT, topEarners, type Run } from "./rules/jar.ts";
 import { BAR_GOLD, BAR_WELL, DISPLAY, DISPLAY_SIZE, GOOD, INK, INK_SOFT, WELL } from "./theme.ts";
@@ -42,6 +43,8 @@ export function EndBoard({ run, rent, keys, onAgain, onTitle }: { run: Run; rent
   const near = Math.max(0, Math.min(1, rent === 0 ? 1 : run.cycleScore / rent));
   return (
     <Flex width={END_W} direction="column" alignItems="stretch">
+      {/* A bloop for each of the three tiles as it shows, and one for what scored most. */}
+      <Bloops start={TILES_AT} gap={0.12} count={3} />
       <Panel title={won ? "The jar is yours" : "Evicted"}>
         <Flex height={58} direction="row" justifyContent="center" alignItems="end">
           <Text font={DISPLAY} size={DISPLAY_SIZE * 2} color={won ? GOOD : INK}>{`${countUp(run.total, time, COUNT_TIME)}`}</Text>

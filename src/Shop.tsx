@@ -8,6 +8,7 @@ import { chosenName, ENTER, entered, placed, popIn, poolRows } from "./layout.ts
 import { FRUITS } from "./rules/fruits.ts";
 import { ITEMS } from "./rules/items.ts";
 import { RuleText } from "./RuleText.tsx";
+import { Bloops } from "./Sounds.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUIT_PRICE, removalPrice, rerollPrice, SHOP_ITEM, SHOP_LEAVE, SHOP_REMOVE, SHOP_REROLL, type Run, type Shop as ShopState } from "./rules/jar.ts";
 import { BAD, cardFor, CARD_SLICE, INK, INK_SOFT, KEYWORD, LIGHT, PANEL, PANEL_SLICE, SELECT, SHADE, WELL } from "./theme.ts";
@@ -71,6 +72,8 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
       {/* Shaded twice: the shop covers the whole screen, and the boards behind it should not show through its header. */}
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
+      {/* A bloop for each card as it drops in, and one for the actions. */}
+      <Bloops start={ENTER.pop * 0.6} gap={ENTER.gap} count={SHOP_ITEM + 2} />
 
       {/* The whole shop is one column down the middle of the screen: its heading, the shelf, the actions, and what just happened. */}
       <Flex left={0} right={0} top={10} bottom={0} direction="column" alignItems="center" gap={6}>

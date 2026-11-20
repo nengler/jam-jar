@@ -123,6 +123,58 @@ def write_last_turn() -> None:
         out.writeframes(struct.pack(f"<{len(samples)}h", *samples))
 
 
+def write_wave(name: str, samples: list[float]) -> None:
+    import struct
+    import wave
+
+    tail = int(SCORE_RATE * 0.02)
+    out = [int(max(-1.0, min(1.0, v * min(1.0, (len(samples) - n) / tail))) * 32767) for n, v in enumerate(samples)]
+    with wave.open(str(ASSETS / name), "wb") as file:
+        file.setnchannels(1)
+        file.setsampwidth(2)
+        file.setframerate(SCORE_RATE)
+        file.writeframes(struct.pack(f"<{len(out)}h", *out))
+
+
+def write_entrance_sounds() -> None:
+    """Sounds for things arriving: five bloops, each higher than the last, for boards, cards and buttons popping in one after
+    another; a soft wooden tock for a fruit rolling to its place on the shelf; and a low thud for the jar landing."""
+    import math
+    import random
+
+    # A bloop: a round tone that starts a third high and drops to its note in a twentieth of a second, like a bubble.
+    for index, pitch in enumerate([392.0, 440.0, 523.25, 587.33, 659.25]):
+        samples = []
+        phase = 0.0
+        for n in range(int(SCORE_RATE * 0.14)):
+            t = n / SCORE_RATE
+            now = pitch * (1.0 + 0.35 * math.exp(-t * 45.0))
+            phase += 2 * math.pi * now / SCORE_RATE
+            samples.append(0.5 * min(1.0, t / 0.003) * math.exp(-t * 22.0) * (math.sin(phase) + 0.2 * math.sin(2 * phase)))
+        write_wave(f"pop-{index}.wav", samples)
+
+    # A tock: a woodblock's short knock, a tone and its uneven overtone gone in a few hundredths of a second, under a tick of noise.
+    rng = random.Random(11)
+    samples = []
+    for n in range(int(SCORE_RATE * 0.09)):
+        t = n / SCORE_RATE
+        knock = math.sin(2 * math.pi * 330.0 * t) * math.exp(-t * 55.0) + 0.5 * math.sin(2 * math.pi * 912.0 * t) * math.exp(-t * 90.0)
+        samples.append(0.5 * knock + 0.15 * rng.uniform(-1.0, 1.0) * math.exp(-t * 400.0))
+    write_wave("tock.wav", samples)
+
+    # A thud: a low tone falling from 110 Hz as it dies, with a short burst of dull noise at the start.
+    rng = random.Random(3)
+    samples = []
+    phase = 0.0
+    dull = 0.0
+    for n in range(int(SCORE_RATE * 0.3)):
+        t = n / SCORE_RATE
+        phase += 2 * math.pi * (60.0 + 50.0 * math.exp(-t * 18.0)) / SCORE_RATE
+        dull += (rng.uniform(-1.0, 1.0) - dull) * 0.12
+        samples.append(0.8 * math.sin(phase) * math.exp(-t * 13.0) + 0.5 * dull * math.exp(-t * 60.0))
+    write_wave("thud.wav", samples)
+
+
 SOUNDS = {
     "merge.wav": "interface-sounds-glass-001.wav",
     "land.wav": "impact-sounds-impact-soft-medium-000.wav",
@@ -547,6 +599,7 @@ def main() -> None:
         shutil.copyfile(KENNEY / source, ASSETS / name)
     write_score_notes()
     write_last_turn()
+    write_entrance_sounds()
     print(f"wrote {len(sprites) * 3} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds (the music among them)")
 
 

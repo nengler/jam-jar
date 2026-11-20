@@ -4,7 +4,8 @@ import { Backdrop } from "./Backdrop.tsx";
 import { DemoJar } from "./DemoJar.tsx";
 import { save, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
-import { ENTER, entered, INTRO, jarDrop, popIn } from "./layout.ts";
+import { ENTER, entered, INTRO, jarDrop, LANDS, popIn } from "./layout.ts";
+import { Bloops, Thud } from "./Sounds.tsx";
 import { CLICK_VOLUME, BUTTON, BUTTON_GREY, BUTTON_SLICE, DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT_SOFT } from "./theme.ts";
 
 /** The title's two halves: the name and the menu are centred in the left `MENU_W` pixels, and the jar stands this far right of
@@ -33,6 +34,10 @@ export function Title({ name }: { name: string }) {
   return (
     <Entity>
       <Backdrop />
+      {/* The entrance's sounds: the name lands, the jar lands, and a bloop for each button as it slides in. */}
+      <Thud at={LANDS} />
+      <Thud at={ENTER.jar + LANDS} />
+      <Bloops start={MENU_AT} gap={ENTER.gap} count={hasSave ? 3 : 2} />
       <DemoJar x={JAR_SHIFT} lift={time < ENTER.jar ? 400 : jarDrop(time - ENTER.jar, 400)} wait={ENTER.jar + INTRO.fall} />
       <Flex direction="column" width={MENU_W} height={324} alignItems="center" justifyContent="center" gap={hasSave ? 6 : 12}>
         {/* The name keeps its room in the column while it falls into it. */}
