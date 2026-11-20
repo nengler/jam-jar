@@ -171,3 +171,15 @@ export function pickNote(keys: boolean, chosen: boolean): string {
   if (keys) return chosen ? "Enter takes it" : "Left / Right chooses a card";
   return chosen ? "Tap it again to take it" : "Tap a card to see what it does";
 }
+
+/** A number counting up to `total` over `seconds`, fast at first and slowing as it arrives: what the end board's total shows at `time`. */
+export function countUp(total: number, time: number, seconds: number): number {
+  const t = Math.max(0, Math.min(1, time / seconds));
+  return Math.round(total * (1 - (1 - t) * (1 - t) * (1 - t)));
+}
+
+/** The fruit an end board's earner is, when it is one (earners are named: "Apple"), or null for a keyword ("Merge"). */
+export function earnerKind(label: string): FruitKind | null {
+  for (const kind of Object.keys(FRUITS) as FruitKind[]) if (FRUITS[kind].name === label) return kind;
+  return null;
+}
