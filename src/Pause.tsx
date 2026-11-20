@@ -1,4 +1,4 @@
-import { Button, Entity, Flex, Menu, Text } from "@tsengine/runtime/jsx";
+import { Button, Entity, Flex, Menu, Text, useInputDevice } from "@tsengine/runtime/jsx";
 
 import { KeyHint } from "./KeyHint.tsx";
 import { useGame } from "./GameState.ts";
@@ -9,7 +9,9 @@ import { BUTTON, BUTTON_GREY, BUTTON_SLICE, DISPLAY, DISPLAY_SIZE, INK, PANEL, P
  * (`onBack`) and does not reach the play screen's Escape.
  */
 export function Pause() {
-  const keys = useGame((g) => g.keys);
+  // Whether the player is at a keyboard, by what was pressed last (a mouse and a finger are both the pointer): a key is named only then.
+  const device = useInputDevice();
+  const keys = device === "keyboard";
   const { resume, toTitle } = useGame.actions();
   return (
     <Entity>

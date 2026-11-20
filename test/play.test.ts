@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { createPlayer, parseInputScript, RecordingBackend, runScript, type Player } from "@tsengine/player";
+import { getInputDevice } from "@tsengine/runtime";
 import { findComponent } from "@tsengine/testing";
 
 import { bindings, gameConfig } from "../game.ts";
@@ -266,14 +267,14 @@ test("in the Flip jar gravity turns over after every second drop: the hand ends 
 
 test("the prompts follow what the player is using: keys once a key is pressed, the pointer once the mouse or a finger is", () => {
   const frames = parseInputScript("_*2, Enter, _*3, click@320,200, _*3, right, _*3", { bindings });
-  const { states } = runScript(gameConfig, frames, () => useGame.getState().keys);
+  const { states } = runScript(gameConfig, frames, () => getInputDevice() === "keyboard");
   assert.equal(states[1], false, "nothing pressed yet: no keys are named");
   assert.equal(states[5], true, "Enter was pressed");
   assert.equal(states[9], false, "a click or a tap");
   assert.equal(states[states.length - 1], true, "and a key again");
 });
 
-test("the hand is reordered by dragging: a fruit follows the pointer along the shelf and stays where it is let go; a tap picks one up", () => {
+test("the hand is reordered by dragging: a fruit follows the pointer along the shelf and stays where it is let go; a tap only shows what a fruit does", () => {
   const backend = new RecordingBackend();
   const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
   const step = (script: string) => {
@@ -283,7 +284,7 @@ test("the hand is reordered by dragging: a fruit follows the pointer along the s
     }
   };
   step("_*2, Enter, _*5");
-  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
+  const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run; tip: boolean } };
   play.s.run = { ...play.s.run, hand: ["cherry", "grape", "orange", "apple"] };
   // The four stand 48 apart, centred on 320: at 248, 296, 344 and 392, on the shelf at about y = 30. A step sees the frame
   // before it, so each stretch ends with one more frame of the same.
@@ -295,12 +296,17 @@ test("the hand is reordered by dragging: a fruit follows the pointer along the s
   assert.equal(play.s.run.holding, false, "and stays where it was let go");
   assert.equal(play.s.run.phase, "order");
 
-  // A press and a release in one place is a tap: the fruit stays picked up, and a tap elsewhere puts it there.
-  step("mouse@248,30+MouseLeft, mouse@248,30, mouse@248,30");
-  assert.equal(play.s.run.holding, true);
+  // A press and a release in one place is a tap: nothing is picked up or moved, and the fruit shows what it does.
   step("mouse@296,30+MouseLeft, mouse@296,30, mouse@296,30");
-  assert.deepEqual(play.s.run.hand, ["orange", "grape", "apple", "cherry"]);
   assert.equal(play.s.run.holding, false);
+  assert.equal(play.s.run.cursor, 1);
+  assert.equal(play.s.tip, true, "its tooltip shows");
+  assert.deepEqual(play.s.run.hand, ["grape", "orange", "apple", "cherry"]);
+  // A tap anywhere else puts the tooltip away, and moves nothing.
+  step("mouse@100,300+MouseLeft, mouse@100,300, mouse@100,300");
+  assert.equal(play.s.tip, false);
+  assert.equal(play.s.run.phase, "order");
+  assert.deepEqual(play.s.run.hand, ["grape", "orange", "apple", "cherry"]);
   player.close();
 });
 
