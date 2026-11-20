@@ -479,16 +479,6 @@ export function Play() {
         </Panel>
       </Flex>
 
-      {/* What just happened, on a slate pinned to the right edge, its foot just above the counter: as tall as its words. */}
-      {noted && (
-        <Flex right={HUD_X} bottom={NOTE_FOOT} width={BOARD_W} direction="column" alignItems="stretch">
-          <Panel image={PLAQUE}>
-            <Text width={BOARD_W - 32} maxWidth={BOARD_W - 32} color={LIGHT}>
-              {run.message}
-            </Text>
-          </Panel>
-        </Flex>
-      )}
       {/* What the lesson is about, framed, and the rest of the screen dimmed: after both boards, so they dim too, and before the
           lesson's card, so it does not. */}
       {coached?.target === "shelf" && <Spotlight x={shelfLeft - 8} y={SHELF_Y - 46} width={shelf.length * SLOT + 16} height={56} />}
@@ -498,7 +488,17 @@ export function Play() {
       {/* The first game's tutorial takes the slate's place: one lesson at a time, about what is on screen now. */}
       {coached !== null && !picking && run.phase !== "shop" && (
         <Flex right={HUD_X} bottom={NOTE_FOOT}>
-          <Coach lesson={coached ?? LESSONS[0]!} keys={keys} width={BOARD_W} onNext={lessonNext} onSkip={lessonSkip} />
+          <Coach lesson={coached} keys={keys} width={BOARD_W} onNext={lessonNext} onSkip={lessonSkip} />
+        </Flex>
+      )}
+      {/* What just happened, on a slate pinned to the right edge, its foot just above the counter: as tall as its words. */}
+      {noted && (
+        <Flex right={HUD_X} bottom={NOTE_FOOT} width={BOARD_W} direction="column" alignItems="stretch">
+          <Panel image={PLAQUE}>
+            <Text width={BOARD_W - 32} maxWidth={BOARD_W - 32} color={LIGHT}>
+              {run.message}
+            </Text>
+          </Panel>
         </Flex>
       )}
 
@@ -536,7 +536,7 @@ export function Play() {
           {/* The first pick of the first game: the tutorial's lesson says it, along the foot of the screen. */}
           {coached !== null && (
             <Flex right={8} bottom={2}>
-              <Coach wide lesson={coached ?? LESSONS[0]!} keys={keys} width={440} onNext={lessonNext} onSkip={lessonSkip} />
+              <Coach wide lesson={coached} keys={keys} width={440} onNext={lessonNext} onSkip={lessonSkip} />
             </Flex>
           )}
           {/* The way out, always there, in the bottom left corner: a card's keywords open to its side, never over this. */}
@@ -604,7 +604,7 @@ export function Play() {
       {/* The first shop of the first game: the lesson lies along the foot of the screen, under the shop's actions, until the player does something there. */}
       {run.phase === "shop" && coached !== null && (
         <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center">
-          <Coach wide lesson={coached ?? LESSONS[0]!} keys={keys} width={620} onNext={lessonNext} onSkip={lessonSkip} />
+          <Coach wide lesson={coached} keys={keys} width={620} onNext={lessonNext} onSkip={lessonSkip} />
         </Flex>
       )}
       {paused && <Pause />}
