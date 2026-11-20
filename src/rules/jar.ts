@@ -598,6 +598,15 @@ function onFloor(f: Fruit): boolean {
   return f.y + f.r >= JAR.floor - FLOOR_TOLERANCE;
 }
 
+/**
+ * Touching the jar itself: its floor (the lid, while the Flip jar is turned over) or either wall. What an Apple's Edge asks
+ * for: something the player can see, and can still get after the floor is covered.
+ */
+export function onEdge(run: Run, f: Fruit): boolean {
+  const lying = run.flipped ? onLid(f) : onFloor(f);
+  return lying || f.x - f.r <= JAR.left + FLOOR_TOLERANCE || f.x + f.r >= JAR.right - FLOOR_TOLERANCE;
+}
+
 /** Against the Flip jar's lid, which is at the rim. */
 function onLid(f: Fruit): boolean {
   return f.y - f.r <= RIM + FLOOR_TOLERANCE;
@@ -1098,8 +1107,7 @@ export function resolve(run: Run): void {
     } else if (f.rotten) {
       return;
     } else if (f.kind === "apple") {
-      const depth = (f.y - RIM) / (JAR.floor - RIM);
-      points = APPLE.base + Math.floor(Math.max(0, Math.min(1, depth)) * APPLE.deep);
+      points = APPLE.base + (onEdge(run, f) ? APPLE.edge : 0);
     } else if (f.kind === "banana") {
       points = BANANA.base + f.age * BANANA.ripen + run.bananaBonus;
     } else if (f.kind === "pitaya") {

@@ -1,4 +1,4 @@
-import { Entity, Shape, Sprite, useTime } from "@tsengine/runtime/jsx";
+import { Entity, Layer, Shape, Sprite, useTime } from "@tsengine/runtime/jsx";
 
 import { motes } from "./layout.ts";
 import { MOTE } from "./theme.ts";
@@ -9,7 +9,7 @@ const DRIFT = 5;
 
 /**
  * The backdrop behind every screen: a kitchen. Trellis wallpaper (Kenney's Pattern Pack Pixel) in two navy blues, drifting slowly
- * down and to the right, with a few motes of dust rising through the air in front of it, and a wooden counter along the bottom
+ * down and to the right, soft bands of light moving over it (a shader), with a few motes of dust rising through the air in front of it, and a wooden counter along the bottom
  * that the jar stands on. The wall's picture is a tile bigger than the screen each way, so moving it by less than a tile and
  * wrapping shows no seam. All of it moves by whole pixels.
  */
@@ -18,7 +18,11 @@ export function Backdrop() {
   const shift = Math.floor((time * DRIFT) % TILE);
   return (
     <Entity>
-      <Sprite image="wall.png" x={shift - TILE} y={shift - TILE} />
+      {/* The wall, with light moving slowly over it (assets/wall.glsl). Where shaders do not run (tests, screenshots) it is the
+          plain wall. */}
+      <Layer shader="wall.glsl" params={[0.22]}>
+        <Sprite image="wall.png" x={shift - TILE} y={shift - TILE} />
+      </Layer>
       {motes(time).map((m) => (
         <Shape key={m.id} kind="rect" x={m.x} y={m.y} width={2} height={2} color={MOTE[m.shade]} />
       ))}

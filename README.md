@@ -83,7 +83,7 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Heavy | Shoulders lighter fruit aside. |
 | Double / Sour | Fruit touching it score x2 / can't Merge. |
 | Dense | Counts as this many fruit when touched. |
-| Deep | Up to this many extra points low in the jar. |
+| Edge | Scores this more touching the floor or a wall. |
 | Copy | Becomes the first fruit it lands on. |
 | Bouncy | Bounces, shoving its neighbours. |
 | Crack | Breaks open after this many turns. |
@@ -124,7 +124,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 - Eat and grow: the Pitaya eats one Cherry it touches a turn, and every Pitaya scores 1 more for the rest of the run.
 - Juice: liquid pools at the bottom of the jar, and what sits in it is changed by it.
   - A Lime that is Exploded or Crushed leaves lime juice 20 pixels deep. Fruit in lime juice float: they rise and come to
-    rest half out of it (so they are off the floor and away from the Juicer, less Deep, and nearer the rim).
+    rest half out of it (so they are off the floor and away from the Juicer, off the floor for an Apple's Edge, and nearer the rim).
   - A Coconut is Heavy, so it sinks and shoulders its way down. At its third Resolve it cracks open and is gone, leaving
     milk 20 deep. Fruit that sit in milk score double.
   - The liquid is one pool: it gets deeper with each Lime and Coconut, up to 120 pixels, holds whatever went into it,
