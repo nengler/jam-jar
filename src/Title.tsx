@@ -14,6 +14,7 @@ const JAR_SHIFT = 176;
 /** The title: the name on the kitchen wall and the menu on the left, and on the right a jar filling up as it does in play. */
 export function Title({ name }: { name: string }) {
   const learned = useGame((g) => g.learned);
+  const keys = useGame((g) => g.keys);
   const hasSave = useGame((g) => g.hasSave);
   const { start, openSettings } = useGame.actions();
   return (
@@ -38,10 +39,10 @@ export function Title({ name }: { name: string }) {
             <Text color={INK}>Settings</Text>
           </Button>
         </Menu>
-        {/* The keys, until a button has been pressed once. The row keeps its height after that, so the menu does not move. */}
+        {/* The keys, for a player at a keyboard, until a button has been pressed once. The row keeps its height after that, so the menu does not move. */}
         <Flex direction="row" gap={20} height={26}>
-          {!learned.includes("title") && <KeyHint name="updown" label="Choose" color={LIGHT_SOFT} />}
-          {!learned.includes("title") && <KeyHint name="Enter" label="Select" color={LIGHT_SOFT} />}
+          {keys && !learned.includes("title") && <KeyHint name="updown" label="Choose" color={LIGHT_SOFT} />}
+          {keys && !learned.includes("title") && <KeyHint name="Enter" label="Select" color={LIGHT_SOFT} />}
         </Flex>
       </Flex>
     </Entity>

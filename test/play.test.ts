@@ -56,11 +56,13 @@ test("Escape pauses the run, and the pause menu's Resume plays on", () => {
   assert.equal(states[19]!.paused, false);
 });
 
-test("Settings: right turns the music up, the sounds' row turns them down, and Escape goes back", () => {
-  const frames = parseInputScript("_*2, down, _*2, Enter, _*3, right, _*2, right, _*2, down, _*2, left, _*2, Escape, _*3", { bindings });
+test("Settings: left turns the sounds down, the next row is the speed, and Escape goes back", () => {
+  // The music's row is out while there is no music, so the sounds' is the first.
+  const frames = parseInputScript("_*2, down, _*2, Enter, _*3, left, _*2, left, _*2, down, _*2, right, _*2, Escape, _*3", { bindings });
   const { states } = runScript(gameConfig, frames, () => useGame.getState());
-  assert.equal(settings.get().music, 0.6, "two steps up from 0.4");
-  assert.equal(settings.get().effects, 0.7, "one step down from 0.8");
+  assert.equal(settings.get().effects, 0.6, "two steps down from 0.8");
+  assert.equal(settings.get().music, 0.4, "the music's level is kept, untouched");
+  assert.equal(settings.get().fast, true, "and the row under it is the speed");
   assert.equal(states[states.length - 1]!.screen, "title");
 });
 
@@ -84,7 +86,7 @@ function launch(backend: RecordingBackend, script: string): void {
 }
 
 test("the settings are kept between launches: the volumes and the keys already shown come back", () => {
-  // The first launch: into the settings, the music up a step, and back.
+  // The first launch: into the settings, the sounds up a step, and back.
   const first = new RecordingBackend();
   launch(first, "_*2, down, _*2, Enter, _*3, right, _*2, Escape, _*3");
   assert.equal(first.storageOpenedFor, "jam-jar");
@@ -95,9 +97,9 @@ test("the settings are kept between launches: the volumes and the keys already s
   const player = createPlayer(second, { ...gameConfig, warn: () => {} });
   second.queueInput(parseInputScript("_", { bindings })[0]!);
   player.step();
-  assert.equal(settings.get().music, 0.5);
+  assert.equal(settings.get().effects, 0.9);
   assert.deepEqual(useGame.getState().learned, ["title", "settings"], "the title knows its keys were shown");
-  assert.equal(useGame.getState().music, 5);
+  assert.equal(useGame.getState().effects, 9);
   player.close();
 });
 
@@ -260,6 +262,15 @@ test("in the Flip jar gravity turns over after every second drop: the hand ends 
     assert.ok(f.x - f.r >= JAR.left - 0.5 && f.x + f.r <= JAR.right + 0.5, `${f.kind} inside the walls (x = ${f.x})`);
   }
   player.close();
+});
+
+test("the prompts follow what the player is using: keys once a key is pressed, the pointer once the mouse or a finger is", () => {
+  const frames = parseInputScript("_*2, Enter, _*3, click@320,200, _*3, right, _*3", { bindings });
+  const { states } = runScript(gameConfig, frames, () => useGame.getState().keys);
+  assert.equal(states[1], false, "nothing pressed yet: no keys are named");
+  assert.equal(states[5], true, "Enter was pressed");
+  assert.equal(states[9], false, "a click or a tap");
+  assert.equal(states[states.length - 1], true, "and a key again");
 });
 
 test("the hand is reordered by dragging: a fruit follows the pointer along the shelf and stays where it is let go; a tap picks one up", () => {

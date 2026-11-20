@@ -7,11 +7,11 @@ import { BUTTON, BUTTON_GREY, BUTTON_SLICE, DISPLAY, DISPLAY_SIZE, INK, LIGHT_SO
 
 /** The settings (the music's and the sounds' volume, 0 to 10; 0 is off): left and right change the row with the focus (`onAdjust`), Enter presses it, and Escape goes back (`onBack`). */
 export function Settings() {
-  const music = useGame((s) => s.music);
   const effects = useGame((s) => s.effects);
   const fast = useGame((s) => s.fast);
   const learned = useGame((s) => s.learned);
-  const { changeMusic, changeEffects, changeSpeed, toTitle } = useGame.actions();
+  const keys = useGame((s) => s.keys);
+  const { changeEffects, changeSpeed, toTitle } = useGame.actions();
   return (
     <Entity>
       <Backdrop />
@@ -22,10 +22,8 @@ export function Settings() {
               Settings
             </Text>
           </Flex>
-          <Button autoFocus onPress={() => changeMusic(1)} onAdjust={(direction) => changeMusic(direction)} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
-            <Text color={INK}>{`Music < ${music} >`}</Text>
-          </Button>
-          <Button onPress={() => changeEffects(1)} onAdjust={(direction) => changeEffects(direction)} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
+          {/* The music's row is out while there is no music (see Main.tsx). */}
+          <Button autoFocus onPress={() => changeEffects(1)} onAdjust={(direction) => changeEffects(direction)} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
             <Text color={INK}>{`Sounds < ${effects} >`}</Text>
           </Button>
           <Button onPress={changeSpeed} onAdjust={() => changeSpeed()} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
@@ -36,8 +34,8 @@ export function Settings() {
           </Button>
         </Menu>
         <Flex direction="row" gap={20} height={26}>
-          {!learned.includes("settings") && <KeyHint name="arrows" label="Change" color={LIGHT_SOFT} />}
-          {!learned.includes("settings") && <KeyHint name="Esc" label="Back" color={LIGHT_SOFT} />}
+          {keys && !learned.includes("settings") && <KeyHint name="arrows" label="Change" color={LIGHT_SOFT} />}
+          {keys && !learned.includes("settings") && <KeyHint name="Esc" label="Back" color={LIGHT_SOFT} />}
         </Flex>
       </Flex>
     </Entity>

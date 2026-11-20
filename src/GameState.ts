@@ -33,6 +33,11 @@ export const useGame = createGameState(
     learned: learnedMoments(),
     /** How fast the game runs: 1, or less for the slow motion a chain of Blasts plays in. */
     speed: 1,
+    /**
+     * Whether the player is using the keyboard: the last thing pressed was a key, not the mouse or a finger. The screens show a
+     * key's name only then, and say "tap" otherwise, so a phone is never told to press Enter. False until a key is pressed.
+     */
+    keys: false,
   },
   {
     /** The settings changed, or were read from the player's files: show them. */
@@ -57,6 +62,10 @@ export const useGame = createGameState(
     },
     setSpeed(s, speed: number) {
       s.speed = speed;
+    },
+    /** A key was pressed, or the mouse or a finger was: see `keys`. */
+    usedKeys(s, on: boolean) {
+      s.keys = on;
     },
     start(s) {
       s.speed = 1;
