@@ -700,7 +700,7 @@ test("terms: cards keep to the vocabulary, every keyword is used, and a definiti
   // Used in a definition or a message, not on a card of its own.
   for (const keyword of ["explode", "spill"]) used.add(keyword);
   for (const [keyword, def] of Object.entries(KEYWORDS)) {
-    assert.ok(def.text.length <= 46, `${def.name}: ${def.text.length} characters`);
+    assert.ok(def.text.length <= 32, `${def.name}: ${def.text.length} characters`);
     assert.ok(used.has(keyword), `${def.name} is on no card`);
   }
 });
