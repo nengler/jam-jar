@@ -48,6 +48,9 @@ const SQUASH_FROM = 150;
 const SQUASH_PER = 0.0003;
 const SQUASH_MOST = 0.22;
 
+/** How much of its sliding a fruit pressed against the jar loses each substep in the Tilted jar (the engine's default is 0.1). */
+const TILT_FRICTION = 0.01;
+
 /** How much of its speed a fruit in juice loses each step. */
 const JUICE_DRAG = 0.12;
 
@@ -68,6 +71,9 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
     gravity: GRAVITY,
     tag: "fruit",
     data: { id: id },
+    // In the Tilted jar the pull presses fruit against the low wall and along the floor, and the walls' usual grip held them
+    // there: a fruit in the right lane took 3 seconds to slide down the wall (now about 0.8 s, against 0.7 s falling free). The jar is fixed for the cycle, so this is too.
+    friction: pull !== 0 ? TILT_FRICTION : undefined,
     // A fruit that comes back from a save frozen is held from its first step.
     pinned: frozen,
   });
