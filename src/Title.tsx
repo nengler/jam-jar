@@ -1,4 +1,4 @@
-import { Button, Entity, Flex, Menu, Text } from "@tsengine/runtime/jsx";
+import { Button, Entity, Flex, Menu, Text, useInputDevice } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
 import { DemoJar } from "./DemoJar.tsx";
@@ -14,7 +14,9 @@ const JAR_SHIFT = 176;
 /** The title: the name on the kitchen wall and the menu on the left, and on the right a jar filling up as it does in play. */
 export function Title({ name }: { name: string }) {
   const learned = useGame((g) => g.learned);
-  const keys = useGame((g) => g.keys);
+  // Whether the player is at a keyboard, by what was pressed last (a mouse and a finger are both the pointer): a key is named only then.
+  const device = useInputDevice();
+  const keys = device === "keyboard";
   const hasSave = useGame((g) => g.hasSave);
   const { start, openSettings } = useGame.actions();
   return (

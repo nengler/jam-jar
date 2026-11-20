@@ -1,4 +1,4 @@
-import { Button, Entity, Flex, Menu, Text } from "@tsengine/runtime/jsx";
+import { Button, Entity, Flex, Menu, Text, useInputDevice } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
 import { useGame } from "./GameState.ts";
@@ -10,7 +10,9 @@ export function Settings() {
   const effects = useGame((s) => s.effects);
   const fast = useGame((s) => s.fast);
   const learned = useGame((s) => s.learned);
-  const keys = useGame((s) => s.keys);
+  // Whether the player is at a keyboard, by what was pressed last (a mouse and a finger are both the pointer): a key is named only then.
+  const device = useInputDevice();
+  const keys = device === "keyboard";
   const { changeEffects, changeSpeed, toTitle } = useGame.actions();
   return (
     <Entity>

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { createPlayer, parseInputScript, RecordingBackend, runScript, type Player } from "@tsengine/player";
+import { getInputDevice } from "@tsengine/runtime";
 import { findComponent } from "@tsengine/testing";
 
 import { bindings, gameConfig } from "../game.ts";
@@ -266,7 +267,7 @@ test("in the Flip jar gravity turns over after every second drop: the hand ends 
 
 test("the prompts follow what the player is using: keys once a key is pressed, the pointer once the mouse or a finger is", () => {
   const frames = parseInputScript("_*2, Enter, _*3, click@320,200, _*3, right, _*3", { bindings });
-  const { states } = runScript(gameConfig, frames, () => useGame.getState().keys);
+  const { states } = runScript(gameConfig, frames, () => getInputDevice() === "keyboard");
   assert.equal(states[1], false, "nothing pressed yet: no keys are named");
   assert.equal(states[5], true, "Enter was pressed");
   assert.equal(states[9], false, "a click or a tap");

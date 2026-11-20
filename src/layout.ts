@@ -135,16 +135,9 @@ export function grownOf(run: Run, kind: FruitKind): number {
   return kind === "banana" ? run.bananaBonus : kind === "pitaya" ? run.pitayaBonus : 0;
 }
 
-/**
- * Which fruit on the shelf the pointer is on: the shelf's fruit stand `slot` apart from `left`, `count` of them. With `along`
- * it is the nearest place whatever the pointer's height, for a fruit being dragged; without, -1 when the pointer is not on the
- * shelf (between `top` and `bottom`, and over one of its fruit).
- */
-export function shelfSlot(x: number, y: number, left: number, slot: number, count: number, top: number, bottom: number, along: boolean): number {
-  if (count === 0) return -1;
-  const at = Math.floor((x - left) / slot);
-  if (along) return Math.max(0, Math.min(count - 1, at));
-  return y >= top && y <= bottom && at >= 0 && at < count ? at : -1;
+/** Which place on the shelf a point across is nearest: the shelf's fruit stand `slot` apart from `left`, `count` of them. -1 for an empty shelf. */
+export function shelfSlot(x: number, left: number, slot: number, count: number): number {
+  return count === 0 ? -1 : Math.max(0, Math.min(count - 1, Math.floor((x - left) / slot)));
 }
 
 /** Where a fruit on the shelf is drawn across: in its place, or under the pointer (kept over the shelf) while it is dragged. */

@@ -1,4 +1,4 @@
-import { Entity, Flex, Line, Shape, Sprite, Text, Tooltip, useInput, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Line, Shape, Sprite, Text, Tooltip, useInput, useInputDevice, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
 import { Letters, Panel } from "./Board.tsx";
@@ -79,7 +79,8 @@ export function Play() {
   const learned = useGame((g) => g.learned);
   const fast = useGame((g) => g.fast);
   // Whether the player is at a keyboard: the prompts name keys only then, and speak of tapping and dragging otherwise.
-  const keys = useGame((g) => g.keys);
+  const device = useInputDevice();
+  const keys = device === "keyboard";
   const speed = useGame((g) => g.speed);
   const { pause, toTitle, setSpeed } = useGame.actions();
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
@@ -110,30 +111,7 @@ export function Play() {
     const looking = s.whole;
     if (looking && (input.pressed("Enter") || input.pressed("Space") || input.pressed("D"))) s.whole = false;
     else if (!looking && input.pressed("D")) s.whole = true;
-    // Dragging a fruit along the shelf. A press on a fruit picks it up; while the button or finger stays down it goes where the
-    // pointer goes, the others making room; letting go puts it down. A press and release in one place is a tap: the fruit stays
-    // picked up, and the next tap says where it goes. The rules know none of this: they are told a place and a confirm.
-    if (s.run.phase === "order" && !looking) {
-      const count = s.run.hand.length;
-      const left = (JAR.left + JAR.right) / 2 - (count * SLOT) / 2;
-      const over = shelfSlot(input.pointerX, input.pointerY, left, SLOT, count, SHELF_Y - 44, SHELF_Y + 8, false);
-      if (input.pressed("MouseLeft") && over >= 0) {
-        s.point = over;
-        s.click = true;
-        s.drag = !s.run.holding;
-        s.dragMoved = false;
-      } else if (s.drag && input.down("MouseLeft")) {
-        const to = shelfSlot(input.pointerX, input.pointerY, left, SLOT, count, 0, 0, true);
-        if (to !== s.run.cursor) {
-          s.point = to;
-          s.dragMoved = true;
-        }
-      } else if (s.drag) {
-        if (s.dragMoved) s.click = true;
-        s.drag = false;
-      }
-      s.dragX = input.pointerX;
-    } else s.drag = false;
+    if (s.run.phase !== "order" || looking) s.drag = false;
     s.run = advance(
       s.run,
       dt,
@@ -185,6 +163,33 @@ export function Play() {
   const click = (card: number) => {
     s.point = card;
     s.click = true;
+  };
+  // Dragging a fruit along the shelf (the box over the shelf hears it). A press on a fruit picks it up; while the button or finger
+  // stays down it goes where the pointer goes, the others making room; letting go puts it down. A press and release in one place
+  // is a tap: the fruit stays picked up, and the next tap says where it goes. The rules know none of this: they are told a place
+  // and a confirm.
+  const shelfAt = (x: number) => {
+    const count = s.run.hand.length;
+    return shelfSlot(x, (JAR.left + JAR.right) / 2 - (count * SLOT) / 2, SLOT, count);
+  };
+  const dragStart = (x: number) => {
+    s.point = shelfAt(x);
+    s.click = true;
+    s.drag = !s.run.holding;
+    s.dragMoved = false;
+    s.dragX = x;
+  };
+  const dragMove = (x: number) => {
+    if (!s.drag) return;
+    s.dragX = x;
+    const to = shelfAt(x);
+    if (to === s.run.cursor) return;
+    s.point = to;
+    s.dragMoved = true;
+  };
+  const dragEnd = () => {
+    if (s.drag && s.dragMoved) s.click = true;
+    s.drag = false;
   };
   // The buttons on screen, for playing with no keyboard: what Space, Esc and (on the end board) Enter do.
   const tapDrop = () => {
@@ -298,6 +303,8 @@ export function Play() {
       {/* The shelf: the hand, in the order it drops. The chosen fruit is framed in amber; a held one is lifted. In the Blind
           jar each is under a cloth. */}
       <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y} />
+      {/* The box that hears the hand being dragged and tapped: over the fruit on the shelf, and under their tooltips' boxes. */}
+      {ordering && !s.whole && <Flex x={shelfLeft} y={SHELF_Y - 44} width={shelf.length * SLOT} height={52} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} />}
       {placed(shelf).map((slot) => (
         <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} y={SHELF_Y - 18}>
           {ordering && !blind && slot.at === run.cursor && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
