@@ -43,7 +43,9 @@ screen fills the window at any size, a phone's included.
 | While the jar plays | Hold F to hurry it (three times as fast) |
 | Any time | Esc pause, D the whole pool |
 
-The keys for the pick and the shop are on screen the first time each comes up and not again; how to move a fruit and drop
+The screens word their prompts by what the player is using, whichever was pressed last: a keyboard is told its keys, a
+mouse or a finger to tap and drag, and no key is named to a player who has not pressed one (`keys` in `src/GameState.ts`).
+For a player at a keyboard, the keys for the pick and the shop are on screen the first time each comes up and not again; how to move a fruit and drop
 the hand is on the fruit's card under the shelf every time;
 the pause menu always lists them. That, and the two volumes on the settings screen (music and sounds, 0 to 10), are the
 player's settings (`src/settings.ts`), which the engine keeps between launches.
@@ -252,6 +254,8 @@ saved data and reads none.
   the Durian is the Pineapple, the Seed the brown Kiwi, the Melon the round green one, the Prune the Blackberry, the Fig the
   Aubergine and the Honeydew the golden Apple. The Pitaya is the sheet's Dragon Fruit and the Dragonfruit its
   white-fleshed one. The Fruit Fly is drawn by `tools/make-assets.py`.
+- There is no music for now: the tracks on hand are loops of 10 to 48 seconds (the one that played, Farm Frolics, is 10.7),
+  which wear thin at once. `src/Main.tsx` says where a `<Music>` goes back, and the settings screen's music row is out with it.
 - [Kenney](https://kenney.nl) pixel art, CC0: the boards, cards, buttons and the slate (UI Pack - Pixel Adventure),
   the wallpaper's trellis (Pattern Pack Pixel), the coin (Pixel Platformer), blasts (Explosion Pack's pixel explosion), the
   sounds and the music (Farm Frolics, from Music Loops). It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;

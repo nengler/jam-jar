@@ -7,7 +7,7 @@ import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { TapButton } from "./KeyHint.tsx";
-import { atRest, cycleTitle, grownOf, leaned, moment, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
+import { atRest, cycleTitle, grownOf, leaned, moment, pickNote, shelfNote, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { learn } from "./settings.ts";
@@ -78,6 +78,8 @@ export function Play() {
   const seed = useGame((g) => g.seed);
   const learned = useGame((g) => g.learned);
   const fast = useGame((g) => g.fast);
+  // Whether the player is at a keyboard: the prompts name keys only then, and speak of tapping and dragging otherwise.
+  const keys = useGame((g) => g.keys);
   const speed = useGame((g) => g.speed);
   const { pause, toTitle, setSpeed } = useGame.actions();
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
@@ -218,8 +220,8 @@ export function Play() {
   const filled = Math.max(0, Math.min(1, scored / rent));
   const ordering = run.phase === "order";
   const picking = run.phase === "pick";
-  /** Whether this moment's keys are shown: only until the player has been through it once. */
-  const hints = !learned.includes(moment(run));
+  /** Whether this moment's keys are shown: to a player at a keyboard, and only until they have been through it once. */
+  const hints = keys && !learned.includes(moment(run));
   const boss = bossNow(run);
   const blind = boss === "blind";
   const preserving = run.phase === "preserve";
@@ -307,7 +309,7 @@ export function Play() {
           {!blind && (
             <Flex x={-20} y={-20} width={40} height={40}>
               <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} note={!ordering ? "" : run.holding && slot.at === run.cursor ? "Let go, or tap, where it should stand." : "Drag it along the shelf to move it. Tap the jar to drop."} />
+                <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} note={!ordering ? "" : shelfNote(keys, run.holding && slot.at === run.cursor)} />
               </Tooltip>
             </Flex>
           )}
@@ -421,7 +423,7 @@ export function Play() {
           </Flex>
           {/* Until a card is chosen, how to choose one; then how to take it. */}
           <Flex right={16} bottom={6} direction="row">
-            <Text color={LIGHT}>{run.offerCursor < 0 ? "Tap a card to see what it does" : "Tap it again, or Enter, to take it"}</Text>
+            <Text color={LIGHT}>{pickNote(keys, run.offerCursor >= 0)}</Text>
           </Flex>
           {/* The way out, always there, in the bottom left corner: a card's keywords open to its side, never over this. */}
           <Flex left={16} bottom={2} direction="row" alignItems="center" gap={20}>
@@ -444,7 +446,7 @@ export function Play() {
                   <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`Total ${run.total}`}</Text>
                 </Flex>
                 <Flex direction="row" justifyContent="center" paddingTop={6}>
-                  <TapButton keyName="Enter" label={run.phase === "rent" ? (run.cycle >= RENT.length ? "Go on" : "Shop") : "Title"} onPress={tapEnd} />
+                  <TapButton keyName={keys ? "Enter" : ""} label={run.phase === "rent" ? (run.cycle >= RENT.length ? "Go on" : "Shop") : "Title"} onPress={tapEnd} />
                 </Flex>
               </Panel>
             </Flex>

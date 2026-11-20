@@ -9,6 +9,7 @@ import { BUTTON, BUTTON_GREY, BUTTON_SLICE, DISPLAY, DISPLAY_SIZE, INK, PANEL, P
  * (`onBack`) and does not reach the play screen's Escape.
  */
 export function Pause() {
+  const keys = useGame((g) => g.keys);
   const { resume, toTitle } = useGame.actions();
   return (
     <Entity>
@@ -36,13 +37,15 @@ export function Pause() {
           </Button>
         </Menu>
       </Flex>
-      {/* The keys, always here: the play screen shows each moment's only the first time. */}
-      <Flex x={224} y={226} direction="column" gap={0}>
-        <KeyHint name="arrows" label="Choose" />
-        <KeyHint name="Enter" label="Take or buy" />
-        <KeyHint name="Space" label="Drop or skip" />
-        <KeyHint name="F" label="Hold to hurry" />
-      </Flex>
+      {/* The keys, for a player at a keyboard: always here, as the play screen shows each moment's only the first time. */}
+      {keys && (
+        <Flex x={224} y={226} direction="column" gap={0}>
+          <KeyHint name="arrows" label="Choose" />
+          <KeyHint name="Enter" label="Take or buy" />
+          <KeyHint name="Space" label="Drop or skip" />
+          <KeyHint name="F" label="Hold to hurry" />
+        </Flex>
+      )}
     </Entity>
   );
 }
