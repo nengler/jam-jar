@@ -64,46 +64,38 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 
 | Keyword | Meaning ("this" is the number after it) |
 | --- | --- |
-| Fresh | Scores once, on landing. |
-| Simmer | Scores every turn. |
+| Fresh | Scores this once, when it lands or is made. |
+| Simmer | Scores this at the end of every turn. |
 | Booster | Scores nothing itself. |
-| Merge | Two touching become this. |
-| Exploder | Explodes touching this many. |
-| Buried | Big explosion under this many. |
-| Explode | Destroys nearby: +10 (big +14). |
-| Exploded | When an explosion hits it. |
+| Merge | Two that touch become the fruit named. |
+| Exploder | Explodes when touching this many fruit. |
+| Buried | Explodes, big, under this many fruit. |
+| Explode | Destroys nearby fruit: points +10 (big +14). |
+| Exploded | When an explosion destroys it. |
 | Burst | Breaks into this many Cherries. |
-| Sprout | Grows a small fruit here. |
-| Rotten | No score. Spreads. Merges. |
-| Rots | Rotten after this many turns. |
-| Ripen | Scores this more each turn. |
-| Honeyed | +4 a turn. Sticky. |
-| Honey | Honeys a fruit it touches. |
-| Eat | Removes a fruit it touches. |
-| Hatch | A Fruit Fly appears there. |
-| Grow | Its kind gains this, all run. |
-| Heavy | Pushes lighter fruit aside. |
-| Double | Touching fruit score x2. |
-| Sour | Touching fruit can't Merge. |
-| Dense | Counts as this many fruit. |
-| Deep | Up to this more when deep. |
-| Copy | Becomes what it lands on. |
-| Bouncy | Bounces its neighbours. |
-| Crack | Opens after this many turns. |
-| Juice | Juice this deep. Fruit float. |
-| Milk | Milk this deep. Fruit score x2. |
-| Skip | Merges by it skip a size. |
-| Legendary | Rare. Never in the shop. |
-| Crush | Destroys a fruit: points +3. |
-| Shake | Throws every fruit about. |
-| Preserve | Keeps this many past rent. |
-| Frozen | Can't move or be exploded. |
-| Pickled | Never ages or rots. |
-| Once | Used up after one use. |
-| Spill | Over the rim: lost, -5 each. |
+| Sprout | A Cherry, Grape or Orange grows here. |
+| Rotten | Scores nothing. Each turn, rots one neighbour. |
+| Rots | Turns Rotten after this many turns. |
+| Ripen | Scores this much more each turn. |
+| Honeyed / Honey | Scores +4 at the end of every turn, and sticks to what it touches / makes a fruit it touches Honeyed. |
+| Eat / Hatch | Removes one fruit it touches / a new Fruit Fly appears where it ate. |
+| Grow | That kind scores this much more, all run. |
+| Heavy | Shoulders lighter fruit aside. |
+| Double / Sour | Fruit touching it score x2 / can't Merge. |
+| Dense | Counts as this many fruit when touched. |
+| Deep | Up to this much more the deeper it sits. |
+| Copy | Becomes the first fruit it lands on. |
+| Bouncy | Bounces, shoving its neighbours. |
+| Crack | Breaks open after this many turns. |
+| Juice / Milk | Lime juice this deep: fruit in it float / milk this deep: fruit in it score x2. |
+| Skip | A Merge touching it skips a size. |
+| Legendary | Rare, and never in the shop. |
+| Crush, Shake, Preserve, Pickled, Once | The items' words: the Juicer, the Shaker, the jars and the Lid. |
+| Frozen | Held in place. Explosions can't destroy it. |
+| Spill | Fruit over the rim are lost: -5 each. |
 
 A new card is a row of these, how it scores first ("Fresh 3. Heavy. Crack 3: Milk 20."), with a trigger before a colon ("Exploded:
-Sprout."). A new effect gets a keyword and a definition of at most 32 characters, not a sentence on one card. A card holds
+Sprout."). A new effect gets a keyword and a definition of at most 46 characters, not a sentence on one card. A card holds
 at most four keywords, which is what a tooltip has room for. Tests hold the cards to this, and to the rules' own numbers.
 
 ## What's in this first slice
