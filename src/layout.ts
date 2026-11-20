@@ -337,3 +337,25 @@ export function sweep(time: number): { shown: boolean; x: number; open: number }
   const t = (time - SWEEP.in - SWEEP.hold) / SWEEP.out;
   return { shown: true, x: 12 + 520 * t * t, open: 1 - t };
 }
+
+/** Whether a clock passed `at` in a step that took it from `before` to `after`: when a sound of an entrance is played. */
+export function crossed(before: number, after: number, at: number): boolean {
+  return before < at && after >= at;
+}
+
+/**
+ * Which of a row of things coming in one after another arrived in a step that took the clock from `before` to `after`: the first
+ * at `start`, each next one `gap` later, `count` of them. -1 for none. Each plays the next bloop up.
+ */
+export function arrived(before: number, after: number, start: number, gap: number, count: number): number {
+  for (let n = 0; n < count; n++) if (crossed(before, after, start + n * gap)) return n;
+  return -1;
+}
+
+/** Whether a fruit of a newly dealt hand rolled to its place in a step that took the hand's clock from `before` to `after`. */
+export function rolledIn(before: number, after: number, count: number): boolean {
+  return arrived(before, after, ROLL_TIME * 0.75, ROLL_GAP, count) >= 0;
+}
+
+/** When the jar (or the title's name) first touches down, in seconds into its fall: the first of the bounce's three arcs. */
+export const LANDS = INTRO.fall / 2.75;

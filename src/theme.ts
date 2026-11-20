@@ -106,5 +106,10 @@ export const JUICE: Readonly<Record<"lime" | "milk" | "both", { body: string; to
   both: { body: "#468232", top: "#d0da91" },
 };
 
+/** How loud the sounds of things arriving are, of the sounds' volume: a bloop, a fruit's tock on the shelf, the jar's thud. */
+export const POP_VOLUME = 0.35;
+export const TOCK_VOLUME = 0.35;
+export const THUD_VOLUME = 0.6;
+
 /** How loud a button's click is, of the sounds' volume: there are many, so it is soft. */
 export const CLICK_VOLUME = 0.5;

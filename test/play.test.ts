@@ -544,3 +544,17 @@ test("the last turn of a cycle is announced: a banner crosses the screen as its 
   assert.ok(play.s.last >= 1.28, "and it is over in about a second and a quarter, once");
   game.close();
 });
+
+test("things arriving make a sound: the title's name and jar land and its buttons bloop; a run's boards bloop, its jar lands and its hand knocks onto the shelf", () => {
+  const game = playGame(gameConfig, { bindings });
+  const heard = () => game.backend.plays;
+  const count = (name: string) => heard().filter((s) => s === `assets/${name}`).length;
+  game.input("_*120");
+  assert.equal(count("thud.wav"), 2, "the name, then the jar");
+  assert.deepEqual([count("pop-0.wav"), count("pop-1.wav"), count("pop-2.wav")], [1, 1, 0], "one for Play, a higher one for Settings");
+  game.input("Enter, _*300");
+  assert.equal(count("thud.wav"), 3, "the run's jar lands");
+  assert.deepEqual([count("pop-0.wav"), count("pop-1.wav"), count("pop-2.wav")], [2, 2, 1], "the two boards and the shelf");
+  assert.equal(count("tock.wav"), 4, "and each of the four fruit knocks as it rolls to its place");
+  game.close();
+});

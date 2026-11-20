@@ -9,7 +9,7 @@ import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { TapButton } from "./KeyHint.tsx";
-import { atRest, sweep, SWEEP_TIME, blastBits, blastFlash, blastJolt, cycleTitle, INTRO, jarDrop, kindAt, popIn, rollIn, rollStarted, grownOf, leaned, moment, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
+import { atRest, crossed, LANDS, rolledIn, sweep, SWEEP_TIME, blastBits, blastFlash, blastJolt, cycleTitle, INTRO, jarDrop, kindAt, popIn, rollIn, rollStarted, grownOf, leaned, moment, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/tutorial.ts";
@@ -36,6 +36,9 @@ import {
   INK_SOFT,
   KEYWORD,
   KEYWORD_LIGHT,
+  POP_VOLUME,
+  THUD_VOLUME,
+  TOCK_VOLUME,
   TERM_W,
   LIGHT,
   LINK,
@@ -119,6 +122,12 @@ export function Play() {
   const playLose = useSound("lose.wav");
   const playTick = useSound("tick.wav");
   const playLast = useSound("last.wav");
+  // Things arriving: the boards and the shelf popping in as a run opens, the jar landing, and each fruit rolling to its place.
+  const playPop0 = useSound("pop-0.wav");
+  const playPop1 = useSound("pop-1.wav");
+  const playPop2 = useSound("pop-2.wav");
+  const playThud = useSound("thud.wav");
+  const playTock = useSound("tock.wav");
   // The tally's notes, low to high: each score rings one step up from the last (tools/make-assets.py makes them).
   const playScore0 = useSound("score-0.wav");
   const playScore1 = useSound("score-1.wav");
@@ -154,7 +163,15 @@ export function Play() {
     if (s.run.phase !== "order" || looking) s.drag = false;
     if (s.run.phase !== "order") s.tip = false;
     // The opening plays out, and each newly dealt hand rolls onto the shelf: the first once the jar has landed.
-    if (s.intro < INTRO.end) s.intro += dt;
+    if (s.intro < INTRO.end) {
+      const before = s.intro;
+      s.intro += dt;
+      // The opening's sounds: a bloop as each board and the shelf arrive, a thud as the jar lands.
+      if (crossed(before, s.intro, INTRO.left + INTRO.pop * 0.6)) playPop0(POP_VOLUME);
+      if (crossed(before, s.intro, INTRO.right + INTRO.pop * 0.6)) playPop1(POP_VOLUME);
+      if (crossed(before, s.intro, INTRO.shelf + INTRO.pop * 0.6)) playPop2(POP_VOLUME);
+      if (crossed(before, s.intro, INTRO.jar + LANDS)) playThud(THUD_VOLUME);
+    }
     const deal = `${s.run.cycle} ${s.run.turn}`;
     if (s.run.phase === "order" && deal !== s.dealt) {
       s.dealt = deal;
@@ -164,7 +181,12 @@ export function Play() {
         s.last = 0;
         playLast(0.8);
       }
-    } else if (s.roll < 2) s.roll += dt;
+    } else if (s.roll < 2) {
+      // Each fruit of a new hand knocks softly as it rolls to its place on the shelf.
+      const before = s.roll;
+      s.roll += dt;
+      if (s.run.phase === "order" && rolledIn(before, s.roll, s.run.hand.length)) playTock(TOCK_VOLUME);
+    }
     if (s.last < SWEEP_TIME) s.last += dt;
     s.run = advance(
       s.run,
