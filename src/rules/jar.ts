@@ -943,6 +943,10 @@ function land(run: Run): void {
       // Landing is the commonest score: only a doubled one lights anything up.
       if (earned !== null && !earned.doubled) f.pulse = 0;
     }
+    if (lying && f.kind !== "peach") {
+      // A fruit that lands on the floor (the lid, turned over) hops once, a little, so it does not just stop dead.
+      kick(f, 0, run.flipped ? FLOOR_BOUNCE : -FLOOR_BOUNCE);
+    }
     if (f.kind === "peach") {
       // It bounces once, and shoves what it landed on away to each side.
       kick(f, 0, -PEACH_BOUNCE);
@@ -954,6 +958,8 @@ function land(run: Run): void {
   });
 }
 
+/** How hard a fruit hops when it lands on the floor (px/s): about 8 px up. Landing on another fruit, it does not. */
+const FLOOR_BOUNCE = 140;
 /** How hard a Peach bounces when it lands, and shoves each fruit it landed on sideways (px/s). */
 const PEACH_BOUNCE = 380;
 const PEACH_SHOVE = 180;
