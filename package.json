@@ -7,14 +7,14 @@
     "name": "jam-jar"
   },
   "dependencies": {
-    "@tsengine/native": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-native-0.16.0.tgz",
-    "@tsengine/player": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-player-0.16.0.tgz",
-    "@tsengine/player-node": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-player-node-0.16.0.tgz",
-    "@tsengine/runtime": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-runtime-0.16.0.tgz"
+    "@tsengine/native": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-native-0.17.0.tgz",
+    "@tsengine/player": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-player-0.17.0.tgz",
+    "@tsengine/player-node": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-player-node-0.17.0.tgz",
+    "@tsengine/runtime": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-runtime-0.17.0.tgz"
   },
   "devDependencies": {
-    "@tsengine/cli": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-cli-0.16.0.tgz",
-    "@tsengine/testing": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-testing-0.16.0.tgz",
+    "@tsengine/cli": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-cli-0.17.0.tgz",
+    "@tsengine/testing": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-testing-0.17.0.tgz",
     "@types/node": "^22.10.0"
   },
   "scripts": {
@@ -26,14 +26,14 @@
     "test": "tse check"
   },
   "overrides": {
-    "@tsengine/runtime": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-runtime-0.16.0.tgz",
-    "@tsengine/compiler": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-compiler-0.16.0.tgz",
-    "@tsengine/player": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-player-0.16.0.tgz",
-    "@tsengine/player-node": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-player-node-0.16.0.tgz",
-    "@tsengine/player-web": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-player-web-0.16.0.tgz",
-    "@tsengine/native": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-native-0.16.0.tgz",
-    "@tsengine/testing": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-testing-0.16.0.tgz",
-    "@tsengine/cli": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-cli-0.16.0.tgz",
-    "@tsengine/language-server": "https://github.com/nengler/tse/releases/download/v0.16.0/tsengine-language-server-0.16.0.tgz"
+    "@tsengine/runtime": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-runtime-0.17.0.tgz",
+    "@tsengine/compiler": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-compiler-0.17.0.tgz",
+    "@tsengine/player": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-player-0.17.0.tgz",
+    "@tsengine/player-node": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-player-node-0.17.0.tgz",
+    "@tsengine/player-web": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-player-web-0.17.0.tgz",
+    "@tsengine/native": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-native-0.17.0.tgz",
+    "@tsengine/testing": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-testing-0.17.0.tgz",
+    "@tsengine/cli": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-cli-0.17.0.tgz",
+    "@tsengine/language-server": "https://github.com/nengler/tse/releases/download/v0.17.0/tsengine-language-server-0.17.0.tgz"
   }
 }

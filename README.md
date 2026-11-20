@@ -10,7 +10,7 @@ Built on the [tse engine](https://github.com/nengler/tse). The design doc is the
 
 ## Running it
 
-The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.16.0), with
+The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.17.0), with
 `overrides` so the packs' own dependencies on each other resolve to the same release:
 
 ```sh
@@ -37,7 +37,8 @@ so the card is away in between. "No tips" ends it, and the settings' Tips row tu
 
 `npx tse package . --engine web` builds the game as a web page in `dist/jam-jar-web`, and `.github/workflows/pages.yml`
 publishes it to GitHub Pages on every push to `main` (once Settings -> Pages -> Source is set to "GitHub Actions"). The
-screen fills the window at any size, a phone's included.
+screen fills the window at any size, a phone's included. The game is laid out on its side: while the window is taller than it is wide (a phone held upright), a card asks
+for it to be turned and the game waits under it (`src/Rotate.tsx`, from the engine's `useWindowSize`).
 
 | Phase | Keys |
 | --- | --- |

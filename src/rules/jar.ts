@@ -95,7 +95,7 @@ const CALM_SPEED = 20;
 const SETTLE_SPEED = 5;
 const CALM_TIME = 0.6;
 /** Settling gives up after this long, so a jittering pile cannot stall a turn. */
-const SETTLE_LIMIT = 8;
+export const SETTLE_LIMIT = 8;
 const OVERFLOW_PENALTY = 5;
 /** How many Resolves a Coconut sits through before it cracks. */
 const COCONUT_TURNS = 3;
