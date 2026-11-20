@@ -41,11 +41,14 @@ export function Panel({ title, heading, image = PANEL, gap = 0, children }: { ti
 /** The room a heading's line takes, and the width of a space in it. */
 const HEADING_H = 32;
 const HEADING_SPACE = 8;
+/** About the middle of a letter across, and where its foot is down from its top: what a hopping letter is squashed and stretched about, so its feet stay on the line. */
+const LETTER_MID = 7;
+const LETTER_FOOT = 26;
 
 /**
  * A heading's letters: light lettering with a dark shadow, straight on what is behind it, in a row as wide as they are. Every
- * few seconds a ripple runs through it, a letter at a time hopping up an art pixel: something small that moves, so the wall is
- * not all still. `seed` staggers one heading's ripple from another's.
+ * few seconds a ripple runs through it, a letter at a time hopping with a little squash and stretch: something small that
+ * moves, so the wall is not all still. `seed` staggers one heading's ripple from another's.
  */
 export function Letters({ text, seed }: { text: string; seed: number }) {
   const time = useTime();
@@ -54,7 +57,7 @@ export function Letters({ text, seed }: { text: string; seed: number }) {
       {ripple(text, time, seed).map((l) => (
         <Flex key={l.at} height={HEADING_H} minWidth={l.letter === " " ? HEADING_SPACE : 0}>
           {l.letter !== " " && (
-            <Entity y={-l.lift}>
+            <Entity x={LETTER_MID * (1 - l.scaleX)} y={LETTER_FOOT * (1 - l.scaleY) - l.lift} scaleX={l.scaleX} scaleY={l.scaleY}>
               <Text font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>
                 {l.letter}
               </Text>

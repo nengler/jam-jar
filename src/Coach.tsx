@@ -6,12 +6,12 @@ import type { Lesson } from "./rules/tutorial.ts";
 import { CARD_SLICE, DIM, GOLD, LIGHT, PLAQUE, SELECT } from "./theme.ts";
 
 /**
- * The tutorial's card, in the first game: one lesson on a dark slate, its title in gold. It does not count the lessons, and it
- * has no button to go on with: it is a helper that speaks up when there is something to say and goes when the player has
- * done it. "No tips" ends the tutorial. It is `width` wide. `wide` lays it out along the foot of the screen, the words beside
+ * The tutorial's card, in the first game: one lesson on a dark slate, its title in gold. It does not count the lessons, and
+ * it goes when the player has done what it says: only a lesson that just tells them something (the rent, the pool) has a
+ * "Got it". "No tips" ends the tutorial. It is `width` wide. `wide` lays it out along the foot of the screen, the words beside
  * the button, for where there is no room for a tall card.
  */
-export function Coach({ lesson, keys, width, wide = false, onSkip }: { lesson: Lesson; keys: boolean; width: number; wide?: boolean; onSkip: () => void }) {
+export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { lesson: Lesson; keys: boolean; width: number; wide?: boolean; onNext: () => void; onSkip: () => void }) {
   return (
     <Flex width={width} direction="column" alignItems="stretch">
       <Panel image={PLAQUE} gap={2}>
@@ -25,8 +25,9 @@ export function Coach({ lesson, keys, width, wide = false, onSkip }: { lesson: L
               {keys ? lesson.keysText : lesson.text}
             </Text>
           </Flex>
-          {/* The one button ends the tutorial. There is none to go on with: a lesson goes when the player does what it says. */}
-          <Flex direction="row" justifyContent="end" paddingTop={wide ? 0 : 6}>
+          {/* "No tips" ends the tutorial. Only a lesson that asks for nothing has a "Got it": the others go when the player does what they say. */}
+          <Flex direction="row" justifyContent={lesson.told === true ? "space-between" : "end"} paddingTop={wide ? 0 : 6}>
+            {lesson.told === true && <TapButton label="Got it" onPress={onNext} />}
             <TapButton label="No tips" onPress={onSkip} />
           </Flex>
         </Flex>

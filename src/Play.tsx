@@ -59,8 +59,6 @@ const POOL_TIGHT = { columns: 4, cell: 40 };
 const POOL_ROW = 32;
 /** The note of what just happened: a slate at the right, its foot this far above the foot of the screen (just above the counter). */
 const NOTE_FOOT = 36;
-/** Seconds a lesson that only tells the player something stays up at the least, before a tap or a key puts it away. */
-const LESSON_READ = 1.5;
 /** Where across the screen a newly dealt fruit starts its roll along the shelf: at the shelf's right end. */
 const ROLL_FROM = 432;
 /** Where the card of a fruit on the shelf stands: in the top left corner, over the rent board for as long as it is up, so it
@@ -101,7 +99,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", lessonSeen: -1, lessonTime: 0, lessonPressed: false, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -171,14 +169,8 @@ export function Play() {
           s.lessonHand = s.run.hand.join();
           s.lessonCursor = s.run.cursor;
           s.lessonMessage = s.run.message;
-          s.lessonTime = 0;
-          s.lessonPressed = false;
         }
-      } else {
-        s.lessonTime += dt;
-        if (s.lessonTime > LESSON_READ && input.lastPressed() !== undefined) s.lessonPressed = true;
-      }
-      if (s.lessonSeen === tutorial && lessonDone(lesson, s.run, { looked: s.tip || s.run.cursor !== s.lessonCursor, moved: s.run.hand.join() !== s.lessonHand, acted: s.run.message !== s.lessonMessage, pressed: s.lessonPressed })) toLesson(tutorial + 1);
+      } else if (lessonDone(lesson, s.run, { looked: s.tip || s.run.cursor !== s.lessonCursor, moved: s.run.hand.join() !== s.lessonHand, acted: s.run.message !== s.lessonMessage })) toLesson(tutorial + 1);
     }
     // Through a moment once (a hand dropped, a pick made, the shop left), its keys are known: they are not shown again.
     if (moment(s.run) !== before) learn(before);
@@ -278,7 +270,10 @@ export function Play() {
     if (s.run.phase === "rent") s.click = true;
     else toTitle();
   };
-  // The tutorial card's button: no more lessons at all.
+  // The tutorial card's buttons: on from a lesson that only tells, or no more lessons at all.
+  const lessonNext = () => {
+    toLesson(tutorial + 1);
+  };
   const lessonSkip = () => {
     toLesson(LESSONS.length);
   };
@@ -491,7 +486,7 @@ export function Play() {
       {/* The first game's tutorial takes the slate's place: one lesson at a time, about what is on screen now. */}
       {coached !== null && !picking && run.phase !== "shop" && (
         <Flex right={HUD_X} bottom={NOTE_FOOT}>
-          <Coach lesson={coached ?? LESSONS[0]!} keys={keys} width={BOARD_W} onSkip={lessonSkip} />
+          <Coach lesson={coached ?? LESSONS[0]!} keys={keys} width={BOARD_W} onNext={lessonNext} onSkip={lessonSkip} />
         </Flex>
       )}
 
@@ -535,7 +530,7 @@ export function Play() {
           {/* The first pick of the first game: the tutorial's lesson says it, along the foot of the screen. */}
           {coached !== null && (
             <Flex right={8} bottom={2}>
-              <Coach wide lesson={coached ?? LESSONS[0]!} keys={keys} width={440} onSkip={lessonSkip} />
+              <Coach wide lesson={coached ?? LESSONS[0]!} keys={keys} width={440} onNext={lessonNext} onSkip={lessonSkip} />
             </Flex>
           )}
           {/* The way out, always there, in the bottom left corner: a card's keywords open to its side, never over this. */}
@@ -603,7 +598,7 @@ export function Play() {
       {/* The first shop of the first game: the lesson lies along the foot of the screen, under the shop's actions, until the player does something there. */}
       {run.phase === "shop" && coached !== null && (
         <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center">
-          <Coach wide lesson={coached ?? LESSONS[0]!} keys={keys} width={620} onSkip={lessonSkip} />
+          <Coach wide lesson={coached ?? LESSONS[0]!} keys={keys} width={620} onNext={lessonNext} onSkip={lessonSkip} />
         </Flex>
       )}
       {paused && <Pause />}

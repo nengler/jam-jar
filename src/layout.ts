@@ -122,19 +122,38 @@ function chance(n: number): number {
   return x - Math.floor(x);
 }
 
+/** A heading's letter as it is drawn now: how far it is lifted, in pixels, and how it is squashed or stretched (1 is its own size). */
+export interface RippleLetter {
+  at: number;
+  letter: string;
+  lift: number;
+  scaleX: number;
+  scaleY: number;
+}
+
+/** How high a letter hops, in pixels. */
+const HOP = 4;
+
 /**
- * A heading's letters, each with how far it is lifted now, in pixels: a ripple runs slowly through the heading, one letter
- * hopping up an art pixel as it passes, then after a short wait, a different length each time, it runs again. `seed` sets
- * one heading's waits apart from another's. A space is a letter too, so the ripple crosses it in step.
+ * A heading's letters as they are drawn now: a ripple runs slowly through the heading, one letter hopping as it passes, then
+ * after a short wait, a different length each time, it runs again. The hop has squash and stretch, as a bouncing ball is
+ * animated: the letter squats before it jumps, is stretched tall in the air, and squats again as it lands. `seed` sets one
+ * heading's waits apart from another's. A space is a letter too, so the ripple crosses it in step.
  */
-export function ripple(text: string, time: number, seed: number): { at: number; letter: string; lift: number }[] {
+export function ripple(text: string, time: number, seed: number): RippleLetter[] {
   const letters = [...text];
   // Time is cut into turns, each long enough for one pass and the longest wait; the pass starts a random way into its turn.
   const turn = letters.length / RIPPLE_SPEED + RIPPLE_WAIT;
   const which = Math.floor(time / turn);
   const since = time - which * turn - chance(which + seed * 13) * RIPPLE_WAIT;
   const front = since < 0 ? -1 : Math.floor(since * RIPPLE_SPEED);
-  return letters.map((letter, at) => ({ at, letter, lift: at === front ? 2 : 0 }));
+  // How far through its hop the letter at the front is, 0 to 1: the squat, the jump, the landing.
+  const p = since < 0 ? 0 : since * RIPPLE_SPEED - front;
+  const air = Math.max(0, Math.min(1, (p - 0.2) / 0.6));
+  const tall = p < 0.2 ? 1 - 0.18 * Math.sin((Math.PI * p) / 0.2) : p > 0.8 ? 1 - 0.14 * Math.sin((Math.PI * (p - 0.8)) / 0.2) : 1 + 0.2 * Math.sin(Math.PI * air);
+  return letters.map((letter, at) =>
+    at === front ? { at, letter, lift: HOP * Math.sin(Math.PI * air), scaleX: 1 - (tall - 1) * 0.7, scaleY: tall } : { at, letter, lift: 0, scaleX: 1, scaleY: 1 }
+  );
 }
 
 /**
