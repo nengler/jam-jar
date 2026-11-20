@@ -2,6 +2,7 @@ import { Entity, Flex, Line, Shape, Sprite, Text, Tooltip, useInput, useInputDev
 
 import { Backdrop } from "./Backdrop.tsx";
 import { Letters, Panel } from "./Board.tsx";
+import { EndBoard } from "./EndBoard.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
@@ -14,7 +15,7 @@ import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, topEarners, BOOM_LIFE, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, newRun, BOOM_LIFE, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -82,7 +83,7 @@ export function Play() {
   const device = useInputDevice();
   const keys = device === "keyboard";
   const speed = useGame((g) => g.speed);
-  const { pause, toTitle, setSpeed } = useGame.actions();
+  const { pause, toTitle, setSpeed, start } = useGame.actions();
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
@@ -97,11 +98,17 @@ export function Play() {
   const playTick = useSound("tick.wav");
 
   useInput((input) => {
+    const over = s.run.phase === "over" || s.run.phase === "won";
     if (input.pressed("Escape")) {
       if (s.whole) s.whole = false;
+      else if (over) toTitle();
       else pause();
     }
-    if ((s.run.phase === "over" || s.run.phase === "won") && input.pressed("Enter")) toTitle();
+    // The run is over: Enter plays another, from a new seed.
+    if (over && input.pressed("Enter")) {
+      start();
+      s.run = newRun(seed + 1);
+    }
   });
 
   useUpdate((dt, input) => {
@@ -223,6 +230,13 @@ export function Play() {
     if (s.run.phase === "rent") s.click = true;
     else toTitle();
   };
+  const tapAgain = () => {
+    start();
+    s.run = newRun(seed + 1);
+  };
+  const tapTitle = () => {
+    toTitle();
+  };
   const report = (r: FruitReport) => {
     s.reports = [...s.reports, r];
   };
@@ -258,8 +272,7 @@ export function Play() {
   const whole = poolRows(run.pool);
   const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
-  /** What earned the most this run, for the board at its end. */
-  const earners = ended ? topEarners(run, 3) : [];
+  const finished = run.phase === "over" || run.phase === "won";
 
   return (
     <Entity>
@@ -459,47 +472,22 @@ export function Play() {
         <Entity>
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
           <Flex left={0} right={0} top={0} bottom={0} direction="column" alignItems="center" justifyContent="center">
+            {finished && <EndBoard run={run} rent={rent} keys={keys} onAgain={tapAgain} onTitle={tapTitle} />}
+            {!finished && (
             <Flex width={256} direction="column" alignItems="stretch">
-              <Panel heading={run.phase === "rent" ? "Rent paid" : run.phase === "won" ? "The jar is yours" : "Evicted"} gap={2}>
+              <Panel heading="Rent paid" gap={2}>
                 <Text width={224} maxWidth={224} align="center" color={INK_SOFT}>
                   {`Scored ${run.cycleScore} of ${rent}`}
                 </Text>
                 <Flex direction="row" justifyContent="center">
                   <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`Total ${run.total}`}</Text>
                 </Flex>
-                {/* The run is over: what it came to. How far it got, its best turn, and what earned the most. */}
-                {run.phase !== "rent" && (
-                  <Flex direction="column" alignItems="stretch" gap={0} paddingTop={4}>
-                    <Flex direction="row" justifyContent="space-between">
-                      <Text color={INK_SOFT}>Reached cycle</Text>
-                      <Text color={INK}>{`${run.cycle} of ${RENT.length}`}</Text>
-                    </Flex>
-                    <Flex direction="row" justifyContent="space-between">
-                      <Text color={INK_SOFT}>Best turn</Text>
-                      <Text color={INK}>{`${run.bestTurn}`}</Text>
-                    </Flex>
-                    <Flex direction="row" justifyContent="space-between">
-                      <Text color={INK_SOFT}>Pool</Text>
-                      <Text color={INK}>{`${run.pool.length} fruit`}</Text>
-                    </Flex>
-                    {earners.length > 0 && (
-                      <Flex direction="row" justifyContent="center" paddingTop={4}>
-                        <Text color={INK_SOFT}>Scored most</Text>
-                      </Flex>
-                    )}
-                    {earners.map((e) => (
-                      <Flex key={e.label} direction="row" justifyContent="space-between">
-                        <Text color={INK_SOFT}>{e.label}</Text>
-                        <Text color={INK}>{`${e.points}`}</Text>
-                      </Flex>
-                    ))}
-                  </Flex>
-                )}
                 <Flex direction="row" justifyContent="center" paddingTop={6}>
-                  <TapButton keyName={keys ? "Enter" : ""} label={run.phase === "rent" ? (run.cycle >= RENT.length ? "Go on" : "Shop") : "Title"} onPress={tapEnd} />
+                  <TapButton keyName={keys ? "Enter" : ""} label={run.cycle >= RENT.length ? "Go on" : "Shop"} onPress={tapEnd} />
                 </Flex>
               </Panel>
             </Flex>
+            )}
           </Flex>
         </Entity>
       )}

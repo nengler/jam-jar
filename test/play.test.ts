@@ -468,3 +468,24 @@ test("a tap off the cards of a pick leaves nothing chosen", () => {
   assert.equal(play.s.run.phase, "pick");
   game.close();
 });
+
+test("the end of a run: Play again starts a new one from its board, and Escape goes to the title", () => {
+  const game = startRun();
+  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
+  const lose = () => {
+    play.s.run = { ...play.s.run, turn: 5, phase: "settle", hand: [], calmTime: 10 };
+    game.stepUntil(() => play.s.run.phase === "over");
+  };
+  lose();
+  assert.ok(findComponent("EndBoard", game.player.world.root) !== null, "the board is up");
+  const seed = useGame.getState().seed;
+  game.input("Enter, _*3");
+  assert.deepEqual([play.s.run.phase, play.s.run.cycle, play.s.run.turn, play.s.run.total], ["order", 1, 1, 0], "a new run, its first hand dealt");
+  assert.equal(play.s.run.hand.length, 4);
+  assert.equal(useGame.getState().seed, seed + 1, "from a new seed");
+  assert.equal(findComponent("EndBoard", game.player.world.root), null);
+  lose();
+  game.input("Escape, _*3");
+  assert.equal(useGame.getState().screen, "title");
+  game.close();
+});
