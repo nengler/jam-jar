@@ -48,6 +48,10 @@ function Price({ price, afford }: { price: number; afford: boolean }) {
   );
 }
 
+/** How far above its place a card starts as the shop comes in, and how far below theirs the actions start, in pixels. */
+const CARD_DROP = 260;
+const ACTION_RISE = 120;
+
 /**
  * The shop between two cycles, over the dimmed kitchen: three fruit and an item on cards, then removal, a reroll and the way out.
  * The rules (rules/jar.ts, `Shop`) hold what is for sale and where the cursor is; this draws them. `hints` is whether the keys are
@@ -57,8 +61,8 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
   // The card the cursor is on shows what its keywords mean, but not over the pause menu.
   const paused = useGame((g) => g.paused);
   const kinds = poolRows(run.pool);
-  // The shop comes in as a run does: the whole of it drops down from the top and settles, its cards and then its actions
-  // popping in one after another as it does, and the purse slides in from the right.
+  // The shop comes in as a run does: each card drops into its place, one after another, the actions rise into theirs, and the
+  // purse slides in from the right. Each is moved within its own slot (its `y`), so the row is laid out as it always is.
   const time = useTime();
   return (
     <Entity>
@@ -67,7 +71,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
 
       {/* The whole shop is one column down the middle of the screen: its heading, the shelf, the actions, and what just happened. */}
-      <Flex left={0} right={0} top={10 - 120 * (1 - popIn(time, 0, ENTER.pop))} bottom={0} direction="column" alignItems="center" gap={6}>
+      <Flex left={0} right={0} top={10} bottom={0} direction="column" alignItems="center" gap={6}>
         <Flex direction="row" justifyContent="center" height={32}>
           <Letters text="Shop" seed={3} />
         </Flex>
@@ -76,7 +80,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
             click chooses a card and a second buys it; the pointer coming over one does not choose it (see the pick). */}
         <Flex direction="row" gap={CARD_GAP} onPressOutside={onAway}>
           {placed(shop.fruits).map((slot) => (
-            <Flex key={slot.at} height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === slot.at ? "start" : "end"} opacity={entered(time, slot.at + 1)}>
+            <Flex key={slot.at} height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === slot.at ? "start" : "end"} y={-CARD_DROP * (1 - popIn(time, slot.at * ENTER.gap, ENTER.pop))} opacity={entered(time, slot.at)}>
               <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={8} backgroundImage={cardFor(!shop.removing && shop.cursor === slot.at)} slice={CARD_SLICE} focusable={false} onPress={() => onClick(slot.at)}>
                 {slot.card !== null && (
                   <Tooltip show={!paused && !shop.removing && shop.cursor === slot.at} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
@@ -107,7 +111,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
               </Flex>
             </Flex>
           ))}
-          <Flex height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === SHOP_ITEM ? "start" : "end"} opacity={entered(time, SHOP_ITEM + 1)}>
+          <Flex height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === SHOP_ITEM ? "start" : "end"} y={-CARD_DROP * (1 - popIn(time, SHOP_ITEM * ENTER.gap, ENTER.pop))} opacity={entered(time, SHOP_ITEM)}>
             <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={8} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_ITEM)} slice={CARD_SLICE} focusable={false} onPress={() => onClick(SHOP_ITEM)}>
               {shop.item !== null && (
                 <Tooltip show={!paused && !shop.removing && shop.cursor === SHOP_ITEM} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
@@ -140,7 +144,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
         </Flex>
 
         {/* The actions: what each does at its left end and what it costs at its right. */}
-        <Flex direction="row" gap={CARD_GAP} opacity={entered(time, SHOP_ITEM + 2)}>
+        <Flex direction="row" gap={CARD_GAP} y={ACTION_RISE * (1 - popIn(time, (SHOP_ITEM + 1) * ENTER.gap, ENTER.pop))} opacity={entered(time, SHOP_ITEM + 1)}>
           <Flex width={ACTION_W} height={ACTION_H} direction="row" alignItems="center" justifyContent="space-between" paddingX={14} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_REMOVE)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(SHOP_REMOVE)} onPress={() => onClick(SHOP_REMOVE)}>
             <Text color={INK}>Remove one</Text>
             <Price price={removalPrice(run)} afford={run.coins >= removalPrice(run)} />
