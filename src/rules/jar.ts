@@ -1321,7 +1321,7 @@ function leaveRent(run: Run): void {
     run.message = "You paid every rent. The jar is yours!";
     return;
   }
-  run.shop = { fruits: [], item: null, cursor: -1, removing: false, removeCursor: 0 };
+  run.shop = { fruits: [], item: null, cursor: -1, removing: false, removeCursor: -1 };
   stock(run, run.shop);
   run.phase = "shop";
   const next = bossNow(run, run.cycle + 1);
@@ -1355,10 +1355,14 @@ function shopStep(run: Run, keys: Keys): void {
   const down = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
   if (shop.removing) {
     const kinds = poolKinds(run.pool);
-    const to = keys.point >= 0 && keys.point < kinds.length ? keys.point : Math.max(0, Math.min(kinds.length - 1, shop.removeCursor + across + down));
+    // Nothing is chosen at first (-1). A tap on a kind only chooses it, so the player sees which it is before it goes; what takes
+    // it out is a confirm with no place: Enter, or the dialog's "Take out" button. An arrow goes to the first kind, then along.
+    const pointed = keys.point >= 0 && keys.point < kinds.length;
+    const step = across + down;
+    const to = pointed ? keys.point : shop.removeCursor < 0 ? (step !== 0 ? 0 : -1) : Math.max(0, Math.min(kinds.length - 1, shop.removeCursor + step));
     if (to !== shop.removeCursor) sound(run, "tick");
     shop.removeCursor = to;
-    if (keys.confirm) {
+    if (keys.confirm && !pointed && shop.removeCursor >= 0) {
       const kind = kinds[shop.removeCursor] as FruitKind;
       if (pay(run, removalPrice(run))) {
         run.removals += 1;
@@ -1418,7 +1422,7 @@ function shopStep(run: Run, keys: Keys): void {
       pay(run, removalPrice(run));
     } else {
       shop.removing = true;
-      shop.removeCursor = 0;
+      shop.removeCursor = -1;
       run.message = "Take which fruit out of your pool?";
     }
   } else if (shop.cursor === SHOP_REROLL) {

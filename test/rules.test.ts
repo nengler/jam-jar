@@ -329,13 +329,21 @@ test("the shop: a new shelf costs one more each time, all run, and restocks the 
   assert.equal(rerollPrice(next), 3);
 });
 
-test("the shop by touch: a tap on a kind in the take-out dialog takes one of it out", () => {
+test("the shop by touch: a tap on a kind in the take-out dialog only chooses it, and a confirm then takes one of it out", () => {
   let run = inShop(10);
   run.pool = ["cherry", "cherry", "grape", "grape", "apple"];
   run.shop!.cursor = SHOP_REMOVE;
   run = press(run, { confirm: true });
+  assert.equal(run.shop!.removeCursor, -1, "none is chosen at first");
+  run = press(run, { confirm: true });
+  assert.equal(run.pool.length, 5, "a confirm with none chosen takes nothing");
   run = press(run, { point: 1, confirm: true });
-  assert.deepEqual(run.pool, ["cherry", "cherry", "grape", "apple"]);
+  assert.deepEqual([run.shop!.removeCursor, run.pool.length, run.shop!.removing], [1, 5, true], "tapped: chosen, still there");
+  run = press(run, { point: 0, confirm: true });
+  assert.deepEqual([run.shop!.removeCursor, run.pool.length], [0, 5], "another tap chooses another");
+  run = press(run, { point: 1, confirm: true });
+  run = press(run, { confirm: true });
+  assert.deepEqual(run.pool, ["cherry", "cherry", "grape", "apple"], "the button (a confirm with no place) took it out");
   assert.equal(run.shop!.removing, false);
 });
 
@@ -345,10 +353,12 @@ test("the shop: taking a fruit out costs two more each time, all run", () => {
   run.shop!.cursor = SHOP_REMOVE;
   assert.equal(removalPrice(run), REMOVAL_PRICE);
   run = press(run, { confirm: true });
+  run = press(run, { right: true });
   run = press(run, { confirm: true });
   assert.equal(run.coins, 20 - REMOVAL_PRICE);
   assert.equal(removalPrice(run), REMOVAL_PRICE + REMOVAL_STEP);
   run = press(run, { confirm: true });
+  run = press(run, { right: true });
   run = press(run, { confirm: true });
   assert.equal(run.coins, 20 - REMOVAL_PRICE - (REMOVAL_PRICE + REMOVAL_STEP));
   assert.equal(run.pool.length, 4);
@@ -364,6 +374,7 @@ test("the shop: removal takes one of the chosen kind out of the pool, and Space 
   assert.equal(run.shop!.removing, false);
   assert.equal(run.phase, "shop", "Space left the choosing, not the shop");
   run = press(run, { confirm: true });
+  run = press(run, { right: true });
   run = press(run, { right: true });
   run = press(run, { confirm: true });
   assert.deepEqual(run.pool, ["cherry", "cherry", "grape", "apple"]);

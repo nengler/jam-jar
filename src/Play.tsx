@@ -265,6 +265,10 @@ export function Play() {
   const tapDrop = () => {
     s.drop = true;
   };
+  // What Enter does, with no place pointed at: the take-out dialog's button.
+  const tapConfirm = () => {
+    s.click = true;
+  };
   const tapPause = () => {
     pause();
   };
@@ -613,7 +617,7 @@ export function Play() {
           </Flex>
         </Entity>
       )}
-      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} onPoint={point} onClick={click} onAway={away} onSpace={tapDrop} />}
+      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} onPoint={point} onClick={click} onAway={away} onConfirm={tapConfirm} onSpace={tapDrop} />}
       {/* The first shop of the first game: the lesson lies along the foot of the screen, under the shop's actions, until the player does something there. */}
       {run.phase === "shop" && coached !== null && (
         <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center">
