@@ -2,7 +2,7 @@ import { Entity, Flex, Text, useTime, type Child } from "@tsengine/runtime/jsx";
 
 import { ripple } from "./layout.ts";
 
-import { DISPLAY, DISPLAY_SIZE, INK, LIGHT, PANEL, PANEL_SLICE, WALL_SHADOW } from "./theme.ts";
+import { DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT, PANEL, PANEL_SLICE, WALL_SHADOW } from "./theme.ts";
 
 /** How far a titled board's frame starts below its top: the heading takes the top of the space the board is given. */
 const TITLE_ROOM = 12;
@@ -41,14 +41,11 @@ export function Panel({ title, heading, image = PANEL, gap = 0, children }: { ti
 /** The room a heading's line takes, and the width of a space in it. */
 const HEADING_H = 32;
 const HEADING_SPACE = 8;
-/** About the middle of a letter across, and where its foot is down from its top: what a hopping letter is squashed and stretched about, so its feet stay on the line. */
-const LETTER_MID = 7;
-const LETTER_FOOT = 26;
 
 /**
  * A heading's letters: light lettering with a dark shadow, straight on what is behind it, in a row as wide as they are. Every
- * few seconds a ripple runs through it, a letter at a time hopping with a little squash and stretch: something small that
- * moves, so the wall is not all still. `seed` staggers one heading's ripple from another's.
+ * few seconds a soft wave runs along it, each letter rising a pixel or two as it passes, with a glint of gold on the crest:
+ * something small that moves, so the wall is not all still. `seed` staggers one heading's wave from another's.
  */
 export function Letters({ text, seed }: { text: string; seed: number }) {
   const time = useTime();
@@ -57,8 +54,8 @@ export function Letters({ text, seed }: { text: string; seed: number }) {
       {ripple(text, time, seed).map((l) => (
         <Flex key={l.at} height={HEADING_H} minWidth={l.letter === " " ? HEADING_SPACE : 0}>
           {l.letter !== " " && (
-            <Entity x={LETTER_MID * (1 - l.scaleX)} y={LETTER_FOOT * (1 - l.scaleY) - l.lift} scaleX={l.scaleX} scaleY={l.scaleY}>
-              <Text font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>
+            <Entity y={-l.lift}>
+              <Text font={DISPLAY} size={DISPLAY_SIZE} color={l.lit ? GOLD : LIGHT} shadow={INK} shadowX={2} shadowY={2}>
                 {l.letter}
               </Text>
             </Entity>
