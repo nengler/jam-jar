@@ -12,6 +12,7 @@ import {
   bossCycle,
   bossFor,
   bossNow,
+  CLEAR_TIME,
   COCONUT_MILK,
   dramatic,
   FRUIT_PRICE,
@@ -53,6 +54,12 @@ const DT = 1 / 60;
 
 function press(run: Run, keys: Partial<Keys>): Run {
   return advance(run, DT, { ...NO_KEYS, ...keys });
+}
+
+/** Let the clear-out between cycles play out: the next cycle's first hand is dealt after it. */
+function cleared(run: Run): Run {
+  for (let i = 0; i < 600 && run.phase === "clear"; i++) run = press(run, {});
+  return run;
 }
 
 /** A landed fruit at rest at (x, y), touching the fruit with these ids (what its component would report). */
@@ -290,7 +297,7 @@ test("missing rent ends the run; paying it moves to the next cycle with an empty
   assert.equal(rich.coins, 3, "a coin for every 10 points over the rent");
   rich = press(rich, { confirm: true });
   assert.equal(rich.phase, "shop");
-  rich = press(rich, { drop: true });
+  rich = cleared(press(rich, { drop: true }));
   assert.equal(rich.phase, "order");
   assert.equal(rich.shop, null);
   assert.equal(rich.cycle, 2);
@@ -427,7 +434,7 @@ test("the shop: up and down change rows, and the last action leaves for the next
   run = press(run, { up: true });
   assert.equal(run.shop!.cursor, SHOP_ITEM);
   run = press(run, { down: true });
-  run = press(run, { confirm: true });
+  run = cleared(press(run, { confirm: true }));
   assert.equal(run.phase, "order");
   assert.equal(run.cycle, 2);
 });
@@ -571,7 +578,7 @@ test("the Preserves Jar: after the shop, the fruit kept stay in the jar for the 
   run = press(run, { left: true });
   run = press(run, { confirm: true });
   assert.deepEqual(run.kept, [2, 1]);
-  run = press(run, { drop: true });
+  run = cleared(press(run, { drop: true }));
   assert.equal(run.phase, "order");
   assert.equal(run.cycle, 2);
   assert.deepEqual(run.fruits.map((f) => f.kind).sort(), ["apple", "cherry"]);
@@ -581,7 +588,8 @@ test("without fruit in the jar, the Preserves Jar asks nothing", () => {
   let run = inShop(0);
   run.items = ["preserves"];
   run = press(run, { drop: true });
-  assert.equal(run.phase, "order");
+  assert.equal(run.phase, "clear", "only the clear-out");
+  assert.equal(cleared(run).phase, "order");
 });
 
 test("every third cycle is a boss jar, one of four by the run's seed, and the shop before it says so", () => {
@@ -597,7 +605,7 @@ test("every third cycle is a boss jar, one of four by the run's seed, and the sh
     resolve(run);
     const shop = press(run, { confirm: true });
     assert.match(shop.message, new RegExp(BOSS_NAME[boss]));
-    const next = press(shop, { drop: true });
+    const next = cleared(press(shop, { drop: true }));
     assert.match(next.message, new RegExp(BOSS_NAME[boss]));
     assert.equal(bossNow(next), boss);
   }
@@ -679,7 +687,7 @@ test("a Lime that is Exploded or Crushed leaves lime juice, which rises with eac
   run.fruits = [];
   resolve(run);
   run = press(run, { confirm: true });
-  run = press(run, { drop: true });
+  run = cleared(press(run, { drop: true }));
   assert.equal(run.cycle, 2);
   assert.deepEqual([run.juice, run.lime, run.milk], [0, false, false]);
 });
@@ -770,7 +778,7 @@ test("the mouse: coming over a card chooses it, in the pick and in the shop, and
   shop = press(shop, { point: SHOP_REROLL });
   assert.equal(shop.shop!.cursor, SHOP_REROLL);
   shop = press(shop, { point: SHOP_LEAVE, confirm: true });
-  assert.equal(shop.phase, "order", "an action acts on one tap");
+  assert.equal(shop.phase, "clear", "an action acts on one tap");
 });
 
 test("a finger: the first tap on a card chooses it, so it can be read, and a second takes or buys it", () => {
@@ -1035,7 +1043,7 @@ test("the Pickling Jar keeps one fruit, Pickled: it does not age, rot it had is 
   run = press(run, { right: true });
   run = press(run, { confirm: true });
   assert.deepEqual(run.kept, [1], "it holds one");
-  run = press(run, { drop: true });
+  run = cleared(press(run, { drop: true }));
   const banana = run.fruits[0]!;
   assert.equal(banana.pickled, true);
 
@@ -1051,6 +1059,37 @@ test("the Pickling Jar keeps one fruit, Pickled: it does not age, rot it had is 
   }
   assert.equal(run.fruits[0]!.age, 2);
   assert.equal(run.fruits[0]!.rotten, false);
+});
+
+test("leaving the shop clears the jar: its fruit pop one by one, left to right, then the next cycle's first hand is dealt", () => {
+  let run = inShop(0);
+  run.fruits = [fruit(1, "cherry", 380, JAR.floor - 14), fruit(2, "grape", 260, JAR.floor - 16), fruit(3, "apple", 320, JAR.floor - 18)];
+  const cycle = run.cycle;
+  run = press(run, { drop: true });
+  assert.equal(run.phase, "clear");
+  assert.deepEqual(run.fruits.map((f) => f.id), [1, 3], "the leftmost pops first");
+  assert.equal(run.effects.at(-1)?.kind, "pop");
+  const popped: number[][] = [];
+  let frames = 0;
+  for (; frames < 600 && run.phase === "clear"; frames++) {
+    run = press(run, {});
+    popped.push(run.fruits.map((f) => f.id));
+  }
+  assert.ok(popped.some((ids) => ids.join() === "1"), "then the middle one");
+  assert.deepEqual([run.phase, run.cycle, run.cycleScore, run.fruits.length, run.hand.length], ["order", cycle + 1, 0, 0, 4]);
+  assert.ok(Math.abs(frames * DT - CLEAR_TIME) < 0.05, `it takes ${CLEAR_TIME} s (${frames} frames)`);
+});
+
+test("a Preserves Jar's fruit stay through the clear-out; the rest pop", () => {
+  let run = inShop(0);
+  run.items = ["preserves"];
+  run.fruits = [fruit(1, "cherry", 260, JAR.floor - 14), fruit(2, "grape", 320, JAR.floor - 16), fruit(3, "apple", 380, JAR.floor - 18)];
+  run = press(run, { drop: true });
+  run = press(run, { right: true });
+  run = press(run, { confirm: true });
+  assert.deepEqual(run.kept, [2]);
+  run = cleared(press(run, { drop: true }));
+  assert.deepEqual([run.phase, run.fruits.map((f) => f.id)], ["order", [2]]);
 });
 
 test("the title's demo: it drops each hand, skips each pick, and starts a new run a while after the rent comes due", () => {
