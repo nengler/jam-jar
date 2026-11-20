@@ -411,13 +411,10 @@ export function Play() {
             <Flex key={f.id} x={f.x - f.r - 4} y={f.y - f.r - 4} width={f.r * 2 + 8} height={f.r * 2 + 8} backgroundImage={SELECT} slice={CARD_SLICE} />
           ))}
           {/* Each fruit the Preserves Jar can keep can be clicked or tapped: it is kept, or let go. */}
-          {preserving && (
-            <>
-              {placed(preservable(run)).map((slot) => (
-                <Flex key={slot.card.id} x={slot.card.x - slot.card.r} y={slot.card.y - slot.card.r} width={slot.card.r * 2} height={slot.card.r * 2} focusable={false} onPointerEnter={() => point(slot.at)} onPress={() => click(slot.at)} />
-              ))}
-            </>
-          )}
+          {preserving &&
+            placed(preservable(run)).map((slot) => (
+              <Flex key={slot.card.id} x={slot.card.x - slot.card.r} y={slot.card.y - slot.card.r} width={slot.card.r * 2} height={slot.card.r * 2} focusable={false} onPointerEnter={() => point(slot.at)} onPress={() => click(slot.at)} />
+            ))}
           {preserving && chosen !== undefined && <Sprite image="pointer.png" x={Math.round(chosen.x) - 9} y={Math.round(chosen.y - chosen.r) - 20} />}
           {/* A blast: a flash, its sparks and ring, and its picture. */}
           {flash > 0 && <Shape kind="rect" x={JAR.left} y={RIM - 24} width={JAR.right - JAR.left} height={JAR.floor - RIM + 24} color={LIGHT} opacity={0.45 * flash} />}
@@ -630,8 +627,7 @@ export function Play() {
           {/* The board, and to its left what the tapped kind does (a tooltip under it would run off the screen). */}
           <Flex left={0} right={0} top={0} bottom={0} direction="row" alignItems="center" justifyContent="center" gap={8}>
             <Flex width={TERM_W} direction="column" alignItems="stretch">
-              {/* The fallback is never used: the compiled component does not narrow `looked` inside the condition. */}
-              {looked !== null && <FruitTip kind={looked ?? "cherry"} grown={grownOf(run, looked ?? "cherry")} />}
+              {looked !== null && <FruitTip kind={looked} grown={grownOf(run, looked)} />}
             </Flex>
             <Flex width={Math.max(240, Math.min(whole.length, 6) * 56 + 32)} direction="column" alignItems="stretch">
               <Panel heading={`Your pool: ${run.pool.length} fruit`} gap={4}>

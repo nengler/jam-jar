@@ -6,7 +6,7 @@ import { FRUIT_ART } from "./rules/sizes.ts";
  * snapped to or drawn in as well (tools/make-assets.py), and every picture is pixel art at 2x. The text is the engine's built-in
  * pixel fonts at 2x too: m5x7 for reading, Jersey 10 for headings and numbers.
  */
-/** The screen, in the game's own pixels (Main.tsx's <Game> must repeat them as literals). */
+/** The screen, in the game's own pixels: everything is laid out on it, and it is scaled to fit the window. */
 export const SCREEN_W = 640;
 export const SCREEN_H = 360;
 
@@ -26,7 +26,9 @@ export const DIM = "#090a14a0";
 /** The shadow a board or a heading casts on the wall, and the colour behind the kitchen while it loads. */
 export const WALL_SHADOW = "#10141f";
 
-/** The heading font (built into the engine) and its size, drawn at twice its own pixel size. The body font is set on <Game> in Main.tsx. */
+/** The fonts (built into the engine) and their sizes: each is drawn at twice its own pixel size. */
+export const BODY = "tse:m5x7";
+export const BODY_SIZE = 20;
 export const DISPLAY = "tse:jersey10";
 export const DISPLAY_SIZE = 28;
 

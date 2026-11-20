@@ -338,9 +338,3 @@ export function rolledIn(before: number, after: number, count: number): boolean 
 
 /** When the jar (or the title's name) first touches down, in seconds into its fall: the first of the bounce's three arcs. */
 export const LANDS = INTRO.fall / 2.75;
-
-/** The name of the kind at a row of the pool (the take-out dialog's choice), or "" when none is chosen. */
-export function chosenName(rows: readonly PoolRow[], at: number): string {
-  const kind = rows[at]?.kind;
-  return kind === undefined ? "" : FRUITS[kind].name;
-}

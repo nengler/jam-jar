@@ -2,7 +2,7 @@ import { Entity, Flex, Menu, Text, useInputDevice } from "@tsengine/runtime/jsx"
 
 import { Backdrop } from "./Backdrop.tsx";
 import { useGame } from "./GameState.ts";
-import { KeyHint, MenuButton, SettingRow } from "./KeyHint.tsx";
+import { KeyHint, MenuButton } from "./KeyHint.tsx";
 import { LESSONS } from "./rules/tutorial.ts";
 import { DISPLAY, DISPLAY_SIZE, INK, LIGHT_SOFT, PANEL, PANEL_SLICE, SCREEN_W } from "./theme.ts";
 
@@ -27,10 +27,10 @@ export function Settings() {
             </Text>
           </Flex>
           {/* The music's row is out while there is no music (see Main.tsx). */}
-          <SettingRow autoFocus label={`Sounds < ${effects} >`} onAdjust={changeEffects} />
-          <SettingRow label={`Speed < ${fast ? "Fast" : "Normal"} >`} onAdjust={() => changeSpeed()} />
+          <MenuButton autoFocus label={`Sounds < ${effects} >`} onPress={() => changeEffects(1)} onAdjust={changeEffects} />
+          <MenuButton label={`Speed < ${fast ? "Fast" : "Normal"} >`} onPress={changeSpeed} onAdjust={() => changeSpeed()} />
           {/* The first game's tutorial: on until its last lesson has been seen; turned on again, it starts over. */}
-          <SettingRow label={`Tips < ${tutorial < LESSONS.length ? "On" : "Off"} >`} onAdjust={() => toggleTips()} />
+          <MenuButton label={`Tips < ${tutorial < LESSONS.length ? "On" : "Off"} >`} onPress={toggleTips} onAdjust={() => toggleTips()} />
           <MenuButton label="Back" onPress={toTitle} />
         </Menu>
         <Flex direction="row" gap={20} height={26}>

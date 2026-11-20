@@ -4,7 +4,7 @@ import { Letters, Panel, Shade } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { KeyHint, TapButton } from "./KeyHint.tsx";
-import { chosenName, ENTER, entered, placed, popIn, poolRows } from "./layout.ts";
+import { ENTER, entered, placed, popIn, poolRows } from "./layout.ts";
 import { FRUITS } from "./rules/fruits.ts";
 import { ITEMS } from "./rules/items.ts";
 import { RuleText } from "./RuleText.tsx";
@@ -125,6 +125,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
   // The card the cursor is on shows what its keywords mean, but not over the pause menu.
   const paused = useGame((g) => g.paused);
   const kinds = poolRows(run.pool);
+  const toRemove = kinds[shop.removeCursor];
   // The shop comes in as a run does: each card drops into its place, one after another, the actions rise into theirs, and the
   // purse slides in from the right. Each is moved within its own slot (its `y`), so the row is laid out as it always is.
   const time = useTime();
@@ -203,8 +204,8 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
                 {/* A tap on a kind only chooses it. What takes it out is this button (or Enter), which names it and its price,
                     so nothing leaves the pool by a slip of the finger. */}
                 <Flex direction="row" justifyContent="center" alignItems="center" gap={12} paddingTop={6}>
-                  {shop.removeCursor >= 0 && <TapButton label={`Take out ${chosenName(kinds, shop.removeCursor)}`} keyName={hints ? "Enter" : ""} onPress={onConfirm} />}
-                  {shop.removeCursor < 0 && <Text color={INK_SOFT}>Choose a fruit</Text>}
+                  {toRemove !== undefined && <TapButton label={`Take out ${FRUITS[toRemove.kind].name}`} keyName={hints ? "Enter" : ""} onPress={onConfirm} />}
+                  {toRemove === undefined && <Text color={INK_SOFT}>Choose a fruit</Text>}
                   <TapButton label="Back" keyName={hints ? "Space" : ""} onPress={onSpace} />
                 </Flex>
               </Panel>

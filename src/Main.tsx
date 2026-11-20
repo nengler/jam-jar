@@ -5,7 +5,7 @@ import { Play } from "./Play.tsx";
 import { Rotate } from "./Rotate.tsx";
 import { Settings } from "./Settings.tsx";
 import { Title } from "./Title.tsx";
-import { SCREEN_H, SCREEN_W } from "./theme.ts";
+import { BODY, BODY_SIZE, SCREEN_H, SCREEN_W, WALL_SHADOW } from "./theme.ts";
 
 /**
  * The root: one screen at a time. While the pause menu is open the world does not step (`paused`), but the menu still works.
@@ -20,7 +20,7 @@ export default function Main() {
   const window = useWindowSize();
   const upright = window.height > window.width;
   return (
-    <Game id="jam-jar" title="Jam Jar" width={640} height={360} background="#10141f" assets="assets" font="tse:m5x7" textSize={20} paused={paused || upright} timeScale={speed} fixedStep={60} upscale="sharp">
+    <Game id="jam-jar" title="Jam Jar" width={SCREEN_W} height={SCREEN_H} background={WALL_SHADOW} assets="assets" font={BODY} textSize={BODY_SIZE} paused={paused || upright} timeScale={speed} fixedStep={60} upscale="sharp">
       {/* The screen fills the window whatever its size, a phone's included: at a scale that is not a whole number each art pixel is
           still drawn with hard edges (`upscale="sharp"`), only its edge pixels blended, so nothing shimmers or blurs. */}
       <Screen width={SCREEN_W} height={SCREEN_H} fit="contain">

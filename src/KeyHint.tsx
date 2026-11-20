@@ -50,29 +50,23 @@ function KeyCap({ name }: { name: string }) {
   );
 }
 
-/** A row of a menu (the title's, the pause menu): it clicks as it is pressed. `x` and `opacity` are for a menu's entrance. */
-export function MenuButton({ label, onPress, autoFocus = false, x = 0, opacity = 1 }: { label: string; onPress: () => void; autoFocus?: boolean; x?: number; opacity?: number }) {
+/**
+ * A row of a menu (the title's, the pause menu, the settings): it clicks as it is pressed. `onAdjust` hears left and right while
+ * it has the focus, for a settings row; `x` and `opacity` are for a menu's entrance.
+ */
+export function MenuButton({ label, onPress, onAdjust, autoFocus = false, x = 0, opacity = 1 }: { label: string; onPress: () => void; onAdjust?: (direction: number) => void; autoFocus?: boolean; x?: number; opacity?: number }) {
   const playClick = useSound("click.wav");
   const press = () => {
     playClick(CLICK_VOLUME);
     onPress();
   };
-  return (
-    <Button x={x} opacity={opacity} autoFocus={autoFocus} onPress={press} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
-      <Text color={INK}>{label}</Text>
-    </Button>
-  );
-}
-
-/** A settings row, `Name < value >`: Enter steps it on, and left and right step it either way (`onAdjust`), each with a click. */
-export function SettingRow({ label, onAdjust, autoFocus = false }: { label: string; onAdjust: (direction: number) => void; autoFocus?: boolean }) {
-  const playClick = useSound("click.wav");
   const adjust = (direction: number) => {
+    if (onAdjust === undefined) return;
     playClick(CLICK_VOLUME);
     onAdjust(direction);
   };
   return (
-    <Button autoFocus={autoFocus} onPress={() => adjust(1)} onAdjust={adjust} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
+    <Button x={x} opacity={opacity} autoFocus={autoFocus} onPress={press} onAdjust={adjust} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
       <Text color={INK}>{label}</Text>
     </Button>
   );
