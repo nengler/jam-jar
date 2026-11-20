@@ -268,6 +268,13 @@ export interface Run {
   turn: number;
   cycleScore: number;
   total: number;
+  /**
+   * For the board at the end of the run: what this turn has scored so far, the most any turn scored, and the run's points by what
+   * earned them: a fruit's name for what it scored itself ("Apple"), or the keyword for the rest ("Merge", "Explode", "Crush").
+   */
+  turnScore: number;
+  bestTurn: number;
+  earned: Record<string, number>;
   coins: number;
   /** How many new shelves have been bought and how many fruit taken out of the pool, all run: each makes the next cost one more. */
   rerolls: number;
@@ -390,6 +397,9 @@ export function newRun(seed: number): Run {
     turn: 1,
     cycleScore: 0,
     total: 0,
+    turnScore: 0,
+    bestTurn: 0,
+    earned: {},
     coins: 0,
     rerolls: 0,
     removals: 0,
@@ -476,6 +486,8 @@ function effect(run: Run, kind: Effect["kind"], x: number, y: number, size: numb
 interface Why {
   label?: string;
   doubled?: boolean;
+  /** Who the points are counted for on the end board, when not the keyword: the fruit that earned them, by name. */
+  earner?: string;
 }
 
 /** Add points to the cycle, with a popup where it happened. Returns the popup (null for no points), so the tally can time it. */
@@ -483,6 +495,9 @@ function score(run: Run, points: number, x: number, y: number, why: Why = {}): P
   if (points === 0) return null;
   run.cycleScore += points;
   run.total += points;
+  run.turnScore += points;
+  const earner = why.earner ?? why.label ?? "Other";
+  run.earned[earner] = (run.earned[earner] ?? 0) + points;
   const text = `${why.label === undefined ? "" : `${why.label} `}${points > 0 ? "+" : ""}${points}${why.doubled === true ? " x2" : ""}`;
   return say(run, x, y, text, points);
 }
@@ -629,7 +644,7 @@ function earn(run: Run, links: readonly number[][], i: number, points: number, l
   const f = run.fruits[i] as Fruit;
   // Doubled by a Lemon it touches, or by Coconut milk it sits in (once, not twice over).
   const doubled = boosted(run.fruits, links, i) || (run.milk && soaked(run, f));
-  const popup = score(run, points * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled });
+  const popup = score(run, points * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled, earner: FRUITS[f.kind].name });
   if (popup === null) return null;
   const boosters = doubled ? (links[i] ?? []).map((j) => run.fruits[j] as Fruit).filter((o) => o.kind === "lemon") : [];
   const fruits = [f, ...boosters];
@@ -1195,6 +1210,9 @@ export function resolve(run: Run): void {
   }
   run.tallyTime = run.popups.length > popupsBefore || slot > 0 ? slot * step + TALLY_HOLD : 0;
 
+  run.bestTurn = Math.max(run.bestTurn, run.turnScore);
+  run.turnScore = 0;
+
   if (run.turn >= TURNS_PER_CYCLE) {
     run.phase = "rent";
     const rent = rentFor(run.cycle);
@@ -1261,6 +1279,15 @@ function startTurn(run: Run): void {
   run.offers = [];
   deal(run);
   run.phase = "order";
+}
+
+/** What earned the run's points, the most first: the fruit and keywords that scored, at most `count` of them, none that lost points. */
+export function topEarners(run: Run, count: number): { label: string; points: number }[] {
+  return Object.entries(run.earned)
+    .map(([label, points]) => ({ label, points }))
+    .filter((e) => e.points > 0)
+    .sort((a, b) => b.points - a.points || a.label.localeCompare(b.label))
+    .slice(0, count);
 }
 
 /** The kinds of fruit in the pool, in the fruit table's order: what the shop's removal chooses from. */

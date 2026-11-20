@@ -21,6 +21,7 @@ import {
   keeps,
   newRun,
   NO_KEYS,
+  topEarners,
   POINTS_PER_COIN,
   REMOVAL_PRICE,
   REMOVAL_STEP,
@@ -1068,4 +1069,24 @@ test("a pick comes after every second turn of a cycle, and the next hand is deal
   assert.equal(after(3), "order 4 4");
   assert.equal(after(4), "pick 5 0");
   assert.equal(after(5).split(" ")[0], "over", "and the last turn goes to the rent (unpaid, with an empty jar)");
+});
+
+test("the run keeps what its end board shows: its best turn, and what earned its points, the most first", () => {
+  const y = JAR.floor - 18;
+  const run = jarWith([fruit(1, "apple", 250, y), fruit(2, "apple", 300, y), fruit(3, "apple", 350, y)]);
+  run.turn = 1;
+  resolve(run);
+  assert.equal(run.bestTurn, 27, "three Apples simmering on the floor");
+  assert.equal(run.turnScore, 0, "and the next turn starts from nothing");
+  assert.deepEqual(topEarners(run, 3), [{ label: "Apple", points: 27 }]);
+  run.fruits = [fruit(4, "cherry", 250, JAR.floor - 14)];
+  run.phase = "settle";
+  resolve(run);
+  assert.equal(run.bestTurn, 27, "a smaller turn leaves the best one");
+  run.earned = { Merge: 40, Apple: 90, Spill: -10, Cherry: 5, Crush: 12 };
+  assert.deepEqual(
+    topEarners(run, 3).map((e) => e.label),
+    ["Apple", "Merge", "Crush"],
+    "the three that scored most; what lost points is left out"
+  );
 });

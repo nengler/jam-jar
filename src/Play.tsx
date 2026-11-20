@@ -14,7 +14,7 @@ import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, BOOM_LIFE, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, topEarners, BOOM_LIFE, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -254,6 +254,8 @@ export function Play() {
   const whole = poolRows(run.pool);
   const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
+  /** What earned the most this run, for the board at its end. */
+  const earners = ended ? topEarners(run, 3) : [];
 
   return (
     <Entity>
@@ -461,6 +463,34 @@ export function Play() {
                 <Flex direction="row" justifyContent="center">
                   <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`Total ${run.total}`}</Text>
                 </Flex>
+                {/* The run is over: what it came to. How far it got, its best turn, and what earned the most. */}
+                {run.phase !== "rent" && (
+                  <Flex direction="column" alignItems="stretch" gap={0} paddingTop={4}>
+                    <Flex direction="row" justifyContent="space-between">
+                      <Text color={INK_SOFT}>Reached cycle</Text>
+                      <Text color={INK}>{`${run.cycle} of ${RENT.length}`}</Text>
+                    </Flex>
+                    <Flex direction="row" justifyContent="space-between">
+                      <Text color={INK_SOFT}>Best turn</Text>
+                      <Text color={INK}>{`${run.bestTurn}`}</Text>
+                    </Flex>
+                    <Flex direction="row" justifyContent="space-between">
+                      <Text color={INK_SOFT}>Pool</Text>
+                      <Text color={INK}>{`${run.pool.length} fruit`}</Text>
+                    </Flex>
+                    {earners.length > 0 && (
+                      <Flex direction="row" justifyContent="center" paddingTop={4}>
+                        <Text color={INK_SOFT}>Scored most</Text>
+                      </Flex>
+                    )}
+                    {earners.map((e) => (
+                      <Flex key={e.label} direction="row" justifyContent="space-between">
+                        <Text color={INK_SOFT}>{e.label}</Text>
+                        <Text color={INK}>{`${e.points}`}</Text>
+                      </Flex>
+                    ))}
+                  </Flex>
+                )}
                 <Flex direction="row" justifyContent="center" paddingTop={6}>
                   <TapButton keyName={keys ? "Enter" : ""} label={run.phase === "rent" ? (run.cycle >= RENT.length ? "Go on" : "Shop") : "Title"} onPress={tapEnd} />
                 </Flex>
