@@ -149,12 +149,24 @@ const findPlay = (player: Player) => findComponent("Play", player.world.root) as
  * the turn passes through are order (until the drop key is read), drop, settle and tally. A try stops at the tally, which only
  * shows points already counted.
  */
+/**
+ * One frame. The recording backend keeps every frame it draws and every sound it plays, which the bots never read: over the
+ * thousands of trial turns a run plays, that grew a process past 3 GB, so it is dropped as it goes.
+ */
+function advance(player: Player, backend: RecordingBackend): void {
+  player.step();
+  backend.frames.length = 0;
+  backend.textMeasures.length = 0;
+  backend.plays.length = 0;
+  backend.playVolumes.length = 0;
+}
+
 function playTurn(player: Player, backend: RecordingBackend, hand: FruitKind[], settles?: number[], trial = false): number {
   const start = findPlay(player)!;
   const before = start.s.run.total;
   start.s.run = { ...start.s.run, hand };
   backend.queueInput(SPACE);
-  player.step();
+  advance(player, backend);
   let left = false;
   let settled = -1;
   for (let step = 0; step < 6000; step++) {
@@ -169,7 +181,7 @@ function playTurn(player: Player, backend: RecordingBackend, hand: FruitKind[], 
       return run.total - before;
     }
     backend.queueInput(NONE);
-    player.step();
+    advance(player, backend);
   }
   return (findPlay(player)?.s.run.total ?? before) - before;
 }
@@ -226,7 +238,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
     backend.queueInput(queued.shift() ?? NONE);
-    player.step();
+    advance(player, backend);
     const found = findComponent("Play", player.world.root) as { s: { run: Run } } | null;
     // Every frame, not only the ones a key is chosen on: the settle's length is the last time seen before the phase moved on.
     if (found !== null && found.s.run.phase === "settle") settling = found.s.run.settleTime;
