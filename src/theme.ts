@@ -105,3 +105,6 @@ export const JUICE: Readonly<Record<"lime" | "milk" | "both", { body: string; to
   milk: { body: "#a8b5b2", top: "#ebede9" },
   both: { body: "#468232", top: "#d0da91" },
 };
+
+/** How loud a button's click is, of the sounds' volume: there are many, so it is soft. */
+export const CLICK_VOLUME = 0.5;

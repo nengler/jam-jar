@@ -1,6 +1,6 @@
-import { Flex, Text } from "@tsengine/runtime/jsx";
+import { Flex, Text, useSound } from "@tsengine/runtime/jsx";
 
-import { BUTTON, BUTTON_GREY, BUTTON_SLICE, INK, LIGHT } from "./theme.ts";
+import { CLICK_VOLUME, BUTTON, BUTTON_GREY, BUTTON_SLICE, INK, LIGHT } from "./theme.ts";
 
 interface KeyHintProps {
   /** The key's name, written on a key cap; "arrows" draws the left and right arrow keys, "updown" the up and down ones. */
@@ -32,8 +32,14 @@ export function KeyHint({ name, label, color = LIGHT }: KeyHintProps) {
  * no keyboard (a phone, or just the mouse); `keyName` draws the key on it as well, which the screens do until the key is learned.
  */
 export function TapButton({ label, keyName = "", onPress }: { label: string; keyName?: string; onPress: () => void }) {
+  // Every button clicks as it is pressed.
+  const playClick = useSound("click.wav");
+  const press = () => {
+    playClick(CLICK_VOLUME);
+    onPress();
+  };
   return (
-    <Flex direction="row" alignItems="center" gap={6} height={30} paddingX={8} paddingTop={2} backgroundImage={BUTTON_GREY} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} focusable={false} onPress={() => onPress()}>
+    <Flex direction="row" alignItems="center" gap={6} height={30} paddingX={8} paddingTop={2} backgroundImage={BUTTON_GREY} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} focusable={false} onPress={press}>
       {keyName !== "" && (
         <Flex height={26} minWidth={26} paddingX={8} paddingTop={4} paddingBottom={2} backgroundImage="key.png" sliceTop={4} sliceBottom={8} sliceLeft={4} sliceRight={4} alignItems="center" justifyContent="center">
           <Text color={INK}>{keyName}</Text>
