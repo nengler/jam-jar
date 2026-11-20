@@ -112,18 +112,29 @@ export function leaned<T extends { x: number; y: number }>(things: readonly T[],
   return things.map((t) => ({ ...t, x: cx + (t.x - cx) * cos - (t.y - cy) * sin, y: cy + (t.x - cx) * sin + (t.y - cy) * cos }));
 }
 
-/** How often a heading's ripple starts, in seconds, and how many letters it passes a second. */
-const RIPPLE_EVERY = 5;
-const RIPPLE_SPEED = 14;
+/** How many letters a heading's ripple passes a second, and the longest it waits before the next one starts, in seconds. */
+const RIPPLE_SPEED = 4;
+const RIPPLE_WAIT = 2.5;
+
+/** A number from 0 up to 1 that looks random, the same each time for the same `n`: which ripple of a heading waits how long. */
+function chance(n: number): number {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
 
 /**
- * A heading's letters, each with how far it is lifted now, in pixels: every few seconds a ripple runs through the heading, one
- * letter hopping up an art pixel as it passes. `seed` staggers headings so they do not all ripple at once. A space is a letter
- * too, so the ripple crosses it in step.
+ * A heading's letters, each with how far it is lifted now, in pixels: a ripple runs slowly through the heading, one letter
+ * hopping up an art pixel as it passes, then after a short wait, a different length each time, it runs again. `seed` sets
+ * one heading's waits apart from another's. A space is a letter too, so the ripple crosses it in step.
  */
 export function ripple(text: string, time: number, seed: number): { at: number; letter: string; lift: number }[] {
-  const front = Math.floor(((time + seed * 1.7) % RIPPLE_EVERY) * RIPPLE_SPEED);
-  return [...text].map((letter, at) => ({ at, letter, lift: at === front ? 2 : 0 }));
+  const letters = [...text];
+  // Time is cut into turns, each long enough for one pass and the longest wait; the pass starts a random way into its turn.
+  const turn = letters.length / RIPPLE_SPEED + RIPPLE_WAIT;
+  const which = Math.floor(time / turn);
+  const since = time - which * turn - chance(which + seed * 13) * RIPPLE_WAIT;
+  const front = since < 0 ? -1 : Math.floor(since * RIPPLE_SPEED);
+  return letters.map((letter, at) => ({ at, letter, lift: at === front ? 2 : 0 }));
 }
 
 /**
@@ -152,7 +163,7 @@ export function shelfX(at: number, left: number, slot: number, count: number, dr
  */
 export function shelfNote(keys: boolean, held: boolean): string {
   if (keys) return held ? "Left / Right moves it. Enter puts it down." : "Enter picks it up to move it. Space drops the hand.";
-  return held ? "Let go, or tap, where it should stand." : "Drag it along the shelf to move it. Tap the jar to drop.";
+  return held ? "Let go where it should stand." : "Drag it along the shelf to move it. Tap the jar to drop.";
 }
 
 /** The pick's prompt, the same way: before a card is chosen, and once one is. */

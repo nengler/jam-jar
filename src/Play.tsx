@@ -87,7 +87,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, drag: false, dragMoved: false, dragX: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, tapped: false, drag: false, dragMoved: false, dragX: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -112,6 +112,9 @@ export function Play() {
     if (looking && (input.pressed("Enter") || input.pressed("Space") || input.pressed("D"))) s.whole = false;
     else if (!looking && input.pressed("D")) s.whole = true;
     if (s.run.phase !== "order" || looking) s.drag = false;
+    // A tap on a fruit of the shelf shows what it does; a tap anywhere else puts that away.
+    if (input.pressed("MouseLeft")) s.tip = s.tapped;
+    s.tapped = false;
     s.run = advance(
       s.run,
       dt,
@@ -166,7 +169,7 @@ export function Play() {
   };
   // Dragging a fruit along the shelf (the box over the shelf hears it). A press on a fruit picks it up; while the button or finger
   // stays down it goes where the pointer goes, the others making room; letting go puts it down. A press and release in one place
-  // is a tap: the fruit stays picked up, and the next tap says where it goes. The rules know none of this: they are told a place
+  // is a tap: nothing moves, and the fruit shows what it does until something else is tapped. The rules know none of this: they are told a place
   // and a confirm.
   const shelfAt = (x: number) => {
     const count = s.run.hand.length;
@@ -175,6 +178,7 @@ export function Play() {
   const dragStart = (x: number) => {
     s.point = shelfAt(x);
     s.click = true;
+    s.tapped = true;
     s.drag = !s.run.holding;
     s.dragMoved = false;
     s.dragX = x;
@@ -188,7 +192,8 @@ export function Play() {
     s.dragMoved = true;
   };
   const dragEnd = () => {
-    if (s.drag && s.dragMoved) s.click = true;
+    // Let go: the fruit is put down where it is. One that was not moved was only tapped, and now shows what it does.
+    if (s.drag) s.click = true;
     s.drag = false;
   };
   // The buttons on screen, for playing with no keyboard: what Space, Esc and (on the end board) Enter do.
@@ -307,7 +312,7 @@ export function Play() {
       {ordering && !s.whole && <Flex x={shelfLeft} y={SHELF_Y - 44} width={shelf.length * SLOT} height={52} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} />}
       {placed(shelf).map((slot) => (
         <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} y={SHELF_Y - 18}>
-          {ordering && !blind && slot.at === run.cursor && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
+          {ordering && !blind && slot.at === run.cursor && (keys || s.tip) && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
           {!blind && <FruitBall kind={slot.card} x={0} y={ordering && run.holding && slot.at === run.cursor ? -8 : 0} look="icon" />}
           {/* A fruit is dragged along the shelf, or tapped and then tapped where it should go (see the update above); a held one
               is drawn under the pointer. What it does shows under the shelf: for the fruit the cursor is on, and for one the mouse is over. While ordering it also
@@ -315,7 +320,7 @@ export function Play() {
               the jar whichever fruit it is for, so it never covers the boards either side. */}
           {!blind && (
             <Flex x={-20} y={-20} width={40} height={40}>
-              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor && (keys || s.tip) ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                 <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} note={!ordering ? "" : shelfNote(keys, run.holding && slot.at === run.cursor)} />
               </Tooltip>
             </Flex>
