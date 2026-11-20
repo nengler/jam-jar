@@ -23,5 +23,9 @@ export const FRUIT_ART = {
   lime: { size: 40, radius: 18 },
   dragonfruit: { size: 48, radius: 22 },
   snowpear: { size: 40, radius: 18 },
+  slice: { size: 40, radius: 18 },
+  pumpkin: { size: 72, radius: 32 },
+  gourd: { size: 32, radius: 14 },
+  giantpumpkin: { size: 96, radius: 43 },
   fruitfly: { size: 32, radius: 10 },
 } as const;

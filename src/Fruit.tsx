@@ -8,6 +8,8 @@ import { GRAVITY, JAR, type FruitReport } from "./rules/jar.ts";
 interface FruitProps {
   id: number;
   kind: FruitKind;
+  /** Its ball's radius: its kind's, but for a Gourd, which grows. */
+  r: number;
   /** Where its ball starts (it is dropped, made by a merge, or sprouted). */
   x0: number;
   y0: number;
@@ -60,14 +62,14 @@ const JUICE_DRAG = 0.12;
  * blowing up). A blast reaches it as a kick through its props. The ball has no angle of its own, so the fruit's turning is
  * drawn from how it moves: it rolls along what it touches.
  */
-export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surface, pull, flipped, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
+export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, surface, pull, flipped, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
   // `turn` is how far it has rolled, in degrees; `lastX` where it was a step ago.
   const s = useMutable({ kicked: 0, turn: 0, lastX: x0, lastY: y0, fall: 0, squash: 0, hit: 1, flat: 0 });
   const { x, y, contacts, push, speed, pin, setGravity, setGravityX, stick } = useBall({
     x: x0,
     y: y0,
-    radius: FRUITS[kind].radius,
-    mass: FRUITS[kind].radius * FRUITS[kind].radius * (FRUITS[kind].heavy ?? 1),
+    radius: r,
+    mass: r * r * (FRUITS[kind].heavy ?? 1),
     gravity: GRAVITY,
     tag: "fruit",
     data: { id: id },
@@ -83,7 +85,7 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
     if (honeyed) stick("fruit");
     // In lime juice it floats: the more of it is under the surface, the less it weighs, down to rising as hard as it would fall,
     // so it comes to rest half out of the juice. The juice also slows it, or it would bob for ever. A Heavy fruit sinks.
-    const radius = FRUITS[kind].radius;
+    const radius = r;
     const under = FRUITS[kind].heavy === undefined ? Math.max(0, Math.min(1, (y + radius - surface) / (radius * 2))) : 0;
     setGravity(flipped ? -GRAVITY : GRAVITY * (1 - 2 * under));
     if (under > 0 && !flipped) push(-(x - s.lastX) * 60 * JUICE_DRAG, -(y - s.lastY) * 60 * JUICE_DRAG);
@@ -94,7 +96,7 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
     }
     const touching = contacts("fruit").map((c) => c.data.id);
     // It rolls: while it touches a fruit or the floor, it turns by how far it moved across, as a wheel of its size would.
-    if (touching.length > 0 || y + FRUITS[kind].radius >= JAR.floor - 2) s.turn += (((x - s.lastX) / FRUITS[kind].radius) * 180 * ROLL) / Math.PI;
+    if (touching.length > 0 || y + r >= JAR.floor - 2) s.turn += (((x - s.lastX) / r) * 180 * ROLL) / Math.PI;
     // Drawn only: when it stops falling all at once (it hit the floor or the pile), it squashes flat and springs back.
     const fall = dt > 0 ? Math.abs(y - s.lastY) / dt : 0;
     const impact = s.fall - fall;
@@ -110,9 +112,11 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
   });
   // The squash is the jar's up and down, not the fruit's own: it is around the fruit's turning, not inside it. It is pinned at the
   // fruit's underside (its top, under a turned-over gravity), so a flattened fruit still sits on what it landed on.
-  const sink = FRUITS[kind].radius * s.squash * (flipped ? -1 : 1);
+  const sink = r * s.squash * (flipped ? -1 : 1);
+  // A grown Gourd is its picture scaled up to its size.
+  const grow = r / FRUITS[kind].radius;
   return (
-    <Entity x={leanX(x, y, lean, JAR.right, JAR.floor)} y={leanY(x, y, lean, JAR.right, JAR.floor) + sink} scaleX={1 + s.squash} scaleY={1 - s.squash}>
+    <Entity x={leanX(x, y, lean, JAR.right, JAR.floor)} y={leanY(x, y, lean, JAR.right, JAR.floor) + sink} scaleX={grow * (1 + s.squash)} scaleY={grow * (1 - s.squash)}>
       <FruitBall kind={kind} x={0} y={0} turn={s.turn + (lean * 180) / Math.PI} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} />
     </Entity>
   );

@@ -41,7 +41,12 @@ export type Keyword =
   | "pickled"
   | "frozen"
   | "once"
-  | "spill";
+  | "spill"
+  | "smashed"
+  | "slice"
+  | "wide"
+  | "absorb"
+  | "shockwave";
 
 export interface KeywordDef {
   name: string;
@@ -87,6 +92,11 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   pickled: { name: "Pickled", text: "Never ages, never Rotten." },
   once: { name: "Once", text: "Used up the first time it works." },
   spill: { name: "Spill", text: "Fruit over the rim are lost: -5 each." },
+  smashed: { name: "Smashed", text: "Exploded, Crushed or caught in a Shockwave." },
+  slice: { name: "Slice", text: "Breaks into this many Slices, Fresh 15 each." },
+  wide: { name: "Wide", text: "Takes 2 places on the shelf: 2 lanes." },
+  absorb: { name: "Absorb", text: "Takes in a fruit no bigger and grows a size." },
+  shockwave: { name: "Shockwave", text: "Throws the pile aside, Smashes Watermelons." },
 };
 
 /** Every way a keyword is written in card text, beside its name. */
@@ -94,6 +104,8 @@ const OTHER_FORMS: Readonly<Record<string, Keyword>> = {
   Merged: "merge",
   Merges: "merge",
   Crushed: "crush",
+  Crushes: "crush",
+  Smashes: "smashed",
   Explodes: "explode",
 };
 

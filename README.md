@@ -91,7 +91,12 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Juice / Milk | Pours juice in the jar: fruit in it float / pours milk in the jar: fruit in it score x2. |
 | Skip | A Merge touching it skips a size. |
 | Legendary | Rare, and never in the shop. |
-| Crush, Shake, Preserve, Pickled, Once | The items' words: the Juicer, the Shaker, the jars and the Lid. |
+| Crush, Shake, Preserve, Pickled, Once | The items' words: the Juicer, the Shaker, the jars and the Lid. Crush is also the Pumpkin's. |
+| Smashed | Exploded, Crushed or caught in a Shockwave. |
+| Slice | Breaks into this many Slices, Fresh 15 each. |
+| Wide | Takes 2 places on the shelf: 2 lanes. |
+| Absorb | Takes in a fruit no bigger and grows a size. |
+| Shockwave | Throws the pile aside, Smashes Watermelons. |
 | Frozen | Held in place. Explosions can't destroy it. |
 | Spill | Fruit over the rim are lost: -5 each. |
 
@@ -103,7 +108,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 
 - Starting pool: 1 Apple and 8 starters rolled from 3–5 Cherries, 2–4 Grapes and 0–2 Oranges. It's dealt like a deck and
   reshuffles when empty.
-- The merge ladder: Cherry → Grape → Orange → Melon → Watermelon. Two Watermelons vanish for +100.
+- The merge ladder: Cherry → Grape → Orange → Melon → Watermelon → Giant Pumpkin.
 - Fresh fruit score when they land or are made by a merge. Simmer fruit (Apple, Banana) score at every Resolve. Lemon is a
   Booster: fruit touching it score double, and it blocks merges next to it.
 - The Boom group: Chili (explodes touching 4+ fruit), Durian (big blast once 3 fruit sit on it), Pomegranate (bursts into 5
@@ -130,6 +135,23 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     milk 20 deep. Fruit that sit in milk score double.
   - The liquid is one pool: it gets deeper with each Lime and Coconut, up to 120 pixels, holds whatever went into it,
     and goes when the rent empties the jar.
+- The Ladder set (big fruit; merge up, smash down):
+  - A Watermelon that is Smashed (Exploded, Crushed by a Pumpkin or caught in a Shockwave) breaks into 4 Slices, Fresh 15
+    each, so 60 in place of the Watermelon's 50. Two Slices merge back into a Melon. The loop cap: a Melon made of Slices
+    cannot merge again until the turn is scored, so merge up, smash down cannot chain for ever in one settle.
+  - Pumpkin: Fresh 24, Heavy and Wide: it takes 2 of the shelf's 4 places, so a hand with one is 3 fruit, and it drops
+    down the middle of its two lanes. A Wide fruit that would not fit in what is left of the shelf waits on top of the
+    pool for the next hand. When it lands it Crushes the Cherries, Grapes, Seeds and Limes under it, and 8 pixels to the
+    side (a near miss still counts), each for its points +3; a Seed it Crushes Sprouts and a Lime pours its juice.
+  - Gourd: Fresh 4, Cherry-sized. It takes in a fruit it touches that is no bigger than itself, scoring that fruit's
+    points, and grows a size (Cherry, Grape, Orange). Grown past an Orange it Bursts into 4 Cherries, rotten if it took
+    in anything rotten.
+  - Giant Pumpkin: two Watermelons merge into one for +150. Its Shockwave throws every fruit within 130 pixels aside and
+    Smashes any Watermelon caught in it, and after 0.9 seconds it is gone, leaving room.
+  - Balance bots (12 runs each, rent ignored; medians for cycles 1 to 5): always taking a Pumpkin 257, 210, 209, 175, 177;
+    a Gourd 250, 190, 230, 234, 245; next to never picking 242, 226, 243, 232, 242, Lime 238, 210, 182, 198, 164 and Apple
+    249, 190, 234, 224, 250. At Fresh 10 the Pumpkin managed 249, 190, 181, 142, 135: it takes two of a turn's four drops,
+    and Crushes the Cherries and Grapes the ladder is built from.
 - The title has a jar filling up by itself: a run the rules play (`src/rules/demo.ts`: each hand dropped as dealt, every
   pick skipped, a new run a moment after the rent comes due).
 - Fruit roll: the physics has no angle, so each fruit's turning is drawn from how far it moves along what it touches.

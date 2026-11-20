@@ -164,17 +164,35 @@ export function grownOf(run: Run, kind: FruitKind): number {
   return kind === "banana" ? run.bananaBonus : kind === "pitaya" ? run.pitayaBonus : 0;
 }
 
-/** Which place on the shelf a point across is nearest: the shelf's fruit stand `slot` apart from `left`, `count` of them. -1 for an empty shelf. */
-export function shelfSlot(x: number, left: number, slot: number, count: number): number {
-  return count === 0 ? -1 : Math.max(0, Math.min(count - 1, Math.floor((x - left) / slot)));
+/**
+ * Which fruit on the shelf a point across is over: the shelf's places stand `slot` apart from `left`, and each fruit takes `spans`
+ * of them in turn (a Wide one 2). -1 for an empty shelf.
+ */
+export function shelfSlot(x: number, left: number, slot: number, spans: readonly number[]): number {
+  if (spans.length === 0) return -1;
+  const place = Math.floor((x - left) / slot);
+  let end = 0;
+  for (let at = 0; at < spans.length; at++) {
+    end += spans[at] as number;
+    if (place < end) return at;
+  }
+  return spans.length - 1;
+}
+
+/** The middle of a fruit on the shelf, in places from the shelf's left end: half way along the places it takes. */
+export function shelfMiddle(at: number, spans: readonly number[]): number {
+  let start = 0;
+  for (let i = 0; i < at; i++) start += spans[i] as number;
+  return start + (spans[at] ?? 1) / 2;
 }
 
 /** Where a fruit on the shelf is drawn across: in its place, or under the pointer (kept over the shelf) while it is dragged. */
-export function shelfX(at: number, left: number, slot: number, count: number, dragged: boolean, pointerX: number): number {
-  const home = left + at * slot + slot / 2;
-  return dragged ? Math.max(left + slot / 2, Math.min(left + count * slot - slot / 2, pointerX)) : home;
+export function shelfX(at: number, left: number, slot: number, spans: readonly number[], dragged: boolean, pointerX: number): number {
+  const home = left + shelfMiddle(at, spans) * slot;
+  const half = ((spans[at] ?? 1) * slot) / 2;
+  const width = spans.reduce((sum, span) => sum + span, 0) * slot;
+  return dragged ? Math.max(left + half, Math.min(left + width - half, pointerX)) : home;
 }
-
 
 /** A number counting up to `total` over `seconds`, fast at first and slowing as it arrives: what the end board's total shows at `time`. */
 export function countUp(total: number, time: number, seconds: number): number {

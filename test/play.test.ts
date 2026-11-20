@@ -585,3 +585,41 @@ test("a phone held upright is asked to turn, and the run waits under the card un
   assert.notEqual(JSON.stringify(runOf(game)), before, "the hand plays on");
   game.close();
 });
+
+test("on the engine's physics: a hand with a Pumpkin drops it whole, down the middle of the jar", () => {
+  const game = startRun();
+  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
+  play.s.run = { ...play.s.run, hand: ["cherry", "pumpkin", "grape"] };
+  game.input("Space, _*2");
+  const run = playedOut(game);
+  game.close();
+  const pumpkin = run.fruits.find((f) => f.kind === "pumpkin");
+  assert.ok(pumpkin !== undefined, "the Pumpkin is in the jar");
+  assert.ok(Math.abs(pumpkin.x - (JAR.left + JAR.right) / 2) < 8, `in the middle (x = ${pumpkin.x})`);
+  assert.ok(run.fruits.every((f) => f.y - f.r >= RIM), "nothing spilled");
+});
+
+test("on the engine's physics: two Watermelons make a Giant Pumpkin, which throws the pile and is gone before the turn is scored", () => {
+  const game = startRun();
+  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
+  const make = (id: number, kind: Fruit["kind"], x: number, y: number, r: number): Fruit => ({
+    ...{ id, kind, x0: x, y0: y, x, y, r, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
+    ...{ landed: false, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: false, pickled: false, frozen: false, lit: false, fuse: 0 },
+  });
+  // A Watermelon falling onto another, with small fruit beside them.
+  play.s.run = {
+    ...play.s.run,
+    phase: "settle",
+    nextId: 900,
+    fruits: [make(801, "watermelon", 300, JAR.floor - 29, 29), make(802, "watermelon", 302, 200, 29), make(803, "cherry", 380, JAR.floor - 14, 14), make(804, "grape", 240, JAR.floor - 18, 18)],
+  };
+  // What the test set takes effect on the next step.
+  game.input("_");
+  game.stepUntil(() => play.s.run.fruits.some((f) => f.kind === "giantpumpkin") || play.s.run.phase !== "settle");
+  assert.ok(play.s.run.fruits.some((f) => f.kind === "giantpumpkin"), "a Giant Pumpkin formed");
+  const run = playedOut(game);
+  game.close();
+  assert.ok(!run.fruits.some((f) => f.kind === "giantpumpkin"), "and vanished before the turn was scored");
+  assert.ok(run.cycleScore >= 150, `it scored (${run.cycleScore})`);
+  assert.ok(run.fruits.every((f) => f.x - f.r >= JAR.left - 2 && f.x + f.r <= JAR.right + 2), "every fruit is still in the jar");
+});

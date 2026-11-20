@@ -19,7 +19,7 @@ import { Shop } from "./Shop.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
 import { ITEMS, keepingJar } from "./rules/items.ts";
-import { advance, newRun, BOOM_LIFE, CLEAR_TIME, keeps, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, handSlots, newRun, slotsOf, BOOM_LIFE, CLEAR_TIME, keeps, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -57,6 +57,9 @@ const SPARK = [LIGHT, GOLD, BAR_FILL, BAD];
 /** The shelf above the jar: its plank's top, and how far apart the hand's fruit stand on it, left to right, a slot over each of the jar's lanes. */
 const SHELF_Y = 48;
 const SLOT = 48;
+/** A Wide fruit's icon on the shelf is drawn this much bigger, and raised this far so it still stands on the plank. */
+const WIDE_SCALE = 1.4;
+const WIDE_LIFT = 6;
 /** The boards either side of the jar: 192 wide, 12 from the screen's edges, each under its heading. */
 const BOARD_W = 192;
 const HUD_X = 12;
@@ -289,8 +292,8 @@ export function Play() {
   // is a tap: nothing moves, and the fruit shows what it does until something else is tapped. The rules know none of this: they are told a place
   // and a confirm.
   const shelfAt = (x: number) => {
-    const count = s.run.hand.length;
-    return shelfSlot(x, (JAR.left + JAR.right) / 2 - (count * SLOT) / 2, SLOT, count);
+    const spans = s.run.hand.map((kind) => slotsOf(kind));
+    return shelfSlot(x, (JAR.left + JAR.right) / 2 - (handSlots(s.run.hand) * SLOT) / 2, SLOT, spans);
   };
   const dragStart = (x: number) => {
     // A tap on the fruit that is already showing what it does puts that away again (see `dragEnd`).
@@ -386,7 +389,8 @@ export function Play() {
   const keptFruit = preserving ? run.fruits.filter((f) => run.kept.includes(f.id)) : [];
   /** On the shelf: the hand while ordering, then what is left of it while dropping. */
   const shelf = ordering ? run.hand : run.queue;
-  const shelfLeft = jarMid - (shelf.length * SLOT) / 2;
+  const spans = shelf.map((kind) => slotsOf(kind));
+  const shelfLeft = jarMid - (handSlots(shelf) * SLOT) / 2;
   /** A fruit is being dragged along the shelf: it is drawn under the pointer, not in its place. */
   const dragging = s.drag && ordering && run.holding;
   // Resolve has already counted the next turn; the pips wait for the tally to finish before showing it.
@@ -474,11 +478,12 @@ export function Play() {
           jar each is under a cloth. */}
       <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y - 80 * (1 - popIn(s.intro, INTRO.shelf, INTRO.pop))} />
       {/* The box that hears the hand being dragged and tapped: over the fruit on the shelf, and under their tooltips' boxes. */}
-      {ordering && !s.whole && <Flex x={shelfLeft} y={SHELF_Y - 44} width={shelf.length * SLOT} height={52} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} onPressOutside={untip} />}
+      {ordering && !s.whole && <Flex x={shelfLeft} y={SHELF_Y - 44} width={handSlots(shelf) * SLOT} height={52} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} onPressOutside={untip} />}
       {placed(shelf).map((slot) => (
-        <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX) + (ordering ? rollIn(s.roll, slot.at, ROLL_FROM - (shelfLeft + slot.at * SLOT + SLOT / 2)) : 0)} y={SHELF_Y - 18}>
-          {ordering && !blind && slot.at === run.cursor && (keys || s.tip) && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
-          {!blind && (!ordering || rollStarted(s.roll, slot.at)) && <FruitBall kind={slot.card} x={0} y={ordering && run.holding && slot.at === run.cursor ? -8 : 0} turn={ordering ? rollIn(s.roll, slot.at, ROLL_FROM - (shelfLeft + slot.at * SLOT + SLOT / 2)) / 16 : 0} look="icon" />}
+        <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, spans, dragging && slot.at === run.cursor, s.dragX) + (ordering ? rollIn(s.roll, slot.at, ROLL_FROM - shelfX(slot.at, shelfLeft, SLOT, spans, false, 0)) : 0)} y={SHELF_Y - 18}>
+          {/* A Wide fruit (a Pumpkin) takes two places: its frame spans both, and it is drawn at the pick cards' size. */}
+          {ordering && !blind && slot.at === run.cursor && (keys || s.tip) && <Flex x={-20 - (SLOT * ((spans[slot.at] ?? 1) - 1)) / 2} y={run.holding ? -28 : -20} width={40 + SLOT * ((spans[slot.at] ?? 1) - 1)} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
+          {!blind && (!ordering || rollStarted(s.roll, slot.at)) && <Entity y={(ordering && run.holding && slot.at === run.cursor ? -8 : 0) - ((spans[slot.at] ?? 1) > 1 ? WIDE_LIFT : 0)} scaleX={(spans[slot.at] ?? 1) > 1 ? WIDE_SCALE : 1} scaleY={(spans[slot.at] ?? 1) > 1 ? WIDE_SCALE : 1}><FruitBall kind={slot.card} x={0} y={0} turn={ordering ? rollIn(s.roll, slot.at, ROLL_FROM - shelfX(slot.at, shelfLeft, SLOT, spans, false, 0)) / 16 : 0} look="icon" /></Entity>}
           {blind && (!ordering || rollStarted(s.roll, slot.at)) && <Sprite image="covered.png" x={-16} y={-16} />}
         </Entity>
       ))}
@@ -489,8 +494,8 @@ export function Play() {
       {!blind && (
         <>
           {placed(shelf).map((slot) => (
-            <Flex key={`tip${slot.card}${slot.at}`} x={shelfLeft + slot.at * SLOT + SLOT / 2 - 20} y={SHELF_Y - 38} width={40} height={40}>
-              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor && (keys || s.tip) ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X - (shelfLeft + slot.at * SLOT + SLOT / 2 - 20)} offsetY={TIP_TOP - (SHELF_Y - 38)} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+            <Flex key={`tip${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, spans, false, 0) - 20} y={SHELF_Y - 38} width={40} height={40}>
+              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor && (keys || s.tip) ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X - (shelfX(slot.at, shelfLeft, SLOT, spans, false, 0) - 20)} offsetY={TIP_TOP - (SHELF_Y - 38)} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                 <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} />
               </Tooltip>
             </Flex>

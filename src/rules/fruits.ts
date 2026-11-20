@@ -32,7 +32,11 @@ export type FruitKind =
   | "coconut"
   | "lime"
   | "dragonfruit"
-  | "snowpear";
+  | "snowpear"
+  | "slice"
+  | "pumpkin"
+  | "gourd"
+  | "giantpumpkin";
 
 export type Scoring = "fresh" | "simmer" | "booster";
 
@@ -49,6 +53,8 @@ export interface FruitDef {
   touchWeight: number;
   /** How many times heavier than its size it is against other fruit: a heavy one shoulders its way down. Default 1. */
   heavy?: number;
+  /** How many places it takes on the shelf, and lanes over the jar. Default 1; a Pumpkin takes 2. */
+  slots?: number;
   /** A Legendary fruit: offered rarely, and its chip says so. */
   legendary?: boolean;
   /** The card: a row of the game's keywords (rules/terms.ts), each with a capital and often a number, how it scores first. */
@@ -63,13 +69,23 @@ export interface FruitDef {
 export const APPLE = { base: 4, edge: 5 };
 export const BANANA = { base: 4, ripen: 2, rots: 3 };
 export const HONEY = 4;
+/**
+ * The Ladder set (design doc, "Next fruit set: Ladder"): merge up, smash down. A Watermelon that is Smashed breaks into `SLICES`
+ * Slices, which score more together than it did. A Pumpkin Crushes the `CRUSHABLE` fruit it lands on. A Gourd takes in fruit no
+ * bigger than itself, a size at a time along `GOURD_SIZES` (Cherry, Grape, Orange), and at Melon size Bursts into `GOURD_BURST`
+ * Cherries. Two Watermelons make a Giant Pumpkin, which scores, throws the pile aside and is gone.
+ */
+export const SLICES = 4;
+export const CRUSHABLE: readonly FruitKind[] = ["cherry", "grape", "seed", "lime"];
+export const GOURD_BURST = 4;
+export const GOURD_SIZES: readonly number[] = [FRUIT_ART.cherry.radius, FRUIT_ART.grape.radius, FRUIT_ART.orange.radius];
 
 export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   cherry: { name: "Cherry", radius: FRUIT_ART.cherry.radius, points: 1, scoring: "fresh", mergesInto: "grape", touchWeight: 1, text: "Fresh 1. Merge: Grape." },
   grape: { name: "Grape", radius: FRUIT_ART.grape.radius, points: 3, scoring: "fresh", mergesInto: "orange", touchWeight: 1, text: "Fresh 3. Merge: Orange." },
   orange: { name: "Orange", radius: FRUIT_ART.orange.radius, points: 8, scoring: "fresh", mergesInto: "melon", touchWeight: 1, text: "Fresh 8. Merge: Melon." },
   melon: { name: "Melon", radius: FRUIT_ART.melon.radius, points: 20, scoring: "fresh", mergesInto: "watermelon", touchWeight: 1, text: "Fresh 20. Merge: Watermelon." },
-  watermelon: { name: "Watermelon", radius: FRUIT_ART.watermelon.radius, points: 50, scoring: "fresh", touchWeight: 1, text: "Fresh 50. Merge: both vanish for +100." },
+  watermelon: { name: "Watermelon", radius: FRUIT_ART.watermelon.radius, points: 50, scoring: "fresh", mergesInto: "giantpumpkin", touchWeight: 1, text: "Fresh 50. Smashed: Slice 4. Merge: Giant Pumpkin." },
   apple: { name: "Apple", radius: FRUIT_ART.apple.radius, points: 4, scoring: "simmer", touchWeight: 1, text: `Simmer ${APPLE.base}. Edge ${APPLE.edge}.` },
   banana: { name: "Banana", radius: FRUIT_ART.banana.radius, points: 4, scoring: "simmer", touchWeight: 1, text: `Simmer ${BANANA.base}. Ripen ${BANANA.ripen}. Rots ${BANANA.rots}.` },
   chili: { name: "Chili", radius: FRUIT_ART.chili.radius, points: 6, scoring: "fresh", touchWeight: 1, text: "Fresh 6. Exploder 4." },
@@ -88,7 +104,11 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   lime: { name: "Lime", radius: FRUIT_ART.lime.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Exploded or Crushed: Juice." },
   dragonfruit: { name: "Dragonfruit", radius: FRUIT_ART.dragonfruit.radius, points: 0, scoring: "booster", touchWeight: 1, legendary: true, text: "Legendary. Booster. Skip." },
   snowpear: { name: "Snow Pear", radius: FRUIT_ART.snowpear.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Each turn, it and its neighbours turn Frozen." },
-  seed: { name: "Seed", radius: FRUIT_ART.seed.radius, points: 6, scoring: "fresh", touchWeight: 1, text: "Fresh 6. Exploded: Sprout." },
+  seed: { name: "Seed", radius: FRUIT_ART.seed.radius, points: 6, scoring: "fresh", touchWeight: 1, text: "Fresh 6. Exploded or Crushed: Sprout." },
+  slice: { name: "Slice", radius: FRUIT_ART.slice.radius, points: 15, scoring: "fresh", mergesInto: "melon", touchWeight: 1, text: "Fresh 15. Merge: Melon." },
+  pumpkin: { name: "Pumpkin", radius: FRUIT_ART.pumpkin.radius, points: 24, scoring: "fresh", touchWeight: 1, heavy: 4, slots: 2, text: "Fresh 24. Wide. Heavy. Crushes a Cherry, Grape, Seed or Lime it lands on." },
+  gourd: { name: "Gourd", radius: FRUIT_ART.gourd.radius, points: 4, scoring: "fresh", touchWeight: 1, text: "Fresh 4. Absorb. At Melon size, Burst 4." },
+  giantpumpkin: { name: "Giant Pumpkin", radius: FRUIT_ART.giantpumpkin.radius, points: 150, scoring: "fresh", heavy: 4, touchWeight: 1, text: "Fresh 150. Shockwave, then it vanishes." },
 };
 
 /** What the 1-of-3 pick offers. */
@@ -111,6 +131,8 @@ export const OFFERABLE: readonly FruitKind[] = [
   "coconut",
   "snowpear",
   "lime",
+  "pumpkin",
+  "gourd",
 ];
 
 /** What a Seed can sprout. */

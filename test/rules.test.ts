@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { blastBits, blastFlash, blastJolt, motes, poolRows, termsOf } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
-import { APPLE, BANANA, FRUITS, HONEY, type FruitKind } from "../src/rules/fruits.ts";
+import { APPLE, BANANA, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, SLICES, type FruitKind } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
@@ -14,7 +14,10 @@ import {
   bossNow,
   CLEAR_TIME,
   COCONUT_MILK,
+  CRUSH_BONUS,
   dramatic,
+  GIANT_LIFE,
+  handSlots,
   FRUIT_PRICE,
   JAR,
   JUICER_BONUS,
@@ -925,7 +928,7 @@ test("readability: two popups in one place are stacked, not drawn on each other,
   const wall = jarWith([fruit(1, "watermelon", JAR.left + r, JAR.floor - r, [2]), fruit(2, "watermelon", JAR.left + r, JAR.floor - 3 * r, [1])]);
   simulate(wall, DT);
   const merge = wall.popups.at(-1)!;
-  assert.equal(merge.text, "Merge +100");
+  assert.equal(merge.text, `Merge +${FRUITS.giantpumpkin.points}`);
   assert.ok(merge.x > JAR.left + r + 20, `${merge.x}`);
 });
 
@@ -1254,4 +1257,114 @@ test("the shelf's sounds: the cursor ticks, and a held fruit changing place is a
   run = press(run, { right: true });
   assert.deepEqual(run.sounds, ["move"], "carried past a neighbour");
   assert.deepEqual(run.hand, ["cherry", "orange", "grape", "apple"]);
+});
+
+// The Ladder set: merge up, smash down.
+
+test("a Wide Pumpkin takes two places on the shelf: a hand fills four places, and one that would not fit waits for the next hand", () => {
+  const run = newRun(3);
+  run.draw = ["cherry", "pumpkin", "grape", "pumpkin", "apple", "cherry"];
+  run.hand = [];
+  run.phase = "rent";
+  // Deal by hand, as the next turn would: draw until the shelf's four places are full.
+  const dealt = advance({ ...run, phase: "pick", offers: ["apple", "apple", "apple"], offerCursor: -1 }, DT, { ...NO_KEYS, drop: true });
+  assert.deepEqual(dealt.hand, ["cherry", "pumpkin", "grape"]);
+  assert.equal(handSlots(dealt.hand), 4);
+  // The next Pumpkin is on top, and with it only two more places are left: an Apple, then the Cherry.
+  const next = advance({ ...dealt, phase: "pick", offers: ["apple", "apple", "apple"], offerCursor: -1 }, DT, { ...NO_KEYS, drop: true });
+  assert.deepEqual(next.hand, ["pumpkin", "apple", "cherry"]);
+});
+
+test("the tray drops a Wide Pumpkin down the middle of its two lanes", () => {
+  let run = newRun(3);
+  run.hand = ["cherry", "pumpkin", "grape"];
+  run = advance(run, DT, { ...NO_KEYS, drop: true });
+  run = advance(run, DT, NO_KEYS);
+  const lane = (JAR.right - JAR.left) / 4;
+  const [cherry, pumpkin, grape] = run.fruits as [Fruit, Fruit, Fruit];
+  assert.ok(Math.abs(cherry.x - (JAR.left + lane * 0.5)) <= TRAY.wobble + 1e-9, `${cherry.x}`);
+  assert.ok(Math.abs(pumpkin.x - (JAR.left + lane * 2)) <= TRAY.wobble + 1e-9, `${pumpkin.x}`);
+  assert.ok(Math.abs(grape.x - (JAR.left + lane * 3.5)) <= TRAY.wobble + 1e-9, `${grape.x}`);
+});
+
+test("a Pumpkin Crushes the Cherries and Grapes it lands on, and a near miss; not an Orange, nor what is above it", () => {
+  const p = FRUITS.pumpkin.radius;
+  const y = JAR.floor - 14;
+  const run = jarWith([
+    fruit(1, "cherry", 320, y),
+    // Not touching it (55 px apart, against 50), but within its reach.
+    fruit(2, "grape", 356, JAR.floor - 18),
+    fruit(3, "orange", 280, JAR.floor - 22),
+    fruit(4, "cherry", 330, y - 120),
+  ]);
+  run.fruits.push({ ...fruit(5, "pumpkin", 320, y - 14 - p, [1]), landed: false });
+  simulate(run, DT);
+  const kinds = run.fruits.map((f) => f.kind).sort();
+  assert.deepEqual(kinds, ["cherry", "orange", "pumpkin"]);
+  assert.ok(run.popups.some((pop) => pop.text === `Crush +${FRUITS.cherry.points + FRUITS.grape.points + 2 * CRUSH_BONUS}`), run.popups.map((pop) => pop.text).join());
+  assert.equal(run.cycleScore, FRUITS.pumpkin.points + FRUITS.cherry.points + FRUITS.grape.points + 2 * CRUSH_BONUS);
+});
+
+test("a Watermelon Smashed breaks into Slices worth more than it; two Slices make a Melon that cannot Merge again this turn", () => {
+  const w = FRUITS.watermelon.radius;
+  const p = FRUITS.pumpkin.radius;
+  const run = jarWith([fruit(1, "watermelon", 320, JAR.floor - w)]);
+  run.fruits.push({ ...fruit(2, "pumpkin", 320, JAR.floor - 2 * w - p, [1]), landed: false });
+  simulate(run, DT);
+  assert.equal(run.fruits.filter((f) => f.kind === "slice").length, SLICES);
+  assert.ok(SLICES * FRUITS.slice.points > FRUITS.watermelon.points);
+  assert.ok(run.popups.some((pop) => pop.text === `Slice +${SLICES * FRUITS.slice.points}`));
+
+  // Blasted, too: the Slices score in its place.
+  const blasted = jarWith([fruit(1, "watermelon", 320, JAR.floor - w)]);
+  blasted.fruits.push({ ...fruit(2, "chili", 360, JAR.floor - 14), lit: true, fuse: 0 });
+  simulate(blasted, DT);
+  assert.equal(blasted.fruits.filter((f) => f.kind === "slice").length, SLICES);
+
+  // The loop cap: a Melon made of Slices waits for the next turn to Merge again.
+  const s = FRUITS.slice.radius;
+  const capped = jarWith([fruit(1, "slice", 300, JAR.floor - s, [2]), fruit(2, "slice", 300 + 2 * s, JAR.floor - s, [1]), fruit(3, "melon", 360, JAR.floor - 25)]);
+  simulate(capped, DT);
+  const made = capped.fruits.find((f) => f.kind === "melon" && f.id !== 3)!;
+  assert.equal(made.remerged, true);
+  made.touching = [3];
+  (capped.fruits.find((f) => f.id === 3) as Fruit).touching = [made.id];
+  simulate(capped, DT);
+  assert.equal(capped.fruits.filter((f) => f.kind === "melon").length, 2, "the new Melon waits");
+  resolve(capped);
+  assert.ok(capped.fruits.every((f) => f.remerged !== true), "and may Merge next turn");
+});
+
+test("a Gourd Absorbs a fruit no bigger than itself, grows a size each time, and at Melon size Bursts into Cherries", () => {
+  const y = JAR.floor - 14;
+  let run = jarWith([fruit(1, "gourd", 300, y, [2, 3]), fruit(2, "cherry", 328, y, [1]), fruit(3, "orange", 270, JAR.floor - 22, [1])]);
+  simulate(run, DT);
+  const grown = run.fruits.find((f) => f.kind === "gourd")!;
+  assert.equal(grown.r, GOURD_SIZES[1]);
+  assert.ok(run.fruits.some((f) => f.kind === "orange"), "an Orange is too big for it");
+  assert.ok(!run.fruits.some((f) => f.kind === "cherry"));
+  assert.equal(run.cycleScore, FRUITS.cherry.points);
+
+  // At an Orange's size, a rotten Grape is its last: it Bursts into rotten Cherries.
+  run = jarWith([{ ...fruit(1, "gourd", 300, y, [2]), r: GOURD_SIZES[2] as number }, { ...fruit(2, "grape", 335, y, [1]), rotten: true }]);
+  simulate(run, DT);
+  assert.equal(run.fruits.length, GOURD_BURST);
+  assert.ok(run.fruits.every((f) => f.kind === "cherry" && f.rotten));
+});
+
+test("two Watermelons make a Giant Pumpkin: it scores, its Shockwave throws the pile and Smashes a Watermelon, then it vanishes", () => {
+  const w = FRUITS.watermelon.radius;
+  const run = jarWith([
+    fruit(1, "watermelon", 260, JAR.floor - w, [2]),
+    fruit(2, "watermelon", 260 + 2 * w, JAR.floor - w, [1]),
+    fruit(3, "watermelon", 380, JAR.floor - w),
+    fruit(4, "cherry", 300, JAR.floor - 2 * w - 14),
+  ]);
+  simulate(run, DT);
+  assert.ok(run.fruits.some((f) => f.kind === "giantpumpkin"));
+  assert.equal(run.fruits.filter((f) => f.kind === "slice").length, SLICES, "the third Watermelon is Smashed");
+  assert.ok((run.fruits.find((f) => f.id === 4) as Fruit).kicks > 0, "the Cherry is thrown");
+  assert.equal(run.cycleScore, FRUITS.giantpumpkin.points + SLICES * FRUITS.slice.points);
+  for (let t = 0; t <= GIANT_LIFE + DT; t += DT) simulate(run, DT);
+  assert.ok(!run.fruits.some((f) => f.kind === "giantpumpkin"), "it is gone");
 });
