@@ -2,15 +2,15 @@ import { Entity, Flex, Shape, Text, useTime } from "@tsengine/runtime/jsx";
 
 import { Panel } from "./Board.tsx";
 import { TapButton } from "./KeyHint.tsx";
-import { LESSONS, type Lesson } from "./rules/tutorial.ts";
-import { CARD_SLICE, DIM, GOLD, LIGHT, LIGHT_SOFT, PLAQUE, SELECT } from "./theme.ts";
+import type { Lesson } from "./rules/tutorial.ts";
+import { CARD_SLICE, DIM, GOLD, LIGHT, PLAQUE, SELECT } from "./theme.ts";
 
 /**
- * The tutorial's card, in the first game: one lesson on a dark slate, its title in gold beside how far through the lessons it is. "Got it" goes on to
+ * The tutorial's card, in the first game: one lesson on a dark slate, its title in gold. It does not count the lessons: it is a helper that speaks up when there is something to say, not a course. "Got it" goes on to
  * the next lesson without doing what this one says; "No tips" ends the tutorial (a `wide` card has room for "Got it" only). It is
  * `width` wide. `wide` lays it out along the foot of the screen, the words beside the buttons, for where there is no room for a tall card.
  */
-export function Coach({ lesson, step, keys, width, wide = false, onNext, onSkip }: { lesson: Lesson; step: number; keys: boolean; width: number; wide?: boolean; onNext: () => void; onSkip: () => void }) {
+export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { lesson: Lesson; keys: boolean; width: number; wide?: boolean; onNext: () => void; onSkip: () => void }) {
   return (
     <Flex width={width} direction="column" alignItems="stretch">
       <Panel image={PLAQUE} gap={2}>
@@ -18,10 +18,7 @@ export function Coach({ lesson, step, keys, width, wide = false, onNext, onSkip 
           <Flex direction="column" gap={0}>
             {/* Along the foot of the screen there is room for the words only. */}
             {!wide && (
-              <Flex direction="row" justifyContent="space-between" gap={4}>
-                <Text color={GOLD}>{lesson.title}</Text>
-                <Text color={LIGHT_SOFT}>{`${step + 1}/${LESSONS.length}`}</Text>
-              </Flex>
+              <Text color={GOLD}>{lesson.title}</Text>
             )}
             <Text width={wide ? width - 32 - WIDE_BUTTONS : width - 32} maxWidth={wide ? width - 32 - WIDE_BUTTONS : width - 32} color={LIGHT}>
               {keys ? lesson.keysText : lesson.text}

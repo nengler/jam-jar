@@ -60,6 +60,10 @@ const POOL_TIGHT = { columns: 4, cell: 40 };
 const POOL_ROW = 32;
 /** The note of what just happened: a slate at the right, its foot this far above the foot of the screen (just above the counter). */
 const NOTE_FOOT = 36;
+/** Where the card of a fruit on the shelf stands: in the left column, its foot near the foot of the screen, growing up from
+ * there, so it never lies over the jar, which is what the player is deciding about. */
+const TIP_X = 2;
+const TIP_FOOT = 356;
 /** Slow motion: how fast the game runs in it, and how long it lasts after the Blast that set it off, in the game's slowed seconds. */
 const SLOW_SPEED = 0.35;
 const SLOW_TIME = 0.4;
@@ -377,13 +381,12 @@ export function Play() {
         <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} y={SHELF_Y - 18}>
           {ordering && !blind && slot.at === run.cursor && (keys || s.tip) && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
           {!blind && <FruitBall kind={slot.card} x={0} y={ordering && run.holding && slot.at === run.cursor ? -8 : 0} look="icon" />}
-          {/* A fruit is dragged along the shelf, or tapped and then tapped where it should go (see the update above); a held one
-              is drawn under the pointer. What it does shows under the shelf: for the fruit the cursor is on, and for one the mouse is over. While ordering it also
-              says, every time, that the hand can be reordered and how: the keys' own hints show only the first time. It sits over the middle of
-              the jar whichever fruit it is for, so it never covers the boards either side. */}
+          {/* A fruit is dragged along the shelf (see the handlers above); a held one is drawn under the pointer. What a fruit does
+              shows for the one that was tapped (or the cursor is on, at a keyboard), and for one the mouse is over: in the left
+              column whichever fruit it is for, growing up from the foot of the screen, so it never lies over the jar. */}
           {!blind && (
             <Flex x={-20} y={-20} width={40} height={40}>
-              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor && (keys || s.tip) ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor && (keys || s.tip) ? true : undefined} anchor="bottom-left" to="top-left" offsetX={TIP_X + 20 - shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} offsetY={TIP_FOOT + 38 - SHELF_Y} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                 <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} />
               </Tooltip>
             </Flex>
@@ -473,7 +476,7 @@ export function Play() {
       {/* The first game's tutorial takes the slate's place: one lesson at a time, about what is on screen now. */}
       {coached !== null && !picking && run.phase !== "shop" && (
         <Flex right={HUD_X} bottom={NOTE_FOOT}>
-          <Coach lesson={coached ?? LESSONS[0]!} step={tutorial} keys={keys} width={BOARD_W} onNext={lessonNext} onSkip={lessonSkip} />
+          <Coach lesson={coached ?? LESSONS[0]!} keys={keys} width={BOARD_W} onNext={lessonNext} onSkip={lessonSkip} />
         </Flex>
       )}
 
@@ -517,7 +520,7 @@ export function Play() {
           {/* The first pick of the first game: the tutorial's lesson says it, along the foot of the screen. */}
           {coached !== null && (
             <Flex right={8} bottom={2}>
-              <Coach wide lesson={coached ?? LESSONS[0]!} step={tutorial} keys={keys} width={440} onNext={lessonNext} onSkip={lessonSkip} />
+              <Coach wide lesson={coached ?? LESSONS[0]!} keys={keys} width={440} onNext={lessonNext} onSkip={lessonSkip} />
             </Flex>
           )}
           {/* The way out, always there, in the bottom left corner: a card's keywords open to its side, never over this. */}
@@ -590,7 +593,7 @@ export function Play() {
       {/* The first shop of the first game: the lesson lies along the foot of the screen, under the shop's actions, until the player does something there. */}
       {run.phase === "shop" && coached !== null && (
         <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center">
-          <Coach wide lesson={coached ?? LESSONS[0]!} step={tutorial} keys={keys} width={620} onNext={lessonNext} onSkip={lessonSkip} />
+          <Coach wide lesson={coached ?? LESSONS[0]!} keys={keys} width={620} onNext={lessonNext} onSkip={lessonSkip} />
         </Flex>
       )}
       {paused && <Pause />}
