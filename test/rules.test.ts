@@ -744,6 +744,25 @@ test("a finger: the first tap on a card chooses it, so it can be read, and a sec
   assert.equal(shop.coins, 10 - FRUIT_PRICE);
 });
 
+test("a tap that lands on no card leaves nothing chosen, in the pick and in the shop: the next tap on that card only chooses it again", () => {
+  let run = jarWith([]);
+  run.turn = 1;
+  resolve(run);
+  const before = run.pool.length;
+  run = press(run, { point: 1, confirm: true });
+  run = press(run, { away: true });
+  assert.equal(run.offerCursor, -1, "tapped off: nothing is chosen");
+  run = press(run, { point: 1, confirm: true });
+  assert.deepEqual([run.phase, run.offerCursor, run.pool.length], ["pick", 1, before], "chosen again, not taken");
+
+  let shop = inShop(10);
+  shop = press(shop, { point: 1, confirm: true });
+  shop = press(shop, { away: true });
+  assert.equal(shop.shop!.cursor, -1);
+  shop = press(shop, { point: 1, confirm: true });
+  assert.deepEqual([shop.shop!.cursor, shop.coins], [1, 10], "chosen again, not bought");
+});
+
 test("readability: a popup names what earned it, and says x2 when a Booster doubled it", () => {
   const y = JAR.floor - 14;
   const merged = jarWith([fruit(1, "cherry", 300, y, [2]), fruit(2, "cherry", 326, y, [1])]);
