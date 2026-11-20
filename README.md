@@ -32,7 +32,7 @@ the shelf and in the Pool, says what each of its keywords means, as a pick's car
 
 The first game has a tutorial (`src/rules/tutorial.ts`, `src/Coach.tsx`). It is not a game of its own: a card beside the jar
 says one thing at a time about the run being played (the shelf, the order, dropping, scoring, the rent, the pick, the pool, the
-shop), frames what it is about, and moves on when the player has done it (a lesson that only tells them something goes at their next tap or key). A lesson waits for its moment,
+shop), frames what it is about, and moves on when the player has done it (a lesson that only tells them something, the rent or the pool, has a "Got it"). A lesson waits for its moment,
 so the card is away in between. "No tips" ends it, and the settings' Tips row turns it off or starts it again.
 
 `npx tse package . --engine web` builds the game as a web page in `dist/jam-jar-web`, and `.github/workflows/pages.yml`
@@ -83,7 +83,7 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Heavy | Shoulders lighter fruit aside. |
 | Double / Sour | Fruit touching it score x2 / can't Merge. |
 | Dense | Counts as this many fruit when touched. |
-| Deep | Up to this much more the deeper it sits. |
+| Deep | Up to this many extra points low in the jar. |
 | Copy | Becomes the first fruit it lands on. |
 | Bouncy | Bounces, shoving its neighbours. |
 | Crack | Breaks open after this many turns. |

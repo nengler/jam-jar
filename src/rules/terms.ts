@@ -72,7 +72,7 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   double: { name: "Double", text: "Fruit touching it score x2." },
   sour: { name: "Sour", text: "Fruit touching it can't Merge." },
   dense: { name: "Dense", text: "Counts as this many fruit when touched." },
-  deep: { name: "Deep", text: "Up to this much more the deeper it sits." },
+  deep: { name: "Deep", text: "Up to this many extra points low in the jar." },
   copy: { name: "Copy", text: "Becomes the first fruit it lands on." },
   bouncy: { name: "Bouncy", text: "Bounces, shoving its neighbours." },
   crack: { name: "Crack", text: "Breaks open after this many turns." },
