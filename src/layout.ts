@@ -179,3 +179,44 @@ export function earnerKind(label: string): FruitKind | null {
 export function kindAt(rows: readonly PoolRow[], at: number): FruitKind | null {
   return rows[at]?.kind ?? null;
 }
+
+/**
+ * A run's opening, in seconds from its start: the boards pop in from the sides, the shelf comes down, the jar falls into its
+ * place and bounces, and then the first hand rolls onto the shelf. It is only drawn: the run can be played from its first step.
+ */
+export const INTRO = { left: 0, right: 0.1, shelf: 0.2, jar: 0.3, fall: 0.6, hand: 0.95, end: 1.7, pop: 0.35 } as const;
+
+/** 0 to 1 over `seconds` from `at`, overshooting a little before it settles: how a board pops into place. */
+export function popIn(time: number, at: number, seconds: number): number {
+  const t = Math.max(0, Math.min(1, (time - at) / seconds));
+  const back = 1.70158;
+  return 1 + (back + 1) * (t - 1) ** 3 + back * (t - 1) ** 2;
+}
+
+/** How far above its place the jar is, in pixels, `time` into its fall from `from` above: it lands and bounces twice, less each time. */
+export function jarDrop(time: number, from: number): number {
+  const t = Math.max(0, Math.min(1, time / INTRO.fall));
+  // The classic bounce: three arcs, each lower.
+  const n = 7.5625;
+  const d = 2.75;
+  const eased = t < 1 / d ? n * t * t : t < 2 / d ? n * (t - 1.5 / d) ** 2 + 0.75 : t < 2.5 / d ? n * (t - 2.25 / d) ** 2 + 0.9375 : n * (t - 2.625 / d) ** 2 + 0.984375;
+  return from * (1 - eased);
+}
+
+/** Seconds a fruit takes to roll along the shelf to its place, and how long after the one before it each sets off. */
+const ROLL_TIME = 0.45;
+const ROLL_GAP = 0.07;
+
+/**
+ * How far right of its place a fruit of a newly dealt hand still is, `time` after the deal: each rolls in from `from` pixels to the
+ * right, the leftmost first, slowing as it arrives. 0 once it is there.
+ */
+export function rollIn(time: number, at: number, from: number): number {
+  const t = Math.max(0, Math.min(1, (time - at * ROLL_GAP) / ROLL_TIME));
+  return from * (1 - t) ** 3;
+}
+
+/** Whether a fruit of a newly dealt hand has set off along the shelf yet: it is not drawn before, so none waits in view. */
+export function rollStarted(time: number, at: number): boolean {
+  return time >= at * ROLL_GAP;
+}

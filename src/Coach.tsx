@@ -6,11 +6,12 @@ import type { Lesson } from "./rules/tutorial.ts";
 import { CARD_SLICE, DIM, GOLD, LIGHT, PLAQUE, SELECT } from "./theme.ts";
 
 /**
- * The tutorial's card, in the first game: one lesson on a dark slate, its title in gold. It does not count the lessons: it is a helper that speaks up when there is something to say, not a course. "Got it" goes on to
- * the next lesson without doing what this one says; "No tips" ends the tutorial (a `wide` card has room for "Got it" only). It is
- * `width` wide. `wide` lays it out along the foot of the screen, the words beside the buttons, for where there is no room for a tall card.
+ * The tutorial's card, in the first game: one lesson on a dark slate, its title in gold. It does not count the lessons, and it
+ * has no button to go on with: it is a helper that speaks up when there is something to say and goes when the player has
+ * done it. "No tips" ends the tutorial. It is `width` wide. `wide` lays it out along the foot of the screen, the words beside
+ * the button, for where there is no room for a tall card.
  */
-export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { lesson: Lesson; keys: boolean; width: number; wide?: boolean; onNext: () => void; onSkip: () => void }) {
+export function Coach({ lesson, keys, width, wide = false, onSkip }: { lesson: Lesson; keys: boolean; width: number; wide?: boolean; onSkip: () => void }) {
   return (
     <Flex width={width} direction="column" alignItems="stretch">
       <Panel image={PLAQUE} gap={2}>
@@ -24,9 +25,9 @@ export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { l
               {keys ? lesson.keysText : lesson.text}
             </Text>
           </Flex>
-          <Flex direction="row" alignItems="center" justifyContent="space-between" gap={6} paddingTop={wide ? 0 : 6}>
-            <TapButton label="Got it" onPress={onNext} />
-            {!wide && <TapButton label="No tips" onPress={onSkip} />}
+          {/* The one button ends the tutorial. There is none to go on with: a lesson goes when the player does what it says. */}
+          <Flex direction="row" justifyContent="end" paddingTop={wide ? 0 : 6}>
+            <TapButton label="No tips" onPress={onSkip} />
           </Flex>
         </Flex>
       </Panel>
