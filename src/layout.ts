@@ -113,7 +113,7 @@ export function leaned<T extends { x: number; y: number }>(things: readonly T[],
 }
 
 /** How many letters a heading's ripple passes a second, and the longest it waits before the next one starts, in seconds. */
-const RIPPLE_SPEED = 4;
+const RIPPLE_SPEED = 2.2;
 const RIPPLE_WAIT = 2.5;
 
 /** A number from 0 up to 1 that looks random, the same each time for the same `n`: which ripple of a heading waits how long. */
@@ -131,8 +131,12 @@ export interface RippleLetter {
   scaleY: number;
 }
 
-/** How high a letter hops, in pixels. */
+/** How high a letter hops, in pixels; how much taller it is stretched in the air and shorter it is squashed as it lands (of its
+ * height); and how far under the line it sinks as it lands, in pixels. */
 const HOP = 4;
+const STRETCH = 0.1;
+const LAND_SQUASH = 0.28;
+const LAND_SINK = 2;
 
 /**
  * A heading's letters as they are drawn now: a ripple runs slowly through the heading, one letter hopping as it passes, then
@@ -149,10 +153,13 @@ export function ripple(text: string, time: number, seed: number): RippleLetter[]
   const front = since < 0 ? -1 : Math.floor(since * RIPPLE_SPEED);
   // How far through its hop the letter at the front is, 0 to 1: the squat, the jump, the landing.
   const p = since < 0 ? 0 : since * RIPPLE_SPEED - front;
+  // A fifth of the hop is the squat, three fifths the jump, and the last fifth the landing: the letter is stretched a little in
+  // the air and squashed harder as it lands, sinking a couple of pixels under the line before it comes back up.
   const air = Math.max(0, Math.min(1, (p - 0.2) / 0.6));
-  const tall = p < 0.2 ? 1 - 0.18 * Math.sin((Math.PI * p) / 0.2) : p > 0.8 ? 1 - 0.14 * Math.sin((Math.PI * (p - 0.8)) / 0.2) : 1 + 0.2 * Math.sin(Math.PI * air);
+  const land = p > 0.8 ? Math.sin((Math.PI * (p - 0.8)) / 0.2) : 0;
+  const tall = p < 0.2 ? 1 - 0.14 * Math.sin((Math.PI * p) / 0.2) : p > 0.8 ? 1 - LAND_SQUASH * land : 1 + STRETCH * Math.sin(Math.PI * air);
   return letters.map((letter, at) =>
-    at === front ? { at, letter, lift: HOP * Math.sin(Math.PI * air), scaleX: 1 - (tall - 1) * 0.7, scaleY: tall } : { at, letter, lift: 0, scaleX: 1, scaleY: 1 }
+    at === front ? { at, letter, lift: HOP * Math.sin(Math.PI * air) - LAND_SINK * land, scaleX: 1 - (tall - 1) * 0.7, scaleY: tall } : { at, letter, lift: 0, scaleX: 1, scaleY: 1 }
   );
 }
 
@@ -176,11 +183,6 @@ export function shelfX(at: number, left: number, slot: number, count: number, dr
   return dragged ? Math.max(left + slot / 2, Math.min(left + count * slot - slot / 2, pointerX)) : home;
 }
 
-/** The pick's prompt, the same way: before a card is chosen, and once one is. */
-export function pickNote(keys: boolean, chosen: boolean): string {
-  if (keys) return chosen ? "Enter takes it" : "Left / Right chooses a card";
-  return chosen ? "Tap it again to take it" : "Tap a card to see what it does";
-}
 
 /** A number counting up to `total` over `seconds`, fast at first and slowing as it arrives: what the end board's total shows at `time`. */
 export function countUp(total: number, time: number, seconds: number): number {
@@ -238,4 +240,71 @@ export function rollIn(time: number, at: number, from: number): number {
 /** Whether a fruit of a newly dealt hand has set off along the shelf yet: it is not drawn before, so none waits in view. */
 export function rollStarted(time: number, at: number): boolean {
   return time >= at * ROLL_GAP;
+}
+
+/** A piece of a blast drawn for a moment: a spark thrown out of it, or a dot of the ring that runs out from it. */
+export interface BlastBit {
+  id: string;
+  x: number;
+  y: number;
+  size: number;
+  /** Which of the blast's colours: 0 the lightest (the ring, and the hottest sparks), up to 3. */
+  shade: number;
+}
+
+const SPARKS = 14;
+const RING_DOTS = 20;
+/** Seconds the ring takes to run out to its full size, in pixels, and how hard the sparks fall (px/s²). */
+const RING_TIME = 0.28;
+const RING_SIZE = 84;
+const SPARK_FALL = 520;
+
+/**
+ * What a blast throws out, `age` seconds into it, besides its own picture: sparks flying off every way, slowing and falling
+ * and going out one by one, and a ring of dots running out from the middle. Each spark's way and speed come from the blast's
+ * `id`, so the same blast always looks the same (a replay, a test).
+ */
+export function blastBits(blasts: readonly { id: number; x: number; y: number; age: number }[], life: number): BlastBit[] {
+  const bits: BlastBit[] = [];
+  for (const b of blasts) {
+    for (let i = 0; i < SPARKS; i++) {
+      const lasts = life * (0.55 + 0.45 * chance(b.id * 31 + i));
+      if (b.age >= lasts) continue;
+      const angle = (i / SPARKS) * Math.PI * 2 + chance(b.id * 17 + i) * 0.6;
+      const speed = 150 + 190 * chance(b.id * 7 + i * 3);
+      // Thrown hard and slowing: most of the way is covered early.
+      const t = b.age;
+      const far = speed * t * (1 - (0.45 * t) / life);
+      bits.push({
+        id: `${b.id}s${i}`,
+        x: Math.round(b.x + Math.cos(angle) * far),
+        y: Math.round(b.y + Math.sin(angle) * far + (SPARK_FALL * t * t) / 2),
+        size: t < lasts * 0.35 ? 6 : t < lasts * 0.7 ? 4 : 2,
+        shade: Math.min(3, Math.floor((t / lasts) * 3) + (i % 2)),
+      });
+    }
+    if (b.age < RING_TIME) {
+      const out = b.age / RING_TIME;
+      const radius = 12 + RING_SIZE * (1 - (1 - out) * (1 - out));
+      for (let i = 0; i < RING_DOTS; i++) {
+        const angle = (i / RING_DOTS) * Math.PI * 2;
+        bits.push({ id: `${b.id}r${i}`, x: Math.round(b.x + Math.cos(angle) * radius), y: Math.round(b.y + Math.sin(angle) * radius), size: out < 0.6 ? 4 : 2, shade: 0 });
+      }
+    }
+  }
+  return bits;
+}
+
+/** Seconds a blast lights the whole jar for, and jolts it. */
+const FLASH_TIME = 0.1;
+const JOLT_TIME = 0.22;
+
+/** How bright the jar is lit by its blasts now, 0 to 1: a flash at the instant of each. */
+export function blastFlash(blasts: readonly { age: number }[]): number {
+  return blasts.reduce((most, b) => Math.max(most, 1 - b.age / FLASH_TIME), 0);
+}
+
+/** How far the jar is knocked out of its place by its blasts now, in pixels: a jolt that rattles and dies away. */
+export function blastJolt(blasts: readonly { age: number }[]): number {
+  return blasts.reduce((sum, b) => sum + (b.age < JOLT_TIME ? 3 * (1 - b.age / JOLT_TIME) * Math.cos(b.age * 90) : 0), 0);
 }
