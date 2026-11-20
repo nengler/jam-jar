@@ -325,6 +325,13 @@ test("the hand is reordered by dragging: a fruit follows the pointer along the s
   assert.equal(play.s.run.cursor, 1);
   assert.equal(play.s.tip, true, "its tooltip shows");
   assert.deepEqual(play.s.run.hand, ["grape", "orange", "apple", "cherry"]);
+  // A second tap on the same fruit puts the tooltip away again; a tap on another shows that one's.
+  step("mouse@296,30+MouseLeft, mouse@296,30, mouse@296,30");
+  assert.equal(play.s.tip, false, "tapped again: deselected");
+  step("mouse@296,30+MouseLeft, mouse@296,30, mouse@296,30");
+  assert.equal(play.s.tip, true);
+  step("mouse@344,30+MouseLeft, mouse@344,30, mouse@344,30");
+  assert.deepEqual([play.s.tip, play.s.run.cursor], [true, 2], "another fruit: its tooltip, not none");
   // A tap anywhere else puts the tooltip away, and moves nothing.
   step("mouse@100,300+MouseLeft, mouse@100,300, mouse@100,300");
   assert.equal(play.s.tip, false);

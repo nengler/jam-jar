@@ -316,7 +316,8 @@ export interface Run {
   sounds: Sound[];
 }
 
-export type Sound = "land" | "merge" | "boom" | "pick" | "rent" | "lose" | "tick";
+/** "tick" is the cursor going somewhere or a fruit picked up or put down; "move" a held fruit changing its place on the shelf. */
+export type Sound = "land" | "merge" | "boom" | "pick" | "rent" | "lose" | "tick" | "move";
 
 declare global {
   /** What each ball and collider tag carries, so a fruit's `contacts("fruit")` has typed `data` (the engine's `ColliderData`). */
@@ -755,8 +756,8 @@ function order(run: Run, keys: Keys): void {
     if (run.holding) {
       const held = run.hand.splice(run.cursor, 1)[0] as FruitKind;
       run.hand.splice(to, 0, held);
-    }
-    sound(run, "tick");
+      sound(run, "move");
+    } else sound(run, "tick");
     run.cursor = to;
   }
   if (keys.confirm && !blind) {

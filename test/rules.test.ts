@@ -1155,3 +1155,15 @@ test("a blast's sparks and ring: the same every time for the same blast, flying 
   assert.ok(blastFlash([{ age: 0 }]) === 1 && blastFlash([{ age: 0.2 }]) === 0, "the jar is lit for an instant");
   assert.ok(Math.abs(blastJolt([{ age: 0 }])) > 2 && blastJolt([{ age: 0.3 }]) === 0, "and jolted, briefly");
 });
+
+test("the shelf's sounds: the cursor ticks, and a held fruit changing place is a move, which the screen plays more softly", () => {
+  let run = newRun(7);
+  run.hand = ["cherry", "grape", "orange", "apple"];
+  run = press(run, { right: true });
+  assert.deepEqual(run.sounds, ["tick"], "the cursor went to the next fruit");
+  run = press(run, { confirm: true });
+  assert.deepEqual(run.sounds, ["tick"], "picked up");
+  run = press(run, { right: true });
+  assert.deepEqual(run.sounds, ["move"], "carried past a neighbour");
+  assert.deepEqual(run.hand, ["cherry", "orange", "grape", "apple"]);
+});

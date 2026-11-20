@@ -64,6 +64,8 @@ const POOL_TIGHT = { columns: 4, cell: 40 };
 const POOL_ROW = 32;
 /** The note of what just happened: a slate at the right, its foot this far above the foot of the screen (just above the counter). */
 const NOTE_FOOT = 36;
+/** Seconds between the ticks of a fruit dragged along the shelf, at the least. */
+const MOVE_QUIET = 0.12;
 /** Where across the screen a newly dealt fruit starts its roll along the shelf: at the shelf's right end. */
 const ROLL_FROM = 432;
 /** Where the card of a fruit on the shelf stands: in the top left corner, over the rent board for as long as it is up, so it
@@ -104,7 +106,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -200,7 +202,15 @@ export function Play() {
     if (heard.includes("pick")) playPick();
     if (heard.includes("rent")) playRent();
     if (heard.includes("lose")) playLose();
-    if (heard.includes("tick")) playTick(0.6);
+    // The shelf is quiet under a finger or the mouse: looking at a fruit or picking it up says nothing there (the fruit is in the
+    // player's hand, which is feedback enough), and a fruit dragged past its neighbours ticks softly, and not in a rattle. At a
+    // keyboard, and for a card chosen in the pick or the shop, the cursor still ticks.
+    if (s.moveQuiet > 0) s.moveQuiet -= dt;
+    if (heard.includes("tick") && (keys || phase !== "order")) playTick(0.5);
+    if (heard.includes("move") && s.moveQuiet <= 0) {
+      playTick(keys ? 0.5 : 0.3);
+      s.moveQuiet = MOVE_QUIET;
+    }
   });
 
   // The mouse: over a card (a pick's offer, or a place in the shop) the cursor goes to it, and a click is Enter on it.
@@ -228,6 +238,8 @@ export function Play() {
     return shelfSlot(x, (JAR.left + JAR.right) / 2 - (count * SLOT) / 2, SLOT, count);
   };
   const dragStart = (x: number) => {
+    // A tap on the fruit that is already showing what it does puts that away again (see `dragEnd`).
+    s.wasShown = s.tip && shelfAt(x) === s.run.cursor;
     s.point = shelfAt(x);
     s.click = true;
     s.tip = true;
@@ -246,6 +258,7 @@ export function Play() {
   const dragEnd = () => {
     // Let go: the fruit is put down where it is. One that was not moved was only tapped, and now shows what it does.
     if (s.drag) s.click = true;
+    if (s.drag && !s.dragMoved && s.wasShown) s.tip = false;
     s.drag = false;
   };
   // The buttons on screen, for playing with no keyboard: what Space, Esc and (on the end board) Enter do.

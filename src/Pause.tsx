@@ -1,8 +1,8 @@
-import { Button, Entity, Flex, Menu, Text, useInputDevice } from "@tsengine/runtime/jsx";
+import { Button, Entity, Flex, Menu, Text, useInputDevice, useSound } from "@tsengine/runtime/jsx";
 
 import { KeyHint } from "./KeyHint.tsx";
 import { useGame } from "./GameState.ts";
-import { BUTTON, BUTTON_GREY, BUTTON_SLICE, DISPLAY, DISPLAY_SIZE, INK, PANEL, PANEL_SLICE, SHADE } from "./theme.ts";
+import { CLICK_VOLUME, BUTTON, BUTTON_GREY, BUTTON_SLICE, DISPLAY, DISPLAY_SIZE, INK, PANEL, PANEL_SLICE, SHADE } from "./theme.ts";
 
 /**
  * The pause menu, over the game, set a little above the middle so the keys under it stay clear of the foot of the screen. It is `modal`: while it is open only it hears the keys, so Escape here closes the menu
@@ -13,6 +13,7 @@ export function Pause() {
   const device = useInputDevice();
   const keys = device === "keyboard";
   const { resume, toTitle } = useGame.actions();
+  const playClick = useSound("click.wav");
   return (
     <Entity>
       <Flex modal width={640} height={360} paddingBottom={56} background={SHADE} alignItems="center" justifyContent="center">
@@ -31,10 +32,16 @@ export function Pause() {
               Paused
             </Text>
           </Flex>
-          <Button autoFocus onPress={resume} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
+          <Button autoFocus onPress={() => {
+              playClick(CLICK_VOLUME);
+              resume();
+            }} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
             <Text color={INK}>Resume</Text>
           </Button>
-          <Button onPress={toTitle} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
+          <Button onPress={() => {
+              playClick(CLICK_VOLUME);
+              toTitle();
+            }} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
             <Text color={INK}>Quit to title</Text>
           </Button>
         </Menu>

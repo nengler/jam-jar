@@ -71,6 +71,7 @@ SOUNDS = {
     "rent.wav": "digital-audio-power-up-2.wav",
     "lose.wav": "interface-sounds-error-004.wav",
     "tick.wav": "interface-sounds-tick-002.wav",
+    "click.wav": "interface-sounds-click-002.wav",
     # The music: Farm Frolics, from Music Loops.
     "theme.ogg": "music-loops-farm-frolics.ogg",
 }
