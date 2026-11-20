@@ -81,9 +81,14 @@ export const POINTS_PER_COIN = 10;
 const DROP_GAP = 0.35;
 const DROP_CALM = 0.2;
 const DROP_LIMIT = 3;
-/** The jar has settled when every fruit is slower than this (px/s) for `CALM_TIME` seconds. */
+/** A fruit slower than this (px/s) is calm: it has landed, and the next of the hand may drop. */
 const CALM_SPEED = 20;
-const CALM_TIME = 0.4;
+/**
+ * The turn is scored once the jar has settled: every fruit slower than `SETTLE_SPEED` (px/s; slow enough to look still) for
+ * `CALM_TIME` seconds. What a fruit scores depends on what it touches, so nothing should still be rolling when it is counted.
+ */
+const SETTLE_SPEED = 5;
+const CALM_TIME = 0.6;
 /** Settling gives up after this long, so a jittering pile cannot stall a turn. */
 const SETTLE_LIMIT = 8;
 const OVERFLOW_PENALTY = 5;
@@ -334,6 +339,8 @@ export interface Keys {
    * the Preserves Jar can keep. -1 for none.
    */
   point: number;
+  /** A tap or a click landed on none of those places: whatever was chosen (a pick's offer, a card in the shop) no longer is. */
+  away?: boolean;
 }
 
 export const NO_KEYS: Keys = { up: false, down: false, left: false, right: false, confirm: false, drop: false, point: -1 };
@@ -785,7 +792,7 @@ function dropStep(run: Run, dt: number): void {
 function settleStep(run: Run, dt: number): void {
   simulate(run, dt);
   run.settleTime += dt;
-  const calm = run.fruits.every((f) => f.speed < CALM_SPEED) && run.fruits.every((f) => !f.lit);
+  const calm = run.fruits.every((f) => f.speed < SETTLE_SPEED) && run.fruits.every((f) => !f.lit);
   run.calmTime = calm ? run.calmTime + dt : 0;
   if (run.calmTime < CALM_TIME && run.settleTime < SETTLE_LIMIT) return;
   resolve(run);
@@ -1219,6 +1226,8 @@ function pickStep(run: Run, keys: Keys): void {
   // A tap on a card that was not the chosen one only chooses it, so what it does can be read; a second tap takes it. With a
   // mouse the card is chosen as the pointer comes over it, so one click takes it.
   const fresh = pointed && keys.point !== run.offerCursor;
+  // A tap anywhere else puts the chosen card back: nothing is chosen, and its tooltip goes.
+  if (keys.away === true) run.offerCursor = -1;
   const to = pointed ? keys.point : move === 0 ? run.offerCursor : Math.max(0, Math.min(run.offers.length - 1, run.offerCursor + move));
   if (to !== run.offerCursor) {
     run.offerCursor = to;
@@ -1327,6 +1336,8 @@ function shopStep(run: Run, keys: Keys): void {
   // chosen one only chooses it, so it can be read before it is bought. The three actions say all they do, and act on one tap.
   const pointed = keys.point >= 0 && keys.point <= SHOP_LEAVE;
   const fresh = pointed && keys.point !== shop.cursor && keys.point <= SHOP_ITEM;
+  // As in the pick, a tap anywhere else leaves nothing chosen.
+  if (keys.away === true) shop.cursor = -1;
   let to = pointed ? keys.point : shop.cursor < 0 ? (across !== 0 || down !== 0 ? 0 : -1) : Math.max(0, Math.min(SHOP_LEAVE, shop.cursor + across));
   if (shop.cursor >= 0 && !pointed) {
     if (down > 0 && to <= SHOP_ITEM) to = SHOP_REMOVE + Math.min(2, Math.floor((to * 3) / (SHOP_ITEM + 1)));

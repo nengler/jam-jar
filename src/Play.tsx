@@ -112,7 +112,9 @@ export function Play() {
     if (looking && (input.pressed("Enter") || input.pressed("Space") || input.pressed("D"))) s.whole = false;
     else if (!looking && input.pressed("D")) s.whole = true;
     if (s.run.phase !== "order" || looking) s.drag = false;
-    // A tap on a fruit of the shelf shows what it does; a tap anywhere else puts that away.
+    // A tap on a fruit of the shelf shows what it does; a tap anywhere else puts that away. The same goes for a pick's cards
+    // and the shop's: a tap that lands on none of them leaves nothing chosen (`away`).
+    const away = input.pressed("MouseLeft") && !s.tapped;
     if (input.pressed("MouseLeft")) s.tip = s.tapped;
     s.tapped = false;
     s.run = advance(
@@ -126,6 +128,7 @@ export function Play() {
         confirm: !looking && (input.pressed("Enter") || s.click),
         drop: !looking && (input.pressed("Space") || s.drop),
         point: looking ? -1 : s.point,
+        away: !looking && away,
       },
       s.reports
     );
@@ -166,6 +169,7 @@ export function Play() {
   const click = (card: number) => {
     s.point = card;
     s.click = true;
+    s.tapped = true;
   };
   // Dragging a fruit along the shelf (the box over the shelf hears it). A press on a fruit picks it up; while the button or finger
   // stays down it goes where the pointer goes, the others making room; letting go puts it down. A press and release in one place
