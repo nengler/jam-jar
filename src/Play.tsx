@@ -11,6 +11,7 @@ import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { TapButton } from "./KeyHint.tsx";
 import { atRest, crossed, LANDS, rolledIn, sweep, SWEEP_TIME, blastBits, blastFlash, blastJolt, cycleTitle, INTRO, jarDrop, kindAt, popIn, rollIn, rollStarted, grownOf, leaned, moment, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
+import { RentScore } from "./RentScore.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/tutorial.ts";
 import { learn } from "./settings.ts";
@@ -21,9 +22,6 @@ import { advance, newRun, BOOM_LIFE, bossNow, dramatic, lean, shownScore, preser
 import {
   BAD,
   BAR_FILL,
-  BAR_GOLD,
-  BAR_PAID,
-  BAR_WELL,
   BODY_SIZE,
   cardFor,
   CARD_SLICE,
@@ -373,7 +371,6 @@ export function Play() {
   const popups = leaned(run.popups.filter((p) => p.delay <= 0), lean(run), JAR.right, JAR.floor);
   const links = run.links.filter((l) => l.delay <= 0);
   const paid = scored >= rent;
-  const filled = Math.max(0, Math.min(1, scored / rent));
   const ordering = run.phase === "order";
   const picking = run.phase === "pick";
   /** Whether this moment's keys are shown: to a player at a keyboard, and only until they have been through it once. */
@@ -504,15 +501,7 @@ export function Play() {
           coins. Nothing else is on this side: how to move a fruit and drop the hand is said on the fruit's card under the shelf. */}
       <Flex left={HUD_X - 240 * (1 - popIn(s.intro, INTRO.left, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch" gap={12}>
         <Panel title={cycleTitle(run)}>
-          <Flex height={50} direction="row" justifyContent="center" alignItems="center">
-            <Text font={DISPLAY} size={DISPLAY_SIZE * 2} color={paid ? GOOD : INK}>{`${scored}`}</Text>
-          </Flex>
-          <Flex direction="row" justifyContent="center">
-            <Text color={paid ? GOOD : INK_SOFT}>{paid ? `Rent ${rent} made` : `of ${rent} rent`}</Text>
-          </Flex>
-          <Flex height={10} background={BAR_WELL}>
-            {filled > 0 && <Flex left={2} top={2} bottom={2} width={Math.round(((BOARD_W - 36) * filled) / 2) * 2} background={paid ? BAR_PAID : BAR_GOLD} />}
-          </Flex>
+          <RentScore key={run.cycle} scored={scored} rent={rent} width={BOARD_W - 36} />
           <Flex direction="row" justifyContent="space-between" paddingTop={6}>
             <Text color={turn >= TURNS_PER_CYCLE && !paid ? BAD : INK_SOFT}>{turn >= TURNS_PER_CYCLE ? "Last turn" : "Turn"}</Text>
             <Text color={turn >= TURNS_PER_CYCLE && !paid ? BAD : INK_SOFT}>{turn >= TURNS_PER_CYCLE ? `${turn}/${TURNS_PER_CYCLE}` : `${turn} of ${TURNS_PER_CYCLE}`}</Text>
