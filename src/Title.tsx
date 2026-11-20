@@ -1,15 +1,20 @@
-import { Button, Entity, Flex, Menu, Text, useInputDevice } from "@tsengine/runtime/jsx";
+import { Button, Entity, Flex, Menu, Text, useInputDevice, useTime } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
 import { DemoJar } from "./DemoJar.tsx";
 import { save, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
+import { ENTER, entered, INTRO, jarDrop } from "./layout.ts";
 import { BUTTON, BUTTON_GREY, BUTTON_SLICE, DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT_SOFT } from "./theme.ts";
 
 /** The title's two halves: the name and the menu are centred in the left `MENU_W` pixels, and the jar stands this far right of
  * where the play screen's does, in the middle of what is left. */
 const MENU_W = 352;
 const JAR_SHIFT = 176;
+
+/** The room the name takes in the column, and when the line under it and the menu start to come in, in seconds. */
+const NAME_H = 84;
+const MENU_AT = 0.7;
 
 /** The title: the name on the kitchen wall and the menu on the left, and on the right a jar filling up as it does in play. */
 export function Title({ name }: { name: string }) {
@@ -19,16 +24,26 @@ export function Title({ name }: { name: string }) {
   const keys = device === "keyboard";
   const hasSave = useGame((g) => g.hasSave);
   const { start, openSettings } = useGame.actions();
+  // The title comes in as a run does: the name drops onto the wall and bounces, the jar falls into place, and the line under
+  // the name and the buttons pop in one after another.
+  const time = useTime();
   return (
     <Entity>
       <Backdrop />
-      <DemoJar x={JAR_SHIFT} />
+      <DemoJar x={JAR_SHIFT} lift={time < ENTER.jar ? 400 : jarDrop(time - ENTER.jar, 400)} wait={ENTER.jar + INTRO.fall} />
       <Flex direction="column" width={MENU_W} height={324} alignItems="center" justifyContent="center" gap={hasSave ? 6 : 12}>
-        <Text font={DISPLAY} size={DISPLAY_SIZE * 3} color={GOLD} shadow={INK} shadowX={4} shadowY={4}>
-          {name}
-        </Text>
-        <Text color={LIGHT_SOFT}>Fill the jar. Make the rent.</Text>
-        <Menu gap={8} alignItems="stretch" width={208} paddingTop={8} paddingBottom={8}>
+        {/* The name keeps its room in the column while it falls into it. */}
+        <Flex height={NAME_H} direction="row" justifyContent="center">
+          <Entity y={-jarDrop(time, 160)}>
+            <Text font={DISPLAY} size={DISPLAY_SIZE * 3} color={GOLD} shadow={INK} shadowX={4} shadowY={4}>
+              {name}
+            </Text>
+          </Entity>
+        </Flex>
+        <Flex opacity={entered(time, 0, MENU_AT)}>
+          <Text color={LIGHT_SOFT}>Fill the jar. Make the rent.</Text>
+        </Flex>
+        <Menu gap={8} alignItems="stretch" width={208} paddingTop={8} paddingBottom={8} opacity={entered(time, 1, MENU_AT)}>
           {hasSave && (
             <Button autoFocus onPress={() => save.load()} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
               <Text color={INK}>Continue</Text>
