@@ -82,7 +82,7 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   legendary: { name: "Legendary", text: "Rare, and never in the shop." },
   crush: { name: "Crush", text: "Destroys a fruit for its points +3." },
   shake: { name: "Shake", text: "Throws every fruit about." },
-  preserve: { name: "Preserve", text: "Keeps this many fruit past the rent." },
+  preserve: { name: "Preserve", text: "Keeps this many fruit for the next cycle." },
   frozen: { name: "Frozen", text: "Held in place. Explosions can't destroy it." },
   pickled: { name: "Pickled", text: "Never ages, never Rotten." },
   once: { name: "Once", text: "Used up the first time it works." },

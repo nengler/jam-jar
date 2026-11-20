@@ -18,7 +18,8 @@ import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { advance, newRun, BOOM_LIFE, CLEAR_TIME, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { ITEMS, keepingJar } from "./rules/items.ts";
+import { advance, newRun, BOOM_LIFE, CLEAR_TIME, keeps, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   BAD,
   BAR_FILL,
@@ -499,12 +500,6 @@ export function Play() {
 
       {/* While ordering, a tap or a click on the jar drops the hand into it. */}
       {ordering && <Flex x={JAR.left} y={RIM} width={jarWidth} height={JAR.floor - RIM} focusable={false} onPress={() => tapDrop()} />}
-      {/* The Preserves Jar's way on, where the hand was: the shelf is empty then. */}
-      {preserving && (
-        <Flex left={0} right={0} top={6} direction="row" justifyContent="center">
-          <TapButton label="Done" keyName={hints ? "Space" : ""} onPress={tapDrop} />
-        </Flex>
-      )}
 
       {/* Left: a column pinned to the screen's left edge. The rent board is as tall as what is on it: this cycle's score, big, and
           under it the rent it is counted against ("64 of 120 rent"); a bar of how much of the rent that is; the turn; and the
@@ -565,7 +560,24 @@ export function Play() {
         </Flex>
       )}
       {/* What just happened, on a slate pinned to the right edge, its foot just above the counter: as tall as its words. */}
-      {noted && (
+      {/* The Preserves Jar, after the shop: what it is doing, how many are kept of how many it holds, and the way on. It stands
+          where the notes do, in place of one. */}
+      {preserving && (
+        <Flex right={HUD_X} bottom={NOTE_FOOT} width={BOARD_W} direction="column" alignItems="stretch">
+          <Panel heading={ITEMS[keepingJar(run.items) ?? "preserves"].name} gap={4}>
+            <Text width={BOARD_W - 32} maxWidth={BOARD_W - 32} align="center" color={INK_SOFT}>
+              {`Tap fruit in the jar to keep them next cycle.`}
+            </Text>
+            <Flex direction="row" justifyContent="center">
+              <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`Kept ${run.kept.length} of ${keeps(run)}`}</Text>
+            </Flex>
+            <Flex direction="row" justifyContent="center" paddingTop={4}>
+              <TapButton label={run.kept.length === 0 ? "Keep none" : "Keep these"} onPress={tapDrop} />
+            </Flex>
+          </Panel>
+        </Flex>
+      )}
+      {noted && !preserving && (
         <Flex right={HUD_X} bottom={NOTE_FOOT} width={BOARD_W} direction="column" alignItems="stretch">
           <Panel image={PLAQUE}>
             <Text width={BOARD_W - 32} maxWidth={BOARD_W - 32} color={LIGHT}>
@@ -635,7 +647,7 @@ export function Play() {
                   <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`Total ${run.total}`}</Text>
                 </Flex>
                 <Flex direction="row" justifyContent="center" paddingTop={6}>
-                  <TapButton keyName={keys ? "Enter" : ""} label={run.cycle >= RENT.length ? "Go on" : "Shop"} onPress={tapEnd} />
+                  <TapButton label={run.cycle >= RENT.length ? "Go on" : "Shop"} onPress={tapEnd} />
                 </Flex>
               </Panel>
             </Flex>
