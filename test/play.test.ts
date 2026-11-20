@@ -561,3 +561,27 @@ test("things arriving make a sound: the title's name and jar land and its button
   assert.equal(count("tock.wav"), 4, "and each of the four fruit knocks as it rolls to its place");
   game.close();
 });
+
+test("a phone held upright is asked to turn, and the run waits under the card until it does", () => {
+  const game = startRun().input("Space, _*20");
+  assert.equal(runOf(game).phase, "drop", "a hand is dropping");
+  const upright = { width: 390, height: 844 };
+  // The recording backend reports a frame's window as that frame ends, so the step after it is the first to see it.
+  game.backend.queueInput(upright);
+  game.player.step();
+  game.backend.queueInput(upright);
+  game.player.step();
+  assert.notEqual(findComponent("Rotate", game.player.world.root), null, "the card is up");
+  const before = JSON.stringify(runOf(game));
+  for (let i = 0; i < 30; i++) {
+    game.backend.queueInput(upright);
+    game.player.step();
+  }
+  assert.equal(JSON.stringify(runOf(game)), before, "nothing moved while it was upright");
+  // Turned back: the card goes (the next frames are the window the game opened, which is wide) and the hand plays on.
+  game.input("_*2");
+  assert.equal(findComponent("Rotate", game.player.world.root), null, "the card is gone");
+  game.input("_*10");
+  assert.notEqual(JSON.stringify(runOf(game)), before, "the hand plays on");
+  game.close();
+});
