@@ -247,7 +247,7 @@ export function Play() {
   /** A fruit is being dragged along the shelf: it is drawn under the pointer, not in its place. */
   const dragging = s.drag && ordering && run.holding;
   // Resolve has already counted the next turn; the pips wait for the tally to finish before showing it.
-  const turn = Math.min(run.turn - (run.phase === "tally" && run.afterTally === "pick" ? 1 : 0), TURNS_PER_CYCLE);
+  const turn = Math.min(run.turn - (run.phase === "tally" && run.afterTally !== "rent" && run.afterTally !== "over" ? 1 : 0), TURNS_PER_CYCLE);
   // The board shows what is still to be dealt this shuffle: the hand is on the shelf, and the rest has been played.
   const pool = poolRows(run.draw);
   /** The whole pool by kind, for the board that shows all of it. */

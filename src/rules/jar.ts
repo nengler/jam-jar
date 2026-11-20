@@ -31,6 +31,11 @@ export const RIM = 104;
 export const DROP_Y = 72;
 export const HAND_SIZE = 4;
 export const TURNS_PER_CYCLE = 5;
+/**
+ * A new fruit is offered after every `PICK_EVERY`th turn of a cycle (after turns 2 and 4), not after each one: a cycle deals 20
+ * fruit, and a pool that grew by four a cycle soon held more than that, so fruit the player had chosen never came up.
+ */
+export const PICK_EVERY = 2;
 /** The boss jar's peg: a round post in the middle of the jar that splits the pile, on every third cycle. */
 export const PEG = { x: 320, y: 236, r: 22 };
 export const BOSS_EVERY = 3;
@@ -1206,7 +1211,9 @@ export function resolve(run: Run): void {
     return;
   }
   run.turn += 1;
-  offer(run);
+  // The turn just played was `run.turn - 1`: a pick follows every second one, and otherwise the next hand is dealt.
+  if ((run.turn - 1) % PICK_EVERY === 0) offer(run);
+  else startTurn(run);
 }
 
 function offer(run: Run): void {

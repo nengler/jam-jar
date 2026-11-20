@@ -154,6 +154,7 @@ test("a dropped fruit lands when it reports touching the floor, and a Fresh frui
 
 test("the jar settles once every fruit reports being slow", () => {
   let run = jarWith([fruit(1, "cherry", 150, JAR.floor - 5)]);
+  run.turn = 2;
   run.fruits[0]!.speed = 50;
   for (let i = 0; i < 60; i++) run = press(run, {});
   assert.equal(run.phase, "settle", "still moving");
@@ -234,7 +235,7 @@ test("a Banana scores more each turn and rots after 3", () => {
   const scores: number[] = [];
   for (let t = 0; t < 4; t++) {
     const before = run.cycleScore;
-    run.turn = 1;
+    run.turn = 2;
     resolve(run);
     scores.push(run.cycleScore - before);
   }
@@ -481,11 +482,11 @@ test("a Peach bounces when it lands and shoves what it landed on aside", () => {
 test("a Honeydew scores its honey each turn and honeys one fruit it touches each turn, which then scores it as well", () => {
   const y = JAR.floor - 22;
   const run = jarWith([fruit(1, "honeydew", 300, y, [2, 3]), fruit(2, "orange", 344, y, [1]), fruit(3, "orange", 256, y, [1])]);
-  run.turn = 1;
+  run.turn = 2;
   resolve(run);
   assert.equal(run.cycleScore, HONEY);
   assert.equal(run.fruits.filter((f) => f.honeyed).length, 2);
-  run.turn = 1;
+  run.turn = 2;
   run.phase = "settle";
   resolve(run);
   assert.equal(run.cycleScore, HONEY + 2 * HONEY);
@@ -495,7 +496,7 @@ test("a Honeydew scores its honey each turn and honeys one fruit it touches each
 test("the Juicer crushes what stands on the floor at Resolve, for its points and a bonus", () => {
   const run = jarWith([fruit(1, "orange", 300, JAR.floor - 22, [2]), fruit(2, "grape", 310, JAR.floor - 70, [1])]);
   run.items = ["juicer"];
-  run.turn = 1;
+  run.turn = 2;
   resolve(run);
   assert.deepEqual(run.fruits.map((f) => f.kind), ["grape"]);
   assert.equal(run.cycleScore, FRUITS.orange.points + JUICER_BONUS);
@@ -578,12 +579,12 @@ test("the Blind jar: the hand cannot be chosen from or reordered, only dropped",
 test("a Pitaya eats a Cherry it touches each turn, and every Pitaya scores 1 more from then on", () => {
   const y = JAR.floor - 18;
   const run = jarWith([fruit(1, "pitaya", 300, y, [2, 3]), fruit(2, "cherry", 332, y, [1]), fruit(3, "cherry", 268, y, [1])]);
-  run.turn = 1;
+  run.turn = 2;
   resolve(run);
   assert.equal(run.cycleScore, FRUITS.pitaya.points);
   assert.equal(run.fruits.filter((f) => f.kind === "cherry").length, 1, "one Cherry a turn");
   assert.equal(run.pitayaBonus, 1);
-  run.turn = 1;
+  run.turn = 2;
   run.phase = "settle";
   resolve(run);
   assert.equal(run.cycleScore, FRUITS.pitaya.points * 2 + 1);
@@ -595,7 +596,7 @@ test("a Coconut cracks at its third Resolve and is gone, leaving milk; fruit tha
   const scores: number[] = [];
   for (let turn = 0; turn < 4; turn++) {
     const before = run.cycleScore;
-    run.turn = 1;
+    run.turn = 2;
     run.phase = "settle";
     resolve(run);
     scores.push(run.cycleScore - before);
@@ -620,11 +621,11 @@ test("a Lime that is Exploded or Crushed leaves lime juice, which rises with eac
 
   run.items = ["juicer"];
   run.fruits = [fruit(3, "lime", 300, y)];
-  run.turn = 1;
+  run.turn = 2;
   resolve(run);
   assert.equal(run.juice, 3 * LIME_JUICE, "crushed by the Juicer");
   for (let i = 0; i < 20; i++) run.fruits.push(fruit(20 + i, "lime", 300, y));
-  run.turn = 1;
+  run.turn = 2;
   run.phase = "settle";
   resolve(run);
   assert.equal(run.juice, JUICE_MOST, "no deeper than the jar's liquid gets");
@@ -704,7 +705,7 @@ test("terms: cards keep to the vocabulary, every keyword is used, and a definiti
 
 test("the mouse: coming over a card chooses it, in the pick and in the shop, and a click on the chosen one is Enter on it", () => {
   let run = jarWith([]);
-  run.turn = 1;
+  run.turn = 2;
   resolve(run);
   assert.equal(run.phase, "pick");
   assert.equal(run.offerCursor, -1, "no card is chosen at first");
@@ -726,7 +727,7 @@ test("the mouse: coming over a card chooses it, in the pick and in the shop, and
 
 test("a finger: the first tap on a card chooses it, so it can be read, and a second takes or buys it", () => {
   let run = jarWith([]);
-  run.turn = 1;
+  run.turn = 2;
   resolve(run);
   const before = run.pool.length;
   run = press(run, { point: 0, confirm: true });
@@ -746,7 +747,7 @@ test("a finger: the first tap on a card chooses it, so it can be read, and a sec
 
 test("a tap that lands on no card leaves nothing chosen, in the pick and in the shop: the next tap on that card only chooses it again", () => {
   let run = jarWith([]);
-  run.turn = 1;
+  run.turn = 2;
   resolve(run);
   const before = run.pool.length;
   run = press(run, { point: 1, confirm: true });
@@ -795,6 +796,7 @@ test("readability: what sets a Chili off lights up", () => {
 test("the tally: Simmer fruit score one after another, the score on screen catching up, before the pick comes up", () => {
   let run = newRun(7);
   run.fruits = [fruit(1, "apple", 250, JAR.floor - 18), fruit(2, "apple", 300, JAR.floor - 18), fruit(3, "apple", 350, JAR.floor - 18)];
+  run.turn = 2;
   run.phase = "settle";
   run.calmTime = 10;
   run = press(run, {});
@@ -817,13 +819,14 @@ test("the tally: Simmer fruit score one after another, the score on screen catch
 test("the tally: a jar with nothing to tally goes straight on, and a long one is squeezed into about two seconds", () => {
   let run = newRun(7);
   run.fruits = [fruit(1, "cherry", 250, JAR.floor - 14)];
+  run.turn = 2;
   run.phase = "settle";
   run.calmTime = 10;
   run = press(run, {});
   assert.equal(run.phase, "pick");
 
   const many = jarWith(Array.from({ length: 30 }, (_, i) => fruit(i + 1, "apple", 230 + i * 6, JAR.floor - 18)));
-  many.turn = 1;
+  many.turn = 2;
   resolve(many);
   assert.ok(many.tallyTime > 2 && many.tallyTime < 3, `${many.tallyTime}`);
 });
@@ -850,7 +853,7 @@ test("the tally: the rent's sound waits for it to end", () => {
 test("readability: two popups in one place are stacked, not drawn on each other, and stay inside the jar", () => {
   const y = JAR.floor - 18;
   const run = jarWith([fruit(1, "apple", 300, y), fruit(2, "apple", 310, y)]);
-  run.turn = 1;
+  run.turn = 2;
   resolve(run);
   const [a, b] = run.popups as [Run["popups"][number], Run["popups"][number]];
   // The second shows a step of the tally after the first, which has risen by then: it is a line clear of where the first is then.
@@ -892,7 +895,7 @@ test("a second Blast soon after the first is a chain: it says so, and both a cha
 test("readability: a line joins a Booster to the fruit it doubled, and rot to the Prune that scores for it, at their turn in the tally", () => {
   const y = JAR.floor - 18;
   const run = jarWith([fruit(1, "apple", 300, y, [2]), fruit(2, "lemon", 334, y, [1]), fruit(3, "prune", 380, y, [4]), { ...fruit(4, "banana", 410, y, [3]), rotten: true }]);
-  run.turn = 1;
+  run.turn = 2;
   resolve(run);
   const boost = run.links.find((l) => l.kind === "boost")!;
   assert.deepEqual([boost.x1, boost.x2], [334, 300], "from the Lemon to the Apple");
@@ -942,7 +945,7 @@ test("a Legendary is offered now and then, in the last place of a pick", () => {
   for (let seed = 1; seed <= 400; seed++) {
     const run = jarWith([]);
     run.seed = seed * 7919;
-    run.turn = 1;
+    run.turn = 2;
     resolve(run);
     assert.ok(!run.offers.slice(0, 2).includes("dragonfruit"));
     if (run.offers[2] === "dragonfruit") seen += 1;
@@ -984,7 +987,7 @@ test("the Pickling Jar keeps one fruit, Pickled: it does not age, rot it had is 
   run.fruits[0]!.touching = [9];
   for (let turn = 0; turn < 3; turn++) {
     const before = run.cycleScore;
-    run.turn = 1;
+    run.turn = 2;
     run.phase = "settle";
     resolve(run);
     assert.equal(run.cycleScore - before, BANANA.base + 2 * BANANA.ripen);
@@ -1026,7 +1029,7 @@ test("the backdrop's motes are worked out from the time alone, stay on the wall,
 test("a Snow Pear freezes itself and what it touches at the end of a turn; Frozen fruit survive an explosion", () => {
   const y = JAR.floor - 18;
   const run = jarWith([fruit(1, "snowpear", 300, y, [2]), fruit(2, "cherry", 332, y, [1]), fruit(3, "cherry", 380, y)]);
-  run.turn = 1;
+  run.turn = 2;
   resolve(run);
   assert.deepEqual(
     run.fruits.map((f) => f.frozen),
@@ -1050,4 +1053,19 @@ test("the cards of the fruit with rules of their own say the rules' numbers", ()
   assert.match(FRUITS.prune.text, new RegExp(`Simmer ${FRUITS.prune.points} per`));
   assert.match(FRUITS.fruitfly.text, new RegExp(`\\+${FRUITS.fruitfly.points} and Hatch`));
   assert.match(FRUITS.pitaya.text, new RegExp(`^Simmer ${FRUITS.pitaya.points}\\.`));
+});
+
+test("a pick comes after every second turn of a cycle, and the next hand is dealt straight away after the others", () => {
+  const after = (turn: number): string => {
+    const run = jarWith([]);
+    run.turn = turn;
+    run.hand = [];
+    resolve(run);
+    return `${run.phase} ${run.turn} ${run.hand.length}`;
+  };
+  assert.equal(after(1), "order 2 4", "no pick after the first: the next hand is on the shelf");
+  assert.equal(after(2), "pick 3 0");
+  assert.equal(after(3), "order 4 4");
+  assert.equal(after(4), "pick 5 0");
+  assert.equal(after(5).split(" ")[0], "over", "and the last turn goes to the rent (unpaid, with an empty jar)");
 });
