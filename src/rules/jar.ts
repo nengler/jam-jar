@@ -96,7 +96,7 @@ const SETTLE_SPEED = 5;
 const CALM_TIME = 0.6;
 /** Settling gives up after this long, so a jittering pile cannot stall a turn. */
 export const SETTLE_LIMIT = 8;
-const OVERFLOW_PENALTY = 5;
+export const OVERFLOW_PENALTY = 5;
 /** How many Resolves a Coconut sits through before it cracks. */
 const COCONUT_TURNS = 3;
 /** Juice: how deep the liquid a Lime or a Coconut leaves is, in pixels, and the deepest the jar's liquid gets. */
@@ -136,10 +136,7 @@ export function keeps(run: Run): number {
   return jar === undefined ? 0 : (ITEMS[jar].keeps ?? 0);
 }
 
-/**
- * What the shop charges, in coins: a fruit; and, to begin with, taking a fruit out of the pool and a new shelf. Each time one is bought it
- * costs more (a new shelf by 1, a removal by `REMOVAL_STEP`), and stays at what it has reached for the rest of the run (`removalPrice`, `rerollPrice`).
- */
+/** What the shop charges, in coins. A removal and a new shelf start at these and cost more each time one is bought (`removalPrice`, `rerollPrice`). */
 export const FRUIT_PRICE = 3;
 export const REMOVAL_PRICE = 4;
 export const REROLL_PRICE = 1;
@@ -269,17 +266,15 @@ export interface Run {
   turn: number;
   cycleScore: number;
   total: number;
-  /**
-   * For the board at the end of the run: what this turn has scored so far, the most any turn scored, and the run's points by what
-   * earned them: a fruit's name for what it scored itself ("Apple"), or the keyword for the rest ("Merge", "Explode", "Crush").
-   */
+  /** What this turn has scored so far, and the most any turn scored (for the end board). */
   turnScore: number;
-  /** How many of this tally's scores have shown so far: the first plays the lowest note, and each after it the next one up. */
-  scoreNote: number;
   bestTurn: number;
+  /** How many of this tally's scores have shown so far: each plays the next note up. */
+  scoreNote: number;
+  /** The run's points by what earned them: a fruit's name ("Apple") for its own score, or the keyword ("Merge", "Explode"). */
   earned: Record<string, number>;
   coins: number;
-  /** How many new shelves have been bought and how many fruit taken out of the pool, all run: each makes the next cost one more. */
+  /** How many new shelves have been bought and fruit taken out of the pool, all run: each makes the next cost more. */
   rerolls: number;
   removals: number;
   /** The liquid pooled at the bottom of the jar: how deep it is, in pixels, and what is in it. Lime juice floats the fruit in it;
@@ -349,13 +344,9 @@ export interface Keys {
   confirm: boolean;
   /** Space: drop the hand, skip the pick. */
   drop: boolean;
-  /**
-   * The mouse came over this place, or a finger tapped it (with `confirm`): the cursor goes to it. A place is a fruit on the shelf
-   * while ordering, a pick's offer, a place on the shop's shelf or one of its actions, a kind in the take-out dialog, or a fruit
-   * the Preserves Jar can keep. -1 for none.
-   */
+  /** The place the mouse came over or a finger tapped (with `confirm`), by index in whatever the phase chooses from; -1 for none. */
   point: number;
-  /** A tap or a click landed on none of those places: whatever was chosen (a pick's offer, a card in the shop) no longer is. */
+  /** A tap landed on none of those places: whatever was chosen no longer is. */
   away?: boolean;
 }
 

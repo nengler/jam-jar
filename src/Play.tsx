@@ -61,8 +61,7 @@ const SLOT = 48;
 const BOARD_W = 192;
 const HUD_X = 12;
 const BOARD_Y = 28;
-/** The pool: each kind a 32-pixel icon and how many of it, three across; four across, closer, once there are more than four
- * rows of them, so all 17 kinds a pool can hold fit above the note. */
+/** The pool board's grid: three kinds across, or four, closer, once there are more than four rows, so every kind fits above the note. */
 const POOL_ROOMY = { columns: 3, cell: 53 };
 const POOL_TIGHT = { columns: 4, cell: 40 };
 const POOL_ROW = 32;
@@ -76,8 +75,7 @@ const SCORE_VOLUME = 0.7;
 const MOVE_QUIET = 0.12;
 /** Where across the screen a newly dealt fruit starts its roll along the shelf: at the shelf's right end. */
 const ROLL_FROM = 432;
-/** Where the card of a fruit on the shelf stands: in the top left corner, over the rent board for as long as it is up, so it
- * never lies over the jar, which is what the player is deciding about. */
+/** Where a shelf fruit's card stands: the top left corner, over the rent board, so it never covers the jar. */
 const TIP_X = 4;
 const TIP_TOP = 4;
 /** Slow motion: how fast the game runs in it, and how long it lasts after the Blast that set it off, in the game's slowed seconds. */
@@ -93,10 +91,8 @@ const OFFER_GAP = 12;
 const OFFER_LIFT = 8;
 
 /**
- * A run. The rules live in rules/jar.ts; each step this hands them the time, the keys and the fruit's reports, and keeps the run
- * they return. Everything here is drawing: the jar on the counter with the hand on a shelf above it, the rent on a board to its
- * left with the keys under it, the pool on a board to its right with a note of what just happened, and the pick as three cards
- * over everything.
+ * A run. Each step hands the rules (rules/jar.ts) the time, the keys and the fruit's reports, and keeps the run they return.
+ * Everything else here is drawing and input: the jar, the shelf, the rent and pool boards, and the dialogs over them.
  */
 export function Play() {
   const paused = useGame((g) => g.paused);
@@ -110,9 +106,7 @@ export function Play() {
   const { pause, toTitle, setSpeed, start, toLesson } = useGame.actions();
   // The first game's tutorial: which lesson the player is at (rules/tutorial.ts).
   const tutorial = useGame((g) => g.tutorial);
-  // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
-  // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
-  // A run read from the player's files goes on where it was kept; otherwise a new one.
+  // `reports` are the fruit's positions since the last step; `slow` is the slow motion left, in the game's (slowed) seconds.
   const savedRun = useGame((g) => g.savedRun);
   const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0 });
   const playLand = useSound("land.wav");
@@ -260,9 +254,8 @@ export function Play() {
       else playScore7(SCORE_VOLUME);
     }
     if (heard.includes("lose")) playLose();
-    // The shelf is quiet under a finger or the mouse: looking at a fruit or picking it up says nothing there (the fruit is in the
-    // player's hand, which is feedback enough), and a fruit dragged past its neighbours ticks softly, and not in a rattle. At a
-    // keyboard, and for a card chosen in the pick or the shop, the cursor still ticks.
+    // Under a finger or the mouse the shelf is quiet (the fruit in hand is feedback enough) and a dragged fruit ticks softly, not
+    // in a rattle. At a keyboard, and in the pick or the shop, the cursor still ticks.
     if (s.moveQuiet > 0) s.moveQuiet -= dt;
     if (heard.includes("tick") && (keys || phase !== "order")) playTick(0.5);
     if (heard.includes("move") && s.moveQuiet <= 0) {
@@ -287,10 +280,8 @@ export function Play() {
   const untip = () => {
     s.tip = false;
   };
-  // Dragging a fruit along the shelf (the box over the shelf hears it). A press on a fruit picks it up; while the button or finger
-  // stays down it goes where the pointer goes, the others making room; letting go puts it down. A press and release in one place
-  // is a tap: nothing moves, and the fruit shows what it does until something else is tapped. The rules know none of this: they are told a place
-  // and a confirm.
+  // Dragging a fruit along the shelf: a press picks it up, it follows the pointer, and letting go puts it down. A press and
+  // release in one place is a tap, which shows what the fruit does. The rules are only told a place and a confirm.
   const shelfAt = (x: number) => {
     const count = s.run.hand.length;
     return shelfSlot(x, (JAR.left + JAR.right) / 2 - (count * SLOT) / 2, SLOT, count);
@@ -428,7 +419,7 @@ export function Play() {
             </>
           )}
           {preserving && chosen !== undefined && <Sprite image="pointer.png" x={Math.round(chosen.x) - 9} y={Math.round(chosen.y - chosen.r) - 20} />}
-          {/* A blast: the whole jar is lit for an instant, then its picture, a ring running out from it and sparks thrown every way. */}
+          {/* A blast: a flash, its sparks and ring, and its picture. */}
           {flash > 0 && <Shape kind="rect" x={JAR.left} y={RIM - 24} width={JAR.right - JAR.left} height={JAR.floor - RIM + 24} color={LIGHT} opacity={0.45 * flash} />}
           {blastBits(run.effects, BOOM_LIFE).map((bit) => (
             <Shape key={bit.id} kind="rect" x={bit.x - bit.size / 2} y={bit.y - bit.size / 2} width={bit.size} height={bit.size} color={SPARK[bit.shade] ?? LIGHT} />
@@ -466,8 +457,7 @@ export function Play() {
         <Sprite key={item} image={`item-${item}.png`} x={16 + i * 50} y={COUNTER_Y - 38} />
       ))}
 
-      {/* The shelf: the hand, in the order it drops. The chosen fruit is framed in amber; a held one is lifted. In the Blind
-          jar each is under a cloth. */}
+      {/* The shelf: the hand, in the order it drops. In the Blind jar each fruit is under a cloth. */}
       <Sprite image="shelf.png" x={jarMid - JAR_ART.shelfHalfWidth} y={SHELF_Y - 80 * (1 - popIn(s.intro, INTRO.shelf, INTRO.pop))} />
       {/* The box that hears the hand being dragged and tapped: over the fruit on the shelf, and under their tooltips' boxes. */}
       {ordering && !s.whole && <Flex x={shelfLeft} y={SHELF_Y - 44} width={shelf.length * SLOT} height={52} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} onPressOutside={untip} />}
@@ -475,9 +465,7 @@ export function Play() {
         <Entity key={`${slot.card}${slot.at}`} x={slot.x + slot.roll} y={SHELF_Y - 18}>
           {ordering && !blind && slot.at === run.cursor && (keys || s.tip) && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
           {!blind && (!ordering || rollStarted(s.roll, slot.at)) && <FruitBall kind={slot.card} x={0} y={ordering && run.holding && slot.at === run.cursor ? -8 : 0} turn={slot.roll / 16} look="icon" />}
-          {/* A fruit is dragged along the shelf (see the handlers above); a held one is drawn under the pointer. What a fruit does
-              shows for the one that was tapped (or the cursor is on, at a keyboard), and for one the mouse is over: in the top
-              left corner whichever fruit it is for, so it never lies over the jar. */}
+          {/* What a fruit does: for the one tapped (or under the cursor, at a keyboard) and the one the mouse is over. */}
           {!blind && (
             <Flex x={-20} y={-20} width={40} height={40}>
               <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor && (keys || s.tip) ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X + 20 - slot.x} offsetY={TIP_TOP + 38 - SHELF_Y} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
@@ -498,9 +486,7 @@ export function Play() {
         </Flex>
       )}
 
-      {/* Left: a column pinned to the screen's left edge. The rent board is as tall as what is on it: this cycle's score, big, and
-          under it the rent it is counted against ("64 of 120 rent"); a bar of how much of the rent that is; the turn; and the
-          coins. Nothing else is on this side: how to move a fruit and drop the hand is said on the fruit's card under the shelf. */}
+      {/* Left: the rent board: this cycle's score against the rent, a bar of it, the turn and the coins. */}
       <Flex left={HUD_X - 240 * (1 - popIn(s.intro, INTRO.left, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch" gap={12}>
         <Panel title={cycleTitle(run)}>
           <Flex height={50} direction="row" justifyContent="center" alignItems="center">
@@ -523,8 +509,7 @@ export function Play() {
         </Panel>
       </Flex>
 
-      {/* Right: pinned to the screen's right edge, what is left of the pool to deal this shuffle, by kind, and how many that is of
-          the whole pool. The kinds wrap, three to a row, or four, closer, once there are more than twelve. */}
+      {/* Right: the pool board: what is left to deal this shuffle, by kind. */}
       <Flex right={HUD_X - 240 * (1 - popIn(s.intro, INTRO.right, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch">
         <Panel title="Pool">
           <Flex direction="row" wrap rowGap={0} columnGap={0}>
@@ -541,8 +526,7 @@ export function Play() {
               </Flex>
             ))}
           </Flex>
-          {/* The board shows what is still to be dealt; the whole pool, dealt or not, opens from here (or with D). Pause is
-              beside it: the two buttons of the play screen that are always there. */}
+          {/* The whole pool opens from here (or with D). */}
           <Flex direction="row" justifyContent="space-between" paddingTop={4}>
             <TapButton label="See all" onPress={openPool} />
             {/* Esc for a finger. In words: two bars in this font read as a Roman numeral. */}
@@ -551,8 +535,7 @@ export function Play() {
         </Panel>
       </Flex>
 
-      {/* What the lesson is about, framed, and the rest of the screen dimmed: after both boards, so they dim too, and before the
-          lesson's card, so it does not. */}
+      {/* The lesson's spotlight: after both boards, so they dim too, and before the lesson's card, so it does not. */}
       {coached?.target === "shelf" && <Spotlight x={shelfLeft - 8} y={SHELF_Y - 46} width={shelf.length * SLOT + 16} height={56} />}
       {coached?.target === "jar" && <Spotlight x={JAR.left - 10} y={RIM - 28} width={JAR.right - JAR.left + 20} height={JAR.floor - RIM + 38} />}
       {coached?.target === "rent" && <Spotlight x={HUD_X - 6} y={BOARD_Y + 6} width={BOARD_W + 12} height={152} />}
@@ -574,8 +557,7 @@ export function Play() {
         </Flex>
       )}
 
-      {/* The pick: three cards in a row in the middle of a dimmed kitchen, under their heading. Each place is a little taller
-          than its card, and the chosen card stands at the top of its place. */}
+      {/* The pick: three cards; the chosen one stands raised in its place. */}
       {picking && (
         <Entity>
           <Shade />
@@ -586,8 +568,7 @@ export function Play() {
             <Flex direction="row" gap={OFFER_GAP} onPressOutside={away}>
               {placed(run.offers).map((offer) => (
                 <Flex key={offer.at} height={OFFER_H + OFFER_LIFT} direction="column" justifyContent={offer.at === run.offerCursor ? "start" : "end"}>
-                  {/* What a card's keywords mean shows beside it while it is the chosen one, and only then. A tap or a click
-                      chooses a card and a second takes it. The pointer coming over a card does not choose it: on a touchscreen
+                  {/* A tap chooses a card (and shows its keywords) and a second takes it. Hovering does not choose: on a touchscreen
                       the pointer stays where the last tap was, which would choose a card before the player had. */}
                   <Flex width={OFFER_W} height={OFFER_H} direction="column" alignItems="center" paddingTop={18} gap={4} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPress={() => click(offer.at)}>
                     <Tooltip show={!paused && offer.at === run.offerCursor} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
@@ -646,8 +627,7 @@ export function Play() {
       {s.whole && (
         <Entity>
           <Shade />
-          {/* The board, and to its left what the tapped kind does, in full: its card and what each of its keywords means. A tooltip
-              under the fruit would run off the foot of the screen. */}
+          {/* The board, and to its left what the tapped kind does (a tooltip under it would run off the screen). */}
           <Flex left={0} right={0} top={0} bottom={0} direction="row" alignItems="center" justifyContent="center" gap={8}>
             <Flex width={TERM_W} direction="column" alignItems="stretch">
               {/* The fallback is never used: the compiled component does not narrow `looked` inside the condition. */}
@@ -674,14 +654,13 @@ export function Play() {
         </Entity>
       )}
       {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} onPoint={point} onClick={click} onAway={away} onConfirm={tapConfirm} onSpace={tapDrop} />}
-      {/* The first shop of the first game: the lesson lies along the foot of the screen, under the shop's actions, until the player does something there. */}
+      {/* The shop's lesson, along the foot of the screen. */}
       {run.phase === "shop" && coached !== null && (
         <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center">
           <Coach wide lesson={coached} keys={keys} width={620} onNext={lessonNext} onSkip={lessonSkip} />
         </Flex>
       )}
-      {/* The last turn of a cycle: a dark band snaps open across the screen and "Last turn" shoots through it, with what is
-          still owed. It is only drawn, so the hand can be ordered under it. */}
+      {/* The last turn's banner, with what is still owed. It takes no input, so the hand can be ordered under it. */}
       {banner.shown && (
         <Entity>
           <Shape kind="rect" x={0} y={SCREEN_H / 2 - 34 * banner.open} width={SCREEN_W} height={68 * banner.open} color={SWEEP_BAND} />
