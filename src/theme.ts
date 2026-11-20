@@ -15,6 +15,8 @@ export const GOOD = "#468232";
 export const BAD = "#a53030";
 /** Over the jar while a menu or the pick is up: the darkest Apollo colour, see-through. */
 export const SHADE = "#090a14c0";
+/** Over everything a tutorial lesson is not about: the same dark, lighter, so the rest can still be made out. */
+export const DIM = "#090a14a0";
 /** The shadow a board or a heading casts on the wall, and the colour behind the kitchen while it loads. */
 export const WALL_SHADOW = "#10141f";
 

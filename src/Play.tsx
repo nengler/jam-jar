@@ -311,6 +311,8 @@ export function Play() {
   const finished = run.phase === "over" || run.phase === "won";
   /** The tutorial's lesson, while it is its moment and nothing is over the play screen. */
   const coached = paused || s.whole ? null : lessonNow(tutorial, run);
+  /** The slate that says what just happened shows when there is something to say and no lesson in its place. */
+  const noted = coached === null && run.message !== "" && run.phase !== "shop";
 
   return (
     <Entity>
@@ -423,11 +425,6 @@ export function Play() {
           </Flex>
         </Panel>
       </Flex>
-      {/* What the lesson is about, framed. */}
-      {coached?.target === "shelf" && <Spotlight x={shelfLeft - 8} y={SHELF_Y - 46} width={shelf.length * SLOT + 16} height={56} />}
-      {coached?.target === "jar" && <Spotlight x={JAR.left - 10} y={RIM - 28} width={JAR.right - JAR.left + 20} height={JAR.floor - RIM + 38} />}
-      {coached?.target === "rent" && <Spotlight x={HUD_X - 6} y={BOARD_Y + 6} width={BOARD_W + 12} height={136} />}
-      {coached?.target === "pool" && <Spotlight x={640 - HUD_X - BOARD_W - 6} y={BOARD_Y + 6} width={BOARD_W + 12} height={104} />}
 
       {/* Right: pinned to the screen's right edge, what is left of the pool to deal this shuffle, by kind, and how many that is of
           the whole pool. The kinds wrap, three to a row, or four, closer, once there are more than twelve. */}
@@ -458,19 +455,25 @@ export function Play() {
       </Flex>
 
       {/* What just happened, on a slate pinned to the right edge, its foot just above the counter: as tall as its words. */}
-      {/* The first game's tutorial takes the slate's place: one lesson at a time, about what is on screen now. */}
-      {coached !== null && !picking && run.phase !== "shop" && (
-        <Flex right={HUD_X} bottom={NOTE_FOOT}>
-          <Coach lesson={coached ?? LESSONS[0]!} step={tutorial} keys={keys} width={BOARD_W} onNext={lessonNext} onSkip={lessonSkip} />
-        </Flex>
-      )}
-      {coached === null && run.message !== "" && run.phase !== "shop" && (
+      {noted && (
         <Flex right={HUD_X} bottom={NOTE_FOOT} width={BOARD_W} direction="column" alignItems="stretch">
           <Panel image={PLAQUE}>
             <Text width={BOARD_W - 32} maxWidth={BOARD_W - 32} color={LIGHT}>
               {run.message}
             </Text>
           </Panel>
+        </Flex>
+      )}
+      {/* What the lesson is about, framed, and the rest of the screen dimmed: after both boards, so they dim too, and before the
+          lesson's card, so it does not. */}
+      {coached?.target === "shelf" && <Spotlight x={shelfLeft - 8} y={SHELF_Y - 46} width={shelf.length * SLOT + 16} height={56} />}
+      {coached?.target === "jar" && <Spotlight x={JAR.left - 10} y={RIM - 28} width={JAR.right - JAR.left + 20} height={JAR.floor - RIM + 38} />}
+      {coached?.target === "rent" && <Spotlight x={HUD_X - 6} y={BOARD_Y + 6} width={BOARD_W + 12} height={152} />}
+      {coached?.target === "pool" && <Spotlight x={640 - HUD_X - BOARD_W - 6} y={BOARD_Y + 6} width={BOARD_W + 12} height={98} />}
+      {/* The first game's tutorial takes the slate's place: one lesson at a time, about what is on screen now. */}
+      {coached !== null && !picking && run.phase !== "shop" && (
+        <Flex right={HUD_X} bottom={NOTE_FOOT}>
+          <Coach lesson={coached ?? LESSONS[0]!} step={tutorial} keys={keys} width={BOARD_W} onNext={lessonNext} onSkip={lessonSkip} />
         </Flex>
       )}
 

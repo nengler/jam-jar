@@ -1,9 +1,9 @@
-import { Flex, Text, useTime } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Shape, Text, useTime } from "@tsengine/runtime/jsx";
 
 import { Panel } from "./Board.tsx";
 import { TapButton } from "./KeyHint.tsx";
 import { LESSONS, type Lesson } from "./rules/tutorial.ts";
-import { CARD_SLICE, GOLD, LIGHT, LIGHT_SOFT, PLAQUE, SELECT } from "./theme.ts";
+import { CARD_SLICE, DIM, GOLD, LIGHT, LIGHT_SOFT, PLAQUE, SELECT } from "./theme.ts";
 
 /**
  * The tutorial's card, in the first game: one lesson on a dark slate, its title in gold beside how far through the lessons it is. "Got it" goes on to
@@ -40,8 +40,20 @@ export function Coach({ lesson, step, keys, width, wide = false, onNext, onSkip 
 /** The room the buttons take beside the words of a `wide` card, with the gap between them. */
 const WIDE_BUTTONS = 92;
 
-/** The frame a lesson draws around what it is about (the shelf, the jar, a board): amber, breathing, so the eye goes there. */
+/**
+ * What a lesson is about (the shelf, the jar, a board), picked out: the rest of the screen is dimmed, in four dark pieces
+ * around it, and it stands in an amber frame that breathes, so the eye goes there. The dark is only drawn: a tap goes through
+ * it to whatever is under. The lesson's card is drawn after this, so it stays lit too.
+ */
 export function Spotlight({ x, y, width, height }: { x: number; y: number; width: number; height: number }) {
   const time = useTime();
-  return <Flex x={x} y={y} width={width} height={height} backgroundImage={SELECT} slice={CARD_SLICE} opacity={0.55 + 0.45 * Math.sin(time * 5)} />;
+  return (
+    <Entity>
+      <Shape kind="rect" x={0} y={0} width={640} height={Math.max(0, y)} color={DIM} />
+      <Shape kind="rect" x={0} y={y + height} width={640} height={Math.max(0, 360 - y - height)} color={DIM} />
+      <Shape kind="rect" x={0} y={y} width={Math.max(0, x)} height={height} color={DIM} />
+      <Shape kind="rect" x={x + width} y={y} width={Math.max(0, 640 - x - width)} height={height} color={DIM} />
+      <Flex x={x} y={y} width={width} height={height} backgroundImage={SELECT} slice={CARD_SLICE} opacity={0.55 + 0.45 * Math.sin(time * 5)} />
+    </Entity>
+  );
 }
