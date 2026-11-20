@@ -2,7 +2,7 @@ import type { Run } from "./jar.ts";
 
 /**
  * The first game's lessons. They are not a game of their own: a card beside the jar says one thing at a time about the run the
- * player is really playing, and moves on when they have done it (or tapped "Got it"). Each lesson waits for its moment (the
+ * player is really playing, and moves on when they have done it. A lesson that only tells them something (the rent, the pool) goes at their next tap or key, so it is never in the way of playing. Each lesson waits for its moment (the
  * pick's waits for the first pick), so the card is away while there is nothing to say.
  */
 export type LessonId = "shelf" | "order" | "drop" | "score" | "rent" | "pick" | "pool" | "shop";
@@ -103,6 +103,8 @@ export interface Did {
   looked: boolean;
   /** Changed the order of the hand. */
   moved: boolean;
+  /** Tapped or pressed anything at all, a moment or more after the lesson came up. */
+  pressed: boolean;
   /** Did something the game answered (bought, or tried to): what it says has changed. */
   acted: boolean;
 }
@@ -112,6 +114,8 @@ export function lessonDone(lesson: Lesson, run: Run, did: Did): boolean {
   if (!lessonShows(lesson, run)) return true;
   if (lesson.id === "shelf") return did.looked;
   if (lesson.id === "order") return did.moved;
+  // These two ask for nothing: they have been read once the player goes on with the game.
+  if (lesson.id === "rent" || lesson.id === "pool") return did.pressed;
   // The shop's lesson lies over where the shop says what happened, so it goes as soon as there is something to say.
   if (lesson.id === "shop") return did.acted;
   return false;

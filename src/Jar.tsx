@@ -13,6 +13,8 @@ interface JarProps {
   run: Run;
   /** What each fruit says of itself each step (where it is, how fast, what it touches), for the run's next step. */
   onReport: (report: FruitReport) => void;
+  /** How far above its place the jar's pictures are drawn, as it falls into place when a run begins. Its walls and floor do not move. */
+  lift?: number;
 }
 
 /**
@@ -20,7 +22,7 @@ interface JarProps {
  * the fruit, its front (shine and fill line) over them, and the solid walls and floor the fruit's balls are stopped by. The
  * play screen draws a run in it, and the title a run that plays itself.
  */
-export function Jar({ run, onReport }: JarProps) {
+export function Jar({ run, onReport, lift = 0 }: JarProps) {
   const x = JAR.left - JAR_MARGIN;
   const y = RIM - JAR_NECK - JAR_MARGIN;
   const width = JAR.right - JAR.left;
@@ -33,7 +35,7 @@ export function Jar({ run, onReport }: JarProps) {
       {/* The jar's pictures turn about its low corner when it leans (the Tilted jar). Its walls, floor and fruit do not: they
           are moved in the jar's own frame, where the walls stand straight, and each fruit is drawn where the lean puts it. */}
       <Entity x={JAR.right} y={JAR.floor} rotation={angle}>
-        <Entity x={-JAR.right} y={-JAR.floor}>
+        <Entity x={-JAR.right} y={-JAR.floor - lift}>
           <Sprite image="jar-back.png" x={x} y={y} />
           {/* The liquid pooled at the bottom, behind the fruit, with a lighter line along its surface. */}
           {run.juice > 0 && <Shape kind="rect" x={JAR.left} y={top} width={width} height={run.juice} color={JUICE[liquid].body} />}
@@ -72,7 +74,7 @@ export function Jar({ run, onReport }: JarProps) {
         />
       ))}
       <Entity x={JAR.right} y={JAR.floor} rotation={angle}>
-        <Sprite image="jar-front.png" x={x - JAR.right} y={y - JAR.floor} />
+        <Sprite image="jar-front.png" x={x - JAR.right} y={y - JAR.floor - lift} />
       </Entity>
     </Entity>
   );

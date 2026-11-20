@@ -9,7 +9,7 @@ import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { TapButton } from "./KeyHint.tsx";
-import { atRest, cycleTitle, kindAt, grownOf, leaned, moment, pickNote, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
+import { atRest, cycleTitle, INTRO, jarDrop, kindAt, popIn, rollIn, rollStarted, grownOf, leaned, moment, pickNote, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/tutorial.ts";
@@ -59,10 +59,14 @@ const POOL_TIGHT = { columns: 4, cell: 40 };
 const POOL_ROW = 32;
 /** The note of what just happened: a slate at the right, its foot this far above the foot of the screen (just above the counter). */
 const NOTE_FOOT = 36;
-/** Where the card of a fruit on the shelf stands: in the left column, its foot near the foot of the screen, growing up from
- * there, so it never lies over the jar, which is what the player is deciding about. */
-const TIP_X = 2;
-const TIP_FOOT = 356;
+/** Seconds a lesson that only tells the player something stays up at the least, before a tap or a key puts it away. */
+const LESSON_READ = 1.5;
+/** Where across the screen a newly dealt fruit starts its roll along the shelf: at the shelf's right end. */
+const ROLL_FROM = 432;
+/** Where the card of a fruit on the shelf stands: in the top left corner, over the rent board for as long as it is up, so it
+ * never lies over the jar, which is what the player is deciding about. */
+const TIP_X = 4;
+const TIP_TOP = 4;
 /** Slow motion: how fast the game runs in it, and how long it lasts after the Blast that set it off, in the game's slowed seconds. */
 const SLOW_SPEED = 0.35;
 const SLOW_TIME = 0.4;
@@ -97,7 +101,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", lessonSeen: -1, lessonTime: 0, lessonPressed: false, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -117,6 +121,7 @@ export function Play() {
     if (over && input.pressed("Enter")) {
       start();
       s.run = newRun(seed + 1);
+      s.intro = 0;
     }
   });
 
@@ -129,6 +134,13 @@ export function Play() {
     else if (!looking && input.pressed("D")) s.whole = true;
     if (s.run.phase !== "order" || looking) s.drag = false;
     if (s.run.phase !== "order") s.tip = false;
+    // The opening plays out, and each newly dealt hand rolls onto the shelf: the first once the jar has landed.
+    if (s.intro < INTRO.end) s.intro += dt;
+    const deal = `${s.run.cycle} ${s.run.turn}`;
+    if (s.run.phase === "order" && deal !== s.dealt) {
+      s.dealt = deal;
+      s.roll = Math.min(0, s.intro - INTRO.hand);
+    } else if (s.roll < 2) s.roll += dt;
     s.run = advance(
       s.run,
       dt,
@@ -159,8 +171,14 @@ export function Play() {
           s.lessonHand = s.run.hand.join();
           s.lessonCursor = s.run.cursor;
           s.lessonMessage = s.run.message;
+          s.lessonTime = 0;
+          s.lessonPressed = false;
         }
-      } else if (lessonDone(lesson, s.run, { looked: s.tip || s.run.cursor !== s.lessonCursor, moved: s.run.hand.join() !== s.lessonHand, acted: s.run.message !== s.lessonMessage })) toLesson(tutorial + 1);
+      } else {
+        s.lessonTime += dt;
+        if (s.lessonTime > LESSON_READ && input.lastPressed() !== undefined) s.lessonPressed = true;
+      }
+      if (s.lessonSeen === tutorial && lessonDone(lesson, s.run, { looked: s.tip || s.run.cursor !== s.lessonCursor, moved: s.run.hand.join() !== s.lessonHand, acted: s.run.message !== s.lessonMessage, pressed: s.lessonPressed })) toLesson(tutorial + 1);
     }
     // Through a moment once (a hand dropped, a pick made, the shop left), its keys are known: they are not shown again.
     if (moment(s.run) !== before) learn(before);
@@ -260,16 +278,14 @@ export function Play() {
     if (s.run.phase === "rent") s.click = true;
     else toTitle();
   };
-  // The tutorial card's buttons: on to the next lesson without doing this one, or no more lessons at all.
-  const lessonNext = () => {
-    toLesson(tutorial + 1);
-  };
+  // The tutorial card's button: no more lessons at all.
   const lessonSkip = () => {
     toLesson(LESSONS.length);
   };
   const tapAgain = () => {
     start();
     s.run = newRun(seed + 1);
+    s.intro = 0;
   };
   const tapTitle = () => {
     toTitle();
@@ -313,7 +329,7 @@ export function Play() {
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
   const finished = run.phase === "over" || run.phase === "won";
   /** The tutorial's lesson, while it is its moment and nothing is over the play screen. */
-  const coached = paused || s.whole ? null : lessonNow(tutorial, run);
+  const coached = paused || s.whole || s.intro < INTRO.end ? null : lessonNow(tutorial, run);
   /** The slate that says what just happened shows when there is something to say and no lesson in its place. */
   const noted = coached === null && run.message !== "" && run.phase !== "shop";
 
@@ -321,7 +337,7 @@ export function Play() {
     <Entity>
       <Backdrop />
 
-      <Jar run={run} onReport={report} />
+      <Jar run={run} onReport={report} lift={s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)} />
       {/* What is drawn on the jar turns with it, about its low corner, when it leans (the Tilted jar). */}
       <Entity x={JAR.right} y={JAR.floor} rotation={lean(run)}>
         <Entity x={-JAR.right} y={-JAR.floor}>
@@ -373,24 +389,24 @@ export function Play() {
 
       {/* The shelf: the hand, in the order it drops. The chosen fruit is framed in amber; a held one is lifted. In the Blind
           jar each is under a cloth. */}
-      <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y} />
+      <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y - 80 * (1 - popIn(s.intro, INTRO.shelf, INTRO.pop))} />
       {/* The box that hears the hand being dragged and tapped: over the fruit on the shelf, and under their tooltips' boxes. */}
       {ordering && !s.whole && <Flex x={shelfLeft} y={SHELF_Y - 44} width={shelf.length * SLOT} height={52} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} onPressOutside={untip} />}
       {placed(shelf).map((slot) => (
-        <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} y={SHELF_Y - 18}>
+        <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX) + (ordering ? rollIn(s.roll, slot.at, ROLL_FROM - (shelfLeft + slot.at * SLOT + SLOT / 2)) : 0)} y={SHELF_Y - 18}>
           {ordering && !blind && slot.at === run.cursor && (keys || s.tip) && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
-          {!blind && <FruitBall kind={slot.card} x={0} y={ordering && run.holding && slot.at === run.cursor ? -8 : 0} look="icon" />}
+          {!blind && (!ordering || rollStarted(s.roll, slot.at)) && <FruitBall kind={slot.card} x={0} y={ordering && run.holding && slot.at === run.cursor ? -8 : 0} turn={ordering ? rollIn(s.roll, slot.at, ROLL_FROM - (shelfLeft + slot.at * SLOT + SLOT / 2)) / 16 : 0} look="icon" />}
           {/* A fruit is dragged along the shelf (see the handlers above); a held one is drawn under the pointer. What a fruit does
-              shows for the one that was tapped (or the cursor is on, at a keyboard), and for one the mouse is over: in the left
-              column whichever fruit it is for, growing up from the foot of the screen, so it never lies over the jar. */}
+              shows for the one that was tapped (or the cursor is on, at a keyboard), and for one the mouse is over: in the top
+              left corner whichever fruit it is for, so it never lies over the jar. */}
           {!blind && (
             <Flex x={-20} y={-20} width={40} height={40}>
-              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor && (keys || s.tip) ? true : undefined} anchor="bottom-left" to="top-left" offsetX={TIP_X + 20 - shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} offsetY={TIP_FOOT + 38 - SHELF_Y} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor && (keys || s.tip) ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X + 20 - shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} offsetY={TIP_TOP + 38 - SHELF_Y} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                 <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} />
               </Tooltip>
             </Flex>
           )}
-          {blind && <Sprite image="covered.png" x={-16} y={-16} />}
+          {blind && (!ordering || rollStarted(s.roll, slot.at)) && <Sprite image="covered.png" x={-16} y={-16} />}
         </Entity>
       ))}
 
@@ -406,7 +422,7 @@ export function Play() {
       {/* Left: a column pinned to the screen's left edge. The rent board is as tall as what is on it: this cycle's score, big, and
           under it the rent it is counted against ("64 of 120 rent"); a bar of how much of the rent that is; the turn; and the
           coins. Nothing else is on this side: how to move a fruit and drop the hand is said on the fruit's card under the shelf. */}
-      <Flex left={HUD_X} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch" gap={12}>
+      <Flex left={HUD_X - 240 * (1 - popIn(s.intro, INTRO.left, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch" gap={12}>
         <Panel title={cycleTitle(run)}>
           <Flex height={50} direction="row" justifyContent="center" alignItems="center">
             <Text font={DISPLAY} size={DISPLAY_SIZE * 2} color={paid ? GOOD : INK}>{`${scored}`}</Text>
@@ -430,7 +446,7 @@ export function Play() {
 
       {/* Right: pinned to the screen's right edge, what is left of the pool to deal this shuffle, by kind, and how many that is of
           the whole pool. The kinds wrap, three to a row, or four, closer, once there are more than twelve. */}
-      <Flex right={HUD_X} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch">
+      <Flex right={HUD_X - 240 * (1 - popIn(s.intro, INTRO.right, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch">
         <Panel title="Pool">
           <Flex direction="row" wrap rowGap={0} columnGap={0}>
             {pool.map((row) => (
@@ -475,7 +491,7 @@ export function Play() {
       {/* The first game's tutorial takes the slate's place: one lesson at a time, about what is on screen now. */}
       {coached !== null && !picking && run.phase !== "shop" && (
         <Flex right={HUD_X} bottom={NOTE_FOOT}>
-          <Coach lesson={coached ?? LESSONS[0]!} keys={keys} width={BOARD_W} onNext={lessonNext} onSkip={lessonSkip} />
+          <Coach lesson={coached ?? LESSONS[0]!} keys={keys} width={BOARD_W} onSkip={lessonSkip} />
         </Flex>
       )}
 
@@ -519,7 +535,7 @@ export function Play() {
           {/* The first pick of the first game: the tutorial's lesson says it, along the foot of the screen. */}
           {coached !== null && (
             <Flex right={8} bottom={2}>
-              <Coach wide lesson={coached ?? LESSONS[0]!} keys={keys} width={440} onNext={lessonNext} onSkip={lessonSkip} />
+              <Coach wide lesson={coached ?? LESSONS[0]!} keys={keys} width={440} onSkip={lessonSkip} />
             </Flex>
           )}
           {/* The way out, always there, in the bottom left corner: a card's keywords open to its side, never over this. */}
@@ -587,7 +603,7 @@ export function Play() {
       {/* The first shop of the first game: the lesson lies along the foot of the screen, under the shop's actions, until the player does something there. */}
       {run.phase === "shop" && coached !== null && (
         <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center">
-          <Coach wide lesson={coached ?? LESSONS[0]!} keys={keys} width={620} onNext={lessonNext} onSkip={lessonSkip} />
+          <Coach wide lesson={coached ?? LESSONS[0]!} keys={keys} width={620} onSkip={lessonSkip} />
         </Flex>
       )}
       {paused && <Pause />}

@@ -497,7 +497,8 @@ test("the first game's tutorial: a card says one thing at a time and moves on as
   const coach = () => findComponent("Coach", game.player.world.root);
   game.input("_*2");
   assert.equal(step(), 0, "the shelf's lesson");
-  assert.ok(coach() !== null, "its card is up");
+  assert.equal(coach(), null, "not while the run's opening plays");
+  game.stepUntil(() => coach() !== null, { maxSteps: 300 });
   // Tap a fruit on the shelf: that is what the first lesson asks.
   game.input("click@296,30, _*3");
   assert.equal(step(), 1, "on to how the order matters");
@@ -509,13 +510,10 @@ test("the first game's tutorial: a card says one thing at a time and moves on as
   playedOut(game);
   game.input("_*3");
   assert.equal(step(), 4, "the next hand: the rent");
-  // Got it goes on without doing anything; the pick's lesson then waits for the first pick, its card away.
-  const next = findComponent("Coach", game.player.world.root) as unknown as { props: { onNext: () => void; onSkip: () => void } };
-  next.props.onNext();
-  game.input("_*3");
+  // Dropping the hand ends it; the pick's lesson then waits for the first pick, its card away.
+  game.input("Space, _*3");
   assert.equal(step(), 5);
   assert.equal(coach(), null, "nothing to say until the pick");
-  game.input("Space, _*3");
   assert.equal(playedOut(game).phase, "pick");
   game.input("_*3");
   assert.ok(coach() !== null, "the pick's lesson");

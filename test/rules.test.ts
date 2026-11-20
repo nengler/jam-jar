@@ -1093,7 +1093,7 @@ test("the run keeps what its end board shows: its best turn, and what earned its
 });
 
 test("the tutorial's lessons: each waits for its moment, and is done when the player has done it or the moment has passed", () => {
-  const none = { looked: false, moved: false, acted: false };
+  const none = { looked: false, moved: false, acted: false, pressed: false };
   const at = (phase: Run["phase"]): Run => ({ ...newRun(7), phase });
   const lesson = (id: string) => LESSONS.find((l) => l.id === id)!;
   assert.equal(lessonAt(0)!.id, "shelf");
@@ -1107,7 +1107,9 @@ test("the tutorial's lessons: each waits for its moment, and is done when the pl
   assert.equal(lessonDone(lesson("shelf"), at("drop"), none), true, "its moment passed");
   assert.equal(lessonDone(lesson("order"), at("order"), { ...none, looked: true }), false, "looking is not reordering");
   assert.equal(lessonDone(lesson("order"), at("order"), { ...none, moved: true }), true);
-  assert.equal(lessonDone(lesson("drop"), at("order"), { looked: true, moved: true, acted: true }), false, "only dropping ends it");
+  assert.equal(lessonDone(lesson("drop"), at("order"), { looked: true, moved: true, acted: true, pressed: true }), false, "only dropping ends it");
+  assert.equal(lessonDone(lesson("rent"), at("order"), none), false);
+  assert.equal(lessonDone(lesson("rent"), at("order"), { ...none, pressed: true }), true, "it only tells: read, once the player goes on");
 
   // The pick's and the shop's wait for the first pick and the first shop.
   assert.equal(lessonShows(lesson("pick"), at("order")), false);
