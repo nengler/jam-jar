@@ -1,4 +1,4 @@
-import { useBall, useMutable, useUpdate } from "@tsengine/runtime/jsx";
+import { Entity, useBall, useMutable, useUpdate } from "@tsengine/runtime/jsx";
 
 import { FruitBall } from "./FruitBall.tsx";
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
@@ -37,6 +37,17 @@ interface FruitProps {
 
 /** How much of the turning a rolling wheel of its size would do a fruit shows: a full roll made every fruit spin like a tyre. */
 const ROLL = 0.3;
+/**
+ * The squash a fruit is drawn with when it lands: flat at once, then a little tall, then round, a swing every `SQUASH_SWING`
+ * seconds that dies away over `SQUASH_FADE`. How flat goes by how much falling speed (px/s) it lost in a step, past
+ * `SQUASH_FROM`: a drop from the shelf to the floor is about a fifth flatter, at most `SQUASH_MOST`.
+ */
+const SQUASH_SWING = 0.16;
+const SQUASH_FADE = 0.07;
+const SQUASH_FROM = 150;
+const SQUASH_PER = 0.0003;
+const SQUASH_MOST = 0.22;
+
 /** How much of its speed a fruit in juice loses each step. */
 const JUICE_DRAG = 0.12;
 
@@ -48,7 +59,7 @@ const JUICE_DRAG = 0.12;
  */
 export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surface, pull, flipped, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
   // `turn` is how far it has rolled, in degrees; `lastX` where it was a step ago.
-  const s = useMutable({ kicked: 0, turn: 0, lastX: x0, lastY: y0 });
+  const s = useMutable({ kicked: 0, turn: 0, lastX: x0, lastY: y0, fall: 0, squash: 0, hit: 1, flat: 0 });
   const { x, y, contacts, push, speed, pin, setGravity, setGravityX, stick } = useBall({
     x: x0,
     y: y0,
@@ -60,7 +71,7 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
     // A fruit that comes back from a save frozen is held from its first step.
     pinned: frozen,
   });
-  useUpdate(() => {
+  useUpdate((dt) => {
     pin(frozen);
     // Honey is sticky: a honeyed fruit holds on to every fruit that comes to touch it, and they move as one lump.
     if (honeyed) stick("fruit");
@@ -78,9 +89,25 @@ export function Fruit({ id, kind, x0, y0, rotten, honeyed, pickled, frozen, surf
     const touching = contacts("fruit").map((c) => c.data.id);
     // It rolls: while it touches a fruit or the floor, it turns by how far it moved across, as a wheel of its size would.
     if (touching.length > 0 || y + FRUITS[kind].radius >= JAR.floor - 2) s.turn += (((x - s.lastX) / FRUITS[kind].radius) * 180 * ROLL) / Math.PI;
+    // Drawn only: when it stops falling all at once (it hit the floor or the pile), it squashes flat and springs back.
+    const fall = dt > 0 ? Math.abs(y - s.lastY) / dt : 0;
+    const impact = s.fall - fall;
+    if (s.fall > SQUASH_FROM && impact > SQUASH_FROM) {
+      s.hit = 0;
+      s.flat = Math.min(SQUASH_MOST, impact * SQUASH_PER);
+    } else s.hit += dt;
+    s.fall = fall;
+    s.squash = s.flat * Math.exp(-s.hit / SQUASH_FADE) * Math.cos((2 * Math.PI * s.hit) / SQUASH_SWING);
     s.lastX = x;
     s.lastY = y;
     onReport({ id: id, x: x, y: y, speed: speed(), touching: touching });
   });
-  return <FruitBall kind={kind} x={leanX(x, y, lean, JAR.right, JAR.floor)} y={leanY(x, y, lean, JAR.right, JAR.floor)} turn={s.turn + (lean * 180) / Math.PI} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} />;
+  // The squash is the jar's up and down, not the fruit's own: it is around the fruit's turning, not inside it. It is pinned at the
+  // fruit's underside (its top, under a turned-over gravity), so a flattened fruit still sits on what it landed on.
+  const sink = FRUITS[kind].radius * s.squash * (flipped ? -1 : 1);
+  return (
+    <Entity x={leanX(x, y, lean, JAR.right, JAR.floor)} y={leanY(x, y, lean, JAR.right, JAR.floor) + sink} scaleX={1 + s.squash} scaleY={1 - s.squash}>
+      <FruitBall kind={kind} x={0} y={0} turn={s.turn + (lean * 180) / Math.PI} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} />
+    </Entity>
+  );
 }
