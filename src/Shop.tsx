@@ -1,10 +1,10 @@
-import { Entity, Flex, Shape, Sprite, Text, Tooltip } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Shape, Sprite, Text, Tooltip, useTime } from "@tsengine/runtime/jsx";
 
 import { Letters, Panel } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { KeyHint, TapButton } from "./KeyHint.tsx";
-import { placed, poolRows } from "./layout.ts";
+import { ENTER, entered, placed, popIn, poolRows } from "./layout.ts";
 import { FRUITS } from "./rules/fruits.ts";
 import { ITEMS } from "./rules/items.ts";
 import { RuleText } from "./RuleText.tsx";
@@ -57,6 +57,9 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
   // The card the cursor is on shows what its keywords mean, but not over the pause menu.
   const paused = useGame((g) => g.paused);
   const kinds = poolRows(run.pool);
+  // The shop comes in as a run does: the whole of it drops down from the top and settles, its cards and then its actions
+  // popping in one after another as it does, and the purse slides in from the right.
+  const time = useTime();
   return (
     <Entity>
       {/* Shaded twice: the shop covers the whole screen, and the boards behind it should not show through its header. */}
@@ -64,7 +67,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
 
       {/* The whole shop is one column down the middle of the screen: its heading, the shelf, the actions, and what just happened. */}
-      <Flex left={0} right={0} top={10} bottom={0} direction="column" alignItems="center" gap={6}>
+      <Flex left={0} right={0} top={10 - 120 * (1 - popIn(time, 0, ENTER.pop))} bottom={0} direction="column" alignItems="center" gap={6}>
         <Flex direction="row" justifyContent="center" height={32}>
           <Letters text="Shop" seed={3} />
         </Flex>
@@ -73,7 +76,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
             click chooses a card and a second buys it; the pointer coming over one does not choose it (see the pick). */}
         <Flex direction="row" gap={CARD_GAP} onPressOutside={onAway}>
           {placed(shop.fruits).map((slot) => (
-            <Flex key={slot.at} height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === slot.at ? "start" : "end"}>
+            <Flex key={slot.at} height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === slot.at ? "start" : "end"} opacity={entered(time, slot.at + 1)}>
               <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={8} backgroundImage={cardFor(!shop.removing && shop.cursor === slot.at)} slice={CARD_SLICE} focusable={false} onPress={() => onClick(slot.at)}>
                 {slot.card !== null && (
                   <Tooltip show={!paused && !shop.removing && shop.cursor === slot.at} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
@@ -104,7 +107,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
               </Flex>
             </Flex>
           ))}
-          <Flex height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === SHOP_ITEM ? "start" : "end"}>
+          <Flex height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === SHOP_ITEM ? "start" : "end"} opacity={entered(time, SHOP_ITEM + 1)}>
             <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={8} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_ITEM)} slice={CARD_SLICE} focusable={false} onPress={() => onClick(SHOP_ITEM)}>
               {shop.item !== null && (
                 <Tooltip show={!paused && !shop.removing && shop.cursor === SHOP_ITEM} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
@@ -137,7 +140,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
         </Flex>
 
         {/* The actions: what each does at its left end and what it costs at its right. */}
-        <Flex direction="row" gap={CARD_GAP}>
+        <Flex direction="row" gap={CARD_GAP} opacity={entered(time, SHOP_ITEM + 2)}>
           <Flex width={ACTION_W} height={ACTION_H} direction="row" alignItems="center" justifyContent="space-between" paddingX={14} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_REMOVE)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(SHOP_REMOVE)} onPress={() => onClick(SHOP_REMOVE)}>
             <Text color={INK}>Remove one</Text>
             <Price price={removalPrice(run)} afford={run.coins >= removalPrice(run)} />
@@ -158,7 +161,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onSpace }: Sh
       </Flex>
 
       {/* The purse, in the top right corner. */}
-      <Flex right={24} top={12} width={104}>
+      <Flex right={24 - 160 * (1 - popIn(time, 0.3, ENTER.pop))} top={12} width={104}>
         <Flex width={104} height={32} direction="row" alignItems="center" justifyContent="space-between" paddingX={10} backgroundImage={PANEL} slice={PANEL_SLICE}>
           <Sprite image="coin.png" />
           <Text color={INK}>{`${run.coins}`}</Text>

@@ -300,3 +300,14 @@ export function blastFlash(blasts: readonly { age: number }[]): number {
 export function blastJolt(blasts: readonly { age: number }[]): number {
   return blasts.reduce((sum, b) => sum + (b.age < JOLT_TIME ? 3 * (1 - b.age / JOLT_TIME) * Math.cos(b.age * 90) : 0), 0);
 }
+
+/**
+ * A screen's entrance, in seconds from when it comes up: its parts come in one after another, as a run's opening does. `at(n)`
+ * is when the nth part starts.
+ */
+export const ENTER = { pop: 0.6, gap: 0.12, jar: 0.5 } as const;
+
+/** 1 once the nth part of a screen's entrance has come in, 0 before: its opacity, so the parts pop in one by one. */
+export function entered(time: number, n: number, from = 0): number {
+  return time >= from + n * ENTER.gap ? 1 : 0;
+}
