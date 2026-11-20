@@ -473,19 +473,24 @@ export function Play() {
         <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX) + (ordering ? rollIn(s.roll, slot.at, ROLL_FROM - (shelfLeft + slot.at * SLOT + SLOT / 2)) : 0)} y={SHELF_Y - 18}>
           {ordering && !blind && slot.at === run.cursor && (keys || s.tip) && <Flex x={-20} y={run.holding ? -28 : -20} width={40} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
           {!blind && (!ordering || rollStarted(s.roll, slot.at)) && <FruitBall kind={slot.card} x={0} y={ordering && run.holding && slot.at === run.cursor ? -8 : 0} turn={ordering ? rollIn(s.roll, slot.at, ROLL_FROM - (shelfLeft + slot.at * SLOT + SLOT / 2)) / 16 : 0} look="icon" />}
-          {/* A fruit is dragged along the shelf (see the handlers above); a held one is drawn under the pointer. What a fruit does
-              shows for the one that was tapped (or the cursor is on, at a keyboard), and for one the mouse is over: in the top
-              left corner whichever fruit it is for, so it never lies over the jar. */}
-          {!blind && (
-            <Flex x={-20} y={-20} width={40} height={40}>
-              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor && (keys || s.tip) ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X + 20 - shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} offsetY={TIP_TOP + 38 - SHELF_Y} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} />
-              </Tooltip>
-            </Flex>
-          )}
           {blind && (!ordering || rollStarted(s.roll, slot.at)) && <Sprite image="covered.png" x={-16} y={-16} />}
         </Entity>
       ))}
+      {/* What a fruit does shows for the one that was tapped (or the cursor is on, at a keyboard), and for one the mouse is over: in
+          the top left corner whichever fruit it is for, so it never lies over the jar. Its box stays at the fruit's place on the
+          shelf, not under a fruit being dragged (see the handlers above): one that followed the pointer and was moved back by as
+          much shook as it was dragged. */}
+      {!blind && (
+        <>
+          {placed(shelf).map((slot) => (
+            <Flex key={`tip${slot.card}${slot.at}`} x={shelfLeft + slot.at * SLOT + SLOT / 2 - 20} y={SHELF_Y - 38} width={40} height={40}>
+              <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor && (keys || s.tip) ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X - (shelfLeft + slot.at * SLOT + SLOT / 2 - 20)} offsetY={TIP_TOP - (SHELF_Y - 38)} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} />
+              </Tooltip>
+            </Flex>
+          ))}
+        </>
+      )}
 
       {/* While ordering, a tap or a click on the jar drops the hand into it. */}
       {ordering && <Flex x={JAR.left} y={RIM} width={jarWidth} height={JAR.floor - RIM} focusable={false} onPress={() => tapDrop()} />}
