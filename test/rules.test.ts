@@ -666,8 +666,13 @@ test("terms: a keyword is found by its capital, whatever punctuation follows it,
   );
   assert.deepEqual(
     ruleWords("Each turn, Eat a Rotten fruit: +8 and Hatch.").map((w) => w.keyword),
-    [false, false, true, false, true, false, false, false, true],
-    "a number that does not follow a keyword is not"
+    [false, false, true, false, true, false, true, false, true],
+    "a number with its sign is picked out wherever it is"
+  );
+  assert.deepEqual(
+    ruleWords("Keeps this many 3 fruit, never Rotten. Still Merges.").map((w) => w.keyword),
+    [false, false, false, false, false, false, true, false, true],
+    "a bare number that follows no keyword is not, and a keyword's other forms are"
   );
 });
 

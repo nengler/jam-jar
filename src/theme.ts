@@ -59,6 +59,10 @@ export const HONEYED = "#e8c170";
 /** On parchment: a bar's or a pip's empty colour, the rent bar's fill, and a thin rule between rows. */
 export const WELL = "#c09473";
 export const BAR_FILL = "#be772b";
+/** The rent's bar: a dark trough, so what is filled stands out on the parchment, filled in gold and, once the rent is made, in a light green. */
+export const BAR_WELL = "#4d2b32";
+export const BAR_GOLD = "#e8c170";
+export const BAR_PAID = "#75a743";
 export const RULE = "#d7b594";
 
 /** The line drawn between two fruit when one does something to the other, by what it did (rules/jar.ts, `Link`). */

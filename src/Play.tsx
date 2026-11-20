@@ -21,6 +21,9 @@ import { advance, newRun, BOOM_LIFE, bossNow, dramatic, lean, shownScore, preser
 import {
   BAD,
   BAR_FILL,
+  BAR_GOLD,
+  BAR_PAID,
+  BAR_WELL,
   BODY_SIZE,
   cardFor,
   CARD_SLICE,
@@ -434,8 +437,8 @@ export function Play() {
           <Flex direction="row" justifyContent="center">
             <Text color={paid ? GOOD : INK_SOFT}>{paid ? `Rent ${rent} made` : `of ${rent} rent`}</Text>
           </Flex>
-          <Flex height={8} background={WELL}>
-            {filled > 0 && <Flex left={0} top={0} bottom={0} width={Math.round(((BOARD_W - 32) * filled) / 2) * 2} background={paid ? GOOD : BAR_FILL} />}
+          <Flex height={10} background={BAR_WELL}>
+            {filled > 0 && <Flex left={2} top={2} bottom={2} width={Math.round(((BOARD_W - 36) * filled) / 2) * 2} background={paid ? BAR_PAID : BAR_GOLD} />}
           </Flex>
           <Flex direction="row" justifyContent="space-between" paddingTop={6}>
             <Text color={INK_SOFT}>Turn</Text>

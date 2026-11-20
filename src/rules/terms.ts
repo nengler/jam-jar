@@ -92,6 +92,7 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
 /** Every way a keyword is written in card text, beside its name. */
 const OTHER_FORMS: Readonly<Record<string, Keyword>> = {
   Merged: "merge",
+  Merges: "merge",
   Crushed: "crush",
   Explodes: "explode",
 };
@@ -106,7 +107,7 @@ export function keywordOf(word: string): Keyword | undefined {
   return FORMS[word.replace(/[^A-Za-z]/g, "")];
 }
 
-/** A word of card text, and whether it is drawn in the accent colour: a keyword, or the number after one ("Fresh 3."). */
+/** A word of card text or of a keyword's meaning, and whether it is drawn in the accent colour: a keyword, the number after one ("Fresh 3."), or a signed number ("+4"). */
 export interface RuleWord {
   id: number;
   word: string;
@@ -117,7 +118,8 @@ export function ruleWords(text: string): RuleWord[] {
   const words = text.split(" ");
   return words.map((word, id) => {
     const after = id > 0 && keywordOf(words[id - 1] as string) !== undefined && /^[+x]?\d/.test(word);
-    return { id, word, keyword: keywordOf(word) !== undefined || after };
+    // A number with its sign ("+4", "x2", "-5") is what the words are about, so it is picked out too.
+    return { id, word, keyword: keywordOf(word) !== undefined || after || /^[+\-x]\d/.test(word) };
   });
 }
 
