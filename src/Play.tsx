@@ -33,7 +33,6 @@ import {
   INK_SOFT,
   KEYWORD,
   KEYWORD_LIGHT,
-  LIGHT_SOFT,
   TERM_W,
   LIGHT,
   LINK,
@@ -563,11 +562,6 @@ export function Play() {
           <Flex left={0} right={0} top={0} bottom={0} direction="row" alignItems="center" justifyContent="center" gap={8}>
             <Flex width={TERM_W} direction="column" alignItems="stretch">
               {looked !== null && <FruitTip kind={looked ?? "cherry"} grown={grownOf(run, looked ?? "cherry")} />}
-              {looked === null && (
-                <Text width={TERM_W} maxWidth={TERM_W} align="center" color={LIGHT_SOFT}>
-                  {keys ? "Click a fruit to see what it does" : "Tap a fruit to see what it does"}
-                </Text>
-              )}
             </Flex>
             <Flex width={Math.max(240, Math.min(whole.length, 6) * 56 + 32)} direction="column" alignItems="stretch">
               <Panel heading={`Your pool: ${run.pool.length} fruit`} gap={4}>
