@@ -1,7 +1,8 @@
 import { createGameState, createSave } from "@tsengine/runtime";
 
 import type { Run } from "./rules/jar.ts";
-import { effectsLevel, fastPlay, learn, learnedMoments, musicLevel, settings, stepVolume, toggleFast } from "./settings.ts";
+import { effectsLevel, fastPlay, learn, learnedMoments, musicLevel, settings, setTutorialStep, stepVolume, toggleFast, tutorialStep } from "./settings.ts";
+import { LESSONS } from "./rules/tutorial.ts";
 
 type Screen = "title" | "settings" | "play";
 
@@ -31,6 +32,8 @@ export const useGame = createGameState(
     effects: effectsLevel(),
     fast: fastPlay(),
     learned: learnedMoments(),
+    /** The step of the first game's tutorial the player is at (rules/tutorial.ts); past the last lesson once it is over. */
+    tutorial: tutorialStep(),
     /** How fast the game runs: 1, or less for the slow motion a chain of Blasts plays in. */
     speed: 1,
   },
@@ -41,6 +44,7 @@ export const useGame = createGameState(
       s.effects = effectsLevel();
       s.fast = fastPlay();
       s.learned = learnedMoments();
+      s.tutorial = tutorialStep();
       // The settings are read when the player's files become readable, which is also the first moment a save can be seen.
       s.hasSave = save.exists();
     },
@@ -91,6 +95,14 @@ export const useGame = createGameState(
     },
     changeSpeed() {
       toggleFast();
+    },
+    /** The tutorial moves to a step: the next lesson, or past the last to end it. */
+    toLesson(_s, step: number) {
+      setTutorialStep(step);
+    },
+    /** The settings' Tips row: off ends the tutorial, on starts it again from the first lesson. */
+    toggleTips(s) {
+      setTutorialStep(s.tutorial >= LESSONS.length ? 0 : LESSONS.length);
     },
   }
 );

@@ -2,15 +2,17 @@ import { Entity, Flex, Line, Shape, Sprite, Text, Tooltip, useInput, useInputDev
 
 import { Backdrop } from "./Backdrop.tsx";
 import { Letters, Panel } from "./Board.tsx";
+import { Coach, Spotlight } from "./Coach.tsx";
 import { EndBoard } from "./EndBoard.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { TapButton } from "./KeyHint.tsx";
-import { atRest, cycleTitle, grownOf, leaned, moment, pickNote, shelfNote, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
+import { atRest, cycleTitle, kindAt, grownOf, leaned, moment, pickNote, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RuleText } from "./RuleText.tsx";
+import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/tutorial.ts";
 import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { Terms } from "./Terms.tsx";
@@ -31,6 +33,8 @@ import {
   INK_SOFT,
   KEYWORD,
   KEYWORD_LIGHT,
+  LIGHT_SOFT,
+  TERM_W,
   LIGHT,
   LINK,
   PLAQUE,
@@ -83,12 +87,14 @@ export function Play() {
   const device = useInputDevice();
   const keys = device === "keyboard";
   const speed = useGame((g) => g.speed);
-  const { pause, toTitle, setSpeed, start } = useGame.actions();
+  const { pause, toTitle, setSpeed, start, toLesson } = useGame.actions();
+  // The first game's tutorial: which lesson the player is at (rules/tutorial.ts).
+  const tutorial = useGame((g) => g.tutorial);
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, drag: false, dragMoved: false, dragX: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -140,6 +146,19 @@ export function Play() {
     s.click = false;
     s.drop = false;
     s.away = false;
+    // The tutorial: a lesson comes up at its moment, and once it has, it is over when the player has done what it says or
+    // the moment has passed.
+    const lesson = lessonAt(tutorial);
+    if (lesson !== null) {
+      if (s.lessonSeen !== tutorial) {
+        if (lessonShows(lesson, s.run)) {
+          s.lessonSeen = tutorial;
+          s.lessonHand = s.run.hand.join();
+          s.lessonCursor = s.run.cursor;
+          s.lessonMessage = s.run.message;
+        }
+      } else if (lessonDone(lesson, s.run, { looked: s.tip || s.run.cursor !== s.lessonCursor, moved: s.run.hand.join() !== s.lessonHand, acted: s.run.message !== s.lessonMessage })) toLesson(tutorial + 1);
+    }
     // Through a moment once (a hand dropped, a pick made, the shop left), its keys are known: they are not shown again.
     if (moment(s.run) !== before) learn(before);
     // Each time the run comes to rest where the player acts, it is kept for "Continue"; once it is over there is nothing to keep.
@@ -221,6 +240,14 @@ export function Play() {
   // The whole pool, on a board over everything: opened from the Pool board or with D, closed by any key or its button.
   const openPool = () => {
     s.whole = true;
+    s.poolAt = -1;
+  };
+  // On the whole-pool board a tap on a kind shows all it does, beside the board; a tap anywhere else puts that away.
+  const lookAt = (at: number) => {
+    s.poolAt = at;
+  };
+  const lookAway = () => {
+    s.poolAt = -1;
   };
   const closePool = () => {
     s.whole = false;
@@ -229,6 +256,13 @@ export function Play() {
   const tapEnd = () => {
     if (s.run.phase === "rent") s.click = true;
     else toTitle();
+  };
+  // The tutorial card's buttons: on to the next lesson without doing this one, or no more lessons at all.
+  const lessonNext = () => {
+    toLesson(tutorial + 1);
+  };
+  const lessonSkip = () => {
+    toLesson(LESSONS.length);
   };
   const tapAgain = () => {
     start();
@@ -270,9 +304,13 @@ export function Play() {
   const pool = poolRows(run.draw);
   /** The whole pool by kind, for the board that shows all of it. */
   const whole = poolRows(run.pool);
+  /** The kind chosen on the whole-pool board, if any. */
+  const looked = kindAt(whole, s.poolAt);
   const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
   const finished = run.phase === "over" || run.phase === "won";
+  /** The tutorial's lesson, while it is its moment and nothing is over the play screen. */
+  const coached = paused || s.whole ? null : lessonNow(tutorial, run);
 
   return (
     <Entity>
@@ -344,7 +382,7 @@ export function Play() {
           {!blind && (
             <Flex x={-20} y={-20} width={40} height={40}>
               <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor && (keys || s.tip) ? true : undefined} anchor="top-center" to="bottom-center" offsetX={jarMid - shelfX(slot.at, shelfLeft, SLOT, shelf.length, dragging && slot.at === run.cursor, s.dragX)} offsetY={18} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} note={!ordering ? "" : shelfNote(keys, run.holding && slot.at === run.cursor)} />
+                <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} />
               </Tooltip>
             </Flex>
           )}
@@ -385,6 +423,11 @@ export function Play() {
           </Flex>
         </Panel>
       </Flex>
+      {/* What the lesson is about, framed. */}
+      {coached?.target === "shelf" && <Spotlight x={shelfLeft - 8} y={SHELF_Y - 46} width={shelf.length * SLOT + 16} height={56} />}
+      {coached?.target === "jar" && <Spotlight x={JAR.left - 10} y={RIM - 28} width={JAR.right - JAR.left + 20} height={JAR.floor - RIM + 38} />}
+      {coached?.target === "rent" && <Spotlight x={HUD_X - 6} y={BOARD_Y + 6} width={BOARD_W + 12} height={136} />}
+      {coached?.target === "pool" && <Spotlight x={640 - HUD_X - BOARD_W - 6} y={BOARD_Y + 6} width={BOARD_W + 12} height={104} />}
 
       {/* Right: pinned to the screen's right edge, what is left of the pool to deal this shuffle, by kind, and how many that is of
           the whole pool. The kinds wrap, three to a row, or four, closer, once there are more than twelve. */}
@@ -415,7 +458,13 @@ export function Play() {
       </Flex>
 
       {/* What just happened, on a slate pinned to the right edge, its foot just above the counter: as tall as its words. */}
-      {run.message !== "" && run.phase !== "shop" && (
+      {/* The first game's tutorial takes the slate's place: one lesson at a time, about what is on screen now. */}
+      {coached !== null && !picking && run.phase !== "shop" && (
+        <Flex right={HUD_X} bottom={NOTE_FOOT}>
+          <Coach lesson={coached ?? LESSONS[0]!} step={tutorial} keys={keys} width={BOARD_W} onNext={lessonNext} onSkip={lessonSkip} />
+        </Flex>
+      )}
+      {coached === null && run.message !== "" && run.phase !== "shop" && (
         <Flex right={HUD_X} bottom={NOTE_FOOT} width={BOARD_W} direction="column" alignItems="stretch">
           <Panel image={PLAQUE}>
             <Text width={BOARD_W - 32} maxWidth={BOARD_W - 32} color={LIGHT}>
@@ -457,9 +506,17 @@ export function Play() {
             </Flex>
           </Flex>
           {/* Until a card is chosen, how to choose one; then how to take it. */}
-          <Flex right={16} bottom={6} direction="row">
-            <Text color={LIGHT}>{pickNote(keys, run.offerCursor >= 0)}</Text>
-          </Flex>
+          {coached === null && (
+            <Flex right={16} bottom={6} direction="row">
+              <Text color={LIGHT}>{pickNote(keys, run.offerCursor >= 0)}</Text>
+            </Flex>
+          )}
+          {/* The first pick of the first game: the tutorial's lesson says it, along the foot of the screen. */}
+          {coached !== null && (
+            <Flex right={8} bottom={2}>
+              <Coach wide lesson={coached ?? LESSONS[0]!} step={tutorial} keys={keys} width={440} onNext={lessonNext} onSkip={lessonSkip} />
+            </Flex>
+          )}
           {/* The way out, always there, in the bottom left corner: a card's keywords open to its side, never over this. */}
           <Flex left={16} bottom={2} direction="row" alignItems="center" gap={20}>
             <TapButton label="Skip for 1 coin" keyName={hints ? "Space" : ""} onPress={tapDrop} />
@@ -495,19 +552,26 @@ export function Play() {
       {s.whole && (
         <Entity>
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
-          <Flex left={0} right={0} top={0} bottom={0} direction="column" alignItems="center" justifyContent="center">
-            <Flex width={Math.max(240, Math.min(whole.length, 8) * 56 + 32)} direction="column" alignItems="stretch">
+          {/* The board, and to its left what the tapped kind does, in full: its card and what each of its keywords means. A tooltip
+              under the fruit would run off the foot of the screen. */}
+          <Flex left={0} right={0} top={0} bottom={0} direction="row" alignItems="center" justifyContent="center" gap={8}>
+            <Flex width={TERM_W} direction="column" alignItems="stretch">
+              {looked !== null && <FruitTip kind={looked ?? "cherry"} grown={grownOf(run, looked ?? "cherry")} />}
+              {looked === null && (
+                <Text width={TERM_W} maxWidth={TERM_W} align="center" color={LIGHT_SOFT}>
+                  {keys ? "Click a fruit to see what it does" : "Tap a fruit to see what it does"}
+                </Text>
+              )}
+            </Flex>
+            <Flex width={Math.max(240, Math.min(whole.length, 6) * 56 + 32)} direction="column" alignItems="stretch">
               <Panel heading={`Your pool: ${run.pool.length} fruit`} gap={4}>
-                <Flex direction="row" wrap justifyContent="center" rowGap={4} columnGap={0}>
-                  {whole.map((row) => (
-                    <Flex key={row.kind} width={56} direction="column" alignItems="center">
+                <Flex direction="row" wrap justifyContent="center" rowGap={4} columnGap={0} onPressOutside={lookAway}>
+                  {placed(whole).map((slot) => (
+                    <Flex key={slot.card.kind} width={56} direction="column" alignItems="center" backgroundImage={s.poolAt === slot.at ? SELECT : undefined} slice={CARD_SLICE} focusable={false} onPress={() => lookAt(slot.at)}>
                       <Flex width={40} height={40}>
-                        <FruitBall kind={row.kind} x={20} y={20} look="icon" />
-                        <Tooltip anchor="top-center" to="bottom-center" offsetX={0} offsetY={4} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                          <FruitTip kind={row.kind} grown={grownOf(run, row.kind)} />
-                        </Tooltip>
+                        <FruitBall kind={slot.card.kind} x={20} y={20} look="icon" />
                       </Flex>
-                      <Text color={INK}>{`${row.count}`}</Text>
+                      <Text color={INK}>{`${slot.card.count}`}</Text>
                     </Flex>
                   ))}
                 </Flex>
@@ -520,6 +584,12 @@ export function Play() {
         </Entity>
       )}
       {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} onPoint={point} onClick={click} onAway={away} onSpace={tapDrop} />}
+      {/* The first shop of the first game: the lesson lies along the foot of the screen, under the shop's actions, until the player does something there. */}
+      {run.phase === "shop" && coached !== null && (
+        <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center">
+          <Coach wide lesson={coached ?? LESSONS[0]!} step={tutorial} keys={keys} width={620} onNext={lessonNext} onSkip={lessonSkip} />
+        </Flex>
+      )}
       {paused && <Pause />}
     </Entity>
   );

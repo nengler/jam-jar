@@ -3,6 +3,7 @@ import { Button, Entity, Flex, Menu, Text, useInputDevice } from "@tsengine/runt
 import { Backdrop } from "./Backdrop.tsx";
 import { useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
+import { LESSONS } from "./rules/tutorial.ts";
 import { BUTTON, BUTTON_GREY, BUTTON_SLICE, DISPLAY, DISPLAY_SIZE, INK, LIGHT_SOFT, PANEL, PANEL_SLICE } from "./theme.ts";
 
 /** The settings (the music's and the sounds' volume, 0 to 10; 0 is off): left and right change the row with the focus (`onAdjust`), Enter presses it, and Escape goes back (`onBack`). */
@@ -13,7 +14,8 @@ export function Settings() {
   // Whether the player is at a keyboard, by what was pressed last (a mouse and a finger are both the pointer): a key is named only then.
   const device = useInputDevice();
   const keys = device === "keyboard";
-  const { changeEffects, changeSpeed, toTitle } = useGame.actions();
+  const tutorial = useGame((s) => s.tutorial);
+  const { changeEffects, changeSpeed, toggleTips, toTitle } = useGame.actions();
   return (
     <Entity>
       <Backdrop />
@@ -30,6 +32,10 @@ export function Settings() {
           </Button>
           <Button onPress={changeSpeed} onAdjust={() => changeSpeed()} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
             <Text color={INK}>{`Speed < ${fast ? "Fast" : "Normal"} >`}</Text>
+          </Button>
+          {/* The first game's tutorial: on until its last lesson has been seen; turned on again, it starts over. */}
+          <Button onPress={toggleTips} onAdjust={() => toggleTips()} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
+            <Text color={INK}>{`Tips < ${tutorial < LESSONS.length ? "On" : "Off"} >`}</Text>
           </Button>
           <Button onPress={toTitle} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
             <Text color={INK}>Back</Text>

@@ -157,15 +157,6 @@ export function shelfX(at: number, left: number, slot: number, count: number, dr
   return dragged ? Math.max(left + slot / 2, Math.min(left + count * slot - slot / 2, pointerX)) : home;
 }
 
-/**
- * What the card under the shelf says about playing the hand, by what the player is using: a keyboard is told its keys, a mouse
- * or a finger to drag and tap. `held` is whether this fruit is the one picked up.
- */
-export function shelfNote(keys: boolean, held: boolean): string {
-  if (keys) return held ? "Left / Right moves it. Enter puts it down." : "Enter picks it up to move it. Space drops the hand.";
-  return held ? "Let go where it should stand." : "Drag it along the shelf to move it. Tap the jar to drop.";
-}
-
 /** The pick's prompt, the same way: before a card is chosen, and once one is. */
 export function pickNote(keys: boolean, chosen: boolean): string {
   if (keys) return chosen ? "Enter takes it" : "Left / Right chooses a card";
@@ -182,4 +173,9 @@ export function countUp(total: number, time: number, seconds: number): number {
 export function earnerKind(label: string): FruitKind | null {
   for (const kind of Object.keys(FRUITS) as FruitKind[]) if (FRUITS[kind].name === label) return kind;
   return null;
+}
+
+/** The kind at a place of the whole-pool board, or null when none is chosen there (-1) or the place is gone. */
+export function kindAt(rows: readonly PoolRow[], at: number): FruitKind | null {
+  return rows[at]?.kind ?? null;
 }

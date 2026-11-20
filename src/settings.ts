@@ -7,7 +7,7 @@ import { createSettings } from "@tsengine/runtime";
  */
 export const settings = createSettings({
   name: "settings",
-  defaults: { music: 0.4, effects: 0.8, fast: false, learned: [] as string[] },
+  defaults: { music: 0.4, effects: 0.8, fast: false, learned: [] as string[], tutorial: 0 },
 });
 
 /** A volume as the settings screen shows it, 0 to 10. */
@@ -47,4 +47,13 @@ export function stepVolume(which: "music" | "effects", by: number): void {
 export function learn(moment: string): void {
   const known = settings.get().learned;
   if (moment !== "" && !known.includes(moment)) settings.set({ learned: [...known, moment] });
+}
+
+/** Which lesson of the first game's tutorial comes next (rules/tutorial.ts): 0 for a player who has seen none, past the last once it is over. */
+export function tutorialStep(): number {
+  return settings.get().tutorial;
+}
+
+export function setTutorialStep(step: number): void {
+  if (step !== settings.get().tutorial) settings.set({ tutorial: step });
 }
