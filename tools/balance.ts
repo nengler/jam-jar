@@ -14,6 +14,7 @@
  *   it gains is what a player who reads the jar perfectly could gain; "/best" minus "/fair" is what seeing the luck was worth.
  * - "/spots" plays the drop the game had before the tray (`TRAY` in jar.ts): a fruit at a time, each at a random spot. "/tray",
  *   the game's drop, is accepted and changes nothing, so older result files still read.
+ * - "/melon", "/oranges", "/reach16" and "/smallcrush" try variants of the Ladder set (`LADDER` in jar.ts).
  *   "/wobble8" sets how far a fruit may wander in its lane (default 4 px; "/wobble0" lands every fruit mid-lane).
  *
  * A player ending "/thin" ("skip/thin") spends its coins in the shop taking Cherries out of its pool; the others buy nothing.
@@ -34,7 +35,7 @@ import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
 import { FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
-import { bossNow, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
+import { bossNow, LADDER, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
 
 type Strategy = string;
@@ -243,10 +244,15 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   const order = plan.includes("/order");
   const search = plan.includes("/best") ? "best" : plan.includes("/worst") ? "worst" : plan.includes("/fair") ? "fair" : null;
   TRAY.on = !plan.includes("/spots");
+  // The Ladder set's variants (`LADDER` in jar.ts): "/melon", "/oranges", "/reach16" (any number), "/smallcrush".
+  LADDER.melonPick = plan.includes("/melon");
+  LADDER.oranges = plan.includes("/oranges");
+  LADDER.crushReach = Number(/\/reach(\d+)/.exec(plan)?.[1] ?? 8);
+  LADDER.crushSmall = plan.includes("/smallcrush");
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
   // With no luck to average over (a tray with no wobble), one try is the whole story.
   const tries = TRAY.on && TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
-  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots)/g, "");
+  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots|melon|oranges|reach\d+|smallcrush)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {

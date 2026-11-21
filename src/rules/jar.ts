@@ -43,6 +43,18 @@ export const TRAY = { on: true, wobble: 4 };
  */
 export const SPOTS = { salt: 0 };
 
+/**
+ * For the balance bots: variants of the Ladder set to compare, all off in the game. `melonPick` puts the Melon among the fruit a
+ * pick and the shop offer; `oranges` rolls a starting pool with more Oranges (1–3, against 0–2); `crushReach` is how far past
+ * touching a Pumpkin's Crush reaches; `crushSmall` lets it Crush any fruit no bigger than a Grape, not only the four it names.
+ */
+export const LADDER = { melonPick: false, oranges: false, crushReach: 8, crushSmall: false };
+
+/** The fruit a pick or the shop can offer. */
+function offerList(): readonly FruitKind[] {
+  return LADDER.melonPick ? [...OFFERABLE, "melon"] : OFFERABLE;
+}
+
 /** Where the next fruit lands: from the run's stream, or (`SPOTS.salt`) from another one, the run's stream moving on the same. */
 function spot(rng: Rng, low: number, high: number): number {
   const own = rng.range(low, high);
@@ -420,10 +432,10 @@ export const NO_KEYS: Keys = { up: false, down: false, left: false, right: false
 /** The starting pool: 1 Apple plus 8 starters, 3–5 Cherries, 2–4 Grapes and 0–2 Oranges (see the design doc). */
 export function rollPool(rng: Rng): FruitKind[] {
   for (;;) {
-    const cherries = rng.int(3, 5);
+    const cherries = LADDER.oranges ? rng.int(2, 4) : rng.int(3, 5);
     const grapes = rng.int(2, 4);
     const oranges = 8 - cherries - grapes;
-    if (oranges < 0 || oranges > 2) continue;
+    if (oranges < (LADDER.oranges ? 1 : 0) || oranges > (LADDER.oranges ? 3 : 2)) continue;
     return [
       ...Array<FruitKind>(cherries).fill("cherry"),
       ...Array<FruitKind>(grapes).fill("grape"),
@@ -1008,8 +1020,7 @@ function land(run: Run): void {
   for (const p of pumpkins) if (run.fruits.includes(p)) crush(run, p);
 }
 
-/** How far past touching a Pumpkin's Crush reaches, in pixels: a near miss still counts. And what it adds for each fruit Crushed. */
-export const CRUSH_REACH = 8;
+/** What a Pumpkin's Crush adds for each fruit Crushed. How far past touching it reaches is `LADDER.crushReach`: a near miss still counts. */
 export const CRUSH_BONUS = 3;
 
 /**
@@ -1021,9 +1032,11 @@ function crush(run: Run, pumpkin: Fruit): void {
   const near = links(run.fruits);
   const doubled = new Set(run.fruits.filter((_, i) => boosted(run.fruits, near, i)).map((f) => f.id));
   const under = run.fruits.filter(
-    (o) => o !== pumpkin && !o.frozen && o.y > pumpkin.y - pumpkin.r * 0.25 && Math.hypot(o.x - pumpkin.x, o.y - pumpkin.y) < pumpkin.r + o.r + CRUSH_REACH
+    (o) => o !== pumpkin && !o.frozen && o.y > pumpkin.y - pumpkin.r * 0.25 && Math.hypot(o.x - pumpkin.x, o.y - pumpkin.y) < pumpkin.r + o.r + LADDER.crushReach
   );
-  const crushed = under.filter((o) => CRUSHABLE.includes(o.kind));
+  const crushed = under.filter((o) =>
+    LADDER.crushSmall ? o.r <= FRUITS.grape.radius && o.kind !== "watermelon" && !o.lit : CRUSHABLE.includes(o.kind)
+  );
   const smashed = under.filter((o) => o.kind === "watermelon");
   if (crushed.length === 0 && smashed.length === 0) return;
   const born: Fruit[] = [];
@@ -1539,7 +1552,7 @@ export function resolve(run: Run): void {
 
 function offer(run: Run): void {
   const rng = new Rng(run.seed);
-  run.offers = rng.shuffle(OFFERABLE).slice(0, 3);
+  run.offers = rng.shuffle(offerList()).slice(0, 3);
   // Now and then a Legendary takes the last place.
   if (rng.next() < LEGENDARY_CHANCE) run.offers[2] = rng.pick(LEGENDARY);
   run.seed = rng.seed;
@@ -1625,7 +1638,7 @@ function leaveRent(run: Run): void {
 /** Fill the shop's shelf: three different fruit, and an item the player can use (none when there is none: `offerable`). */
 function stock(run: Run, shop: Shop): void {
   const rng = new Rng(run.seed);
-  shop.fruits = rng.shuffle(OFFERABLE).slice(0, SHOP_FRUITS);
+  shop.fruits = rng.shuffle(offerList()).slice(0, SHOP_FRUITS);
   const choices = offerable(run.items);
   shop.item = choices.length === 0 ? null : rng.pick(choices);
   run.seed = rng.seed;
