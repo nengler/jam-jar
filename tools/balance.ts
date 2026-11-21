@@ -14,7 +14,7 @@
  *   it gains is what a player who reads the jar perfectly could gain; "/best" minus "/fair" is what seeing the luck was worth.
  * - "/spots" plays the drop the game had before the tray (`TRAY` in jar.ts): a fruit at a time, each at a random spot. "/tray",
  *   the game's drop, is accepted and changes nothing, so older result files still read.
- * - "/melon", "/oranges", "/reach16" and "/smallcrush" try variants of the Ladder set (`LADDER` in jar.ts).
+ * - "/melon", "/melonchance20" (a Melon in 20% of picks), "/giant50" (what a Giant Pumpkin scores), "/oranges", "/reach16" and "/smallcrush" try variants of the Ladder set (`LADDER` in jar.ts).
  *   "/wobble8" sets how far a fruit may wander in its lane (default 4 px; "/wobble0" lands every fruit mid-lane).
  *
  * A player ending "/thin" ("skip/thin") spends its coins in the shop taking Cherries out of its pool; the others buy nothing.
@@ -245,14 +245,16 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   const search = plan.includes("/best") ? "best" : plan.includes("/worst") ? "worst" : plan.includes("/fair") ? "fair" : null;
   TRAY.on = !plan.includes("/spots");
   // The Ladder set's variants (`LADDER` in jar.ts): "/melon", "/oranges", "/reach16" (any number), "/smallcrush".
-  LADDER.melonPick = plan.includes("/melon");
+  LADDER.melonPick = /\/melon(\/|$)/.test(plan);
   LADDER.oranges = plan.includes("/oranges");
+  LADDER.melonChance = Number(/\/melonchance(\d+)/.exec(plan)?.[1] ?? 0) / 100;
+  LADDER.giantPoints = Number(/\/giant(\d+)/.exec(plan)?.[1] ?? 150);
   LADDER.crushReach = Number(/\/reach(\d+)/.exec(plan)?.[1] ?? 8);
   LADDER.crushSmall = plan.includes("/smallcrush");
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
   // With no luck to average over (a tray with no wobble), one try is the whole story.
   const tries = TRAY.on && TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
-  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots|melon|oranges|reach\d+|smallcrush)/g, "");
+  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots|melonchance\d+|melon|oranges|reach\d+|smallcrush|giant\d+)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
@@ -365,6 +367,9 @@ for (const strategy of players) {
       `Ladder share ${((100 * ladder) / Math.max(1, total)).toFixed(0)}%, spills ${(-per("Spill") / 5).toFixed(1)} (${(-per("Spill") / 5 / rent.length).toFixed(1)} a cycle)`
   );
   if (process.argv[4] !== "full") continue;
+  // What earned the points, a run on average, the most first.
+  const labels = [...new Set(events.flatMap((e) => Object.keys(e.earned)))].map((label) => ({ label, points: per(label) })).sort((a, b) => b.points - a.points);
+  console.log(`  points a run by source: ${labels.map((l) => `${l.label} ${l.points.toFixed(0)}`).join(", ")}`);
   console.log(`${strategy} (${runs} runs, pool ends at ${(pool / runs).toFixed(1)} fruit)`);
   for (let cycle = 0; cycle < rent.length; cycle++) {
     const scores = all.map((s) => s[cycle] ?? 0).sort((a, b) => a - b);

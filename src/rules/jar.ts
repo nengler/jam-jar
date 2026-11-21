@@ -47,8 +47,10 @@ export const SPOTS = { salt: 0 };
  * For the balance bots: variants of the Ladder set to compare, all off in the game. `melonPick` puts the Melon among the fruit a
  * pick and the shop offer; `oranges` rolls a starting pool with more Oranges (1–3, against 0–2); `crushReach` is how far past
  * touching a Pumpkin's Crush reaches; `crushSmall` lets it Crush any fruit no bigger than a Grape, not only the four it names.
+ * `melonChance` (with `melonPick` off) offers a Melon only now and then, in the middle place of a pick, as a Legendary takes the
+ * last; `giantPoints` is what a Giant Pumpkin scores.
  */
-export const LADDER = { melonPick: false, oranges: false, crushReach: 8, crushSmall: false };
+export const LADDER = { melonPick: false, melonChance: 0, giantPoints: 150, oranges: false, crushReach: 8, crushSmall: false };
 
 /** The fruit a pick or the shop can offer. */
 function offerList(): readonly FruitKind[] {
@@ -1131,8 +1133,8 @@ function merge(run: Run): void {
         pulse(giant);
         born.push(giant);
         giants.push(giant);
-        score(run, FRUITS.giantpumpkin.points, mx, my - giant.r, { label: "Merge", earner: FRUITS.giantpumpkin.name });
-        run.message = `Two Watermelons: a Giant Pumpkin! +${FRUITS.giantpumpkin.points}`;
+        score(run, LADDER.giantPoints, mx, my - giant.r, { label: "Merge", earner: FRUITS.giantpumpkin.name });
+        run.message = `Two Watermelons: a Giant Pumpkin! +${LADDER.giantPoints}`;
       } else if (a.kind === "pomegranate") {
         born.push(...burst(run, mx, my));
         run.message = "Pomegranates Burst!";
@@ -1555,6 +1557,7 @@ function offer(run: Run): void {
   run.offers = rng.shuffle(offerList()).slice(0, 3);
   // Now and then a Legendary takes the last place.
   if (rng.next() < LEGENDARY_CHANCE) run.offers[2] = rng.pick(LEGENDARY);
+  if (LADDER.melonChance > 0 && rng.next() < LADDER.melonChance) run.offers[1] = "melon";
   run.seed = rng.seed;
   run.offerCursor = -1;
   run.phase = "pick";
