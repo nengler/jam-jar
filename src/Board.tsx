@@ -2,7 +2,7 @@ import { Entity, Flex, Text, useTime, type Child } from "@tsengine/runtime/jsx";
 
 import { ripple } from "./layout.ts";
 
-import { DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT, PANEL, PANEL_SLICE, WALL_SHADOW } from "./theme.ts";
+import { DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT, PANEL, PANEL_HOVER, PANEL_SLICE, WALL_SHADOW } from "./theme.ts";
 
 /** How far a titled board's frame starts below its top: the heading takes the top of the space the board is given. */
 const TITLE_ROOM = 12;
@@ -12,21 +12,16 @@ const TITLE_ROOM = 12;
  * shadow it casts, as a box that lays its children out in a column. It takes the width of the box it is in and is as tall as
  * what is on it, so nothing on it is placed by counting pixels from the screen's corner, and it cannot be too short for them.
  * `title` is a heading lettered on the wall just above it; `heading` a dialog's, in ink at the top of the board itself, since
- * over a busy screen a heading above the board would not read.
+ * over a busy screen a heading above the board would not read. With `onPress` the whole board is a button; `pressable` turns its
+ * frame amber under the mouse, to say so.
  */
-export function Panel({ title, heading, image = PANEL, gap = 0, children }: { title?: string; heading?: string; image?: string; gap?: number; children: Child }) {
+export function Panel({ title, heading, image = PANEL, gap = 0, pressable = false, onPress, children }: { title?: string; heading?: string; image?: string; gap?: number; pressable?: boolean; onPress?: () => void; children: Child }) {
   return (
     <Flex direction="column" alignItems="stretch" paddingTop={title === undefined ? 0 : TITLE_ROOM}>
       {/* The shadow, pinned a little down and right of the frame; then the frame over it. */}
       <Flex left={4} right={-4} top={(title === undefined ? 0 : TITLE_ROOM) + 4} bottom={-4} background={WALL_SHADOW} />
-      <Flex direction="column" alignItems="stretch" gap={gap} paddingX={16} paddingTop={6} paddingBottom={10} backgroundImage={image} slice={PANEL_SLICE}>
-        {heading !== undefined && (
-          <Flex direction="row" justifyContent="center" height={30}>
-            <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
-              {heading}
-            </Text>
-          </Flex>
-        )}
+      <Flex direction="column" alignItems="stretch" gap={gap} paddingX={16} paddingTop={6} paddingBottom={10} backgroundImage={image} hoverBackgroundImage={pressable ? PANEL_HOVER : undefined} slice={PANEL_SLICE} focusable={false} onPress={onPress}>
+        {heading !== undefined && <PanelHeading text={heading} />}
         {children}
       </Flex>
       {title !== undefined && (
@@ -34,6 +29,17 @@ export function Panel({ title, heading, image = PANEL, gap = 0, children }: { ti
           <Letters text={title} seed={title.length * 7} />
         </Flex>
       )}
+    </Flex>
+  );
+}
+
+/** A dialog's heading, in ink at the top of its board. */
+function PanelHeading({ text }: { text: string }) {
+  return (
+    <Flex direction="row" justifyContent="center" height={30}>
+      <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
+        {text}
+      </Text>
     </Flex>
   );
 }

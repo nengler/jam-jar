@@ -8,7 +8,7 @@ import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
-import { TapButton } from "./KeyHint.tsx";
+import { PauseButton, TapButton } from "./KeyHint.tsx";
 import { atRest, crossed, LANDS, rolledIn, sweep, SWEEP_TIME, blastBits, blastFlash, blastJolt, cycleTitle, INTRO, jarDrop, kindAt, popIn, rollIn, rollStarted, grownOf, leaned, moment, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RentScore } from "./RentScore.tsx";
@@ -63,11 +63,13 @@ const HUD_X = 12;
 const BOARD_Y = 28;
 /** The pool: each kind a 32-pixel icon and how many of it, three across; four across, closer, once there are more than four
  * rows of them, so all 17 kinds a pool can hold fit above the note. */
-const POOL_ROOMY = { columns: 3, cell: 53 };
-const POOL_TIGHT = { columns: 4, cell: 40 };
+const POOL_ROOMY = { columns: 3, cell: 53, gap: 4 };
+const POOL_TIGHT = { columns: 4, cell: 40, gap: 1 };
 const POOL_ROW = 32;
-/** The note of what just happened: a slate at the right, its foot this far above the foot of the screen (just above the counter). */
-const NOTE_FOOT = 36;
+/** The pause button stands on the counter in the bottom right corner, its foot where the jar's is. */
+const PAUSE_FOOT = 360 - COUNTER_Y;
+/** The note of what just happened: a slate at the right, its foot this far above the foot of the screen (just above the pause button). */
+const NOTE_FOOT = PAUSE_FOOT + 30 + 6;
 /** The band behind the last turn's banner: the darkest Apollo colour, nearly solid. */
 const SWEEP_BAND = "#090a14e6";
 /** How loud a note of the tally is, of the sounds' volume. */
@@ -522,10 +524,11 @@ export function Play() {
       {/* Right: pinned to the screen's right edge, what is left of the pool to deal this shuffle, by kind, and how many that is of
           the whole pool. The kinds wrap, three to a row, or four, closer, once there are more than twelve. */}
       <Flex right={HUD_X - 240 * (1 - popIn(s.intro, INTRO.right, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch">
-        <Panel title="Pool">
+        {/* The whole board opens the whole pool, dealt or not (as D does): its frame turns amber under the mouse, and its foot says so. */}
+        <Panel title="Pool" pressable onPress={openPool}>
           <Flex direction="row" wrap rowGap={0} columnGap={0}>
             {pool.map((row) => (
-              <Flex key={row.kind} width={grid.cell} height={POOL_ROW} direction="row" alignItems="center">
+              <Flex key={row.kind} width={grid.cell} height={POOL_ROW} direction="row" alignItems="center" gap={grid.gap}>
                 <Flex width={32} height={32}>
                   <FruitBall kind={row.kind} x={16} y={16} look="icon" />
                   {/* The mouse over a kind in the Pool shows what it does, to the board's left. */}
@@ -537,12 +540,8 @@ export function Play() {
               </Flex>
             ))}
           </Flex>
-          {/* The board shows what is still to be dealt; the whole pool, dealt or not, opens from here (or with D). Pause is
-              beside it: the two buttons of the play screen that are always there. */}
-          <Flex direction="row" justifyContent="space-between" paddingTop={4}>
-            <TapButton label="See all" onPress={openPool} />
-            {/* Esc for a finger. In words: two bars in this font read as a Roman numeral. */}
-            <TapButton label="Pause" onPress={tapPause} />
+          <Flex direction="row" justifyContent="end" alignItems="center" paddingTop={4}>
+            <Text color={KEYWORD}>{"See all >"}</Text>
           </Flex>
         </Panel>
       </Flex>
@@ -587,6 +586,11 @@ export function Play() {
           </Panel>
         </Flex>
       )}
+
+      {/* Pause (Esc, for a finger): on the counter in the bottom right corner, out of the way of the boards. */}
+      <Flex right={HUD_X} bottom={PAUSE_FOOT - 240 * (1 - popIn(s.intro, INTRO.right, INTRO.pop))}>
+        <PauseButton onPress={tapPause} />
+      </Flex>
 
       {/* The pick: three cards in a row in the middle of a dimmed kitchen, under their heading. Each place is a little taller
           than its card, and the chosen card stands at the top of its place. */}

@@ -31,6 +31,8 @@ export const DISPLAY_SIZE = 28;
  * lettering: light on the wall above a board, ink at the top of a dialog. */
 export const PANEL = "frame.png";
 export const PANEL_SLICE = 8;
+/** A board that can be pressed, under the mouse: the chosen card's amber frame. */
+export const PANEL_HOVER = "frame-chosen.png";
 export const CARD = "frame.png";
 export const CARD_CHOSEN = "frame-chosen.png";
 export const CARD_SLICE = 8;
@@ -92,6 +94,8 @@ export function fruitImageSize(kind: FruitKind, look: FruitLook): number {
 
 /** Where the counter's top is on the screen: what stands on it (the jar, the title's fruit) has its foot here. */
 export const COUNTER_Y = 342;
+/** The shadow a thing standing on the counter casts on it. */
+export const COUNTER_SHADOW = "#090a1480";
 
 /** The motes of dust in the kitchen's air: two blues a little lighter than the wall. */
 export const MOTE: readonly [string, string] = ["#253a5e", "#3c5e8b"];
