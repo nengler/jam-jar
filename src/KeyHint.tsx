@@ -1,4 +1,4 @@
-import { Flex, Text, useSound } from "@tsengine/runtime/jsx";
+import { Flex, Shape, Text, useSound } from "@tsengine/runtime/jsx";
 
 import { CLICK_VOLUME, BUTTON, BUTTON_GREY, BUTTON_SLICE, INK, LIGHT } from "./theme.ts";
 
@@ -49,6 +49,32 @@ export function TapButton({ label, keyName = "", onPress }: { label: string; key
       )}
       <Flex direction="row" alignItems="center" height={30} paddingX={8} paddingTop={2} backgroundImage={BUTTON_GREY} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} focusable={false} onPress={press}>
         <Text color={INK}>{label}</Text>
+      </Flex>
+    </Flex>
+  );
+}
+
+/**
+ * The pause button: a little square block with two bars drawn on it (in a font, two bars read as a Roman numeral), small enough
+ * to stand on the counter in the bottom right corner like anything else put down there. `keyName` draws the key beside it, as
+ * `TapButton` does.
+ */
+export function PauseButton({ keyName = "", onPress }: { keyName?: string; onPress: () => void }) {
+  const playClick = useSound("click.wav");
+  const press = () => {
+    playClick(CLICK_VOLUME);
+    onPress();
+  };
+  return (
+    <Flex direction="row" alignItems="center" gap={6}>
+      {keyName !== "" && (
+        <Flex height={26} minWidth={26} paddingX={8} paddingTop={4} paddingBottom={2} backgroundImage="key.png" sliceTop={4} sliceBottom={8} sliceLeft={4} sliceRight={4} alignItems="center" justifyContent="center">
+          <Text color={INK}>{keyName}</Text>
+        </Flex>
+      )}
+      <Flex width={30} height={30} backgroundImage={BUTTON_GREY} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} focusable={false} onPress={press}>
+        <Shape kind="rect" x={10} y={9} width={4} height={12} color={INK} />
+        <Shape kind="rect" x={16} y={9} width={4} height={12} color={INK} />
       </Flex>
     </Flex>
   );
