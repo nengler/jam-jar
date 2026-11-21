@@ -541,14 +541,7 @@ export function Play() {
             ))}
           </Flex>
           <Flex direction="row" justifyContent="end" alignItems="center" paddingTop={4}>
-            <Flex direction="row" alignItems="center" gap={6}>
-              {keys && (
-                <Flex height={22} minWidth={22} paddingX={6} paddingTop={2} backgroundImage="key.png" sliceTop={4} sliceBottom={8} sliceLeft={4} sliceRight={4} alignItems="center" justifyContent="center">
-                  <Text color={INK}>D</Text>
-                </Flex>
-              )}
-              <Text color={KEYWORD}>{"See all >"}</Text>
-            </Flex>
+            <Text color={KEYWORD}>{"See all >"}</Text>
           </Flex>
         </Panel>
       </Flex>
@@ -596,7 +589,7 @@ export function Play() {
 
       {/* Pause (Esc, for a finger): on the counter in the bottom right corner, out of the way of the boards. */}
       <Flex right={HUD_X} bottom={PAUSE_FOOT - 240 * (1 - popIn(s.intro, INTRO.right, INTRO.pop))}>
-        <PauseButton keyName={keys ? "Esc" : ""} onPress={tapPause} />
+        <PauseButton onPress={tapPause} />
       </Flex>
 
       {/* The pick: three cards in a row in the middle of a dimmed kitchen, under their heading. Each place is a little taller
