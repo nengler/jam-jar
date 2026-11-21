@@ -197,6 +197,12 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     | Melon whenever offered | 1318 | in 11/24 runs (0.75 a run) | 2/24 |
     | Durian whenever offered | 1307 | in 3/24 runs | 1/24 |
     | Pumpkin + Melon | 1207 | in 3/24 runs | 2/24 |
+  - The proposed Smashed rework, tried with the bots only (`/psmash`, `/psmashladder`, `/smashall`, `/smashblasts`): a Pumpkin
+    that Smashes the biggest ladder fruit under it, with Smashed a general rule (a Melon into 2 Oranges, and so on), gives a
+    Pumpkin player about 3.7 Smashes a run (0.13 today) and Pumpkin + Melon about 4.4, for 25 to 40 more points a run.
+    It costs a garden no more than today's Pumpkin (1018 against 1002; 1073 with no Pumpkin), and Giant Pumpkins stay at 3
+    runs in 24 for Pumpkin + Melon. Blasts that Smash too lifted Chili + Durian from 1262 to 1480 a run, with the last rent
+    made in 9 of 24 runs.
 - The title has a jar filling up by itself: a run the rules play (`src/rules/demo.ts`: each hand dropped as dealt, every
   pick skipped, a new run a moment after the rent comes due).
 - Fruit roll: the physics has no angle, so each fruit's turning is drawn from how far it moves along what it touches.
