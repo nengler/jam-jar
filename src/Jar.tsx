@@ -55,6 +55,7 @@ export function Jar({ run, onReport, lift = 0 }: JarProps) {
           key={f.id}
           id={f.id}
           kind={f.kind}
+          r={f.r}
           x0={f.x0}
           y0={f.y0}
           rotten={f.rotten}

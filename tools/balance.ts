@@ -14,6 +14,7 @@
  *   it gains is what a player who reads the jar perfectly could gain; "/best" minus "/fair" is what seeing the luck was worth.
  * - "/spots" plays the drop the game had before the tray (`TRAY` in jar.ts): a fruit at a time, each at a random spot. "/tray",
  *   the game's drop, is accepted and changes nothing, so older result files still read.
+ * - "/melon", "/melonchance20" (a Melon in 20% of picks), "/giant50" (what a Giant Pumpkin scores), "/oranges", "/reach16" and "/smallcrush" try variants of the Ladder set (`LADDER` in jar.ts).
  *   "/wobble8" sets how far a fruit may wander in its lane (default 4 px; "/wobble0" lands every fruit mid-lane).
  *
  * A player ending "/thin" ("skip/thin") spends its coins in the shop taking Cherries out of its pool; the others buy nothing.
@@ -32,9 +33,9 @@ import { findComponent } from "@tsengine/testing";
 
 import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
-import { FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
+import { FRUITS, MELON_CHANCE, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
-import { bossNow, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
+import { bossNow, LADDER, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
 
 type Strategy = string;
@@ -213,7 +214,19 @@ const rent = RENT.slice();
 (RENT as number[]).fill(0);
 
 /** One run: each cycle's score, the pool's size at the end, and how long each turn's settle took. */
-function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[]; mismatches: number } {
+/**
+ * What happened in a run, for the Ladder set's checks (design doc, "Rules and checks"): its points by what earned them (the run's
+ * own `earned`), and how many Giant Pumpkins formed (counted by id as they appear). With "/best", "/worst" or "/fair" the tries
+ * are counted too, so read these from players that drop as dealt or "/order".
+ */
+interface Events {
+  earned: Record<string, number>;
+  giants: number;
+  /** Smashes: counted from the pieces they leave (4 Slices, or 2 of the next size down); "/best" and "/fair" undercount them. */
+  smashes: number;
+}
+
+function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[]; mismatches: number; events: Events } {
   const backend = new RecordingBackend();
   const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
   // After the player is made (making it resets the game's state): Play adds one to the seed when a run starts.
@@ -224,6 +237,10 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   const settles: number[] = [];
   let settling = -1;
   let mismatches = 0;
+  const giants = new Set<number>();
+  const slices = new Set<number>();
+  const pieces = new Set<number>();
+  let earned: Record<string, number> = {};
   let wait = 0;
   let coins = 0;
   const [plan = "", owned = ""] = strategy.split("@");
@@ -231,10 +248,24 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   const order = plan.includes("/order");
   const search = plan.includes("/best") ? "best" : plan.includes("/worst") ? "worst" : plan.includes("/fair") ? "fair" : null;
   TRAY.on = !plan.includes("/spots");
+  // The Ladder set's variants (`LADDER` in jar.ts): "/melon", "/oranges", "/reach16" (any number), "/smallcrush".
+  LADDER.melonPick = /\/melon(\/|$)/.test(plan);
+  LADDER.oranges = plan.includes("/oranges");
+  // The Smashed rework, which the game plays: "/oldpumpkin" goes back to the first-built Pumpkin (it Crushes small fruit),
+  // "/psmash" has the Pumpkin Smash the biggest fruit of any kind (Crushing one off the ladder; "/psmashladder" is the game's
+  // ladder fruit only), "/nosmashall" turns off Smashed as a general rule, "/smashblasts" has explosions Smash too.
+  LADDER.pumpkinSmash = !plan.includes("/oldpumpkin");
+  LADDER.smashOther = plan.includes("/psmash") && !plan.includes("/psmashladder") ? "destroy" : "none";
+  LADDER.smashAll = !plan.includes("/nosmashall");
+  LADDER.smashBlasts = plan.includes("/smashblasts");
+  LADDER.melonChance = Number(/\/melonchance(\d+)/.exec(plan)?.[1] ?? MELON_CHANCE * 100) / 100;
+  LADDER.giantPoints = Number(/\/giant(\d+)/.exec(plan)?.[1] ?? FRUITS.giantpumpkin.points);
+  LADDER.crushReach = Number(/\/reach(\d+)/.exec(plan)?.[1] ?? 8);
+  LADDER.crushSmall = plan.includes("/smallcrush");
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
   // With no luck to average over (a tray with no wobble), one try is the whole story.
   const tries = TRAY.on && TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
-  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots)/g, "");
+  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots|melonchance\d+|melon|oranges|reach\d+|smallcrush|giant\d+|psmashladder|psmash|nosmashall|smashall|smashblasts|oldpumpkin)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
@@ -242,6 +273,13 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     advance(player, backend);
     const found = findComponent("Play", player.world.root) as { s: { run: Run } } | null;
     // Every frame, not only the ones a key is chosen on: the settle's length is the last time seen before the phase moved on.
+    if (found !== null) {
+      for (const f of found.s.run.fruits) {
+        if (f.kind === "giantpumpkin") giants.add(f.id);
+        if (f.piece === true) (f.kind === "slice" ? slices : pieces).add(f.id);
+      }
+      earned = found.s.run.earned;
+    }
     if (found !== null && found.s.run.phase === "settle") settling = found.s.run.settleTime;
     else if (settling >= 0) {
       settles.push(settling);
@@ -298,7 +336,8 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     else wait = 0;
   }
   player.close();
-  return { scores, pool, settles, mismatches };
+  return { scores, pool, settles, mismatches, // Giant Pumpkins by the points they scored: "/best" and "/fair" play their turns out of this loop's sight, so ids miss them.
+    events: { earned: { ...earned }, giants: Math.max(giants.size, Math.round((earned["Giant Pumpkin"] ?? 0) / LADDER.giantPoints)), smashes: slices.size / 4 + pieces.size / 2 } };
 }
 
 const runs = Number(process.argv[2] ?? 20);
@@ -312,6 +351,7 @@ for (const strategy of players) {
   let pool = 0;
   let mismatches = 0;
   const settles: number[] = [];
+  const events: Events[] = [];
   written[strategy] = [];
   for (let seed = firstSeed; seed < firstSeed + runs; seed++) {
     const result = play(seed, strategy);
@@ -319,6 +359,7 @@ for (const strategy of players) {
     pool += result.pool;
     mismatches += result.mismatches;
     settles.push(...result.settles);
+    events.push(result.events);
     written[strategy]!.push({ seed, scores: result.scores });
     if (json !== undefined) writeFileSync(json, JSON.stringify(written));
   }
@@ -330,7 +371,20 @@ for (const strategy of players) {
   const settle = `settle ${(settles[Math.floor(settles.length / 2)] ?? 0).toFixed(1)}s, 90% ${(settles[Math.floor(settles.length * 0.9)] ?? 0).toFixed(1)}s, ${stuck}/${settles.length} hit ${SETTLE_LIMIT}s`;
   const median = (cycle: number) => all.map((s) => s[cycle] ?? 0).sort((a, b) => a - b)[Math.floor(runs / 2)];
   console.log(`${strategy.padEnd(34)} pool ${(pool / runs).toFixed(1).padStart(4)}  medians ${rent.map((_, c) => String(median(c)).padStart(4)).join(" ")}  ${settle}`);
+  // The Ladder set's checks: how often its big-fruit events happen, their share of the points, and how much spills.
+  const per = (label: string) => events.reduce((sum, e) => sum + (e.earned[label] ?? 0), 0) / runs;
+  const total = events.reduce((sum, e) => sum + Object.values(e.earned).reduce((a, b) => a + Math.max(0, b), 0), 0) / runs;
+  const ladder = per("Slice") + per("Smash") + per("Crush") + per("Gourd") + per("Giant Pumpkin") + per("Pumpkin");
+  const giantRuns = events.filter((e) => e.giants > 0).length;
+  console.log(
+    `${"".padEnd(34)} a run: ${total.toFixed(0)} points; Giant Pumpkins ${(events.reduce((a, e) => a + e.giants, 0) / runs).toFixed(2)} (in ${giantRuns}/${runs} runs), ` +
+      `Smashes ${(events.reduce((a, e) => a + e.smashes, 0) / runs).toFixed(2)} (+${(per("Slice") + per("Smash")).toFixed(0)}), Ladder events ${(events.reduce((a, e) => a + e.smashes + e.giants, 0) / runs).toFixed(2)}, Crush +${per("Crush").toFixed(0)}, Pumpkin +${per("Pumpkin").toFixed(0)}, Gourd +${per("Gourd").toFixed(0)}, ` +
+      `Ladder share ${((100 * ladder) / Math.max(1, total)).toFixed(0)}%, spills ${(-per("Spill") / 5).toFixed(1)} (${(-per("Spill") / 5 / rent.length).toFixed(1)} a cycle)`
+  );
   if (process.argv[4] !== "full") continue;
+  // What earned the points, a run on average, the most first.
+  const labels = [...new Set(events.flatMap((e) => Object.keys(e.earned)))].map((label) => ({ label, points: per(label) })).sort((a, b) => b.points - a.points);
+  console.log(`  points a run by source: ${labels.map((l) => `${l.label} ${l.points.toFixed(0)}`).join(", ")}`);
   console.log(`${strategy} (${runs} runs, pool ends at ${(pool / runs).toFixed(1)} fruit)`);
   for (let cycle = 0; cycle < rent.length; cycle++) {
     const scores = all.map((s) => s[cycle] ?? 0).sort((a, b) => a - b);

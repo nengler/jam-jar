@@ -91,7 +91,12 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Juice / Milk | Pours juice in the jar: fruit in it float / pours milk in the jar: fruit in it score x2. |
 | Skip | A Merge touching it skips a size. |
 | Legendary | Rare, and never in the shop. |
-| Crush, Shake, Preserve, Pickled, Once | The items' words: the Juicer, the Shaker, the jars and the Lid. |
+| Crush, Shake, Preserve, Pickled, Once | The items' words: the Juicer, the Shaker, the jars and the Lid. Crush is also the Pumpkin's. |
+| Smashed | Exploded, Crushed or caught in a Shockwave. |
+| Slice | Breaks into this many Slices, Fresh 15 each. |
+| Wide | Takes 2 places on the shelf: 2 lanes. |
+| Absorb | Takes in a fruit no bigger and grows a size. |
+| Shockwave | Throws the pile aside, Smashes Watermelons. |
 | Frozen | Held in place. Explosions can't destroy it. |
 | Spill | Fruit over the rim are lost: -5 each. |
 
@@ -103,7 +108,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 
 - Starting pool: 1 Apple and 8 starters rolled from 3–5 Cherries, 2–4 Grapes and 0–2 Oranges. It's dealt like a deck and
   reshuffles when empty.
-- The merge ladder: Cherry → Grape → Orange → Melon → Watermelon. Two Watermelons vanish for +100.
+- The merge ladder: Cherry → Grape → Orange → Melon → Watermelon → Giant Pumpkin.
 - Fresh fruit score when they land or are made by a merge. Simmer fruit (Apple, Banana) score at every Resolve. Lemon is a
   Booster: fruit touching it score double, and it blocks merges next to it.
 - The Boom group: Chili (explodes touching 4+ fruit), Durian (big blast once 3 fruit sit on it), Pomegranate (bursts into 5
@@ -130,6 +135,78 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     milk 20 deep. Fruit that sit in milk score double.
   - The liquid is one pool: it gets deeper with each Lime and Coconut, up to 120 pixels, holds whatever went into it,
     and goes when the rent empties the jar.
+- The Ladder set (big fruit; merge up, smash down):
+  - Smashed: a Grape, Orange or Melon that is Smashed (by a Pumpkin or a Shockwave) breaks into 2 of the next size down,
+    which score as they are made. A Watermelon that is Smashed (by a Pumpkin, a Shockwave or an explosion) breaks into 4
+    Slices, Fresh 15 each, so 60 in place of the Watermelon's 50; two Slices merge back into a Melon. Explosions destroy
+    everything else, as before. The loop cap: a fruit made by merging two pieces cannot merge again until the turn is
+    scored, so merge up, smash down cannot chain for ever in one settle.
+  - Pumpkin: Fresh 24, Heavy and Wide: it takes 2 of the shelf's 4 places, so a hand with one is 3 fruit, and it drops
+    down the middle of its two lanes. A Wide fruit that would not fit in what is left of the shelf waits on top of the
+    pool for the next hand. When it lands it Smashes the biggest Grape, Orange, Melon or Watermelon under it, reaching 8
+    pixels past touching (a near miss still counts); other fruit it leaves alone, so it spares garden builds. (As first
+    built it Crushed the Cherries, Grapes, Seeds and Limes under it instead, worth about 15 points a run: small fruit settle
+    low in the pile, and a Pumpkin lands on top. The bots keep that one as "/oldpumpkin".)
+  - Gourd: Fresh 4, Cherry-sized. It takes in a fruit it touches that is no bigger than itself, scoring that fruit's
+    points, and grows a size (Cherry, Grape, Orange). Grown past an Orange it Bursts into 4 Cherries, rotten if it took
+    in anything rotten.
+  - Giant Pumpkin: two Watermelons merge into one for +75. Its Shockwave throws every fruit within 130 pixels aside and
+    Smashes any Watermelon caught in it, and after 0.9 seconds it is gone, leaving room.
+  - A Melon takes the middle place of a pick one time in ten (`MELON_CHANCE`), so a Ladder build can aim for
+    Watermelons. It is never in the shop. Anything made bigger than what it replaces (a merge, a grown Gourd, a Giant
+    Pumpkin) starts inside the jar's walls.
+  - Balance bots, 24 seeds each, rent ignored (`node tools/balance.ts 24 <player> full`, which also counts the Ladder
+    set's events). Points a run, and medians for cycles 1 to 5:
+
+    | Player | A run | Medians | Giant Pumpkins | Ladder points a run |
+    | --- | --- | --- | --- | --- |
+    | Never picks | 1128 | 240, 226, 243, 234, 204 | 1 in 24 runs | — |
+    | Never picks, hand ordered | 1202 | 254, 248, 252, 241, 248 | 3 in 24 runs (4 in all) | — |
+    | Picks at random | 1078 | 207, 197, 217, 184, 198 | 0 | Pumpkin 48, Gourd 23, Crush 5 |
+    | Pumpkin | 1053 | 240, 238, 207, 189, 184 | 0 | Pumpkin 169, Crush 15; 2 Smashes in 24 runs |
+    | Pumpkin, hand ordered | 1054 | 231, 227, 185, 192, 196 | 0 | Pumpkin 166, Crush 19 |
+    | Gourd | 1111 | 248, 193, 228, 226, 190 | 1 in 24 runs | Gourd 51 |
+    | Pumpkin and Gourd | 1044 | 240, 189, 210, 196, 197 | 0 | Pumpkin 139, Gourd 46, Crush 15 |
+    | Apple / Chili / Coconut / Lime | 1140 / 1127 / 1101 / 1031 | | | |
+
+    No player spilled a fruit. A Pumpkin costs a bot about 75 points a run against never picking, as a Lime does. The
+    big-fruit events are rare: a Giant Pumpkin formed in 1 run in 24 (the doc aims for one every 2 or 3), a Watermelon was
+    Smashed about once in 12 runs, and a Crush is worth some 15 points a run. Bots that buy nothing in the shop and empty
+    the jar every cycle seldom build two Watermelons. (These runs were before the Melon pick, with a Giant Pumpkin at 150.)
+  - Variants tried with the bots (`LADDER` in jar.ts, all off in the game; 24 seeds each):
+
+    | Variant and player | A run | Giant Pumpkins | Last rent (400) made |
+    | --- | --- | --- | --- |
+    | Melon offered, taken whenever offered | 1458 | in 10/24 runs (0.79 a run) | 5/24 |
+    | Melon offered, Pumpkin + Melon | 1382 | in 9/24 runs | 3/24 |
+    | Melon offered, picks at random | 1157 | 0 | 1/24 |
+    | Starting pool with 1–3 Oranges, never picks | 1384 | in 8/24 runs | 0/24 |
+    | Starting pool with 1–3 Oranges, Pumpkin | 1195 | in 2/24 runs | — |
+    | Crush reach 16 px, Pumpkin | 1052 (Crush +19) | 0 | — |
+    | Crush anything Grape-sized or smaller, Pumpkin | 1027 (Crush +22) | 0 | — |
+
+    Against never picking (1128 a run, a Giant Pumpkin in 1/24 runs, last rent 0/24). Offering the Melon reaches the doc's
+    rate, but only for a player who builds for it, and it is the strongest pick the bots have found. More Oranges reach it
+    for every run and lift every score about 23%. A wider or broader Crush changes nothing: a Pumpkin seldom lands on
+    small fruit at all.
+  - Tuning the Melon pick (Melon taken whenever offered, 24 seeds): offered in 10% of picks, 15% or every pick, with a
+    Giant Pumpkin worth 50, 75 or 150. One Melon in a pool of 10 is enough (each fruit is dealt about twice a cycle), so
+    10% still gave a Giant Pumpkin in 10 runs of 24, and what it scores moves a run by 0.7 points a point. The game now
+    plays 10% and 75. On those defaults:
+
+    | Player | A run | Giant Pumpkins | Last rent (400) made |
+    | --- | --- | --- | --- |
+    | Never picks | 1171 | in 3/24 runs | 0/24 |
+    | Picks at random | 1036 | in 1/24 runs | 0/24 |
+    | Melon whenever offered | 1318 | in 11/24 runs (0.75 a run) | 2/24 |
+    | Durian whenever offered | 1307 | in 3/24 runs | 1/24 |
+    | Pumpkin + Melon | 1207 | in 3/24 runs | 2/24 |
+  - The proposed Smashed rework, tried with the bots only (`/psmash`, `/psmashladder`, `/smashall`, `/smashblasts`): a Pumpkin
+    that Smashes the biggest ladder fruit under it, with Smashed a general rule (a Melon into 2 Oranges, and so on), gives a
+    Pumpkin player about 3.7 Smashes a run (0.13 today) and Pumpkin + Melon about 4.4, for 25 to 40 more points a run.
+    It costs a garden no more than today's Pumpkin (1018 against 1002; 1073 with no Pumpkin), and Giant Pumpkins stay at 3
+    runs in 24 for Pumpkin + Melon. Blasts that Smash too lifted Chili + Durian from 1262 to 1480 a run, with the last rent
+    made in 9 of 24 runs.
 - The title has a jar filling up by itself: a run the rules play (`src/rules/demo.ts`: each hand dropped as dealt, every
   pick skipped, a new run a moment after the rent comes due).
 - Fruit roll: the physics has no angle, so each fruit's turning is drawn from how far it moves along what it touches.

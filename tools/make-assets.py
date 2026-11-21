@@ -28,7 +28,9 @@ KENNEY = ROOT / "tools" / "kenney"
 # the scale is how many screen pixels an art pixel takes, so the merge ladder grows Cherry -> Watermelon. Whole scales stay
 # crisp; Grape (2.5) and Melon (3.5) sit between them, as the ladder needs five sizes. No sprite exists for a Durian (the
 # Pineapple stands in), a Seed (the brown Kiwi), a Melon (the round green one), a Prune (the Blackberry), a Fig (the Aubergine)
-# or a Honeydew (the golden Apple).
+# or a Honeydew (the golden Apple). The Ladder set: a Slice is the sheet's watermelon wedge, the Pumpkin and the Giant Pumpkin
+# are the orange squash (two slots wide, and bigger again), and a Gourd is the ribbed green squash, drawn at its smallest
+# size (it grows in the jar by being scaled up).
 FRUIT_SPRITES = {
     "cherry": (14, 1, 2),
     "grape": (5, 1, 2.5),
@@ -53,6 +55,10 @@ FRUIT_SPRITES = {
     "lime": (17, 2, 2.5),
     "dragonfruit": (21, 1, 3),
     "snowpear": (10, 1, 2.5),
+    "slice": (26, 3, 2.5),
+    "pumpkin": (34, 1, 4.5),
+    "gourd": (22, 0, 2),
+    "giantpumpkin": (34, 2, 6),
 }
 # The Fruit Fly is not on the sheet: it is drawn here (`fruit_fly`), 16 x 16 like the others, at 2x.
 FLY_SCALE = 2

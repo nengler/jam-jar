@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { APPLE, BANANA, FRUITS, HONEY, LEGENDARY, LEGENDARY_CHANCE, OFFERABLE, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, CRUSHABLE, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
 
@@ -42,6 +42,39 @@ export const TRAY = { on: true, wobble: 4 };
  * turn with other luck, and then play it for real with luck it has not seen. 0 in the game.
  */
 export const SPOTS = { salt: 0 };
+
+/**
+ * For the balance bots: variants of the Ladder set to compare; the game plays with these defaults. `melonPick` puts the Melon among the fruit a
+ * pick and the shop offer; `oranges` rolls a starting pool with more Oranges (1–3, against 0–2); `crushReach` is how far past
+ * touching a Pumpkin's Crush reaches; `crushSmall` lets it Crush any fruit no bigger than a Grape, not only the four it names.
+ * `melonChance` is how often a Melon takes the middle place of a pick (`MELON_CHANCE` in the game), as a Legendary takes the
+ * last; `giantPoints` is what a Giant Pumpkin scores (its card's Fresh).
+ *
+ * The Smashed rework (design doc, adopted 21 November; the game plays it): `smashAll` makes Smashed a general rule, so a Melon, Orange or
+ * Grape that is Smashed breaks into 2 of the next size down (`SMASH_INTO`), which score as they are made, as a Watermelon breaks
+ * into Slices; a Giant Pumpkin's Shockwave Smashes them too. `pumpkinSmash` has a Pumpkin Smash the biggest fruit it lands on
+ * instead of Crushing small ones (off, the first-built Pumpkin: it Crushes the `CRUSHABLE` fruit it lands on). The game passes
+ * over everything but a Grape, Orange, Melon or Watermelon (`smashOther` "none"); with "destroy" it Smashes the biggest fruit of
+ * any kind there, Crushing a Cherry, a Slice or a fruit off the ladder. `smashBlasts` (off: too strong, a Boom build gained 17%)
+ * has an explosion Smash what it would destroy, where that fruit can be Smashed.
+ */
+export const LADDER = {
+  melonPick: false,
+  melonChance: MELON_CHANCE,
+  giantPoints: FRUITS.giantpumpkin.points,
+  oranges: false,
+  crushReach: 8,
+  crushSmall: false,
+  pumpkinSmash: true,
+  smashOther: "none" as "destroy" | "none",
+  smashAll: true,
+  smashBlasts: false,
+};
+
+/** The fruit a pick or the shop can offer. */
+function offerList(): readonly FruitKind[] {
+  return LADDER.melonPick ? [...OFFERABLE, "melon"] : OFFERABLE;
+}
 
 /** Where the next fruit lands: from the run's stream, or (`SPOTS.salt`) from another one, the run's stream moving on the same. */
 function spot(rng: Rng, low: number, high: number): number {
@@ -222,6 +255,15 @@ export interface Fruit {
   /** A Chili or Durian about to go off, and the seconds left. */
   lit: boolean;
   fuse: number;
+  /** Made this turn by a Merge of pieces (two Slices): it cannot Merge again until the turn is scored, so merge up, smash down
+   * cannot chain for ever in one settle (the design doc's loop cap). */
+  remerged?: boolean;
+  /** Made by a Smash: a Merge of it and another piece makes a fruit that cannot Merge again this turn (the loop cap). */
+  piece?: boolean;
+  /** A Gourd that has taken in a rotten fruit: the Cherries it Bursts into are rotten. */
+  tainted?: boolean;
+  /** A Gourd's seconds until it can take in another fruit, so each growth can be seen. */
+  wait?: number;
 }
 
 export interface Popup {
@@ -388,15 +430,35 @@ export interface Keys {
   away?: boolean;
 }
 
+/** How many places on the shelf a fruit takes: 1, or 2 for a Wide one (a Pumpkin). */
+export function slotsOf(kind: FruitKind): number {
+  return FRUITS[kind].slots ?? 1;
+}
+
+/** Where each fruit of a hand stands on the shelf, in places from the left: the first place it takes and how many. */
+export function shelfPlaces(hand: readonly FruitKind[]): { start: number; span: number }[] {
+  let start = 0;
+  return hand.map((kind) => {
+    const place = { start, span: slotsOf(kind) };
+    start += place.span;
+    return place;
+  });
+}
+
+/** How many places on the shelf a hand takes. */
+export function handSlots(hand: readonly FruitKind[]): number {
+  return hand.reduce((sum, kind) => sum + slotsOf(kind), 0);
+}
+
 export const NO_KEYS: Keys = { up: false, down: false, left: false, right: false, confirm: false, drop: false, point: -1 };
 
 /** The starting pool: 1 Apple plus 8 starters, 3–5 Cherries, 2–4 Grapes and 0–2 Oranges (see the design doc). */
 export function rollPool(rng: Rng): FruitKind[] {
   for (;;) {
-    const cherries = rng.int(3, 5);
+    const cherries = LADDER.oranges ? rng.int(2, 4) : rng.int(3, 5);
     const grapes = rng.int(2, 4);
     const oranges = 8 - cherries - grapes;
-    if (oranges < 0 || oranges > 2) continue;
+    if (oranges < (LADDER.oranges ? 1 : 0) || oranges > (LADDER.oranges ? 3 : 2)) continue;
     return [
       ...Array<FruitKind>(cherries).fill("cherry"),
       ...Array<FruitKind>(grapes).fill("grape"),
@@ -497,14 +559,18 @@ function copy(run: Run): Run {
 function deal(run: Run): void {
   const rng = new Rng(run.seed);
   run.hand = [];
-  for (let i = 0; i < HAND_SIZE; i++) {
+  // The hand fills the shelf's places: a Wide fruit takes two, and one that would not fit waits on top for the next hand.
+  let used = 0;
+  while (used < HAND_SIZE) {
     if (run.draw.length === 0) {
       run.draw = rng.shuffle(run.discard);
       run.discard = [];
     }
-    const next = run.draw.shift();
-    if (next === undefined) break;
+    const next = run.draw[0];
+    if (next === undefined || used + slotsOf(next) > HAND_SIZE) break;
+    run.draw.shift();
     run.hand.push(next);
+    used += slotsOf(next);
   }
   run.seed = rng.seed;
   run.cursor = 0;
@@ -596,6 +662,12 @@ function link(run: Run, kind: Link["kind"], from: Fruit, to: Fruit): Link {
 function pulse(f: Fruit, delay = 0): void {
   f.pulse = PULSE;
   f.pulseDelay = delay;
+}
+
+/** Where a fruit `r` across from its middle can be made at `x`: inside the jar's walls, so one bigger than what it replaces (a
+ * merge, a Gourd grown, a Giant Pumpkin) does not start in a wall. */
+function inside(x: number, r: number): number {
+  return Math.max(JAR.left + r, Math.min(JAR.right - r, x));
 }
 
 function makeFruit(run: Run, kind: FruitKind, x: number, y: number): Fruit {
@@ -886,12 +958,15 @@ function trayRelease(run: Run, flip: boolean): void {
     run.queue = shuffler.shuffle(run.queue);
     run.seed = shuffler.seed;
   }
-  const lanes = Math.max(HAND_SIZE, run.queue.length);
+  const lanes = Math.max(HAND_SIZE, handSlots(run.queue));
   const width = (JAR.right - JAR.left) / lanes;
+  const places = shelfPlaces(run.queue);
   const rng = new Rng(run.seed);
-  run.queue.forEach((kind, lane) => {
+  run.queue.forEach((kind, at) => {
     const r = FRUITS[kind].radius;
-    const middle = JAR.left + width * (lane + 0.5);
+    // A Wide fruit drops down the middle of its two lanes.
+    const place = places[at] as { start: number; span: number };
+    const middle = JAR.left + width * (place.start + place.span / 2);
     const x = Math.max(JAR.left + r, Math.min(JAR.right - r, middle + spot(rng, -TRAY.wobble, TRAY.wobble)));
     const y = !flip ? DROP_Y : run.flipped ? JAR.floor - r - 2 : RIM + r + 2;
     run.fruits.push(makeFruit(run, kind, x, y));
@@ -934,12 +1009,14 @@ export function simulate(run: Run, dt: number): void {
   copyKiwis(run);
   land(run);
   merge(run);
+  absorb(run, dt);
   light(run);
   burn(run, dt);
 }
 
 function land(run: Run): void {
   const near = links(run.fruits);
+  const pumpkins: Fruit[] = [];
   run.fruits.forEach((f, i) => {
     if (f.landed) return;
     // On the floor, on a fruit that has landed, or come to rest afloat in lime juice.
@@ -967,7 +1044,137 @@ function land(run: Run): void {
         kick(o, (o.x < f.x ? -1 : 1) * PEACH_SHOVE, -PEACH_SHOVE / 3);
       }
     }
+    if (f.kind === "pumpkin") pumpkins.push(f);
   });
+  for (const p of pumpkins) if (run.fruits.includes(p)) crush(run, p);
+}
+
+/** What a Pumpkin's Crush adds for each fruit Crushed. How far past touching it reaches is `LADDER.crushReach`: a near miss still counts. */
+export const CRUSH_BONUS = 3;
+
+/**
+ * A Pumpkin has landed: the Cherries, Grapes, Seeds and Limes under it (and a little to the side) are Crushed, each scoring its
+ * points (nothing if rotten) and `CRUSH_BONUS`, doubled by a Lemon it touched. A Lime Crushed pours its juice, a Seed Sprouts, and
+ * a Watermelon under it is Smashed into Slices. A frozen fruit holds.
+ */
+function crush(run: Run, pumpkin: Fruit): void {
+  if (LADDER.pumpkinSmash) {
+    pumpkinSmash(run, pumpkin);
+    return;
+  }
+  const near = links(run.fruits);
+  const doubled = new Set(run.fruits.filter((_, i) => boosted(run.fruits, near, i)).map((f) => f.id));
+  const under = run.fruits.filter(
+    (o) => o !== pumpkin && !o.frozen && o.y > pumpkin.y - pumpkin.r * 0.25 && Math.hypot(o.x - pumpkin.x, o.y - pumpkin.y) < pumpkin.r + o.r + LADDER.crushReach
+  );
+  const crushed = under.filter((o) =>
+    LADDER.crushSmall ? o.r <= FRUITS.grape.radius && o.kind !== "watermelon" && !o.lit : CRUSHABLE.includes(o.kind)
+  );
+  const smashed = under.filter((o) => o.kind === "watermelon");
+  if (crushed.length === 0 && smashed.length === 0) return;
+  const born: Fruit[] = [];
+  let points = 0;
+  let limes = 0;
+  for (const f of crushed) {
+    points += ((f.rotten ? 0 : FRUITS[f.kind].points) + CRUSH_BONUS) * (doubled.has(f.id) ? 2 : 1);
+    if (f.kind === "lime") limes += 1;
+    if (f.kind === "seed") born.push(sprout(run, f));
+  }
+  for (const w of smashed) born.push(...smash(run, w));
+  run.fruits = [...run.fruits.filter((f) => !crushed.includes(f) && !smashed.includes(f)), ...born];
+  score(run, points, pumpkin.x, pumpkin.y - pumpkin.r, { label: "Crush" });
+  pulse(pumpkin);
+  sound(run, "merge");
+  run.message = smashed.length > 0 ? "A Pumpkin Smashes a Watermelon into Slices" : `A Pumpkin Crushes ${crushed.length} fruit`;
+  if (limes > 0) {
+    pour(run, "lime", limes * LIME_JUICE);
+    run.message = `A Pumpkin Crushes ${limes === 1 ? "a Lime" : `${limes} Limes`}: lime juice rises`;
+  }
+}
+
+/** The ladder fruit a Smash breaks into two of, under the general rule (`LADDER.smashAll`, or a Pumpkin's with `pumpkinSmash`). */
+const SMASH_INTO: Readonly<Partial<Record<FruitKind, FruitKind>>> = { melon: "orange", orange: "grape", grape: "cherry" };
+
+/** Whether a Smash breaks this fruit into pieces: a Watermelon always, and under the general rule a Melon, Orange or Grape. */
+function smashable(f: Fruit, general = LADDER.smashAll): boolean {
+  return f.kind === "watermelon" || (general && SMASH_INTO[f.kind] !== undefined);
+}
+
+/**
+ * The reworked Pumpkin (`LADDER.pumpkinSmash`): it Smashes the biggest Grape, Orange, Melon or Watermelon under it, which in a
+ * pile is where the big fruit are. With `smashOther` "destroy" it takes the biggest fruit of any kind, and Crushes one that cannot
+ * be Smashed.
+ */
+function pumpkinSmash(run: Run, pumpkin: Fruit): void {
+  const near = links(run.fruits);
+  const doubled = new Set(run.fruits.filter((_, i) => boosted(run.fruits, near, i)).map((f) => f.id));
+  const under = run.fruits.filter(
+    (o) =>
+      o !== pumpkin &&
+      !o.frozen &&
+      !o.lit &&
+      o.kind !== "pumpkin" &&
+      o.kind !== "giantpumpkin" &&
+      (LADDER.smashOther === "destroy" || smashable(o, true)) &&
+      o.y > pumpkin.y - pumpkin.r * 0.25 &&
+      Math.hypot(o.x - pumpkin.x, o.y - pumpkin.y) < pumpkin.r + o.r + LADDER.crushReach
+  );
+  const target = under.sort((a, b) => b.r - a.r || Math.hypot(a.x - pumpkin.x, a.y - pumpkin.y) - Math.hypot(b.x - pumpkin.x, b.y - pumpkin.y))[0];
+  if (target === undefined) return;
+  pulse(pumpkin);
+  sound(run, "merge");
+  if (smashable(target, true)) {
+    const pieces = smash(run, target);
+    run.fruits = [...run.fruits.filter((f) => f !== target), ...pieces];
+    run.message = `A Pumpkin Smashes a ${FRUITS[target.kind].name}`;
+    return;
+  }
+  // Crushed: its points and the bonus; a Lime pours its juice and a Seed Sprouts, as before.
+  const born = target.kind === "seed" ? [sprout(run, target)] : [];
+  run.fruits = [...run.fruits.filter((f) => f !== target), ...born];
+  score(run, ((target.rotten ? 0 : FRUITS[target.kind].points) + CRUSH_BONUS) * (doubled.has(target.id) ? 2 : 1), pumpkin.x, pumpkin.y - pumpkin.r, { label: "Crush" });
+  if (target.kind === "lime") pour(run, "lime", LIME_JUICE);
+  run.message = `A Pumpkin Crushes a ${FRUITS[target.kind].name}`;
+}
+
+/** A Seed's Sprout: a Cherry, Grape or Orange where it was, already landed. */
+function sprout(run: Run, seed: Fruit): Fruit {
+  const rng = new Rng(run.seed);
+  const grown = makeFruit(run, rng.pick(SPROUTS), seed.x, seed.y);
+  run.seed = rng.seed;
+  grown.landed = true;
+  return grown;
+}
+
+/**
+ * A Watermelon Smashed (Exploded, Crushed by a Pumpkin or caught in a Giant Pumpkin's Shockwave): `SLICES` Slices where it was,
+ * already landed, which score as they are made, more together than the Watermelon did. The caller takes the Watermelon out.
+ */
+function smash(run: Run, w: Fruit): Fruit[] {
+  const into = SMASH_INTO[w.kind];
+  if (w.kind !== "watermelon" && into !== undefined) {
+    // The general rule: two of the next size down, side by side where it was, scoring as they are made.
+    const pieces = [-1, 1].map((side) => {
+      const f = makeFruit(run, into, inside(w.x + side * w.r * 0.45, FRUITS[into].radius), w.y);
+      Object.assign(f, { landed: true, rotten: w.rotten, piece: true });
+      pulse(f);
+      return f;
+    });
+    if (!w.rotten) score(run, 2 * FRUITS[into].points, w.x, w.y - w.r, { label: "Smash" });
+    return pieces;
+  }
+  const out: Fruit[] = [];
+  for (let k = 0; k < SLICES; k++) {
+    const angle = (k / SLICES) * Math.PI * 2 + Math.PI / 4;
+    const f = makeFruit(run, "slice", w.x + Math.cos(angle) * w.r * 0.45, w.y + Math.sin(angle) * w.r * 0.45);
+    f.landed = true;
+    f.rotten = w.rotten;
+    f.piece = true;
+    pulse(f);
+    out.push(f);
+  }
+  if (!w.rotten) score(run, SLICES * FRUITS.slice.points, w.x, w.y - w.r, { label: "Slice", earner: FRUITS.slice.name });
+  return out;
 }
 
 /** How hard a fruit hops when it lands on the floor (px/s): about 8 px up. Landing on another fruit, it does not. */
@@ -981,20 +1188,21 @@ function copyKiwis(run: Run): void {
   const near = links(run.fruits);
   run.fruits = run.fruits.map((f, i) => {
     if (f.kind !== "kiwi") return f;
-    const on = (near[i] ?? []).map((j) => run.fruits[j] as Fruit).find((o) => o.landed && o.kind !== "kiwi");
+    const on = (near[i] ?? []).map((j) => run.fruits[j] as Fruit).find((o) => o.landed && o.kind !== "kiwi" && o.kind !== "giantpumpkin");
     if (on === undefined) return f;
     return makeFruit(run, on.kind, f.x, f.y);
   });
 }
 
 function canMerge(f: Fruit): boolean {
-  return f.landed && (FRUITS[f.kind].mergesInto !== undefined || f.kind === "watermelon" || f.kind === "pomegranate");
+  return f.landed && f.remerged !== true && (FRUITS[f.kind].mergesInto !== undefined || f.kind === "pomegranate");
 }
 
 function merge(run: Run): void {
   const near = links(run.fruits);
   const gone = new Set<number>();
   const born: Fruit[] = [];
+  const giants: Fruit[] = [];
   for (let i = 0; i < run.fruits.length; i++) {
     const a = run.fruits[i] as Fruit;
     if (gone.has(a.id) || !canMerge(a) || nearLemon(run.fruits, near, i)) continue;
@@ -1006,8 +1214,16 @@ function merge(run: Run): void {
       const mx = (a.x + b.x) / 2;
       const my = (a.y + b.y) / 2;
       if (a.kind === "watermelon") {
-        score(run, 100, mx, my, { label: "Merge" });
-        run.message = "Two Watermelons: +100!";
+        // A Giant Pumpkin: it scores big, its Shockwave throws the pile aside (below, once the merges are done), and soon it is gone.
+        const giant = makeFruit(run, "giantpumpkin", inside(mx, FRUITS.giantpumpkin.radius), my);
+        giant.landed = true;
+        giant.lit = true;
+        giant.fuse = GIANT_LIFE;
+        pulse(giant);
+        born.push(giant);
+        giants.push(giant);
+        score(run, LADDER.giantPoints, mx, my - giant.r, { label: "Merge", earner: FRUITS.giantpumpkin.name });
+        run.message = `Two Watermelons: a Giant Pumpkin! +${LADDER.giantPoints}`;
       } else if (a.kind === "pomegranate") {
         born.push(...burst(run, mx, my));
         run.message = "Pomegranates Burst!";
@@ -1015,12 +1231,16 @@ function merge(run: Run): void {
         // A Merge that touches a Dragonfruit skips a size, when there is one to skip to.
         const next = FRUITS[a.kind].mergesInto as FruitKind;
         const dragon = [...(near[i] ?? []), ...(near[j] ?? [])].map((k) => run.fruits[k] as Fruit).find((o) => o.kind === "dragonfruit");
-        const into = dragon === undefined ? next : (FRUITS[next].mergesInto ?? next);
+        // A Giant Pumpkin is only ever made by two Watermelons: a Skip stops at the Watermelon.
+        const skipped = FRUITS[next].mergesInto;
+        const into = dragon === undefined || skipped === undefined || skipped === "giantpumpkin" ? next : skipped;
         if (dragon !== undefined) pulse(dragon);
-        const f = makeFruit(run, into, mx, my);
+        const f = makeFruit(run, into, inside(mx, FRUITS[into].radius), my);
         f.landed = true;
         // Rot does not stop a Merge, and a Merge does not cut it out.
         f.rotten = f.rotten || a.rotten || b.rotten;
+        // Made from pieces of a Smashed Watermelon: it has re-merged once, and waits for the next turn to Merge again.
+        f.remerged = a.piece === true || b.piece === true;
         pulse(f);
         born.push(f);
         score(run, FRUITS[into].points, mx, my - f.r, { label: "Merge" });
@@ -1032,13 +1252,87 @@ function merge(run: Run): void {
     run.fruits = [...run.fruits.filter((f) => !gone.has(f.id)), ...born];
     sound(run, "merge");
   }
+  for (const giant of giants) shockwave(run, giant);
 }
 
-/** Five cherries where a Pomegranate was, already landed (they were in the pile). */
-function burst(run: Run, x: number, y: number): Fruit[] {
+/** How long a Giant Pumpkin stays before it vanishes, in seconds; how far its Shockwave reaches, and how hard it throws, in px/s. */
+export const GIANT_LIFE = 0.9;
+export const SHOCK_RADIUS = 130;
+const SHOCK_PUSH = 520;
+
+/** A Giant Pumpkin's Shockwave: every fruit near it is thrown away from it (frozen ones hold), and each Watermelon caught is Smashed. */
+function shockwave(run: Run, giant: Fruit): void {
+  const caught = run.fruits.filter((f) => f !== giant && Math.hypot(f.x - giant.x, f.y - giant.y) < SHOCK_RADIUS + f.r);
+  const smashed = caught.filter((f) => smashable(f) && !f.frozen);
+  const born = smashed.flatMap((w) => smash(run, w));
+  run.fruits = [...run.fruits.filter((f) => !smashed.includes(f)), ...born];
+  for (const f of run.fruits) {
+    if (f === giant || f.frozen) continue;
+    const dx = f.x - giant.x;
+    const dy = f.y - giant.y;
+    const d = Math.max(1, Math.hypot(dx, dy));
+    if (d > SHOCK_RADIUS + f.r) continue;
+    const push = SHOCK_PUSH * (1 - d / (SHOCK_RADIUS * 1.5));
+    kick(f, (dx / d) * push, (dy / d) * push - 160);
+  }
+  effect(run, "boom", giant.x, giant.y, SHOCK_RADIUS * 2);
+  sound(run, "boom");
+  if (smashed.length > 0) run.message = `A Giant Pumpkin! Its Shockwave Smashes ${smashed.length === 1 ? "a Watermelon" : `${smashed.length} Watermelons`}`;
+}
+
+/** How long a Gourd waits after taking in a fruit before it can take in another, in seconds. */
+const GOURD_WAIT = 0.3;
+
+/**
+ * Each landed Gourd takes in one fruit it touches that is no bigger than it is, scoring that fruit's points (nothing if rotten),
+ * and grows a size: Cherry, Grape, Orange. Grown past an Orange (Melon size) it Bursts into `GOURD_BURST` Cherries, rotten if it
+ * took in anything rotten. A grown Gourd is a new fruit, as a merge makes one, so its ball is made at its new size.
+ */
+function absorb(run: Run, dt: number): void {
+  if (!run.fruits.some((f) => f.kind === "gourd")) return;
+  const near = links(run.fruits);
+  const gone = new Set<number>();
+  const born: Fruit[] = [];
+  run.fruits.forEach((f, i) => {
+    if (f.kind !== "gourd" || gone.has(f.id)) return;
+    if ((f.wait ?? 0) > 0) {
+      f.wait = (f.wait ?? 0) - dt;
+      return;
+    }
+    if (!f.landed || f.frozen) return;
+    const meal = (near[i] ?? [])
+      .map((j) => run.fruits[j] as Fruit)
+      .find((o) => !gone.has(o.id) && o.landed && o.kind !== "gourd" && o.kind !== "giantpumpkin" && !o.frozen && !o.lit && o.r <= f.r + 0.5);
+    if (meal === undefined) return;
+    gone.add(meal.id);
+    gone.add(f.id);
+    const value = meal.rotten || FRUITS[meal.kind].scoring === "booster" ? 0 : FRUITS[meal.kind].points;
+    earn(run, near, i, value, "Absorb");
+    link(run, "eat", f, meal);
+    const tainted = f.tainted === true || meal.rotten;
+    const next = GOURD_SIZES.find((size) => size > f.r + 0.5);
+    if (next === undefined) {
+      const cherries = burst(run, f.x, f.y, GOURD_BURST);
+      for (const c of cherries) c.rotten = tainted;
+      born.push(...cherries);
+      run.message = `A Gourd reached Melon size: Burst ${GOURD_BURST}${tainted ? ", rotten" : ""}`;
+      sound(run, "merge");
+      return;
+    }
+    const grown = makeFruit(run, "gourd", inside(f.x, next), f.y);
+    Object.assign(grown, { r: next, landed: true, wait: GOURD_WAIT, tainted, age: f.age, honeyed: f.honeyed, pickled: f.pickled });
+    pulse(grown);
+    born.push(grown);
+    run.message = "A Gourd Absorbs a fruit and grows";
+  });
+  if (gone.size > 0) run.fruits = [...run.fruits.filter((f) => !gone.has(f.id)), ...born];
+}
+
+/** Cherries where a Pomegranate (five) or a Gourd was, already landed (they were in the pile). */
+function burst(run: Run, x: number, y: number, count = 5): Fruit[] {
   const out: Fruit[] = [];
-  for (let k = 0; k < 5; k++) {
-    const angle = (k / 5) * Math.PI * 2;
+  for (let k = 0; k < count; k++) {
+    const angle = (k / count) * Math.PI * 2;
     const f = makeFruit(run, "cherry", x + Math.cos(angle) * 8, y + Math.sin(angle) * 8);
     f.landed = true;
     out.push(f);
@@ -1077,7 +1371,15 @@ function ignite(f: Fruit, seconds: number): void {
 function burn(run: Run, dt: number): void {
   for (const f of run.fruits) if (f.lit) f.fuse -= dt;
   const ready = run.fruits.filter((f) => f.lit && f.fuse <= 0);
-  for (const bomb of ready) if (run.fruits.includes(bomb)) explode(run, bomb);
+  for (const bomb of ready) {
+    if (!run.fruits.includes(bomb)) continue;
+    if (bomb.kind === "giantpumpkin") {
+      // Its time is up: it is gone, and leaves room in the jar.
+      run.fruits = run.fruits.filter((f) => f !== bomb);
+      effect(run, "pop", bomb.x, bomb.y, bomb.r * 2);
+      sound(run, "merge");
+    } else explode(run, bomb);
+  }
 }
 
 export const BLAST_RADIUS: Readonly<Partial<Record<FruitKind, number>>> = { chili: 52, durian: 80 };
@@ -1108,6 +1410,10 @@ function explode(run: Run, bomb: Fruit): void {
       kept.push(f);
       continue;
     }
+    if (f.kind === "giantpumpkin") {
+      kept.push(f);
+      continue;
+    }
     if (f.kind === "chili" || f.kind === "durian") {
       // Caught in the blast: it goes off a moment later (a chain).
       if (!f.lit) ignite(f, 0.15);
@@ -1115,18 +1421,15 @@ function explode(run: Run, bomb: Fruit): void {
       continue;
     }
     victims.push(f);
-    const value = FRUITS[f.kind].scoring === "booster" || f.rotten ? 0 : FRUITS[f.kind].points;
+    // A Watermelon is Smashed (and with `smashBlasts`, any fruit that can be): its pieces score in its place.
+    const smashing = f.kind === "watermelon" || (LADDER.smashBlasts && smashable(f));
+    const value = FRUITS[f.kind].scoring === "booster" || f.rotten || smashing ? 0 : FRUITS[f.kind].points;
+    if (smashing) born.push(...smash(run, f));
     points += (value + (BLAST_BONUS[bomb.kind] ?? 0)) * (doubled.has(f.id) ? 2 : 1);
     if (f.kind === "pomegranate") born.push(...burst(run, f.x, f.y));
     if (f.kind === "fig" && f.rotten) figs += 1;
     if (f.kind === "lime") limes += 1;
-    if (f.kind === "seed") {
-      const rng = new Rng(run.seed);
-      const sprout = makeFruit(run, rng.pick(SPROUTS), f.x, f.y);
-      run.seed = rng.seed;
-      sprout.landed = true;
-      born.push(sprout);
-    }
+    if (f.kind === "seed") born.push(sprout(run, f));
   }
   // The blast pushes what is left away from it.
   for (const f of kept) {
@@ -1296,6 +1599,9 @@ export function resolve(run: Run): void {
     }
   }
 
+  // The loop cap lasts a turn: what Slices made may Merge again next turn.
+  for (const f of run.fruits) f.remerged = false;
+
   // Time the tally: a step between each thing, shorter when there are many, and how long the whole takes.
   const step = Math.min(TALLY_STEP, TALLY_MOST / Math.max(1, slot));
   const shown: Popup[] = run.popups.slice(popupsBefore).filter((p) => !staged.some((s) => s.popup === p));
@@ -1338,9 +1644,11 @@ export function resolve(run: Run): void {
 
 function offer(run: Run): void {
   const rng = new Rng(run.seed);
-  run.offers = rng.shuffle(OFFERABLE).slice(0, 3);
+  run.offers = rng.shuffle(offerList()).slice(0, 3);
   // Now and then a Legendary takes the last place.
   if (rng.next() < LEGENDARY_CHANCE) run.offers[2] = rng.pick(LEGENDARY);
+  // And now and then a Melon takes the middle one: the Ladder build's way to Watermelons.
+  if (rng.next() < LADDER.melonChance) run.offers[1] = "melon";
   run.seed = rng.seed;
   run.offerCursor = -1;
   run.phase = "pick";
@@ -1424,7 +1732,7 @@ function leaveRent(run: Run): void {
 /** Fill the shop's shelf: three different fruit, and an item the player can use (none when there is none: `offerable`). */
 function stock(run: Run, shop: Shop): void {
   const rng = new Rng(run.seed);
-  shop.fruits = rng.shuffle(OFFERABLE).slice(0, SHOP_FRUITS);
+  shop.fruits = rng.shuffle(offerList()).slice(0, SHOP_FRUITS);
   const choices = offerable(run.items);
   shop.item = choices.length === 0 ? null : rng.pick(choices);
   run.seed = rng.seed;
