@@ -61,11 +61,13 @@ const SLOT = 48;
 const BOARD_W = 192;
 const HUD_X = 12;
 const BOARD_Y = 28;
-/** The pool: each kind a 32-pixel icon and how many of it, three across; four across, closer, once there are more than four
- * rows of them, so all 17 kinds a pool can hold fit above the note. */
-const POOL_ROOMY = { columns: 3, cell: 53, gap: 4 };
-const POOL_TIGHT = { columns: 4, cell: 40, gap: 1 };
-const POOL_ROW = 32;
+/** The pool: each kind a 32-pixel icon and how many of it, three across, a little room between the rows; four across, closer,
+ * rows overlapping the icons' empty edges, once there are more than four rows of them, so all 17 kinds a pool can hold fit
+ * above the note. */
+const POOL_ROOMY = { columns: 3, cell: 53, gap: 4, row: 32, rowGap: 4 };
+const POOL_TIGHT = { columns: 4, cell: 40, gap: 1, row: 28, rowGap: 0 };
+/** How far each count is set down to sit level with its fruit. */
+const POOL_COUNT_DROP = 6;
 /** The pause button stands on the counter in the bottom right corner, its foot where the jar's is. */
 const PAUSE_FOOT = 360 - COUNTER_Y;
 /** The note of what just happened: a slate at the right, its foot this far above the foot of the screen (just above the pause button). */
@@ -526,9 +528,9 @@ export function Play() {
       <Flex right={HUD_X - 240 * (1 - popIn(s.intro, INTRO.right, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch">
         {/* The whole board opens the whole pool, dealt or not (as D does): its frame turns amber under the mouse, and its foot says so. */}
         <Panel title="Pool" onPress={openPool}>
-          <Flex direction="row" wrap rowGap={0} columnGap={0}>
+          <Flex direction="row" wrap rowGap={grid.rowGap} columnGap={0}>
             {pool.map((row) => (
-              <Flex key={row.kind} width={grid.cell} height={POOL_ROW} direction="row" alignItems="center" gap={grid.gap}>
+              <Flex key={row.kind} width={grid.cell} height={grid.row} direction="row" alignItems="center" gap={grid.gap}>
                 <Flex width={32} height={32}>
                   <FruitBall kind={row.kind} x={16} y={16} look="icon" />
                   {/* The mouse over a kind in the Pool shows what it does, to the board's left. */}
@@ -536,7 +538,10 @@ export function Play() {
                     <FruitTip kind={row.kind} grown={grownOf(run, row.kind)} />
                   </Tooltip>
                 </Flex>
-                <Text color={INK}>{`${row.count}`}</Text>
+                {/* The font's figures are the top 14 pixels of its 20-pixel line: set down so they sit level with the fruit's middle. */}
+                <Flex paddingTop={POOL_COUNT_DROP}>
+                  <Text color={INK}>{`${row.count}`}</Text>
+                </Flex>
               </Flex>
             ))}
           </Flex>
