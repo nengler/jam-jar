@@ -148,10 +148,24 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     in anything rotten.
   - Giant Pumpkin: two Watermelons merge into one for +150. Its Shockwave throws every fruit within 130 pixels aside and
     Smashes any Watermelon caught in it, and after 0.9 seconds it is gone, leaving room.
-  - Balance bots (12 runs each, rent ignored; medians for cycles 1 to 5): always taking a Pumpkin 257, 210, 209, 175, 177;
-    a Gourd 250, 190, 230, 234, 245; next to never picking 242, 226, 243, 232, 242, Lime 238, 210, 182, 198, 164 and Apple
-    249, 190, 234, 224, 250. At Fresh 10 the Pumpkin managed 249, 190, 181, 142, 135: it takes two of a turn's four drops,
-    and Crushes the Cherries and Grapes the ladder is built from.
+  - Balance bots, 24 seeds each, rent ignored (`node tools/balance.ts 24 <player> full`, which also counts the Ladder
+    set's events). Points a run, and medians for cycles 1 to 5:
+
+    | Player | A run | Medians | Giant Pumpkins | Ladder points a run |
+    | --- | --- | --- | --- | --- |
+    | Never picks | 1128 | 240, 226, 243, 234, 204 | 1 in 24 runs | — |
+    | Never picks, hand ordered | 1202 | 254, 248, 252, 241, 248 | 3 in 24 runs (4 in all) | — |
+    | Picks at random | 1078 | 207, 197, 217, 184, 198 | 0 | Pumpkin 48, Gourd 23, Crush 5 |
+    | Pumpkin | 1053 | 240, 238, 207, 189, 184 | 0 | Pumpkin 169, Crush 15; 2 Smashes in 24 runs |
+    | Pumpkin, hand ordered | 1054 | 231, 227, 185, 192, 196 | 0 | Pumpkin 166, Crush 19 |
+    | Gourd | 1111 | 248, 193, 228, 226, 190 | 1 in 24 runs | Gourd 51 |
+    | Pumpkin and Gourd | 1044 | 240, 189, 210, 196, 197 | 0 | Pumpkin 139, Gourd 46, Crush 15 |
+    | Apple / Chili / Coconut / Lime | 1140 / 1127 / 1101 / 1031 | | | |
+
+    No player spilled a fruit. A Pumpkin costs a bot about 75 points a run against never picking, as a Lime does. The
+    big-fruit events are rare: a Giant Pumpkin formed in 1 run in 24 (the doc aims for one every 2 or 3), a Watermelon was
+    Smashed about once in 12 runs, and a Crush is worth some 15 points a run. Bots that buy nothing in the shop and empty
+    the jar every cycle seldom build two Watermelons.
 - The title has a jar filling up by itself: a run the rules play (`src/rules/demo.ts`: each hand dropped as dealt, every
   pick skipped, a new run a moment after the rent comes due).
 - Fruit roll: the physics has no angle, so each fruit's turning is drawn from how far it moves along what it touches.
