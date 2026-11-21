@@ -222,6 +222,8 @@ const rent = RENT.slice();
 interface Events {
   earned: Record<string, number>;
   giants: number;
+  /** Smashes: counted from the pieces they leave (4 Slices, or 2 of the next size down). */
+  smashes: number;
 }
 
 function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[]; mismatches: number; events: Events } {
@@ -236,6 +238,8 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   let settling = -1;
   let mismatches = 0;
   const giants = new Set<number>();
+  const slices = new Set<number>();
+  const pieces = new Set<number>();
   let earned: Record<string, number> = {};
   let wait = 0;
   let coins = 0;
@@ -247,6 +251,12 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   // The Ladder set's variants (`LADDER` in jar.ts): "/melon", "/oranges", "/reach16" (any number), "/smallcrush".
   LADDER.melonPick = /\/melon(\/|$)/.test(plan);
   LADDER.oranges = plan.includes("/oranges");
+  // The Smashed rework: "/psmash" (a Pumpkin Smashes the biggest fruit under it, Crushing one off the ladder), "/psmashladder"
+  // (passing over fruit off the ladder), "/smashall" (Smashed as a general rule), "/smashblasts" (explosions Smash too).
+  LADDER.pumpkinSmash = plan.includes("/psmash");
+  LADDER.smashOther = plan.includes("/psmashladder") ? "none" : "destroy";
+  LADDER.smashAll = plan.includes("/smashall");
+  LADDER.smashBlasts = plan.includes("/smashblasts");
   LADDER.melonChance = Number(/\/melonchance(\d+)/.exec(plan)?.[1] ?? MELON_CHANCE * 100) / 100;
   LADDER.giantPoints = Number(/\/giant(\d+)/.exec(plan)?.[1] ?? FRUITS.giantpumpkin.points);
   LADDER.crushReach = Number(/\/reach(\d+)/.exec(plan)?.[1] ?? 8);
@@ -254,7 +264,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
   // With no luck to average over (a tray with no wobble), one try is the whole story.
   const tries = TRAY.on && TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
-  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots|melonchance\d+|melon|oranges|reach\d+|smallcrush|giant\d+)/g, "");
+  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots|melonchance\d+|melon|oranges|reach\d+|smallcrush|giant\d+|psmashladder|psmash|smashall|smashblasts)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
@@ -263,7 +273,10 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     const found = findComponent("Play", player.world.root) as { s: { run: Run } } | null;
     // Every frame, not only the ones a key is chosen on: the settle's length is the last time seen before the phase moved on.
     if (found !== null) {
-      for (const f of found.s.run.fruits) if (f.kind === "giantpumpkin") giants.add(f.id);
+      for (const f of found.s.run.fruits) {
+        if (f.kind === "giantpumpkin") giants.add(f.id);
+        if (f.piece === true) (f.kind === "slice" ? slices : pieces).add(f.id);
+      }
       earned = found.s.run.earned;
     }
     if (found !== null && found.s.run.phase === "settle") settling = found.s.run.settleTime;
@@ -322,7 +335,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     else wait = 0;
   }
   player.close();
-  return { scores, pool, settles, mismatches, events: { earned: { ...earned }, giants: giants.size } };
+  return { scores, pool, settles, mismatches, events: { earned: { ...earned }, giants: giants.size, smashes: slices.size / 4 + pieces.size / 2 } };
 }
 
 const runs = Number(process.argv[2] ?? 20);
@@ -359,11 +372,11 @@ for (const strategy of players) {
   // The Ladder set's checks: how often its big-fruit events happen, their share of the points, and how much spills.
   const per = (label: string) => events.reduce((sum, e) => sum + (e.earned[label] ?? 0), 0) / runs;
   const total = events.reduce((sum, e) => sum + Object.values(e.earned).reduce((a, b) => a + Math.max(0, b), 0), 0) / runs;
-  const ladder = per("Slice") + per("Crush") + per("Gourd") + per("Giant Pumpkin") + per("Pumpkin");
+  const ladder = per("Slice") + per("Smash") + per("Crush") + per("Gourd") + per("Giant Pumpkin") + per("Pumpkin");
   const giantRuns = events.filter((e) => e.giants > 0).length;
   console.log(
     `${"".padEnd(34)} a run: ${total.toFixed(0)} points; Giant Pumpkins ${(events.reduce((a, e) => a + e.giants, 0) / runs).toFixed(2)} (in ${giantRuns}/${runs} runs), ` +
-      `Smashes ${(per("Slice") / 60).toFixed(2)}, Crush +${per("Crush").toFixed(0)}, Pumpkin +${per("Pumpkin").toFixed(0)}, Gourd +${per("Gourd").toFixed(0)}, ` +
+      `Smashes ${(events.reduce((a, e) => a + e.smashes, 0) / runs).toFixed(2)} (+${(per("Slice") + per("Smash")).toFixed(0)}), Ladder events ${(events.reduce((a, e) => a + e.smashes + e.giants, 0) / runs).toFixed(2)}, Crush +${per("Crush").toFixed(0)}, Pumpkin +${per("Pumpkin").toFixed(0)}, Gourd +${per("Gourd").toFixed(0)}, ` +
       `Ladder share ${((100 * ladder) / Math.max(1, total)).toFixed(0)}%, spills ${(-per("Spill") / 5).toFixed(1)} (${(-per("Spill") / 5 / rent.length).toFixed(1)} a cycle)`
   );
   if (process.argv[4] !== "full") continue;

@@ -18,6 +18,7 @@ import {
   dramatic,
   GIANT_LIFE,
   handSlots,
+  LADDER,
   FRUIT_PRICE,
   JAR,
   JUICER_BONUS,
@@ -1343,7 +1344,7 @@ test("a Watermelon Smashed breaks into Slices worth more than it; two Slices mak
 
   // The loop cap: a Melon made of Slices waits for the next turn to Merge again.
   const s = FRUITS.slice.radius;
-  const capped = jarWith([fruit(1, "slice", 300, JAR.floor - s, [2]), fruit(2, "slice", 300 + 2 * s, JAR.floor - s, [1]), fruit(3, "melon", 360, JAR.floor - 25)]);
+  const capped = jarWith([{ ...fruit(1, "slice", 300, JAR.floor - s, [2]), piece: true }, { ...fruit(2, "slice", 300 + 2 * s, JAR.floor - s, [1]), piece: true }, fruit(3, "melon", 360, JAR.floor - 25)]);
   simulate(capped, DT);
   const made = capped.fruits.find((f) => f.kind === "melon" && f.id !== 3)!;
   assert.equal(made.remerged, true);
@@ -1387,4 +1388,32 @@ test("two Watermelons make a Giant Pumpkin: it scores, its Shockwave throws the 
   assert.equal(run.cycleScore, FRUITS.giantpumpkin.points + SLICES * FRUITS.slice.points);
   for (let t = 0; t <= GIANT_LIFE + DT; t += DT) simulate(run, DT);
   assert.ok(!run.fruits.some((f) => f.kind === "giantpumpkin"), "it is gone");
+});
+
+test("the proposed Smashed rework (bots only): a Pumpkin Smashes the biggest fruit under it, and a Smashed Melon is 2 Oranges", () => {
+  const saved = { ...LADDER };
+  try {
+    Object.assign(LADDER, { pumpkinSmash: true, smashAll: true, smashOther: "destroy" });
+    const m = FRUITS.melon.radius;
+    const p = FRUITS.pumpkin.radius;
+    const run = jarWith([fruit(1, "melon", 320, JAR.floor - m), fruit(2, "cherry", 280, JAR.floor - 14)]);
+    run.fruits.push({ ...fruit(3, "pumpkin", 322, JAR.floor - 2 * m - p, [1]), landed: false });
+    simulate(run, DT);
+    assert.deepEqual(run.fruits.map((f) => f.kind).sort(), ["cherry", "orange", "orange", "pumpkin"], "the Melon, not the Cherry");
+    assert.ok(run.fruits.filter((f) => f.kind === "orange").every((f) => f.piece === true));
+    assert.ok(run.popups.some((pop) => pop.text === `Smash +${2 * FRUITS.orange.points}`));
+
+    // Off the ladder: an Apple is Crushed ("destroy"), or passed over ("none").
+    const apple = jarWith([fruit(1, "apple", 320, JAR.floor - 18)]);
+    apple.fruits.push({ ...fruit(2, "pumpkin", 320, JAR.floor - 36 - p, [1]), landed: false });
+    simulate(apple, DT);
+    assert.ok(!apple.fruits.some((f) => f.kind === "apple"));
+    LADDER.smashOther = "none";
+    const kept = jarWith([fruit(1, "apple", 320, JAR.floor - 18)]);
+    kept.fruits.push({ ...fruit(2, "pumpkin", 320, JAR.floor - 36 - p, [1]), landed: false });
+    simulate(kept, DT);
+    assert.ok(kept.fruits.some((f) => f.kind === "apple"));
+  } finally {
+    Object.assign(LADDER, saved);
+  }
 });
