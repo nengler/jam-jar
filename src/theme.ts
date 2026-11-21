@@ -42,6 +42,34 @@ export function cardFor(chosen: boolean): string {
   return chosen ? CARD_CHOSEN : CARD;
 }
 
+/**
+ * The shop is a market stall in the kitchen (tools/make-assets.py, "The shop"): a striped awning, the stall's counter, the offers
+ * as jam-jar labels (a gingham band on the item's), paper price tags, a SOLD stamp, wooden signs for the heading, the purse and
+ * the actions (green for the way out), and a jar of coins for the purse. The labels and signs are 9-sliced like the frames.
+ */
+export const AWNING = "awning.png";
+export const AWNING_H = 44;
+export const STALL = "stall.png";
+export const LABEL_SLICE = 8;
+export const TAG = "tag.png";
+export const TAG_SLICE = 8;
+export const SIGN = "sign.png";
+export const SIGN_GO = "sign-go.png";
+export const SIGN_SLICE = 8;
+export const SOLD = "sold.png";
+export const CLOTH = "cloth.png";
+export const COIN_JAR = "coin-jar.png";
+
+/** An offer's label: cream with a cherry line, gold when it is the chosen one; the item's has a gingham band and a blue line. */
+export function labelFor(chosen: boolean, item: boolean): string {
+  return `label${item ? "-item" : ""}${chosen ? "-chosen" : ""}.png`;
+}
+
+/** A shop action's sign: dark wood, gold when it is the chosen one, and green for the way out until then. */
+export function signFor(chosen: boolean, go = false): string {
+  return chosen ? "sign-chosen.png" : go ? SIGN_GO : SIGN;
+}
+
 /** Menu buttons: a parchment card, amber while focused or hovered. */
 export const BUTTON = CARD_CHOSEN;
 export const BUTTON_GREY = CARD;

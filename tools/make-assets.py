@@ -9,7 +9,7 @@ Lays out the game's assets/ from the free art in tools/:
   - pixel art only: UI Pack - Pixel Adventure frames (ADVENTURE), Pattern Pack Pixel's trellis (the wallpaper),
     Pixel Platformer's coin, and the Explosion Pack's pixel explosion.
 - Drawn here, in Apollo colours at the same 2x pixel: the kitchen (the wallpaper over a wooden counter), the jar's glass (a
-  back, behind the fruit, and a front with its shine and fill line, over them), the shelf, the key caps and the items.
+  back, behind the fruit, and a front with its shine and fill line, over them), the shelf, the key caps, the items and the shop's market stall.
 
 The text is the engine's built-in fonts (m5x7 and Jersey 10), so there is no font file.
 
@@ -554,6 +554,178 @@ def coin() -> Image.Image:
     return doubled(picture.crop(picture.getbbox()))
 
 
+# The shop: a market stall in the kitchen. A striped awning over the top of the screen, a hanging sign for its heading, the
+# offers as jam-jar labels standing on the stall's counter (the fruit in a basket, the item on a gingham cloth), paper price
+# tags tied to them, a SOLD stamp for an empty place, wooden signs for the actions and a jar of coins for the purse.
+AWNING_STRIPE = 16
+
+
+def awning() -> Image.Image:
+    """The stall's awning, across the whole screen: a dark beam, cherry and cream stripes seen a little from below, and a
+    scalloped valance whose every scallop is one stripe. 22 art pixels tall."""
+    w, h = WIDTH // PX, 22
+    out = Image.new("RGBA", (w, h))
+    draw = ImageDraw.Draw(out)
+    draw.rectangle((0, 0, w, 3), fill=colour("#341c27"))
+    draw.line((0, 3, w, 3), fill=colour("#4d2b32"))
+    for i, x in enumerate(range(0, w, AWNING_STRIPE)):
+        red = i % 2 == 0
+        body, shade = ("#a53030", "#752438") if red else ("#e7d5b3", "#c09473")
+        draw.rectangle((x, 4, x + AWNING_STRIPE - 1, 13), fill=colour(body))
+        draw.line((x, 4, x + AWNING_STRIPE - 1, 4), fill=colour(shade))
+        # The scallop: a half circle hanging under the stripe, outlined in ink, lit along its top.
+        draw.ellipse((x, 8, x + AWNING_STRIPE - 1, 20), fill=colour("#341c27"))
+        draw.ellipse((x + 1, 8, x + AWNING_STRIPE - 2, 19), fill=colour(body))
+        draw.rectangle((x, 8, x + AWNING_STRIPE - 1, 13), fill=colour(body))
+        draw.line((x + 3, 15, x + AWNING_STRIPE - 4, 15), fill=colour(shade))
+    return doubled(out)
+
+
+def label(fill: str, line: str) -> Image.Image:
+    """A jam-jar label, 16 x 16 art pixels as a 9-slice (4 each side): an ink outline, the paper, and a thin coloured line just
+    inside the edge, with its corners notched like a cut label."""
+    out = Image.new("RGBA", (16, 16))
+    draw = ImageDraw.Draw(out)
+    draw.rectangle((0, 1, 15, 14), fill=colour("#341c27"))
+    draw.rectangle((1, 0, 14, 15), fill=colour("#341c27"))
+    draw.rectangle((1, 1, 14, 14), fill=colour(fill))
+    draw.rectangle((3, 3, 12, 12), outline=colour(line))
+    for x, y in ((3, 3), (12, 3), (3, 12), (12, 12)):
+        draw.point((x, y), fill=colour(fill))
+    # A lit top and a shaded foot, so it reads as paper on board.
+    draw.line((2, 1, 13, 1), fill=colour("#ebede9" if fill == "#e7d5b3" else "#e7d5b3"))
+    draw.line((1, 14, 14, 14), fill=colour("#c09473" if fill == "#e7d5b3" else "#de9e41"))
+    return doubled(out)
+
+
+def item_label(fill: str = "#e7d5b3", line: str = "#3c5e8b") -> Image.Image:
+    """The item's label: the same, under a band of gingham, so a kitchen tool reads apart from the fruit. 16 x 16 art pixels as
+    a 9-slice of 4 each side: the band is in the top four rows, which are not stretched."""
+    out = label(fill, line)
+    small = out.resize((16, 16), Image.NEAREST)
+    draw = ImageDraw.Draw(small)
+    for y in range(1, 3):
+        for x in range(1, 15):
+            draw.point((x, y), fill=colour("#3c5e8b" if (x // 2) % 2 == 0 else "#a4dddb"))
+    draw.line((1, 3, 14, 3), fill=colour("#341c27"))
+    return doubled(small)
+
+
+def price_tag() -> Image.Image:
+    """A paper price tag, 16 x 12 art pixels, a 9-slice of 4 each side that is only ever stretched across: its left end is
+    cut to a point with a hole for the string."""
+    out = Image.new("RGBA", (16, 12))
+    draw = ImageDraw.Draw(out)
+    draw.polygon(((0, 5), (0, 6), (4, 10), (4, 11), (15, 11), (15, 0), (4, 0), (4, 1)), fill=colour("#341c27"))
+    draw.polygon(((1, 5), (1, 6), (4, 9), (4, 10), (14, 10), (14, 1), (4, 1), (4, 2)), fill=colour("#ebede9"))
+    draw.line((1, 6, 4, 9), fill=colour("#c7cfcc"))
+    draw.line((4, 10, 14, 10), fill=colour("#c7cfcc"))
+    draw.rectangle((2, 5, 3, 6), fill=colour("#341c27"))
+    return doubled(out)
+
+
+def sold_stamp() -> Image.Image:
+    """SOLD, stamped in red ink, 29 x 13 art pixels: a box and the letters, a few pixels missing where the ink did not take."""
+    letters = {
+        "S": ("111", "100", "111", "001", "111"),
+        "O": ("111", "101", "101", "101", "111"),
+        "L": ("100", "100", "100", "100", "111"),
+        "D": ("110", "101", "101", "101", "110"),
+    }
+    out = Image.new("RGBA", (29, 13))
+    draw = ImageDraw.Draw(out)
+    ink = colour("#a53030")
+    draw.rectangle((0, 0, 28, 12), outline=ink)
+    draw.rectangle((1, 1, 27, 11), outline=ink)
+    for i, ch in enumerate("SOLD"):
+        for y, row in enumerate(letters[ch]):
+            for x, bit in enumerate(row):
+                if bit == "1":
+                    draw.point((4 + i * 6 + x, 4 + y), fill=ink)
+    for x, y in ((6, 0), (17, 1), (27, 7), (1, 9), (12, 12), (22, 5), (9, 7)):
+        out.putpixel((x, y), (0, 0, 0, 0))
+    return doubled(out)
+
+
+def cloth() -> Image.Image:
+    """A folded gingham cloth the item stands on, 30 x 6 art pixels, seen a little from above."""
+    out = Image.new("RGBA", (30, 6))
+    draw = ImageDraw.Draw(out)
+    draw.polygon(((3, 0), (26, 0), (29, 5), (0, 5)), fill=colour("#341c27"))
+    for y in range(1, 5):
+        for x in range(1, 29):
+            if 3 - y < x < 26 + y:
+                draw.point((x, y), fill=colour("#a53030" if (x // 2 + y // 2) % 2 == 0 else "#e7d5b3"))
+    return doubled(out)
+
+
+def sign(fill: str, light: str, dark: str) -> Image.Image:
+    """A wooden sign, 16 x 18 art pixels as a 9-slice of 4 each side: a plank in an ink outline, lit along the top, with a
+    little grain and a nail in each end."""
+    out = Image.new("RGBA", (16, 18))
+    draw = ImageDraw.Draw(out)
+    draw.rounded_rectangle((0, 0, 15, 17), radius=1, fill=colour("#341c27"))
+    draw.rectangle((1, 1, 14, 16), fill=colour(fill))
+    draw.line((1, 1, 14, 1), fill=colour(light))
+    draw.line((1, 15, 14, 15), fill=colour(dark))
+    draw.line((1, 16, 14, 16), fill=colour("#341c27"))
+    # Grain only at the ends, which are not stretched: a line stretched across the middle would run under the text.
+    for x, y in ((2, 5), (12, 12)):
+        draw.line((x, y, x + 1, y), fill=colour(dark))
+    draw.point((2, 8), fill=colour(light))
+    draw.point((13, 8), fill=colour(light))
+    return doubled(out)
+
+
+def stall() -> Image.Image:
+    """The stall's counter the offers stand on, across the whole screen: a lit top edge, a plank front with seams, and its
+    shadow below. 10 art pixels tall."""
+    w = WIDTH // PX
+    out = Image.new("RGBA", (w, 10))
+    draw = ImageDraw.Draw(out)
+    draw.rectangle((0, 0, w, 7), fill=colour("#341c27"))
+    draw.rectangle((0, 1, w, 2), fill=colour("#d7b594"))
+    draw.rectangle((0, 3, w, 6), fill=colour("#ad7757"))
+    draw.line((0, 6, w, 6), fill=colour("#7a4841"))
+    for x in range(20, w, 40):
+        draw.line((x, 3, x, 6), fill=colour("#7a4841"))
+    for x in range(0, w, 2):
+        out.putpixel((x, 8), colour("#090a14"))
+    return doubled(out)
+
+
+def coin_jar() -> Image.Image:
+    """The purse: a small glass jar of gold coins under a cork, 14 x 16 art pixels."""
+    out = Image.new("RGBA", (14, 16))
+    draw = ImageDraw.Draw(out)
+    draw.rounded_rectangle((0, 3, 13, 15), radius=2, fill=colour("#341c27"))
+    draw.rounded_rectangle((1, 4, 12, 14), radius=1, fill=colour("#253a5e"))
+    for row, y in enumerate((13, 11, 9)):
+        for x in range(2 + row % 2, 12, 3):
+            draw.rectangle((x, y - 1, x + 1, y), fill=colour("#de9e41"))
+            draw.point((x, y - 1), fill=colour("#e8c170"))
+    draw.line((2, 5, 2, 11), fill=colour("#a4dddb"))
+    draw.rectangle((3, 0, 10, 3), fill=colour("#341c27"))
+    draw.rectangle((4, 1, 9, 2), fill=colour("#c09473"))
+    return doubled(out)
+
+
+def write_shop() -> None:
+    awning().save(ASSETS / "awning.png")
+    stall().save(ASSETS / "stall.png")
+    label("#e7d5b3", "#a53030").save(ASSETS / "label.png")
+    label("#e8c170", "#a53030").save(ASSETS / "label-chosen.png")
+    item_label().save(ASSETS / "label-item.png")
+    item_label("#e8c170", "#3c5e8b").save(ASSETS / "label-item-chosen.png")
+    price_tag().save(ASSETS / "tag.png")
+    sold_stamp().save(ASSETS / "sold.png")
+    cloth().save(ASSETS / "cloth.png")
+    sign("#7a4841", "#ad7757", "#602c2c").save(ASSETS / "sign.png")
+    sign("#be772b", "#e8c170", "#884b2b").save(ASSETS / "sign-chosen.png")
+    sign("#468232", "#75a743", "#25562e").save(ASSETS / "sign-go.png")
+    coin_jar().save(ASSETS / "coin-jar.png")
+
+
 def main() -> None:
     ASSETS.mkdir(exist_ok=True)
     sheet = to_palette(Image.open(FRUIT_SHEET))
@@ -595,6 +767,7 @@ def main() -> None:
     back.save(ASSETS / "jar-back.png")
     front.save(ASSETS / "jar-front.png")
     shelf(104).save(ASSETS / "shelf.png")
+    write_shop()
     # The explosion's frames (96 x 91) are centred on a 96 x 96 square so they share one origin.
     for i in range(EXPLOSION_FRAMES):
         frame = to_palette(Image.open(KENNEY / f"explosion-pixel-0{i}.png"))
