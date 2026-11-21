@@ -15,12 +15,12 @@ const TITLE_ROOM = 12;
  * over a busy screen a heading above the board would not read. With `onPress` the whole board is a button, its frame turning
  * amber under the mouse; without it, the board takes no press and no mouse.
  */
-export function Panel({ title, heading, image = PANEL, gap = 0, onPress, children }: { title?: string; heading?: string; image?: string; gap?: number; onPress?: () => void; children: Child }) {
+export function Panel({ title, heading, image = PANEL, gap = 0, paddingX = 16, onPress, children }: { title?: string; heading?: string; image?: string; gap?: number; paddingX?: number; onPress?: () => void; children: Child }) {
   return (
     <Flex direction="column" alignItems="stretch" paddingTop={title === undefined ? 0 : TITLE_ROOM}>
       {/* The shadow, pinned a little down and right of the frame; then the frame over it. */}
       <Flex left={4} right={-4} top={(title === undefined ? 0 : TITLE_ROOM) + 4} bottom={-4} background={WALL_SHADOW} />
-      <Flex direction="column" alignItems="stretch" gap={gap} paddingX={16} paddingTop={6} paddingBottom={10} backgroundImage={image} hoverBackgroundImage={onPress === undefined ? undefined : PANEL_HOVER} slice={PANEL_SLICE} focusable={false} onPress={onPress}>
+      <Flex direction="column" alignItems="stretch" gap={gap} paddingX={paddingX} paddingTop={6} paddingBottom={10} backgroundImage={image} hoverBackgroundImage={onPress === undefined ? undefined : PANEL_HOVER} slice={PANEL_SLICE} focusable={false} onPress={onPress}>
         {heading !== undefined && <PanelHeading text={heading} />}
         {children}
       </Flex>

@@ -61,11 +61,15 @@ const SLOT = 48;
 const BOARD_W = 192;
 const HUD_X = 12;
 const BOARD_Y = 28;
-/** The pool: each kind a 32-pixel icon and how many of it, three across, a little room between the rows; four across, closer,
- * rows overlapping the icons' empty edges, once there are more than four rows of them, so all 17 kinds a pool can hold fit
- * above the note. */
-const POOL_ROOMY = { columns: 3, cell: 53, gap: 4, row: 32, rowGap: 4 };
-const POOL_TIGHT = { columns: 4, cell: 40, gap: 1, row: 28, rowGap: 0 };
+/** The pool: each kind a 32-pixel icon and how many of it, three across, a little room between the rows. "See all" is the last
+ * thing in the grid, two places wide, so it sits in the last row when there is room: four rows at most. Past what fits, a place
+ * says how many more kinds there are. The board has narrower margins than the others (12, not 16), so a place is 56 wide: the
+ * icon, a gap and a count of two figures. */
+const POOL_PAD_X = 12;
+const POOL_GRID = { columns: 3, cell: (BOARD_W - 2 * POOL_PAD_X) / 3, gap: 3, row: 32, rowGap: 4 };
+const POOL_PLACES = 4 * POOL_GRID.columns;
+const POOL_LINK_PLACES = 2;
+const POOL_ICON_W = 30;
 /** How far each count is set down to sit level with its fruit. */
 const POOL_COUNT_DROP = 6;
 /** The pause button stands on the counter in the bottom right corner, its foot where the jar's is. */
@@ -401,7 +405,10 @@ export function Play() {
   const whole = poolRows(run.pool);
   /** The kind chosen on the whole-pool board, if any. */
   const looked = kindAt(whole, s.poolAt);
-  const grid = pool.length > 4 * POOL_ROOMY.columns ? POOL_TIGHT : POOL_ROOMY;
+  const grid = POOL_GRID;
+  /** The kinds the Pool board has room for, and how many more there are past them (each on the whole-pool board). */
+  const poolShown = pool.length > POOL_PLACES - POOL_LINK_PLACES ? pool.slice(0, POOL_PLACES - POOL_LINK_PLACES - 1) : pool;
+  const poolMore = pool.length - poolShown.length;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
   const finished = run.phase === "over" || run.phase === "won";
   /** The last turn's banner, while it crosses the screen. */
@@ -524,15 +531,16 @@ export function Play() {
       </Flex>
 
       {/* Right: pinned to the screen's right edge, what is left of the pool to deal this shuffle, by kind, and how many that is of
-          the whole pool. The kinds wrap, three to a row, or four, closer, once there are more than twelve. */}
+          the whole pool. The kinds wrap, three to a row, four rows at most. */}
       <Flex right={HUD_X - 240 * (1 - popIn(s.intro, INTRO.right, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch">
         {/* The whole board opens the whole pool, dealt or not (as D does): its frame turns amber under the mouse, and its foot says so. */}
-        <Panel title="Pool" onPress={openPool}>
+        <Panel title="Pool" paddingX={POOL_PAD_X} onPress={openPool}>
           <Flex direction="row" wrap rowGap={grid.rowGap} columnGap={0}>
-            {pool.map((row) => (
+            {poolShown.map((row) => (
               <Flex key={row.kind} width={grid.cell} height={grid.row} direction="row" alignItems="center" gap={grid.gap}>
-                <Flex width={32} height={32}>
-                  <FruitBall kind={row.kind} x={16} y={16} look="icon" />
+                {/* The icon's art is narrower than its 32 pixels: a box of 30 leaves a count of two figures room in the place. */}
+                <Flex width={POOL_ICON_W} height={32}>
+                  <FruitBall kind={row.kind} x={POOL_ICON_W / 2} y={16} look="icon" />
                   {/* The mouse over a kind in the Pool shows what it does, to the board's left. */}
                   <Tooltip anchor="top-right" to="top-left" offsetX={-12} offsetY={0} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                     <FruitTip kind={row.kind} grown={grownOf(run, row.kind)} />
@@ -544,9 +552,14 @@ export function Play() {
                 </Flex>
               </Flex>
             ))}
-          </Flex>
-          <Flex direction="row" justifyContent="end" alignItems="center" paddingTop={4}>
-            <Text color={KEYWORD}>{"See all >"}</Text>
+            {poolMore > 0 && (
+              <Flex width={grid.cell} height={grid.row} direction="row" alignItems="center" paddingLeft={6} paddingTop={POOL_COUNT_DROP}>
+                <Text color={INK_SOFT}>{`+${poolMore}`}</Text>
+              </Flex>
+            )}
+            <Flex width={grid.cell * POOL_LINK_PLACES} height={grid.row} direction="row" justifyContent="end" alignItems="center" paddingTop={POOL_COUNT_DROP}>
+              <Text color={KEYWORD}>{"See all >"}</Text>
+            </Flex>
           </Flex>
         </Panel>
       </Flex>
