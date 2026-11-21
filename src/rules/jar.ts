@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { APPLE, BANANA, CRUSHABLE, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, OFFERABLE, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, CRUSHABLE, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
 
@@ -44,13 +44,13 @@ export const TRAY = { on: true, wobble: 4 };
 export const SPOTS = { salt: 0 };
 
 /**
- * For the balance bots: variants of the Ladder set to compare, all off in the game. `melonPick` puts the Melon among the fruit a
+ * For the balance bots: variants of the Ladder set to compare; the game plays with these defaults. `melonPick` puts the Melon among the fruit a
  * pick and the shop offer; `oranges` rolls a starting pool with more Oranges (1–3, against 0–2); `crushReach` is how far past
  * touching a Pumpkin's Crush reaches; `crushSmall` lets it Crush any fruit no bigger than a Grape, not only the four it names.
- * `melonChance` (with `melonPick` off) offers a Melon only now and then, in the middle place of a pick, as a Legendary takes the
- * last; `giantPoints` is what a Giant Pumpkin scores.
+ * `melonChance` is how often a Melon takes the middle place of a pick (`MELON_CHANCE` in the game), as a Legendary takes the
+ * last; `giantPoints` is what a Giant Pumpkin scores (its card's Fresh).
  */
-export const LADDER = { melonPick: false, melonChance: 0, giantPoints: 150, oranges: false, crushReach: 8, crushSmall: false };
+export const LADDER = { melonPick: false, melonChance: MELON_CHANCE, giantPoints: FRUITS.giantpumpkin.points, oranges: false, crushReach: 8, crushSmall: false };
 
 /** The fruit a pick or the shop can offer. */
 function offerList(): readonly FruitKind[] {
@@ -643,6 +643,12 @@ function pulse(f: Fruit, delay = 0): void {
   f.pulseDelay = delay;
 }
 
+/** Where a fruit `r` across from its middle can be made at `x`: inside the jar's walls, so one bigger than what it replaces (a
+ * merge, a Gourd grown, a Giant Pumpkin) does not start in a wall. */
+function inside(x: number, r: number): number {
+  return Math.max(JAR.left + r, Math.min(JAR.right - r, x));
+}
+
 function makeFruit(run: Run, kind: FruitKind, x: number, y: number): Fruit {
   return {
     id: run.nextId++,
@@ -1126,7 +1132,7 @@ function merge(run: Run): void {
       const my = (a.y + b.y) / 2;
       if (a.kind === "watermelon") {
         // A Giant Pumpkin: it scores big, its Shockwave throws the pile aside (below, once the merges are done), and soon it is gone.
-        const giant = makeFruit(run, "giantpumpkin", mx, my);
+        const giant = makeFruit(run, "giantpumpkin", inside(mx, FRUITS.giantpumpkin.radius), my);
         giant.landed = true;
         giant.lit = true;
         giant.fuse = GIANT_LIFE;
@@ -1146,7 +1152,7 @@ function merge(run: Run): void {
         const skipped = FRUITS[next].mergesInto;
         const into = dragon === undefined || skipped === undefined || skipped === "giantpumpkin" ? next : skipped;
         if (dragon !== undefined) pulse(dragon);
-        const f = makeFruit(run, into, mx, my);
+        const f = makeFruit(run, into, inside(mx, FRUITS[into].radius), my);
         f.landed = true;
         // Rot does not stop a Merge, and a Merge does not cut it out.
         f.rotten = f.rotten || a.rotten || b.rotten;
@@ -1230,7 +1236,7 @@ function absorb(run: Run, dt: number): void {
       sound(run, "merge");
       return;
     }
-    const grown = makeFruit(run, "gourd", f.x, f.y);
+    const grown = makeFruit(run, "gourd", inside(f.x, next), f.y);
     Object.assign(grown, { r: next, landed: true, wait: GOURD_WAIT, tainted, age: f.age, honeyed: f.honeyed, pickled: f.pickled });
     pulse(grown);
     born.push(grown);
@@ -1557,7 +1563,8 @@ function offer(run: Run): void {
   run.offers = rng.shuffle(offerList()).slice(0, 3);
   // Now and then a Legendary takes the last place.
   if (rng.next() < LEGENDARY_CHANCE) run.offers[2] = rng.pick(LEGENDARY);
-  if (LADDER.melonChance > 0 && rng.next() < LADDER.melonChance) run.offers[1] = "melon";
+  // And now and then a Melon takes the middle one: the Ladder build's way to Watermelons.
+  if (rng.next() < LADDER.melonChance) run.offers[1] = "melon";
   run.seed = rng.seed;
   run.offerCursor = -1;
   run.phase = "pick";

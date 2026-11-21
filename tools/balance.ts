@@ -33,7 +33,7 @@ import { findComponent } from "@tsengine/testing";
 
 import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
-import { FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
+import { FRUITS, MELON_CHANCE, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
 import { bossNow, LADDER, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
@@ -247,8 +247,8 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   // The Ladder set's variants (`LADDER` in jar.ts): "/melon", "/oranges", "/reach16" (any number), "/smallcrush".
   LADDER.melonPick = /\/melon(\/|$)/.test(plan);
   LADDER.oranges = plan.includes("/oranges");
-  LADDER.melonChance = Number(/\/melonchance(\d+)/.exec(plan)?.[1] ?? 0) / 100;
-  LADDER.giantPoints = Number(/\/giant(\d+)/.exec(plan)?.[1] ?? 150);
+  LADDER.melonChance = Number(/\/melonchance(\d+)/.exec(plan)?.[1] ?? MELON_CHANCE * 100) / 100;
+  LADDER.giantPoints = Number(/\/giant(\d+)/.exec(plan)?.[1] ?? FRUITS.giantpumpkin.points);
   LADDER.crushReach = Number(/\/reach(\d+)/.exec(plan)?.[1] ?? 8);
   LADDER.crushSmall = plan.includes("/smallcrush");
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);

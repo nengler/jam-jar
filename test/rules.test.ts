@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { blastBits, blastFlash, blastJolt, motes, poolRows, termsOf } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
-import { APPLE, BANANA, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, SLICES, type FruitKind } from "../src/rules/fruits.ts";
+import { APPLE, BANANA, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, SLICES, type FruitKind } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
@@ -205,10 +205,15 @@ test("the jar settles once every fruit reports being slow", () => {
 });
 
 test("two touching Cherries merge into a Grape and score its points", () => {
-  const run = jarWith([fruit(1, "cherry", 150, JAR.floor - 5, [2]), fruit(2, "cherry", 160, JAR.floor - 5, [1])]);
+  const run = jarWith([fruit(1, "cherry", 300, JAR.floor - 5, [2]), fruit(2, "cherry", 310, JAR.floor - 5, [1])]);
   simulate(run, DT);
   assert.deepEqual(run.fruits.map((f) => f.kind), ["grape"]);
-  assert.deepEqual([run.fruits[0]!.x0, run.fruits[0]!.y0], [155, JAR.floor - 5], "made between them");
+  assert.deepEqual([run.fruits[0]!.x0, run.fruits[0]!.y0], [305, JAR.floor - 5], "made between them");
+  // Against a wall, a bigger fruit made there starts inside the jar, not in the wall.
+  const r = FRUITS.cherry.radius;
+  const wall = jarWith([fruit(1, "cherry", JAR.right - r, JAR.floor - r, [2]), fruit(2, "cherry", JAR.right - r, JAR.floor - 3 * r, [1])]);
+  simulate(wall, DT);
+  assert.equal(wall.fruits[0]!.x0, JAR.right - FRUITS.grape.radius);
   assert.equal(run.cycleScore, FRUITS.grape.points);
 });
 
@@ -1019,6 +1024,21 @@ test("a Legendary is offered now and then, in the last place of a pick", () => {
     if (run.offers[2] === "dragonfruit") seen += 1;
   }
   assert.ok(seen > 10 && seen < 70, `${seen} in 400 picks`);
+});
+
+test("a Melon is offered now and then, in the middle place of a pick, and never in the shop", () => {
+  let seen = 0;
+  for (let seed = 1; seed <= 400; seed++) {
+    const run = jarWith([]);
+    run.seed = seed * 7919;
+    run.turn = 2;
+    resolve(run);
+    assert.ok(run.offers[0] !== "melon" && run.offers[2] !== "melon");
+    if (run.offers[1] === "melon") seen += 1;
+  }
+  // 10% of 400.
+  assert.ok(seen > 20 && seen < 65, `${seen} in 400 picks`);
+  assert.ok(!OFFERABLE.includes("melon"), "the shop sells only what a pick offers by default");
 });
 
 test("the Preserves Jar's upgrades: offered only to its owner, they take its place, and each keeps its own number", () => {

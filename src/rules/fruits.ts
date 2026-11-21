@@ -108,7 +108,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   slice: { name: "Slice", radius: FRUIT_ART.slice.radius, points: 15, scoring: "fresh", mergesInto: "melon", touchWeight: 1, text: "Fresh 15. Merge: Melon." },
   pumpkin: { name: "Pumpkin", radius: FRUIT_ART.pumpkin.radius, points: 24, scoring: "fresh", touchWeight: 1, heavy: 4, slots: 2, text: "Fresh 24. Wide. Heavy. Crushes a Cherry, Grape, Seed or Lime it lands on." },
   gourd: { name: "Gourd", radius: FRUIT_ART.gourd.radius, points: 4, scoring: "fresh", touchWeight: 1, text: "Fresh 4. Absorb. At Melon size, Burst 4." },
-  giantpumpkin: { name: "Giant Pumpkin", radius: FRUIT_ART.giantpumpkin.radius, points: 150, scoring: "fresh", heavy: 4, touchWeight: 1, text: "Fresh 150. Shockwave, then it vanishes." },
+  giantpumpkin: { name: "Giant Pumpkin", radius: FRUIT_ART.giantpumpkin.radius, points: 75, scoring: "fresh", heavy: 4, touchWeight: 1, text: "Fresh 75. Shockwave, then it vanishes." },
 };
 
 /** What the 1-of-3 pick offers. */
@@ -141,3 +141,11 @@ export const SPROUTS: readonly FruitKind[] = ["cherry", "grape", "orange"];
 /** The Legendary fruit, and the chance that one takes the last place among a pick's three offers. */
 export const LEGENDARY: readonly FruitKind[] = ["dragonfruit"];
 export const LEGENDARY_CHANCE = 0.08;
+
+/**
+ * The chance that a Melon takes the middle place among a pick's three offers. A starter, otherwise only made by merging, offered
+ * now and then so a Ladder build can aim for Watermelons and a Giant Pumpkin. Tuned with the balance bots: at 10% a player who
+ * takes every Melon sees a Giant Pumpkin in about 10 runs of 24 and scores about what a Durian player does; offered as often as
+ * any other fruit (in about 15% of picks, and in the shop), it made the strongest pick the bots had found.
+ */
+export const MELON_CHANCE = 0.1;
