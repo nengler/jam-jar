@@ -525,7 +525,7 @@ export function Play() {
           the whole pool. The kinds wrap, three to a row, or four, closer, once there are more than twelve. */}
       <Flex right={HUD_X - 240 * (1 - popIn(s.intro, INTRO.right, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch">
         {/* The whole board opens the whole pool, dealt or not (as D does): its frame turns amber under the mouse, and its foot says so. */}
-        <Panel title="Pool" pressable onPress={openPool}>
+        <Panel title="Pool" onPress={openPool}>
           <Flex direction="row" wrap rowGap={0} columnGap={0}>
             {pool.map((row) => (
               <Flex key={row.kind} width={grid.cell} height={POOL_ROW} direction="row" alignItems="center" gap={grid.gap}>
