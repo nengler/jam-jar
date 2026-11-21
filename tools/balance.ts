@@ -213,7 +213,17 @@ const rent = RENT.slice();
 (RENT as number[]).fill(0);
 
 /** One run: each cycle's score, the pool's size at the end, and how long each turn's settle took. */
-function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[]; mismatches: number } {
+/**
+ * What happened in a run, for the Ladder set's checks (design doc, "Rules and checks"): its points by what earned them (the run's
+ * own `earned`), and how many Giant Pumpkins formed (counted by id as they appear). With "/best", "/worst" or "/fair" the tries
+ * are counted too, so read these from players that drop as dealt or "/order".
+ */
+interface Events {
+  earned: Record<string, number>;
+  giants: number;
+}
+
+function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[]; mismatches: number; events: Events } {
   const backend = new RecordingBackend();
   const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
   // After the player is made (making it resets the game's state): Play adds one to the seed when a run starts.
@@ -224,6 +234,8 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   const settles: number[] = [];
   let settling = -1;
   let mismatches = 0;
+  const giants = new Set<number>();
+  let earned: Record<string, number> = {};
   let wait = 0;
   let coins = 0;
   const [plan = "", owned = ""] = strategy.split("@");
@@ -242,6 +254,10 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     advance(player, backend);
     const found = findComponent("Play", player.world.root) as { s: { run: Run } } | null;
     // Every frame, not only the ones a key is chosen on: the settle's length is the last time seen before the phase moved on.
+    if (found !== null) {
+      for (const f of found.s.run.fruits) if (f.kind === "giantpumpkin") giants.add(f.id);
+      earned = found.s.run.earned;
+    }
     if (found !== null && found.s.run.phase === "settle") settling = found.s.run.settleTime;
     else if (settling >= 0) {
       settles.push(settling);
@@ -298,7 +314,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     else wait = 0;
   }
   player.close();
-  return { scores, pool, settles, mismatches };
+  return { scores, pool, settles, mismatches, events: { earned: { ...earned }, giants: giants.size } };
 }
 
 const runs = Number(process.argv[2] ?? 20);
@@ -312,6 +328,7 @@ for (const strategy of players) {
   let pool = 0;
   let mismatches = 0;
   const settles: number[] = [];
+  const events: Events[] = [];
   written[strategy] = [];
   for (let seed = firstSeed; seed < firstSeed + runs; seed++) {
     const result = play(seed, strategy);
@@ -319,6 +336,7 @@ for (const strategy of players) {
     pool += result.pool;
     mismatches += result.mismatches;
     settles.push(...result.settles);
+    events.push(result.events);
     written[strategy]!.push({ seed, scores: result.scores });
     if (json !== undefined) writeFileSync(json, JSON.stringify(written));
   }
@@ -330,6 +348,16 @@ for (const strategy of players) {
   const settle = `settle ${(settles[Math.floor(settles.length / 2)] ?? 0).toFixed(1)}s, 90% ${(settles[Math.floor(settles.length * 0.9)] ?? 0).toFixed(1)}s, ${stuck}/${settles.length} hit ${SETTLE_LIMIT}s`;
   const median = (cycle: number) => all.map((s) => s[cycle] ?? 0).sort((a, b) => a - b)[Math.floor(runs / 2)];
   console.log(`${strategy.padEnd(34)} pool ${(pool / runs).toFixed(1).padStart(4)}  medians ${rent.map((_, c) => String(median(c)).padStart(4)).join(" ")}  ${settle}`);
+  // The Ladder set's checks: how often its big-fruit events happen, their share of the points, and how much spills.
+  const per = (label: string) => events.reduce((sum, e) => sum + (e.earned[label] ?? 0), 0) / runs;
+  const total = events.reduce((sum, e) => sum + Object.values(e.earned).reduce((a, b) => a + Math.max(0, b), 0), 0) / runs;
+  const ladder = per("Slice") + per("Crush") + per("Gourd") + per("Giant Pumpkin") + per("Pumpkin");
+  const giantRuns = events.filter((e) => e.giants > 0).length;
+  console.log(
+    `${"".padEnd(34)} a run: ${total.toFixed(0)} points; Giant Pumpkins ${(events.reduce((a, e) => a + e.giants, 0) / runs).toFixed(2)} (in ${giantRuns}/${runs} runs), ` +
+      `Smashes ${(per("Slice") / 60).toFixed(2)}, Crush +${per("Crush").toFixed(0)}, Pumpkin +${per("Pumpkin").toFixed(0)}, Gourd +${per("Gourd").toFixed(0)}, ` +
+      `Ladder share ${((100 * ladder) / Math.max(1, total)).toFixed(0)}%, spills ${(-per("Spill") / 5).toFixed(1)} (${(-per("Spill") / 5 / rent.length).toFixed(1)} a cycle)`
+  );
   if (process.argv[4] !== "full") continue;
   console.log(`${strategy} (${runs} runs, pool ends at ${(pool / runs).toFixed(1)} fruit)`);
   for (let cycle = 0; cycle < rent.length; cycle++) {
