@@ -26,8 +26,8 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 Everything can also be done with the mouse or a finger, with no keyboard: drag a fruit along the shelf to where it should stand, tap the jar to drop the hand into it, and tap the buttons for what Space, Esc and Enter do elsewhere (Skip,
 Done, Back, and Pause on the counter in the bottom right corner). A tap on a card (in the pick or the shop) chooses it and shows what its keywords mean; a second tap takes or buys it.
 No card is chosen until you choose one. The shop's actions, a kind in the take-out dialog and a fruit the Preserves Jar can
-keep act on one tap. The Pool board shows how much is still to be dealt; a tap on it (or D) opens a board of every fruit in
-the pool, where a tap on a kind shows all it does beside the board. A fruit's tooltip, on the shelf and on that board, says what
+keep act on one tap. The basket at the end of the shelf shows how much is still to be dealt; a tap on it (or D) opens a board
+of every fruit in the pool, where a tap on a kind shows all it does beside the board. A fruit's tooltip, on the shelf and on that board, says what
 each of its keywords means, as a pick's card does.
 
 The first game has a tutorial (`src/rules/tutorial.ts`, `src/Coach.tsx`). It is not a game of its own: a card beside the jar
@@ -169,10 +169,11 @@ The screen is 640 x 360 (16:9), scaled up by whole multiples.
 What a fruit does can be read in play as well: its card shows under the fruit the cursor is on while you order a hand,
 and beside any fruit on the shelf that the mouse is over.
 
-The Pool board shows how many fruit are still to be dealt this shuffle, of how many the pool holds, with a bar: the hand is on
-the shelf above the jar, and the rest has been played. At 0 the pool shuffles before the next deal. By the end of a run a pool
-holds a dozen kinds, one or two of each, so what they are is on the whole-pool board (a tap on the board, or D): under each
-kind, how many are left to deal of how many there are, and a kind with none left is faded.
+The fruit still to be dealt this shuffle wait in a basket on a ledge past the shelf's right end, and each hand rolls out of
+it onto the shelf. Beside it is how many are left; the mouse over it says of how many the pool holds. The hand is on the
+shelf, and the rest has been played. At 0 the basket refills with the whole pool before the next deal. By the end of a run a
+pool holds a dozen kinds, one or two of each, so what they are is on the whole-pool board (a tap on the basket, or D): under
+each kind, how many are left to deal of how many there are, and a kind with none left is faded.
 
 ## Reading a turn
 

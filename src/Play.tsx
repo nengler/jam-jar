@@ -23,8 +23,6 @@ import { advance, newRun, BOOM_LIFE, CLEAR_TIME, keeps, bossNow, dramatic, lean,
 import {
   BAD,
   BAR_FILL,
-  BAR_GOLD,
-  BAR_WELL,
   BODY_SIZE,
   cardFor,
   CARD_SLICE,
@@ -73,8 +71,13 @@ const SWEEP_BAND = "#090a14e6";
 const SCORE_VOLUME = 0.7;
 /** Seconds between the ticks of a fruit dragged along the shelf, at the least. */
 const MOVE_QUIET = 0.12;
-/** Where across the screen a newly dealt fruit starts its roll along the shelf: at the shelf's right end. */
-const ROLL_FROM = 432;
+/** The basket the pool's fruit wait in, on a ledge past the shelf's right end, 4 pixels from it: the ledge's left edge and the
+ * basket's middle. A newly dealt fruit starts its roll along the shelf there, inside the basket, and rolls out of it. */
+const LEDGE_GAP = 4;
+const LEDGE_W = 60;
+const BASKET_W = 56;
+const BASKET_H = 38;
+const ROLL_FROM = (JAR.left + JAR.right) / 2 + 104 + LEDGE_GAP + LEDGE_W / 2;
 /** Where the card of a fruit on the shelf stands: in the top left corner, over the rent board for as long as it is up, so it
  * never lies over the jar, which is what the player is deciding about. */
 const TIP_X = 4;
@@ -469,6 +472,11 @@ export function Play() {
       {/* The shelf: the hand, each fruit over the lane it drops down. The chosen fruit is framed in amber; a held one is lifted. In the Blind
           jar each is under a cloth. */}
       <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y - 80 * (1 - popIn(s.intro, INTRO.shelf, INTRO.pop))} />
+      {/* The basket's ledge and the inside of its rim: behind a fruit rolling out of it. */}
+      <Entity y={-80 * (1 - popIn(s.intro, INTRO.shelf, INTRO.pop))}>
+        <Sprite image="ledge.png" x={ROLL_FROM - LEDGE_W / 2} y={SHELF_Y} />
+        <Sprite image="basket-back.png" x={ROLL_FROM - BASKET_W / 2} y={SHELF_Y - BASKET_H} />
+      </Entity>
       {/* The box that hears the hand being dragged and tapped: over the fruit on the shelf, and under their tooltips' boxes. */}
       {ordering && !s.whole && <Flex x={shelfLeft} y={SHELF_Y - 44} width={shelf.length * SLOT} height={52} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} onPressOutside={untip} />}
       {placed(shelf).map((slot) => (
@@ -478,6 +486,26 @@ export function Play() {
           {blind && (!ordering || rollStarted(s.roll, slot.at)) && <Sprite image="covered.png" x={-16} y={-16} />}
         </Entity>
       ))}
+      {/* The pool's basket: what is still to be dealt this shuffle waits in it, and a dealt hand rolls out of it (drawn over the
+          fruit, so they come out from behind its front). Beside it, how many are left; the mouse over it says of how many, and a
+          tap on it (or D) opens the whole pool. At 0 it is refilled with every fruit before the next deal. */}
+      <Entity y={-80 * (1 - popIn(s.intro, INTRO.shelf, INTRO.pop))}>
+        <Sprite image="basket.png" x={ROLL_FROM - BASKET_W / 2} y={SHELF_Y - BASKET_H} />
+        <Text x={ROLL_FROM + BASKET_W / 2 + 6} y={SHELF_Y - BASKET_H + 2} font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>
+          {`${run.draw.length}`}
+        </Text>
+        <Flex x={ROLL_FROM - BASKET_W / 2} y={SHELF_Y - BASKET_H} width={BASKET_W + 40} height={BASKET_H} focusable={false} onPress={openPool}>
+          <Tooltip anchor="top-left" to="bottom-left" offsetX={0} offsetY={8} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+            <Flex width={BOARD_W} direction="column" alignItems="stretch">
+              <Panel image={PLAQUE}>
+                <Text width={BOARD_W - 32} maxWidth={BOARD_W - 32} color={LIGHT}>
+                  {`${run.draw.length} of your ${run.pool.length} fruit left to deal. ${keys ? "D" : "Tap"} to see them all.`}
+                </Text>
+              </Panel>
+            </Flex>
+          </Tooltip>
+        </Flex>
+      </Entity>
       {/* What a fruit does shows for the one that was tapped (or the cursor is on, at a keyboard), and for one the mouse is over: in
           the top left corner whichever fruit it is for, so it never lies over the jar. Its box stays at the fruit's place on the
           shelf, not under a fruit being dragged (see the handlers above): one that followed the pointer and was moved back by as
@@ -515,34 +543,13 @@ export function Play() {
         </Panel>
       </Flex>
 
-      {/* Right: pinned to the screen's right edge, how much of the pool is still to be dealt this shuffle, as a count and a bar.
-          What it is, kind by kind, is on the whole-pool board: by the end of a run a pool holds a dozen kinds, one or two of each,
-          and a grid of them all was more to read than it told. */}
-      <Flex right={HUD_X - 240 * (1 - popIn(s.intro, INTRO.right, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch">
-        {/* The whole board opens the whole pool, dealt or not (as D does): its frame turns amber under the mouse, and its foot says so. */}
-        <Panel title="Pool" gap={6} onPress={openPool}>
-          <Flex direction="row" alignItems="center" gap={8}>
-            <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`${run.draw.length}`}</Text>
-            <Text color={INK_SOFT}>{`of ${run.pool.length} to deal`}</Text>
-          </Flex>
-          <Flex height={10} background={BAR_WELL}>
-            {run.draw.length > 0 && (
-              <Flex left={2} top={2} bottom={2} width={Math.max(2, Math.round(((BOARD_W - 36) * run.draw.length) / run.pool.length / 2) * 2)} background={BAR_GOLD} />
-            )}
-          </Flex>
-          <Flex direction="row" justifyContent="end">
-            <Text color={KEYWORD}>{"See all >"}</Text>
-          </Flex>
-        </Panel>
-      </Flex>
-
       {/* What the lesson is about, framed, and the rest of the screen dimmed: after both boards, so they dim too, and before the
           lesson's card, so it does not. */}
       {coached?.target === "shelf" && <Spotlight x={shelfLeft - 8} y={SHELF_Y - 46} width={shelf.length * SLOT + 16} height={56} />}
       {/* The jar is picked out the same way while a Preserves Jar's fruit are chosen (its board is drawn after, so it stays lit). */}
       {(coached?.target === "jar" || (preserving && coached === null)) && <Spotlight x={JAR.left - 10} y={RIM - 28} width={JAR.right - JAR.left + 20} height={JAR.floor - RIM + 38} />}
       {coached?.target === "rent" && <Spotlight x={HUD_X - 6} y={BOARD_Y + 6} width={BOARD_W + 12} height={152} />}
-      {coached?.target === "pool" && <Spotlight x={640 - HUD_X - BOARD_W - 6} y={BOARD_Y + 6} width={BOARD_W + 12} height={98} />}
+      {coached?.target === "pool" && <Spotlight x={ROLL_FROM - BASKET_W / 2 - 8} y={SHELF_Y - BASKET_H - 8} width={BASKET_W + 56} height={BASKET_H + 22} />}
       {/* The first game's tutorial takes the slate's place: one lesson at a time, about what is on screen now. */}
       {coached !== null && !picking && run.phase !== "shop" && (
         <Flex right={HUD_X} bottom={NOTE_FOOT}>

@@ -31,8 +31,6 @@ export const DISPLAY_SIZE = 28;
  * lettering: light on the wall above a board, ink at the top of a dialog. */
 export const PANEL = "frame.png";
 export const PANEL_SLICE = 8;
-/** A board that can be pressed, under the mouse: the chosen card's amber frame. */
-export const PANEL_HOVER = "frame-chosen.png";
 export const CARD = "frame.png";
 export const CARD_CHOSEN = "frame-chosen.png";
 export const CARD_SLICE = 8;

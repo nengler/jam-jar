@@ -68,8 +68,8 @@ export const LESSONS: readonly Lesson[] = [
   {
     id: "pool",
     title: "Your pool",
-    text: "Every fruit you own. Each turn deals four, so what you add keeps coming back.",
-    keysText: "Every fruit you own. Each turn deals four, so what you add keeps coming back.",
+    text: "Your fruit wait in the basket. Each turn deals four; empty, it refills. Tap it to see all.",
+    keysText: "Your fruit wait in the basket. Each turn deals four; empty, it refills. D shows them all.",
     target: "pool",
     told: true,
   },
