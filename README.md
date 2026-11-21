@@ -144,8 +144,8 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 - Boss jars: every third cycle (so cycle 3) is played in one, and the shop before it says which. A run meets one of
   four, by its seed.
   - The Peg jar has a round post in the middle that splits the pile.
-  - In the Blind jar the hand is under cloths: it drops as it was dealt, and you cannot see or order it. (The Pool board
-    still shows what is left, so the hand can be worked out.)
+  - In the Blind jar the hand is under cloths: it drops as it was dealt, and you cannot see or order it. (The whole-pool
+    board still shows what is left of each kind, so the hand can be worked out.)
   - The Tilted jar leans 6 degrees to the right, and everything in it rolls to the low side. The fruit are moved in the
     jar's own frame, with a steady sideways pull, and the jar is drawn turned about its low corner.
   - The Flip jar has a lid on, and its gravity turns over after every second drop: the pile falls to the lid, then back to
