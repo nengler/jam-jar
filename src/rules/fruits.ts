@@ -106,7 +106,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   snowpear: { name: "Snow Pear", radius: FRUIT_ART.snowpear.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Each turn, it and its neighbours turn Frozen." },
   seed: { name: "Seed", radius: FRUIT_ART.seed.radius, points: 6, scoring: "fresh", touchWeight: 1, text: "Fresh 6. Exploded or Crushed: Sprout." },
   slice: { name: "Slice", radius: FRUIT_ART.slice.radius, points: 15, scoring: "fresh", mergesInto: "melon", touchWeight: 1, text: "Fresh 15. Merge: Melon." },
-  pumpkin: { name: "Pumpkin", radius: FRUIT_ART.pumpkin.radius, points: 24, scoring: "fresh", touchWeight: 1, heavy: 4, slots: 2, text: "Fresh 24. Wide. Heavy. Crushes a Cherry, Grape, Seed or Lime it lands on." },
+  pumpkin: { name: "Pumpkin", radius: FRUIT_ART.pumpkin.radius, points: 24, scoring: "fresh", touchWeight: 1, heavy: 4, slots: 2, text: "Fresh 24. Wide. Heavy. Smashes the biggest Grape, Orange, Melon or Watermelon it lands on." },
   gourd: { name: "Gourd", radius: FRUIT_ART.gourd.radius, points: 4, scoring: "fresh", touchWeight: 1, text: "Fresh 4. Absorb. At Melon size, Burst 4." },
   giantpumpkin: { name: "Giant Pumpkin", radius: FRUIT_ART.giantpumpkin.radius, points: 75, scoring: "fresh", heavy: 4, touchWeight: 1, text: "Fresh 75. Shockwave, then it vanishes." },
 };

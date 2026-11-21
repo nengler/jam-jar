@@ -222,7 +222,7 @@ const rent = RENT.slice();
 interface Events {
   earned: Record<string, number>;
   giants: number;
-  /** Smashes: counted from the pieces they leave (4 Slices, or 2 of the next size down). */
+  /** Smashes: counted from the pieces they leave (4 Slices, or 2 of the next size down); "/best" and "/fair" undercount them. */
   smashes: number;
 }
 
@@ -251,11 +251,12 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   // The Ladder set's variants (`LADDER` in jar.ts): "/melon", "/oranges", "/reach16" (any number), "/smallcrush".
   LADDER.melonPick = /\/melon(\/|$)/.test(plan);
   LADDER.oranges = plan.includes("/oranges");
-  // The Smashed rework: "/psmash" (a Pumpkin Smashes the biggest fruit under it, Crushing one off the ladder), "/psmashladder"
-  // (passing over fruit off the ladder), "/smashall" (Smashed as a general rule), "/smashblasts" (explosions Smash too).
-  LADDER.pumpkinSmash = plan.includes("/psmash");
-  LADDER.smashOther = plan.includes("/psmashladder") ? "none" : "destroy";
-  LADDER.smashAll = plan.includes("/smashall");
+  // The Smashed rework, which the game plays: "/oldpumpkin" goes back to the first-built Pumpkin (it Crushes small fruit),
+  // "/psmash" has the Pumpkin Smash the biggest fruit of any kind (Crushing one off the ladder; "/psmashladder" is the game's
+  // ladder fruit only), "/nosmashall" turns off Smashed as a general rule, "/smashblasts" has explosions Smash too.
+  LADDER.pumpkinSmash = !plan.includes("/oldpumpkin");
+  LADDER.smashOther = plan.includes("/psmash") && !plan.includes("/psmashladder") ? "destroy" : "none";
+  LADDER.smashAll = !plan.includes("/nosmashall");
   LADDER.smashBlasts = plan.includes("/smashblasts");
   LADDER.melonChance = Number(/\/melonchance(\d+)/.exec(plan)?.[1] ?? MELON_CHANCE * 100) / 100;
   LADDER.giantPoints = Number(/\/giant(\d+)/.exec(plan)?.[1] ?? FRUITS.giantpumpkin.points);
@@ -264,7 +265,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
   // With no luck to average over (a tray with no wobble), one try is the whole story.
   const tries = TRAY.on && TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
-  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots|melonchance\d+|melon|oranges|reach\d+|smallcrush|giant\d+|psmashladder|psmash|smashall|smashblasts)/g, "");
+  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots|melonchance\d+|melon|oranges|reach\d+|smallcrush|giant\d+|psmashladder|psmash|nosmashall|smashall|smashblasts|oldpumpkin)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
@@ -335,7 +336,8 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     else wait = 0;
   }
   player.close();
-  return { scores, pool, settles, mismatches, events: { earned: { ...earned }, giants: giants.size, smashes: slices.size / 4 + pieces.size / 2 } };
+  return { scores, pool, settles, mismatches, // Giant Pumpkins by the points they scored: "/best" and "/fair" play their turns out of this loop's sight, so ids miss them.
+    events: { earned: { ...earned }, giants: Math.max(giants.size, Math.round((earned["Giant Pumpkin"] ?? 0) / LADDER.giantPoints)), smashes: slices.size / 4 + pieces.size / 2 } };
 }
 
 const runs = Number(process.argv[2] ?? 20);

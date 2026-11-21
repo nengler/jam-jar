@@ -1308,7 +1308,10 @@ test("the tray drops a Wide Pumpkin down the middle of its two lanes", () => {
   assert.ok(Math.abs(grape.x - (JAR.left + lane * 3.5)) <= TRAY.wobble + 1e-9, `${grape.x}`);
 });
 
-test("a Pumpkin Crushes the Cherries and Grapes it lands on, and a near miss; not an Orange, nor what is above it", () => {
+test("the first-built Pumpkin (bots only) Crushes the Cherries and Grapes it lands on, and a near miss; not an Orange, nor what is above it", () => {
+  const saved = { ...LADDER };
+  LADDER.pumpkinSmash = false;
+  try {
   const p = FRUITS.pumpkin.radius;
   const y = JAR.floor - 14;
   const run = jarWith([
@@ -1324,6 +1327,9 @@ test("a Pumpkin Crushes the Cherries and Grapes it lands on, and a near miss; no
   assert.deepEqual(kinds, ["cherry", "orange", "pumpkin"]);
   assert.ok(run.popups.some((pop) => pop.text === `Crush +${FRUITS.cherry.points + FRUITS.grape.points + 2 * CRUSH_BONUS}`), run.popups.map((pop) => pop.text).join());
   assert.equal(run.cycleScore, FRUITS.pumpkin.points + FRUITS.cherry.points + FRUITS.grape.points + 2 * CRUSH_BONUS);
+  } finally {
+    Object.assign(LADDER, saved);
+  }
 });
 
 test("a Watermelon Smashed breaks into Slices worth more than it; two Slices make a Melon that cannot Merge again this turn", () => {
@@ -1390,9 +1396,15 @@ test("two Watermelons make a Giant Pumpkin: it scores, its Shockwave throws the 
   assert.ok(!run.fruits.some((f) => f.kind === "giantpumpkin"), "it is gone");
 });
 
-test("the proposed Smashed rework (bots only): a Pumpkin Smashes the biggest fruit under it, and a Smashed Melon is 2 Oranges", () => {
+test("the Smashed rework: a Pumpkin Smashes the biggest fruit under it, and a Smashed Melon is 2 Oranges", () => {
   const saved = { ...LADDER };
   try {
+    // The game's: ladder fruit only.
+    const p0 = FRUITS.pumpkin.radius;
+    const game = jarWith([fruit(1, "apple", 320, JAR.floor - 18), fruit(2, "cherry", 360, JAR.floor - 14)]);
+    game.fruits.push({ ...fruit(3, "pumpkin", 330, JAR.floor - 36 - p0, [1, 2]), landed: false });
+    simulate(game, DT);
+    assert.deepEqual(game.fruits.map((f) => f.kind).sort(), ["apple", "cherry", "pumpkin"], "nothing it can Smash: an Apple and a Cherry are left alone");
     Object.assign(LADDER, { pumpkinSmash: true, smashAll: true, smashOther: "destroy" });
     const m = FRUITS.melon.radius;
     const p = FRUITS.pumpkin.radius;

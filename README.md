@@ -136,13 +136,17 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   - The liquid is one pool: it gets deeper with each Lime and Coconut, up to 120 pixels, holds whatever went into it,
     and goes when the rent empties the jar.
 - The Ladder set (big fruit; merge up, smash down):
-  - A Watermelon that is Smashed (Exploded, Crushed by a Pumpkin or caught in a Shockwave) breaks into 4 Slices, Fresh 15
-    each, so 60 in place of the Watermelon's 50. Two Slices merge back into a Melon. The loop cap: a Melon made of Slices
-    cannot merge again until the turn is scored, so merge up, smash down cannot chain for ever in one settle.
+  - Smashed: a Grape, Orange or Melon that is Smashed (by a Pumpkin or a Shockwave) breaks into 2 of the next size down,
+    which score as they are made. A Watermelon that is Smashed (by a Pumpkin, a Shockwave or an explosion) breaks into 4
+    Slices, Fresh 15 each, so 60 in place of the Watermelon's 50; two Slices merge back into a Melon. Explosions destroy
+    everything else, as before. The loop cap: a fruit made by merging two pieces cannot merge again until the turn is
+    scored, so merge up, smash down cannot chain for ever in one settle.
   - Pumpkin: Fresh 24, Heavy and Wide: it takes 2 of the shelf's 4 places, so a hand with one is 3 fruit, and it drops
     down the middle of its two lanes. A Wide fruit that would not fit in what is left of the shelf waits on top of the
-    pool for the next hand. When it lands it Crushes the Cherries, Grapes, Seeds and Limes under it, and 8 pixels to the
-    side (a near miss still counts), each for its points +3; a Seed it Crushes Sprouts and a Lime pours its juice.
+    pool for the next hand. When it lands it Smashes the biggest Grape, Orange, Melon or Watermelon under it, reaching 8
+    pixels past touching (a near miss still counts); other fruit it leaves alone, so it spares garden builds. (As first
+    built it Crushed the Cherries, Grapes, Seeds and Limes under it instead, worth about 15 points a run: small fruit settle
+    low in the pile, and a Pumpkin lands on top. The bots keep that one as "/oldpumpkin".)
   - Gourd: Fresh 4, Cherry-sized. It takes in a fruit it touches that is no bigger than itself, scoring that fruit's
     points, and grows a size (Cherry, Grape, Orange). Grown past an Orange it Bursts into 4 Cherries, rotten if it took
     in anything rotten.

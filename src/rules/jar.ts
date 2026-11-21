@@ -50,12 +50,13 @@ export const SPOTS = { salt: 0 };
  * `melonChance` is how often a Melon takes the middle place of a pick (`MELON_CHANCE` in the game), as a Legendary takes the
  * last; `giantPoints` is what a Giant Pumpkin scores (its card's Fresh).
  *
- * The proposed Smashed rework (design doc, "Proposed next change"): `smashAll` makes Smashed a general rule, so a Melon, Orange or
+ * The Smashed rework (design doc, adopted 21 November; the game plays it): `smashAll` makes Smashed a general rule, so a Melon, Orange or
  * Grape that is Smashed breaks into 2 of the next size down (`SMASH_INTO`), which score as they are made, as a Watermelon breaks
  * into Slices; a Giant Pumpkin's Shockwave Smashes them too. `pumpkinSmash` has a Pumpkin Smash the biggest fruit it lands on
- * instead of Crushing small ones: a Cherry or Slice is Crushed, and a fruit off the merge ladder is Crushed too (`smashOther`
- * "destroy") or passed over for the biggest ladder fruit there ("none"). `smashBlasts` has an explosion Smash what it would
- * destroy, where that fruit can be Smashed.
+ * instead of Crushing small ones (off, the first-built Pumpkin: it Crushes the `CRUSHABLE` fruit it lands on). The game passes
+ * over everything but a Grape, Orange, Melon or Watermelon (`smashOther` "none"); with "destroy" it Smashes the biggest fruit of
+ * any kind there, Crushing a Cherry, a Slice or a fruit off the ladder. `smashBlasts` (off: too strong, a Boom build gained 17%)
+ * has an explosion Smash what it would destroy, where that fruit can be Smashed.
  */
 export const LADDER = {
   melonPick: false,
@@ -64,9 +65,9 @@ export const LADDER = {
   oranges: false,
   crushReach: 8,
   crushSmall: false,
-  pumpkinSmash: false,
-  smashOther: "destroy" as "destroy" | "none",
-  smashAll: false,
+  pumpkinSmash: true,
+  smashOther: "none" as "destroy" | "none",
+  smashAll: true,
   smashBlasts: false,
 };
 
@@ -1093,7 +1094,6 @@ function crush(run: Run, pumpkin: Fruit): void {
 
 /** The ladder fruit a Smash breaks into two of, under the general rule (`LADDER.smashAll`, or a Pumpkin's with `pumpkinSmash`). */
 const SMASH_INTO: Readonly<Partial<Record<FruitKind, FruitKind>>> = { melon: "orange", orange: "grape", grape: "cherry" };
-const LADDER_KINDS: readonly FruitKind[] = ["cherry", "grape", "orange", "melon", "watermelon", "slice"];
 
 /** Whether a Smash breaks this fruit into pieces: a Watermelon always, and under the general rule a Melon, Orange or Grape. */
 function smashable(f: Fruit, general = LADDER.smashAll): boolean {
@@ -1101,9 +1101,9 @@ function smashable(f: Fruit, general = LADDER.smashAll): boolean {
 }
 
 /**
- * The reworked Pumpkin (`LADDER.pumpkinSmash`): it Smashes the biggest fruit under it, which in a pile is where the big fruit
- * are. A Cherry or a Slice there is Crushed; so is a fruit off the merge ladder (`smashOther` "destroy"), or it is passed over
- * for the biggest ladder fruit ("none").
+ * The reworked Pumpkin (`LADDER.pumpkinSmash`): it Smashes the biggest Grape, Orange, Melon or Watermelon under it, which in a
+ * pile is where the big fruit are. With `smashOther` "destroy" it takes the biggest fruit of any kind, and Crushes one that cannot
+ * be Smashed.
  */
 function pumpkinSmash(run: Run, pumpkin: Fruit): void {
   const near = links(run.fruits);
@@ -1115,7 +1115,7 @@ function pumpkinSmash(run: Run, pumpkin: Fruit): void {
       !o.lit &&
       o.kind !== "pumpkin" &&
       o.kind !== "giantpumpkin" &&
-      (LADDER.smashOther === "destroy" || LADDER_KINDS.includes(o.kind)) &&
+      (LADDER.smashOther === "destroy" || smashable(o, true)) &&
       o.y > pumpkin.y - pumpkin.r * 0.25 &&
       Math.hypot(o.x - pumpkin.x, o.y - pumpkin.y) < pumpkin.r + o.r + LADDER.crushReach
   );
