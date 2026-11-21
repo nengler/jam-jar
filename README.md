@@ -166,6 +166,22 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     big-fruit events are rare: a Giant Pumpkin formed in 1 run in 24 (the doc aims for one every 2 or 3), a Watermelon was
     Smashed about once in 12 runs, and a Crush is worth some 15 points a run. Bots that buy nothing in the shop and empty
     the jar every cycle seldom build two Watermelons.
+  - Variants tried with the bots (`LADDER` in jar.ts, all off in the game; 24 seeds each):
+
+    | Variant and player | A run | Giant Pumpkins | Last rent (400) made |
+    | --- | --- | --- | --- |
+    | Melon offered, taken whenever offered | 1458 | in 10/24 runs (0.79 a run) | 5/24 |
+    | Melon offered, Pumpkin + Melon | 1382 | in 9/24 runs | 3/24 |
+    | Melon offered, picks at random | 1157 | 0 | 1/24 |
+    | Starting pool with 1–3 Oranges, never picks | 1384 | in 8/24 runs | 0/24 |
+    | Starting pool with 1–3 Oranges, Pumpkin | 1195 | in 2/24 runs | — |
+    | Crush reach 16 px, Pumpkin | 1052 (Crush +19) | 0 | — |
+    | Crush anything Grape-sized or smaller, Pumpkin | 1027 (Crush +22) | 0 | — |
+
+    Against never picking (1128 a run, a Giant Pumpkin in 1/24 runs, last rent 0/24). Offering the Melon reaches the doc's
+    rate, but only for a player who builds for it, and it is the strongest pick the bots have found. More Oranges reach it
+    for every run and lift every score about 23%. A wider or broader Crush changes nothing: a Pumpkin seldom lands on
+    small fruit at all.
 - The title has a jar filling up by itself: a run the rules play (`src/rules/demo.ts`: each hand dropped as dealt, every
   pick skipped, a new run a moment after the rent comes due).
 - Fruit roll: the physics has no angle, so each fruit's turning is drawn from how far it moves along what it touches.
