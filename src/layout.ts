@@ -18,6 +18,13 @@ export function poolRows(pool: readonly FruitKind[]): PoolRow[] {
   return rows;
 }
 
+/** How many of a kind a list of fruit holds: on the whole-pool board, how many of it are still to be dealt this shuffle. */
+export function countOf(fruit: readonly FruitKind[], kind: FruitKind): number {
+  let count = 0;
+  for (const k of fruit) if (k === kind) count++;
+  return count;
+}
+
 /** A keyword and what it means, for a card's tooltip. */
 export interface Term {
   id: string;

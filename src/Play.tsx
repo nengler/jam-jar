@@ -9,7 +9,7 @@ import { FruitTip } from "./FruitTip.tsx";
 import { Jar } from "./Jar.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { PauseButton, TapButton } from "./KeyHint.tsx";
-import { atRest, crossed, LANDS, rolledIn, sweep, SWEEP_TIME, blastBits, blastFlash, blastJolt, cycleTitle, INTRO, jarDrop, kindAt, popIn, rollIn, rollStarted, grownOf, leaned, moment, shelfSlot, shelfX, placed, startingRun, poolRows } from "./layout.ts";
+import { atRest, crossed, LANDS, rolledIn, sweep, SWEEP_TIME, blastBits, blastFlash, blastJolt, cycleTitle, INTRO, jarDrop, kindAt, popIn, rollIn, rollStarted, grownOf, leaned, moment, shelfSlot, shelfX, placed, startingRun, poolRows, countOf } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { RentScore } from "./RentScore.tsx";
 import { RuleText } from "./RuleText.tsx";
@@ -23,6 +23,8 @@ import { advance, newRun, BOOM_LIFE, CLEAR_TIME, keeps, bossNow, dramatic, lean,
 import {
   BAD,
   BAR_FILL,
+  BAR_GOLD,
+  BAR_WELL,
   BODY_SIZE,
   cardFor,
   CARD_SLICE,
@@ -61,17 +63,6 @@ const SLOT = 48;
 const BOARD_W = 192;
 const HUD_X = 12;
 const BOARD_Y = 28;
-/** The pool: each kind a 32-pixel icon and how many of it, three across, a little room between the rows. "See all" is the last
- * thing in the grid, two places wide, so it sits in the last row when there is room: four rows at most. Past what fits, a place
- * says how many more kinds there are. The board has narrower margins than the others (12, not 16), so a place is 56 wide: the
- * icon, a gap and a count of two figures. */
-const POOL_PAD_X = 12;
-const POOL_GRID = { columns: 3, cell: (BOARD_W - 2 * POOL_PAD_X) / 3, gap: 3, row: 32, rowGap: 4 };
-const POOL_PLACES = 4 * POOL_GRID.columns;
-const POOL_LINK_PLACES = 2;
-const POOL_ICON_W = 30;
-/** How far each count is set down to sit level with its fruit. */
-const POOL_COUNT_DROP = 6;
 /** The pause button stands on the counter in the bottom right corner, its foot where the jar's is. */
 const PAUSE_FOOT = 360 - COUNTER_Y;
 /** The note of what just happened: a slate at the right, its foot this far above the foot of the screen (just above the pause button). */
@@ -399,16 +390,10 @@ export function Play() {
   const dragging = s.drag && ordering && run.holding;
   // Resolve has already counted the next turn; the pips wait for the tally to finish before showing it.
   const turn = Math.min(run.turn - (run.phase === "tally" && run.afterTally !== "rent" && run.afterTally !== "over" ? 1 : 0), TURNS_PER_CYCLE);
-  // The board shows what is still to be dealt this shuffle: the hand is on the shelf, and the rest has been played.
-  const pool = poolRows(run.draw);
   /** The whole pool by kind, for the board that shows all of it. */
   const whole = poolRows(run.pool);
   /** The kind chosen on the whole-pool board, if any. */
   const looked = kindAt(whole, s.poolAt);
-  const grid = POOL_GRID;
-  /** The kinds the Pool board has room for, and how many more there are past them (each on the whole-pool board). */
-  const poolShown = pool.length > POOL_PLACES - POOL_LINK_PLACES ? pool.slice(0, POOL_PLACES - POOL_LINK_PLACES - 1) : pool;
-  const poolMore = pool.length - poolShown.length;
   const ended = run.phase === "rent" || run.phase === "over" || run.phase === "won";
   const finished = run.phase === "over" || run.phase === "won";
   /** The last turn's banner, while it crosses the screen. */
@@ -530,36 +515,23 @@ export function Play() {
         </Panel>
       </Flex>
 
-      {/* Right: pinned to the screen's right edge, what is left of the pool to deal this shuffle, by kind, and how many that is of
-          the whole pool. The kinds wrap, three to a row, four rows at most. */}
+      {/* Right: pinned to the screen's right edge, how much of the pool is still to be dealt this shuffle, as a count and a bar.
+          What it is, kind by kind, is on the whole-pool board: by the end of a run a pool holds a dozen kinds, one or two of each,
+          and a grid of them all was more to read than it told. */}
       <Flex right={HUD_X - 240 * (1 - popIn(s.intro, INTRO.right, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch">
         {/* The whole board opens the whole pool, dealt or not (as D does): its frame turns amber under the mouse, and its foot says so. */}
-        <Panel title="Pool" paddingX={POOL_PAD_X} onPress={openPool}>
-          <Flex direction="row" wrap rowGap={grid.rowGap} columnGap={0}>
-            {poolShown.map((row) => (
-              <Flex key={row.kind} width={grid.cell} height={grid.row} direction="row" alignItems="center" gap={grid.gap}>
-                {/* The icon's art is narrower than its 32 pixels: a box of 30 leaves a count of two figures room in the place. */}
-                <Flex width={POOL_ICON_W} height={32}>
-                  <FruitBall kind={row.kind} x={POOL_ICON_W / 2} y={16} look="icon" />
-                  {/* The mouse over a kind in the Pool shows what it does, to the board's left. */}
-                  <Tooltip anchor="top-right" to="top-left" offsetX={-12} offsetY={0} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                    <FruitTip kind={row.kind} grown={grownOf(run, row.kind)} />
-                  </Tooltip>
-                </Flex>
-                {/* The font's figures are the top 14 pixels of its 20-pixel line: set down so they sit level with the fruit's middle. */}
-                <Flex paddingTop={POOL_COUNT_DROP}>
-                  <Text color={INK}>{`${row.count}`}</Text>
-                </Flex>
-              </Flex>
-            ))}
-            {poolMore > 0 && (
-              <Flex width={grid.cell} height={grid.row} direction="row" alignItems="center" paddingLeft={6} paddingTop={POOL_COUNT_DROP}>
-                <Text color={INK_SOFT}>{`+${poolMore}`}</Text>
-              </Flex>
+        <Panel title="Pool" gap={6} onPress={openPool}>
+          <Flex direction="row" alignItems="center" gap={8}>
+            <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`${run.draw.length}`}</Text>
+            <Text color={INK_SOFT}>{`of ${run.pool.length} to deal`}</Text>
+          </Flex>
+          <Flex height={10} background={BAR_WELL}>
+            {run.draw.length > 0 && (
+              <Flex left={2} top={2} bottom={2} width={Math.max(2, Math.round(((BOARD_W - 36) * run.draw.length) / run.pool.length / 2) * 2)} background={BAR_GOLD} />
             )}
-            <Flex width={grid.cell * POOL_LINK_PLACES} height={grid.row} direction="row" justifyContent="end" alignItems="center" paddingTop={POOL_COUNT_DROP}>
-              <Text color={KEYWORD}>{"See all >"}</Text>
-            </Flex>
+          </Flex>
+          <Flex direction="row" justifyContent="end">
+            <Text color={KEYWORD}>{"See all >"}</Text>
           </Flex>
         </Panel>
       </Flex>
@@ -690,13 +662,17 @@ export function Play() {
             </Flex>
             <Flex width={Math.max(240, Math.min(whole.length, 6) * 56 + 32)} direction="column" alignItems="stretch">
               <Panel heading={`Your pool: ${run.pool.length} fruit`} gap={4}>
+                <Flex direction="row" justifyContent="center">
+                  <Text color={INK_SOFT}>{"Under each: left to deal / in pool"}</Text>
+                </Flex>
                 <Flex direction="row" wrap justifyContent="center" rowGap={4} columnGap={0} onPressOutside={lookAway}>
                   {placed(whole).map((slot) => (
                     <Flex key={slot.card.kind} width={56} direction="column" alignItems="center" backgroundImage={s.poolAt === slot.at ? SELECT : undefined} slice={CARD_SLICE} focusable={false} onPress={() => lookAt(slot.at)}>
-                      <Flex width={40} height={40}>
+                      {/* A kind with none left to deal this shuffle is faded; under each, how many are left of how many there are. */}
+                      <Flex width={40} height={40} opacity={countOf(run.draw, slot.card.kind) === 0 ? 0.35 : 1}>
                         <FruitBall kind={slot.card.kind} x={20} y={20} look="icon" />
                       </Flex>
-                      <Text color={INK}>{`${slot.card.count}`}</Text>
+                      <Text color={countOf(run.draw, slot.card.kind) === 0 ? INK_SOFT : INK}>{`${countOf(run.draw, slot.card.kind)}/${slot.card.count}`}</Text>
                     </Flex>
                   ))}
                 </Flex>
