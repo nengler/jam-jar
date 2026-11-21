@@ -20,13 +20,7 @@ export function Panel({ title, heading, image = PANEL, gap = 0, children }: { ti
       {/* The shadow, pinned a little down and right of the frame; then the frame over it. */}
       <Flex left={4} right={-4} top={(title === undefined ? 0 : TITLE_ROOM) + 4} bottom={-4} background={WALL_SHADOW} />
       <Flex direction="column" alignItems="stretch" gap={gap} paddingX={16} paddingTop={6} paddingBottom={10} backgroundImage={image} slice={PANEL_SLICE}>
-        {heading !== undefined && (
-          <Flex direction="row" justifyContent="center" height={30}>
-            <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
-              {heading}
-            </Text>
-          </Flex>
-        )}
+        {heading !== undefined && <PanelHeading text={heading} />}
         {children}
       </Flex>
       {title !== undefined && (
@@ -34,6 +28,17 @@ export function Panel({ title, heading, image = PANEL, gap = 0, children }: { ti
           <Letters text={title} seed={title.length * 7} />
         </Flex>
       )}
+    </Flex>
+  );
+}
+
+/** A dialog's heading, in ink at the top of its board. */
+function PanelHeading({ text }: { text: string }) {
+  return (
+    <Flex direction="row" justifyContent="center" height={30}>
+      <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
+        {text}
+      </Text>
     </Flex>
   );
 }

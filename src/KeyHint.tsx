@@ -1,6 +1,6 @@
 import { Flex, Text, useSound } from "@tsengine/runtime/jsx";
 
-import { CLICK_VOLUME, BUTTON, BUTTON_GREY, BUTTON_SLICE, INK, LIGHT } from "./theme.ts";
+import { CLICK_VOLUME, BUTTON, BUTTON_GREY, BUTTON_SLICE, COUNTER_SHADOW, INK, LIGHT } from "./theme.ts";
 
 interface KeyHintProps {
   /** The key's name, written on a key cap; "arrows" draws the left and right arrow keys, "updown" the up and down ones. */
@@ -50,6 +50,25 @@ export function TapButton({ label, keyName = "", onPress }: { label: string; key
       <Flex direction="row" alignItems="center" height={30} paddingX={8} paddingTop={2} backgroundImage={BUTTON_GREY} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} focusable={false} onPress={press}>
         <Text color={INK}>{label}</Text>
       </Flex>
+    </Flex>
+  );
+}
+
+/**
+ * The pause button: a chunky block, like a key cap, with two bars on it (in a font, two bars read as a Roman numeral), standing
+ * on the counter in the bottom right corner with its shadow under it, like anything else put down there. It lights amber under
+ * the mouse.
+ */
+export function PauseButton({ onPress }: { onPress: () => void }) {
+  const playClick = useSound("click.wav");
+  const press = () => {
+    playClick(CLICK_VOLUME);
+    onPress();
+  };
+  return (
+    <Flex width={32} height={30}>
+      <Flex left={3} top={25} width={32} height={6} background={COUNTER_SHADOW} />
+      <Flex width={32} height={30} backgroundImage="pause.png" hoverBackgroundImage="pause-hover.png" focusable={false} onPress={press} />
     </Flex>
   );
 }
