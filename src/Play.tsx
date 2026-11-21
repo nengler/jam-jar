@@ -550,7 +550,7 @@ export function Play() {
 
       {/* What the lesson is about, framed, and the rest of the screen dimmed: after both boards, so they dim too, and before the
           lesson's card, so it does not. */}
-      {coached?.target === "shelf" && <Spotlight x={shelfLeft - 8} y={SHELF_Y - 46} width={shelf.length * SLOT + 16} height={56} />}
+      {coached?.target === "shelf" && <Spotlight x={shelfLeft - 8} y={SHELF_Y - 46} width={handSlots(shelf) * SLOT + 16} height={56} />}
       {/* The jar is picked out the same way while a Preserves Jar's fruit are chosen (its board is drawn after, so it stays lit). */}
       {(coached?.target === "jar" || (preserving && coached === null)) && <Spotlight x={JAR.left - 10} y={RIM - 28} width={JAR.right - JAR.left + 20} height={JAR.floor - RIM + 38} />}
       {coached?.target === "rent" && <Spotlight x={HUD_X - 6} y={BOARD_Y + 6} width={BOARD_W + 12} height={152} />}
