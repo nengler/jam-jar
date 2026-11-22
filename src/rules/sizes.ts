@@ -5,7 +5,7 @@ export const FRUIT_ART = {
   orange: { size: 48, radius: 22 },
   melon: { size: 56, radius: 25 },
   watermelon: { size: 64, radius: 29 },
-  apple: { size: 40, radius: 18 },
+  apple: { size: 32, radius: 14 },
   banana: { size: 40, radius: 18 },
   chili: { size: 32, radius: 14 },
   durian: { size: 48, radius: 22 },

@@ -249,11 +249,11 @@ test("a Frozen fruit is held where it is: what was under it can go, and it does 
   const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
   const base = play.s.run.fruits;
   const make = (id: number, kind: Fruit["kind"], y: number, frozen: boolean): Fruit => ({
-    ...{ id, kind, x0: 320, y0: y, x: 320, y, r: 18, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
+    ...{ id, kind, x0: 320, y0: y, x: 320, y, r: FRUITS[kind].radius, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
     ...{ landed: true, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: false, pickled: false, frozen, lit: false, fuse: 0 },
   });
   // An Apple on the floor, and a frozen one and a loose one in mid air above it.
-  play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, fruits: [...base, make(801, "apple", JAR.floor - 18, false), make(802, "apple", 200, true), make(803, "apple", 140, false)] };
+  play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, fruits: [...base, make(801, "apple", JAR.floor - FRUITS.apple.radius, false), make(802, "apple", 200, true), make(803, "apple", 140, false)] };
   step("_*90");
   const at = (id: number) => play.s.run.fruits.find((f) => f.id === id);
   assert.ok(Math.abs(at(802)!.y - 200) < 0.01, `the frozen one hangs where it was (y = ${at(802)!.y})`);
@@ -357,17 +357,17 @@ test("honey is sticky: a fruit touching a Honeyed one hangs from it, where a pla
     step("_*2, Enter, _*5");
     const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
     const make = (id: number, y: number, frozen: boolean, honey: boolean): Fruit => ({
-      ...{ id, kind: "apple", x0: 320, y0: y, x: 320, y, r: 18, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
+      ...{ id, kind: "apple", x0: 320, y0: y, x: 320, y, r: FRUITS.apple.radius, speed: 0, touching: [], kicks: 0, kickX: 0, kickY: 0 },
       ...{ landed: true, age: 0, rotten: false, pulse: 0, pulseDelay: 0, honeyed: honey, pickled: false, frozen, lit: false, fuse: 0 },
     });
     // One Apple held in mid air (frozen), and a loose one just under it, touching.
-    play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, fruits: [make(801, 150, true, honeyed), make(802, 186, false, false)] };
+    play.s.run = { ...play.s.run, phase: "settle", hand: [], nextId: 900, fruits: [make(801, 150, true, honeyed), make(802, 150 + 2 * FRUITS.apple.radius, false, false)] };
     step("_*60");
     const y = play.s.run.fruits.find((f) => f.id === 802)!.y;
     player.close();
     return y;
   };
-  assert.ok(hangs(true) < 190, `it hangs from the Honeyed one (y = ${hangs(true)})`);
+  assert.ok(hangs(true) < 150 + 2 * FRUITS.apple.radius + 4, `it hangs from the Honeyed one (y = ${hangs(true)})`);
   assert.ok(hangs(false) > 250, `and falls from a plain one (y = ${hangs(false)})`);
 });
 

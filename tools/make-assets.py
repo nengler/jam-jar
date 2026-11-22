@@ -51,7 +51,7 @@ FRUIT_SIZES = {
     "orange": 24,
     "melon": 28,
     "watermelon": 32,
-    "apple": 20,
+    "apple": 16,
     "banana": 20,
     "chili": 16,
     "durian": 24,

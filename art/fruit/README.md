@@ -12,8 +12,8 @@ and a pixel of any other colour, or half see-through, stops the script with wher
 
 | Size | Fruit |
 | --- | --- |
-| 16 x 16 | cherry, blueberry, chili, lemon, prune, seed, gourd, fruitfly |
-| 20 x 20 | grape, apple, banana, fig, kiwi, lime, peach, pitaya, pomegranate, slice, snowpear |
+| 16 x 16 | cherry, apple, blueberry, chili, lemon, prune, seed, gourd, fruitfly |
+| 20 x 20 | grape, banana, fig, kiwi, lime, peach, pitaya, pomegranate, slice, snowpear |
 | 24 x 24 | orange, coconut, dragonfruit, durian, honeydew |
 | 28 x 28 | melon |
 | 32 x 32 | watermelon |
