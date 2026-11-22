@@ -386,11 +386,11 @@ export function rolledIn(before: number, after: number, count: number): boolean 
 export const LANDS = INTRO.fall / 2.75;
 
 /**
- * How each fruit did over a run, for the end board: every kind in the pool at the end and every kind that scored (one made by a
- * merge, say), with what it scored itself, best first (in the fruit table's order when level).
+ * How each fruit did over a run, for the end board: every kind that scored itself (one made by a merge too), with what it scored,
+ * best first (in the fruit table's order when level). A kind that scored nothing, or was never played, is left out.
  */
 export function fruitResults(run: Run): { kind: FruitKind; points: number }[] {
-  const kinds = (Object.keys(FRUITS) as FruitKind[]).filter((kind) => run.pool.includes(kind) || run.earned[FRUITS[kind].name] !== undefined);
+  const kinds = (Object.keys(FRUITS) as FruitKind[]).filter((kind) => (run.earned[FRUITS[kind].name] ?? 0) !== 0);
   const order = Object.keys(FRUITS);
   return kinds
     .map((kind) => ({ kind, points: run.earned[FRUITS[kind].name] ?? 0 }))

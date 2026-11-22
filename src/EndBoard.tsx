@@ -31,18 +31,18 @@ function Stat({ label, value, color = INK }: { label: string; value: string; col
   );
 }
 
-/** A fruit's cell: the fruit at its own size, standing on its foot, what it scored, and a bar of that against the best. */
-function FruitScore({ kind, points, best, shown }: { kind: FruitKind; points: number; best: number; shown: boolean }) {
+/** A fruit's cell: the fruit at its own size, standing on its foot, what it scored, and a bar of its share of the run's points. */
+function FruitScore({ kind, points, total, shown }: { kind: FruitKind; points: number; total: number; shown: boolean }) {
   const size = fruitImageSize(kind);
   const width = Math.max(40, size) + 12;
   const bar = width - 12;
-  const fill = points <= 0 || best <= 0 ? 0 : Math.max(2, Math.round((bar * points) / best / 2) * 2);
+  const fill = points <= 0 || total <= 0 ? 0 : Math.max(2, Math.round((bar * Math.min(1, points / total)) / 2) * 2);
   return (
-    <Flex width={width} direction="column" alignItems="center" gap={2} opacity={shown ? (points === 0 ? 0.5 : 1) : 0}>
+    <Flex width={width} direction="column" alignItems="center" gap={2} opacity={shown ? 1 : 0}>
       <Flex width={size} height={size}>
         <FruitBall kind={kind} x={size / 2} y={size / 2} />
       </Flex>
-      <Text color={points < 0 ? BAD : points === 0 ? INK_SOFT : INK}>{`${points}`}</Text>
+      <Text color={points < 0 ? BAD : INK}>{`${points}`}</Text>
       <Flex width={bar} height={4} background={BAR_WELL}>
         {fill > 0 && <Flex left={0} top={0} bottom={0} width={fill} background={BAR_GOLD} />}
       </Flex>
@@ -53,16 +53,14 @@ function FruitScore({ kind, points, best, shown }: { kind: FruitKind; points: nu
 /**
  * The end of a run, evicted or the jar won: what the run came to. Across the top the total counts up, big, beside how the run went
  * (the cycle it got to, its best turn, its pool, evicted how near the last rent was, and what scored that was no fruit's own:
- * Merge, Explode, a Spill). Under it every fruit in the pool, and any other that scored, with what it scored itself and a bar
- * against the best, best first; then the buttons, which are there from the start: the board is not to be waited for.
+ * Merge, Explode, a Spill). Under it every fruit that scored, with what it scored itself and a bar of its share of the
+ * run's points, best first; then the buttons, which are there from the start: the board is not to be waited for.
  */
 export function EndBoard({ run, rent, keys, onAgain, onTitle }: { run: Run; rent: number; keys: boolean; onAgain: () => void; onTitle: () => void }) {
   const time = useTime();
   const won = run.phase === "won";
-  // Best first, so the first is the best (0 when nothing scored).
   const fruit = fruitResults(run);
   const keywords = keywordResults(run);
-  const best = fruit[0]?.points ?? 0;
   const near = Math.max(0, Math.min(1, rent === 0 ? 1 : run.cycleScore / rent));
   return (
     <Flex width={END_W} direction="column" alignItems="stretch">
@@ -89,10 +87,10 @@ export function EndBoard({ run, rent, keys, onAgain, onTitle }: { run: Run; rent
             ))}
           </Flex>
         </Flex>
-        {/* Every fruit, best first, across the whole board. */}
+        {/* Every fruit that scored, best first, across the whole board. */}
         <Flex maxHeight={FRUIT_MAX_H} direction="row" wrap justifyContent="center" alignItems="end" rowGap={4} columnGap={0} overflow="scroll" scrollbarColor={INK_SOFT}>
           {fruit.map((f, i) => (
-            <FruitScore key={f.kind} kind={f.kind} points={f.points} best={best} shown={time >= FRUIT_AT + i * FRUIT_GAP} />
+            <FruitScore key={f.kind} kind={f.kind} points={f.points} total={run.total} shown={time >= FRUIT_AT + i * FRUIT_GAP} />
           ))}
         </Flex>
         <Flex direction="row" justifyContent="center" gap={16}>

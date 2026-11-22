@@ -1197,10 +1197,8 @@ test("the run keeps what its end board shows: its best turn, and what earned its
       { kind: "apple", points: 90 },
       { kind: "watermelon", points: 30 },
       { kind: "cherry", points: 5 },
-      { kind: "grape", points: 0 },
-      { kind: "banana", points: 0 },
     ],
-    "every fruit in the pool and every other that scored (a merge's Watermelon), best first, in the table's order when level"
+    "every fruit that scored (a merge's Watermelon too), best first; the Grape and the Banana in the pool scored nothing"
   );
   assert.deepEqual(
     keywordResults(run),
