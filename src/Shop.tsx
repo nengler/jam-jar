@@ -88,7 +88,7 @@ interface ShopProps {
   onClick: (place: number) => void;
   /** A tap landed on none of the shelf's cards: nothing on it is chosen any more. */
   onAway: () => void;
-  /** The take-out dialog's button was pressed: what Enter does there, with no place pointed at. */
+  /** The Buy button or the take-out dialog's button was pressed: what Enter does, with no place pointed at. */
   onConfirm: () => void;
   /** A button that does what Space does was pressed: leave the shop, or back out of taking a fruit out. */
   onSpace: () => void;
@@ -213,6 +213,15 @@ function ActionSign({ chosen, go = false, label, price, afford, onPoint, onPress
   );
 }
 
+/** Whether the shop's place `at` has something for sale: a fruit or the item not yet bought (not an action, nor none). */
+function forSaleAt(shop: ShopState, at: number): boolean {
+  if (at >= 0 && at < SHOP_ITEM) return shop.fruits[at] != null;
+  return at === SHOP_ITEM && shop.item !== null;
+}
+
+/** A place under each of the shelf's labels (the three fruit and the item), for the Buy button under the chosen one. */
+const BUY_SLOTS = Array.from({ length: SHOP_ITEM + 1 }, (_, i) => i);
+
 /** How far above its place a card starts as the shop comes in, and how far below theirs the actions start, in pixels. */
 const CARD_DROP = 260;
 const ACTION_RISE = 120;
@@ -234,6 +243,8 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
   const time = useTime();
   // The place the cursor is on, or none while a fruit is being chosen to take out.
   const chosen = shop.removing ? -1 : shop.cursor;
+  // Whether the chosen place on the shelf has something for sale, for the Buy button: not an action, a sold place, or none.
+  const forSale = forSaleAt(shop, chosen);
   const awning = -(AWNING_H + HANGING_H) * (1 - popIn(time, 0, ENTER.pop));
   return (
     <Entity>
@@ -294,14 +305,28 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
         <ActionSign chosen={chosen === SHOP_LEAVE} go={true} label="Next cycle >" onPoint={() => onPoint(SHOP_LEAVE)} onPress={() => onClick(SHOP_LEAVE)} />
       </Flex>
 
-      {/* What just happened (a fruit bought, the shelf restocked), under the actions. */}
-      <Flex left={0} right={0} top={ACTION_Y + ACTION_H + 6} direction="row" justifyContent="center">
-        <Text width={400} maxWidth={400} align="center" color={LIGHT}>
-          {run.message}
-        </Text>
-      </Flex>
+      {/* Under the actions: while a card for sale is chosen, the button that buys it, under that card (a tap on a card only chooses it, so it can
+          be read and its text scrolled first; Enter buys it too). Otherwise, what just happened (a fruit bought, the shelf
+          restocked). */}
+      {forSale && (
+        <Flex left={0} right={0} top={ACTION_Y + ACTION_H + 4} direction="row" justifyContent="center" gap={CARD_GAP}>
+          {placed(BUY_SLOTS).map((slot) => (
+            <Flex key={slot.at} width={CARD_W} direction="row" justifyContent="center">
+              {slot.at === chosen && <TapButton label="Buy" keyName={hints ? "Enter" : ""} onPress={onConfirm} />}
+            </Flex>
+          ))}
+        </Flex>
+      )}
+      {!forSale && (
+        <Flex left={0} right={0} top={ACTION_Y + ACTION_H + 6} direction="row" justifyContent="center">
+          <Text width={400} maxWidth={400} align="center" color={LIGHT}>
+            {run.message}
+          </Text>
+        </Flex>
+      )}
 
-      {!shop.removing && hints && (
+      {/* The keys, the first time; not while the Buy button is up, which says Enter itself and stands where they would. */}
+      {!shop.removing && hints && !forSale && (
         <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center" gap={20}>
           <KeyHint name="arrows" label="Choose" />
           <KeyHint name="Enter" label="Buy" />

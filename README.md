@@ -10,7 +10,7 @@ Built on the [tse engine](https://github.com/nengler/tse). The design doc is the
 
 ## Running it
 
-The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.17.0), with
+The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.20.0), with
 `overrides` so the packs' own dependencies on each other resolve to the same release:
 
 ```sh
@@ -24,7 +24,7 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 ## Controls
 
 Everything can also be done with the mouse or a finger, with no keyboard: drag a fruit along the shelf to where it should stand, tap the jar to drop the hand into it, and tap the buttons for what Space, Esc and Enter do elsewhere (Skip,
-Done, Back, and Pause on the counter in the bottom right corner). A tap on a card (in the pick or the shop) chooses it and shows what its keywords mean; a second tap takes or buys it.
+Done, Back, and Pause on the counter in the bottom right corner). A tap on a card (in the pick or the shop) chooses it and shows what its keywords mean; the Take or Buy button under it (or Enter) takes or buys it.
 No card is chosen until you choose one. The shop's actions, a kind in the take-out dialog and a fruit the Preserves Jar can
 keep act on one tap. The basket at the end of the shelf shows how much is still to be dealt; a tap on it (or D) opens a board
 of every fruit in the pool, where a tap on a kind shows all it does beside the board. A fruit's tooltip, on the shelf and on that board, says what

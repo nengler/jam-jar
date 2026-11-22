@@ -1661,9 +1661,8 @@ function pickStep(run: Run, keys: Keys): void {
   const move = (keys.right || keys.down ? 1 : 0) - (keys.left || keys.up ? 1 : 0);
   // No card is chosen until the player chooses one (the cursor is -1): an arrow goes to the first, the pointer to the one it is on.
   const pointed = keys.point >= 0 && keys.point < run.offers.length;
-  // A tap on a card that was not the chosen one only chooses it, so what it does can be read; a second tap takes it. With a
-  // mouse the card is chosen as the pointer comes over it, so one click takes it.
-  const fresh = pointed && keys.point !== run.offerCursor;
+  // A tap or a click on a card only chooses it, so what it does can be read (and a finger can drag its text to scroll it). What
+  // takes it is a confirm with no card pointed at: Enter, or the "Take" button under the cards, as in the take-out dialog.
   // A tap anywhere else puts the chosen card back: nothing is chosen, and its tooltip goes.
   if (keys.away === true) run.offerCursor = -1;
   const to = pointed ? keys.point : move === 0 ? run.offerCursor : Math.max(0, Math.min(run.offers.length - 1, run.offerCursor + move));
@@ -1671,7 +1670,7 @@ function pickStep(run: Run, keys: Keys): void {
     run.offerCursor = to;
     sound(run, "tick");
   }
-  if (keys.confirm && !fresh && run.offerCursor >= 0) {
+  if (keys.confirm && !pointed && run.offerCursor >= 0) {
     const kind = run.offers[run.offerCursor] as FruitKind;
     run.pool.push(kind);
     // Shuffled into what is still to be dealt, so a new fruit shows up soon.
@@ -1783,10 +1782,10 @@ function shopStep(run: Run, keys: Keys): void {
 
   // The shelf (0 to SHOP_ITEM) is the top row and the three actions the bottom one: left and right walk along both, up and
   // down change rows, keeping roughly the same place across.
-  // As in the pick: nothing is chosen at first (-1), an arrow goes to the first card, and a tap on a card that was not the
-  // chosen one only chooses it, so it can be read before it is bought. The three actions say all they do, and act on one tap.
+  // As in the pick: nothing is chosen at first (-1), an arrow goes to the first card, and a tap on a card only chooses it, so it
+  // can be read before it is bought; Enter or the "Buy" button buys it. The three actions say all they do, and act on one tap.
   const pointed = keys.point >= 0 && keys.point <= SHOP_LEAVE;
-  const fresh = pointed && keys.point !== shop.cursor && keys.point <= SHOP_ITEM;
+  const onCard = pointed && keys.point <= SHOP_ITEM;
   // As in the pick, a tap anywhere else leaves nothing chosen.
   if (keys.away === true) shop.cursor = -1;
   let to = pointed ? keys.point : shop.cursor < 0 ? (across !== 0 || down !== 0 ? 0 : -1) : Math.max(0, Math.min(SHOP_LEAVE, shop.cursor + across));
@@ -1801,7 +1800,7 @@ function shopStep(run: Run, keys: Keys): void {
     leaveShop(run);
     return;
   }
-  if (!keys.confirm || fresh || shop.cursor < 0) return;
+  if (!keys.confirm || onCard || shop.cursor < 0) return;
   if (shop.cursor < SHOP_FRUITS) {
     const kind = shop.fruits[shop.cursor];
     if (kind == null || !pay(run, FRUIT_PRICE)) return;

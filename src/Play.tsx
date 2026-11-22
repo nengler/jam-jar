@@ -99,6 +99,12 @@ const OFFER_W = 184;
 const OFFER_H = 232;
 const OFFER_GAP = 12;
 const OFFER_LIFT = 8;
+/**
+ * Under the chosen card, its Take button and the gap over it; the button is tucked up over the card's foot by TAKE_TUCK, so it
+ * stays clear of the tutorial's lesson along the foot of the screen, and the chosen card's text stops that much higher.
+ */
+const TAKE_ROOM = 34;
+const TAKE_TUCK = 20;
 /** The room left under a pick card's text, inside its frame: a longer text scrolls rather than running over it. */
 const OFFER_FOOT = 10;
 /** The picture at the top of a pick card: square, as big as the biggest fruit a pick can offer, each fruit standing on its foot. */
@@ -225,7 +231,9 @@ export function Play() {
         confirm: !looking && (input.pressed("Enter") || s.click),
         drop: !looking && (input.pressed("Space") || s.drop),
         point: looking ? -1 : s.point,
-        away: !looking && s.away,
+        // A press on the shop's Buy button is off the shelf, but it must not put back the card it buys: it is the one confirm
+        // with no place pointed at. (The pick's Take button stands among the cards, so it is not off them.)
+        away: !looking && s.away && !(s.click && s.point < 0),
       },
       s.reports
     );
@@ -293,7 +301,8 @@ export function Play() {
     }
   });
 
-  // The mouse: over a card (a pick's offer, or a place in the shop) the cursor goes to it, and a click is Enter on it.
+  // The mouse: over a place (a shop's action) the cursor goes to it, and a click is Enter on it. On a card (a pick's offer, a
+  // place on the shop's shelf) a click only chooses it: the Take or Buy button, or Enter, takes it.
   const point = (card: number) => {
     s.point = card;
   };
@@ -345,7 +354,7 @@ export function Play() {
   const tapDrop = () => {
     s.drop = true;
   };
-  // What Enter does, with no place pointed at: the take-out dialog's button.
+  // What Enter does, with no place pointed at: the pick's Take button, the shop's Buy, and the take-out dialog's button.
   const tapConfirm = () => {
     s.click = true;
   };
@@ -621,7 +630,7 @@ export function Play() {
       </Flex>
 
       {/* The pick: three cards in a row in the middle of a dimmed kitchen, under their heading. Each place is a little taller
-          than its card, and the chosen card stands at the top of its place. */}
+          than its card, and the chosen card stands at the top of its place with its Take button under it. */}
       {picking && (
         <Entity>
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
@@ -629,13 +638,13 @@ export function Play() {
             <Flex direction="row" justifyContent="center" height={32}>
               <Letters text="Pick a fruit" seed={5} />
             </Flex>
-            <Flex direction="row" gap={OFFER_GAP} onPressOutside={away}>
+            <Flex direction="row" alignItems="start" gap={OFFER_GAP} onPressOutside={away}>
               {placed(run.offers).map((offer) => (
-                <Flex key={offer.at} height={OFFER_H + OFFER_LIFT} direction="column" justifyContent={offer.at === run.offerCursor ? "start" : "end"}>
+                <Flex key={offer.at} height={OFFER_H + OFFER_LIFT + TAKE_ROOM} direction="column" alignItems="center" gap={4} paddingTop={offer.at === run.offerCursor ? 0 : OFFER_LIFT}>
                   {/* What a card's keywords mean shows beside it while it is the chosen one, and only then. A tap or a click
-                      chooses a card and a second takes it. The pointer coming over a card does not choose it: on a touchscreen
-                      the pointer stays where the last tap was, which would choose a card before the player had. */}
-                  <Flex width={OFFER_W} height={OFFER_H} direction="column" alignItems="center" paddingTop={18} paddingBottom={OFFER_FOOT} gap={4} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPress={() => click(offer.at)}>
+                      chooses a card, and the Take button under it takes it. The pointer coming over a card does not choose it: on
+                      a touchscreen the pointer stays where the last tap was, which would choose a card before the player had. */}
+                  <Flex width={OFFER_W} height={OFFER_H} direction="column" alignItems="center" paddingTop={18} paddingBottom={offer.at === run.offerCursor ? OFFER_FOOT + TAKE_TUCK : OFFER_FOOT} gap={4} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPress={() => click(offer.at)}>
                     <Tooltip show={!paused && offer.at === run.offerCursor} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                       <Terms text={FRUITS[offer.card].text} />
                     </Tooltip>
@@ -650,6 +659,13 @@ export function Play() {
                       <RuleText x={0} y={0} width={OFFER_W - 24} text={FRUITS[offer.card].text} color={INK_SOFT} accent={KEYWORD} />
                     </Flex>
                   </Flex>
+                  {/* What takes the chosen card, on its foot (its keywords open beside it, never over this): a tap or a click
+                      on a card only chooses it, so it can be read and its text scrolled first. Enter does the same. */}
+                  {offer.at === run.offerCursor && (
+                    <Flex y={-TAKE_TUCK}>
+                      <TapButton label="Take" keyName={hints ? "Enter" : ""} onPress={tapConfirm} />
+                    </Flex>
+                  )}
                 </Flex>
               ))}
             </Flex>
