@@ -70,10 +70,10 @@ export function signFor(chosen: boolean, go = false): string {
   return chosen ? "sign-chosen.png" : go ? SIGN_GO : SIGN;
 }
 
-/** Menu buttons: a parchment card, amber while focused or hovered. */
-export const BUTTON = CARD_CHOSEN;
-export const BUTTON_GREY = CARD;
-export const BUTTON_SLICE = CARD_SLICE;
+/** Every button (src/PushButton.tsx): a parchment key cap like the pause button, amber while focused or hovered, and pushed in when pressed. */
+export const BUTTON = "button.png";
+export const BUTTON_LIT = "button-lit.png";
+export const BUTTON_DOWN = "button-down.png";
 
 /** A rotten fruit is tinted this brown. */
 export const ROTTEN = "#ad7757";

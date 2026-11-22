@@ -54,7 +54,7 @@ The six items, each 24 x 20, standing on its bottom edge: `item-lid`, `item-juic
 | --- | --- | --- |
 | `key.png` | 8 x 13 | A key cap the game writes a key's name on. 9-sliced: 2 at the top and sides, 4 at the bottom (its lip) stay. |
 | `key-arrows.png`, `key-updown.png` | 27 x 13 | Two arrow keys side by side. |
-| `pause.png`, `pause-hover.png` | 16 x 15 | The pause button, and with the pointer over it. |
+| `button.png`, `button-lit.png`, `button-down.png` | 12 x 12 | Every button (`src/PushButton.tsx`, the pause button too): a key cap, the same lit amber (hovered or focused), and pushed in. 9-sliced: 4 at the top and bottom and 2 at the sides stay. Pushed in, its top 2 rows are clear and its lip is 1 deep, not 3, so the face sits 2 lower under the same slices. |
 | `pointer.png` | 9 x 7 | The arrow over the fruit the Preserves Jar's cursor is on. |
 | `coin.png` | 12 x 12 | A coin, beside a price. |
 
