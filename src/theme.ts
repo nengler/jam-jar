@@ -44,15 +44,13 @@ export function cardFor(chosen: boolean): string {
 
 /**
  * The shop is a market stall in the kitchen (art/shop): a striped awning, the stall's counter, the offers
- * as jam-jar labels (a gingham band on the item's), paper price tags, a SOLD stamp, wooden signs for the heading, the purse and
- * the actions (green for the way out), and a jar of coins for the purse. The labels and signs are 9-sliced like the frames.
+ * as jam-jar labels (a gingham band on the item's) with their prices on them, a SOLD stamp, wooden signs for the heading and
+ * the actions (green for the way out), and a jar of coins for the purse in the bar along the foot. The labels and signs are 9-sliced like the frames.
  */
 export const AWNING = "awning.png";
 export const AWNING_H = 44;
 export const STALL = "stall.png";
 export const LABEL_SLICE = 8;
-export const TAG = "tag.png";
-export const TAG_SLICE = 8;
 export const SIGN = "sign.png";
 export const SIGN_GO = "sign-go.png";
 export const SIGN_SLICE = 8;

@@ -38,7 +38,6 @@ One per fruit, each at a size fixed by the fruit (the merge ladder and its ball'
 | `label.png`, `label-chosen.png` | 16 x 16 | A fruit's label, and the chosen one. 9-sliced: 4 at each edge stays, the middle stretches. |
 | `label-item.png`, `label-item-chosen.png` | 16 x 16 | The item's label (a gingham band in its top 4 rows). 9-sliced the same. |
 | `sign.png`, `sign-chosen.png`, `sign-go.png` | 16 x 18 | The wooden signs: an action, the chosen one, the way out. 9-sliced the same. |
-| `tag.png` | 16 x 12 | The price tag, stretched across only. 9-sliced the same. |
 | `sold.png` | 29 x 13 | The SOLD stamp. |
 | `cloth.png` | 30 x 6 | The cloth an item stands on. |
 | `coin-jar.png` | 14 x 16 | The purse. |

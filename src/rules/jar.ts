@@ -1663,9 +1663,10 @@ function pickStep(run: Run, keys: Keys): void {
   const pointed = keys.point >= 0 && keys.point < run.offers.length;
   // A tap or a click on a card only chooses it, so what it does can be read (and a finger can drag its text to scroll it). What
   // takes it is a confirm with no card pointed at: Enter, or the "Take" button under the cards, as in the take-out dialog.
-  // A tap anywhere else puts the chosen card back: nothing is chosen, and its tooltip goes.
-  if (keys.away === true) run.offerCursor = -1;
-  const to = pointed ? keys.point : move === 0 ? run.offerCursor : Math.max(0, Math.min(run.offers.length - 1, run.offerCursor + move));
+  // A tap anywhere else puts the chosen card back: nothing is chosen, and its tooltip goes. So does a tap on the chosen card.
+  const again = pointed && keys.confirm && keys.point === run.offerCursor;
+  if (keys.away === true || again) run.offerCursor = -1;
+  const to = again ? -1 : pointed ? keys.point : move === 0 ? run.offerCursor : Math.max(0, Math.min(run.offers.length - 1, run.offerCursor + move));
   if (to !== run.offerCursor) {
     run.offerCursor = to;
     sound(run, "tick");
@@ -1719,7 +1720,8 @@ function leaveRent(run: Run): void {
   stock(run, run.shop);
   run.phase = "shop";
   const next = bossNow(run, run.cycle + 1);
-  run.message = next === null ? "The shop is open" : `Next cycle: the ${BOSS_NAME[next]}`;
+  // Nothing to say on opening, unless the next cycle is a boss jar.
+  run.message = next === null ? "" : `Next cycle: the ${BOSS_NAME[next]}`;
 }
 
 /** Fill the shop's shelf: three different fruit, and an item the player can use (none when there is none: `offerable`). */
@@ -1777,9 +1779,10 @@ function shopStep(run: Run, keys: Keys): void {
   // can be read before it is bought; Enter or the "Buy" button buys it. The three actions say all they do, and act on one tap.
   const pointed = keys.point >= 0 && keys.point <= SHOP_LEAVE;
   const onCard = pointed && keys.point <= SHOP_ITEM;
-  // As in the pick, a tap anywhere else leaves nothing chosen.
-  if (keys.away === true) shop.cursor = -1;
-  let to = pointed ? keys.point : shop.cursor < 0 ? (across !== 0 || down !== 0 ? 0 : -1) : Math.max(0, Math.min(SHOP_LEAVE, shop.cursor + across));
+  // As in the pick, a tap anywhere else leaves nothing chosen, and so does a tap on the card already chosen.
+  const again = onCard && keys.confirm && keys.point === shop.cursor;
+  if (keys.away === true || again) shop.cursor = -1;
+  let to = again ? -1 : pointed ? keys.point : shop.cursor < 0 ? (across !== 0 || down !== 0 ? 0 : -1) : Math.max(0, Math.min(SHOP_LEAVE, shop.cursor + across));
   if (shop.cursor >= 0 && !pointed) {
     if (down > 0 && to <= SHOP_ITEM) to = SHOP_REMOVE + Math.min(2, Math.floor((to * 3) / (SHOP_ITEM + 1)));
     else if (down < 0 && to > SHOP_ITEM) to = Math.round(((to - SHOP_REMOVE) * SHOP_ITEM) / 2);
