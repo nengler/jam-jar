@@ -61,8 +61,8 @@ export const LESSONS: readonly Lesson[] = [
   {
     id: "pick",
     title: "A new fruit",
-    text: "Tap a card to read it. Tap it again to take it.",
-    keysText: "Left and Right choose a card. Enter takes it.",
+    text: "Tap a card to read it, then Take.",
+    keysText: "Arrows choose a card, Enter takes.",
     target: null,
   },
   {
@@ -116,8 +116,9 @@ export function lessonDone(lesson: Lesson, run: Run, did: Did): boolean {
   if (!lessonShows(lesson, run)) return true;
   if (lesson.id === "shelf") return did.looked;
   if (lesson.id === "order") return did.moved;
-  // The shop's lesson lies over where the shop says what happened, so it goes as soon as there is something to say.
-  if (lesson.id === "shop") return did.acted;
+  // The shop's lesson lies over where the shop says what happened and where the Buy button stands, so it goes as soon as there
+  // is something to say or a card is chosen.
+  if (lesson.id === "shop") return did.acted || (run.shop !== null && !run.shop.removing && run.shop.cursor >= 0);
   return false;
 }
 
