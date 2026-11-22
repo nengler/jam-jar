@@ -28,4 +28,6 @@ export const FRUIT_ART = {
   gourd: { size: 32, radius: 14 },
   giantpumpkin: { size: 96, radius: 43 },
   fruitfly: { size: 32, radius: 10 },
+  pumpkinseed: { size: 32, radius: 14 },
+  goldenapple: { size: 40, radius: 18 },
 } as const;

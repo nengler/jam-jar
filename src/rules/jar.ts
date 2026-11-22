@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { APPLE, BANANA, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, PUMPKIN_SEED, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
 
@@ -333,6 +333,8 @@ export interface Run {
   bananaBonus: number;
   /** What every Pitaya scores on top of its own points: +1 for each Cherry one has eaten. */
   pitayaBonus: number;
+  /** How many times a Pumpkin Seed has Climbed this run: every `PUMPKIN_SEED.every` of them, its fruit grows a size bigger. */
+  climbs: number;
   /** The items owned, in the order they were bought. A used-up one (the Lid) is taken out. */
   items: ItemKind[];
   /** The shop, while the phase is "shop". */
@@ -479,6 +481,7 @@ export function newRun(seed: number): Run {
     milk: false,
     bananaBonus: 0,
     pitayaBonus: 0,
+    climbs: 0,
     items: [],
     shop: null,
     preserveCursor: 0,
@@ -1107,6 +1110,30 @@ function plungeStep(run: Run, dt: number): void {
   }
 }
 
+/** What a Pumpkin Seed's Climb grows now: a Cherry, and a size bigger after every `PUMPKIN_SEED.every` Climbs, up to a Melon. */
+export function climbKind(climbs: number): FruitKind {
+  const sizes = PUMPKIN_SEED.sizes;
+  return sizes[Math.min(Math.floor(climbs / PUMPKIN_SEED.every), sizes.length - 1)] as FruitKind;
+}
+
+/** A Pumpkin Seed's Climb: its fruit where the Seed was, already landed, scoring its points as it is made (nothing if the Seed was rotten). */
+function climb(run: Run, seed: Fruit): Fruit {
+  const kind = climbKind(run.climbs);
+  run.climbs += 1;
+  const grown = makeFruit(run, kind, inside(seed.x, FRUITS[kind].radius), seed.y);
+  grown.landed = true;
+  if (!seed.rotten) score(run, FRUITS[kind].points, seed.x, seed.y - seed.r, { label: "Climb", earner: FRUITS.pumpkinseed.name });
+  return grown;
+}
+
+/** A Golden Apple pays its coins (nothing while it is rotten), with a popup where it was. */
+function payGolden(run: Run, f: Fruit): number {
+  if (f.kind !== "goldenapple" || f.rotten) return 0;
+  run.coins += GOLDEN;
+  say(run, f.x, f.y - f.r, `+${GOLDEN} coins`);
+  return GOLDEN;
+}
+
 /** What a Smashed Grape, Orange or Melon breaks into two of (a Watermelon breaks into Slices). */
 const SMASH_INTO: Readonly<Partial<Record<FruitKind, FruitKind>>> = { melon: "orange", orange: "grape", grape: "cherry" };
 
@@ -1416,6 +1443,8 @@ function explode(run: Run, bomb: Fruit): void {
     if (f.kind === "fig" && f.rotten) figs += 1;
     if (f.kind === "lime") limes += 1;
     if (f.kind === "seed") born.push(sprout(run, f));
+    if (f.kind === "pumpkinseed") born.push(climb(run, f));
+    payGolden(run, f);
   }
   // The blast pushes what is left away from it.
   for (const f of kept) {
@@ -1476,7 +1505,10 @@ function spillOver(run: Run): void {
 function juicerCrush(run: Run): void {
   if (!run.items.includes("juicer")) return;
   const crushed = run.fruits.filter((f) => f.landed && onFloor(f));
-  for (const f of crushed) score(run, (f.rotten ? 0 : FRUITS[f.kind].points) + JUICER_BONUS, f.x, f.y - f.r, { label: "Crush" });
+  for (const f of crushed) {
+    score(run, (f.rotten ? 0 : FRUITS[f.kind].points) + JUICER_BONUS, f.x, f.y - f.r, { label: "Crush" });
+    payGolden(run, f);
+  }
   if (crushed.length === 0) return;
   run.fruits = run.fruits.filter((f) => !crushed.includes(f));
   run.message = `Juicer: ${crushed.length} fruit Crushed`;
@@ -1649,7 +1681,9 @@ function dueRent(run: Run): void {
   if (run.cycleScore >= rent) {
     const earned = Math.floor((run.cycleScore - rent) / POINTS_PER_COIN);
     run.coins += earned;
-    run.message = `Rent paid! +${earned} coins`;
+    // Each Golden Apple in the jar pays too.
+    const golden = run.fruits.reduce((sum, f) => sum + payGolden(run, f), 0);
+    run.message = golden > 0 ? `Rent paid! +${earned + golden} coins (${golden} from Golden Apples)` : `Rent paid! +${earned} coins`;
     sound(run, "rent");
   } else {
     run.phase = "over";

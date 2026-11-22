@@ -47,7 +47,9 @@ export type Keyword =
   | "wide"
   | "absorb"
   | "shockwave"
-  | "plunge";
+  | "plunge"
+  | "climb"
+  | "golden";
 
 export interface KeywordDef {
   name: string;
@@ -99,6 +101,8 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   absorb: { name: "Absorb", text: "Takes in a fruit no bigger and grows a size." },
   shockwave: { name: "Shockwave", text: "Throws the pile aside, Smashes what it hits." },
   plunge: { name: "Plunge", text: "Sinks to the floor; Smashes pay 75% at once." },
+  climb: { name: "Climb", text: "A fruit grows here, a size up every this many." },
+  golden: { name: "Golden", text: "This many coins at rent, or when destroyed." },
 };
 
 /** Every way a keyword is written in card text, beside its name. */

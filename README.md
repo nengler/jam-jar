@@ -113,7 +113,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 - Fresh fruit score when they land or are made by a merge. Simmer fruit (Apple, Banana) score at every Resolve. Lemon is a
   Booster: fruit touching it score double, and it blocks merges next to it.
 - The Boom group: Chili (explodes touching 4+ fruit), Durian (big blast once 3 fruit sit on it), Pomegranate (bursts into 5
-  Cherries when hit; two that merge burst into 5 between them), Blueberry (counts as 3 fruit for touch checks) and Seed (sprouts a starter when blown up). Blasts
+  Cherries when hit; two that merge burst into 5 between them), Blueberry (counts as 3 fruit for touch checks) and Seed (sprouts a starter when blown up; the Pumpkin Seed is under the Ladder set). Blasts
   chain into other Chilis and Durians, and score a bonus for each fruit destroyed (10 for a Chili's, 14 for a Durian's).
 - Banana: 4, then +2 a turn, rots after 3 turns, and rot spreads to one touching fruit a turn. Rotten
   fruit score nothing but still merge, and what they merge into is rotten.
@@ -227,6 +227,14 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     2 runs of 24. A Plunge that only throws (no Smashing) scored 1089, the same as no Plunge. Gardens lose nothing to it
     (1079 a run with a Plunging Pumpkin, 1021 with the one before). Spills stay near none (about 2 fruit in 24 runs); the
     slowest tenth of turns settle in about 4 seconds, against 3.3, and up to 1 turn in 100 reaches the 8 second limit.
+  - Pumpkin Seed (proposed in the design doc on 22 November): it scores nothing itself. Exploded, it Climbs: a fruit grows
+    where it was and scores as it is made, a Cherry for the run's first 3 Climbs, then a Grape, an Orange, and from the tenth
+    on a Melon (`PUMPKIN_SEED`). The count is the run's, so it is Ladder's late scaler, and it needs a blast, which ties Boom
+    to Ladder. First bots (24 seeds, rent ignored, nothing bought): never picking 1140 a run, Pumpkin Seed whenever offered
+    1032, Chili + Durian + Pumpkin Seed 1132. It does nothing without a bomb, and the bots don't measure late scaling yet.
+- Golden Apple: Fresh 2, and Golden 2: it pays 2 coins when the rent is paid with it in the jar, or when an explosion or
+  the Juicer destroys it (`GOLDEN`; nothing while it is rotten). An early economy pick that needs no other fruit. The
+  balance bots buy nothing in the shop, so they can't value it yet: taken whenever offered it scores 1000 a run.
 - The title has a jar filling up by itself: a run the rules play (`src/rules/demo.ts`: each hand dropped as dealt, every
   pick skipped, a new run a moment after the rent comes due).
 - Fruit roll: the physics has no angle, so each fruit's turning is drawn from how far it moves along what it touches.

@@ -69,6 +69,8 @@ FRUIT_SIZES = {
     # Only made by merging two Watermelons.
     "giantpumpkin": 48,
     "fruitfly": 16,
+    "pumpkinseed": 16,
+    "goldenapple": 20,
 }
 
 # A fruit's ball is a little smaller than its picture's square: the art does not fill the corners. The Fruit Fly's is smaller

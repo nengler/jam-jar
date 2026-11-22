@@ -36,7 +36,9 @@ export type FruitKind =
   | "slice"
   | "pumpkin"
   | "gourd"
-  | "giantpumpkin";
+  | "giantpumpkin"
+  | "pumpkinseed"
+  | "goldenapple";
 
 export type Scoring = "fresh" | "simmer" | "booster";
 
@@ -78,6 +80,17 @@ export const HONEY = 4;
  * Cherries. Two Watermelons make a Giant Pumpkin, which scores, throws the pile aside and is gone.
  */
 export const SLICES = 4;
+/**
+ * The Pumpkin Seed (design doc, "Proposed: fruit roles and changes"): Ladder's late scaler. Exploded, it Climbs: a fruit grows where
+ * it was and scores as it is made, a Cherry at first and a size bigger after every `every` Climbs in the run (Grape, Orange, then
+ * Melon, the cap). Seed is points for bomb decks; the Pumpkin Seed puts bigger fruit in the jar to merge and to Plunge into.
+ */
+export const PUMPKIN_SEED: { every: number; sizes: readonly FruitKind[] } = { every: 3, sizes: ["cherry", "grape", "orange", "melon"] };
+/**
+ * The Golden Apple: an early economy pick that needs no synergy. It pays `GOLDEN` coins when the rent is paid with it in the jar,
+ * or when an explosion or a Crush destroys it (nothing while it is rotten), so the shop matters sooner; coins count for less late in a run.
+ */
+export const GOLDEN = 2;
 export const GOURD_BURST = 4;
 export const GOURD_SIZES: readonly number[] = [FRUIT_ART.cherry.radius, FRUIT_ART.grape.radius, FRUIT_ART.orange.radius];
 
@@ -109,6 +122,8 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   slice: { name: "Slice", radius: FRUIT_ART.slice.radius, points: 15, scoring: "fresh", mergesInto: "melon", touchWeight: 1, text: "Fresh 15. Merge: Melon." },
   pumpkin: { name: "Pumpkin", radius: FRUIT_ART.pumpkin.radius, points: 0, scoring: "fresh", touchWeight: 1, heavy: 48, slots: 2, text: "Wide. Heavy. Plunge: Smashes what it hits." },
   gourd: { name: "Gourd", radius: FRUIT_ART.gourd.radius, points: 4, scoring: "fresh", touchWeight: 1, text: "Fresh 4. Absorb. At Melon size, Burst 4." },
+  pumpkinseed: { name: "Pumpkin Seed", radius: FRUIT_ART.pumpkinseed.radius, points: 0, scoring: "fresh", touchWeight: 1, text: `Exploded: Climb ${PUMPKIN_SEED.every}.` },
+  goldenapple: { name: "Golden Apple", radius: FRUIT_ART.goldenapple.radius, points: 2, scoring: "fresh", touchWeight: 1, text: `Fresh 2. Golden ${GOLDEN}.` },
   giantpumpkin: { name: "Giant Pumpkin", radius: FRUIT_ART.giantpumpkin.radius, points: 75, scoring: "fresh", heavy: 4, touchWeight: 1, text: "Fresh 75. Shockwave, then it vanishes." },
 };
 
@@ -134,6 +149,8 @@ export const OFFERABLE: readonly FruitKind[] = [
   "lime",
   "pumpkin",
   "gourd",
+  "pumpkinseed",
+  "goldenapple",
 ];
 
 /** What a Seed can sprout. */
