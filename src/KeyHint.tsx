@@ -49,13 +49,14 @@ export function TapButton({ label, keyName = "", onPress }: { label: string; key
 
 /**
  * The pause button: the same key cap as every button, square, with two bars on it (in a font, two bars read as a Roman numeral),
- * standing on the counter in the bottom right corner with its shadow under it, like anything else put down there.
+ * standing on the counter in the bottom right corner with its shadow under it, like anything else put down there. Given
+ * `pressKey` (Escape), the key presses it, so it pushes in on screen as it does under a finger.
  */
-export function PauseButton({ onPress }: { onPress: () => void }) {
+export function PauseButton({ onPress, pressKey }: { onPress: () => void; pressKey?: string }) {
   return (
     <Flex width={32} height={30}>
       <Flex left={3} top={25} width={32} height={6} background={COUNTER_SHADOW} />
-      <PushButton width={32} height={30} paddingX={0} onPress={onPress}>
+      <PushButton width={32} height={30} paddingX={0} pressKey={pressKey} onPress={onPress}>
         <Flex direction="row" gap={4}>
           <Flex width={4} height={12} background={INK} />
           <Flex width={4} height={12} background={INK} />

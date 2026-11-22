@@ -21,6 +21,8 @@ interface PushButtonProps {
   /** A menu item takes the focus (and the arrows move it between them); a button on the play screen does not, so the keys stay the screen's. */
   focusable?: boolean;
   autoFocus?: boolean;
+  /** A key that presses it, wherever the focus is (the pause button's Escape): it clicks and pushes in as a tap does. */
+  pressKey?: string;
   width?: number | "fit";
   height?: number;
   paddingX?: number;
@@ -33,7 +35,7 @@ interface PushButtonProps {
  * mouse is over it or it has the focus. Pressed (a click, a tap or Enter), it clicks and pushes in, the face sinking onto a shallow
  * lip with what is on it, and comes back up a moment later or when the mouse is let go.
  */
-export function PushButton({ onPress, onAdjust, label, children, focusable = false, autoFocus = false, width = "fit", height = 30, paddingX = 8, x = 0, opacity = 1 }: PushButtonProps) {
+export function PushButton({ onPress, onAdjust, label, children, focusable = false, autoFocus = false, pressKey, width = "fit", height = 30, paddingX = 8, x = 0, opacity = 1 }: PushButtonProps) {
   const playClick = useSound("click.wav");
   const s = useMutable({ down: 0 });
   // Steps count while the world is paused as well (the pause menu's buttons), so this is `useInput`, not `useUpdate`.
@@ -73,6 +75,7 @@ export function PushButton({ onPress, onAdjust, label, children, focusable = fal
       sliceRight={EDGE_SIDE}
       focusable={focusable}
       autoFocus={autoFocus}
+      pressKey={pressKey}
       onPress={press}
       onAdjust={onAdjust === undefined ? undefined : adjust}
     >

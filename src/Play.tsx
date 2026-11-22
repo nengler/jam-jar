@@ -154,10 +154,10 @@ export function Play() {
 
   useInput((input) => {
     const over = s.run.phase === "over" || s.run.phase === "won";
+    // Escape pauses by pressing the pause button (its `pressKey`), so the button pushes in on screen; here it only closes the pool or ends the run.
     if (input.pressed("Escape")) {
       if (s.whole) s.whole = false;
       else if (over) toTitle();
-      else pause();
     }
     // The run is over: Enter plays another, from a new seed.
     if (over && input.pressed("Enter")) {
@@ -602,7 +602,7 @@ export function Play() {
 
       {/* Pause (Esc, for a finger): on the counter in the bottom right corner, out of the way of the boards. */}
       <Flex right={HUD_X} bottom={PAUSE_FOOT - 240 * (1 - popIn(s.intro, INTRO.right, INTRO.pop))}>
-        <PauseButton onPress={tapPause} />
+        <PauseButton pressKey={s.whole || s.run.phase === "over" || s.run.phase === "won" ? undefined : "Escape"} onPress={tapPause} />
       </Flex>
 
       {/* The pick: three cards in a row in the middle of a dimmed kitchen, under their heading. Each place is a little taller
