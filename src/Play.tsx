@@ -1,7 +1,7 @@
 import { Entity, Flex, Line, Shape, Sprite, Text, Tooltip, useInput, useInputDevice, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
-import { Letters, Panel } from "./Board.tsx";
+import { Dialog, Letters, Panel, Rule } from "./Board.tsx";
 import { Coach, Dim, Frame, Raise } from "./Coach.tsx";
 import { EndBoard } from "./EndBoard.tsx";
 import { FruitBall } from "./FruitBall.tsx";
@@ -111,7 +111,9 @@ const OFFER_FOOT = 10;
 /** The picture at the top of a pick card: square, as big as the biggest fruit a pick can offer, each fruit standing on its foot. */
 const OFFER_PICTURE = biggestFruit(OFFERED);
 /** The whole-pool board: each kind in a cell its own fruit's width and a little more, a row as tall as its tallest, wrapping at this width. */
-const POOL_W = 392;
+const POOL_W = 400;
+/** The tallest the pool board's fruit get before they scroll: what keeps the board on the screen with its sign and its button. */
+const POOL_MAX_H = 256;
 
 /** A fruit on the shelf: its size, how far it is lifted (while it is being moved), and the frame round it when it is the chosen one. */
 function shelfLook(card: FruitKind, at: number, span: number, held: boolean) {
@@ -621,8 +623,8 @@ export function Play() {
           where the notes do, in place of one. */}
       {preserving && (
         <Flex right={HUD_X} bottom={NOTE_FOOT} width={BOARD_W} direction="column" alignItems="stretch">
-          <Panel heading={ITEMS[keepingJar(run.items) ?? "preserves"].name} gap={4}>
-            <Text width={BOARD_W - 32} maxWidth={BOARD_W - 32} align="center" color={INK_SOFT}>
+          <Dialog title={ITEMS[keepingJar(run.items) ?? "preserves"].name} gap={4}>
+            <Text width={BOARD_W - 40} maxWidth={BOARD_W - 40} align="center" color={INK_SOFT}>
               {`Tap fruit in the jar to keep them next cycle.`}
             </Text>
             <Flex direction="row" justifyContent="center">
@@ -631,7 +633,7 @@ export function Play() {
             <Flex direction="row" justifyContent="center" paddingTop={4}>
               <TapButton label={run.kept.length === 0 ? "Keep none" : "Keep these"} onPress={tapDrop} />
             </Flex>
-          </Panel>
+          </Dialog>
         </Flex>
       )}
       {noted && !preserving && (
@@ -710,18 +712,21 @@ export function Play() {
           <Flex left={0} right={0} top={0} bottom={0} direction="column" alignItems="center" justifyContent="center">
             {finished && <EndBoard run={run} rent={rent} keys={keys} onAgain={tapAgain} onTitle={tapTitle} />}
             {!finished && (
-            <Flex width={256} direction="column" alignItems="stretch">
-              <Panel heading="Rent paid" gap={2}>
-                <Text width={224} maxWidth={224} align="center" color={INK_SOFT}>
-                  {`Scored ${run.cycleScore} of ${rent}`}
-                </Text>
-                <Flex direction="row" justifyContent="center">
-                  <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`Total ${run.total}`}</Text>
+            <Flex width={288} direction="column" alignItems="stretch">
+              <Dialog title="Rent paid" gap={4}>
+                <Flex direction="row" justifyContent="space-between">
+                  <Text color={INK_SOFT}>This cycle</Text>
+                  <Text color={GOOD}>{`${run.cycleScore} of ${rent}`}</Text>
                 </Flex>
-                <Flex direction="row" justifyContent="center" paddingTop={6}>
+                <Flex direction="row" justifyContent="space-between">
+                  <Text color={INK_SOFT}>The run so far</Text>
+                  <Text color={INK}>{`${run.total}`}</Text>
+                </Flex>
+                <Rule />
+                <Flex direction="row" justifyContent="center" paddingTop={4}>
                   <TapButton label={run.cycle >= RENT.length ? "Go on" : "Shop"} onPress={tapEnd} />
                 </Flex>
-              </Panel>
+              </Dialog>
             </Flex>
             )}
           </Flex>
@@ -738,13 +743,10 @@ export function Play() {
               {looked !== null && <FruitTip kind={looked ?? "cherry"} grown={grownOf(run, looked ?? "cherry")} />}
             </Flex>
             <Flex width={Math.max(240, Math.min(POOL_W, whole.reduce((w, row) => w + poolCell(row.kind), 0) + 32))} direction="column" alignItems="stretch">
-              <Panel heading={`Your pool: ${run.pool.length} fruit`} gap={4}>
-                <Flex direction="row" justifyContent="center">
-                  <Text color={INK_SOFT}>{"Under each: left to deal / in pool"}</Text>
-                </Flex>
-                <Flex direction="row" wrap justifyContent="center" alignItems="end" rowGap={4} columnGap={0} onPressOutside={lookAway}>
+              <Dialog title={`Your pool: ${run.pool.length} fruit`}>
+                <Flex maxHeight={POOL_MAX_H} direction="row" wrap justifyContent="center" alignItems="end" rowGap={2} columnGap={0} overflow="scroll" scrollbarColor={INK_SOFT} onPressOutside={lookAway}>
                   {placed(whole).map((slot) => (
-                    <Flex key={slot.card.kind} width={poolCell(slot.card.kind)} direction="column" alignItems="center" paddingTop={4} backgroundImage={s.poolAt === slot.at ? SELECT : undefined} slice={CARD_SLICE} focusable={false} onPress={() => lookAt(slot.at)}>
+                    <Flex key={slot.card.kind} width={poolCell(slot.card.kind)} direction="column" alignItems="center" gap={4} paddingTop={2} backgroundImage={s.poolAt === slot.at ? SELECT : undefined} slice={CARD_SLICE} focusable={false} onPress={() => lookAt(slot.at)}>
                       {/* A kind with none left to deal this shuffle is faded; under each, how many are left of how many there are. */}
                       <Flex width={fruitImageSize(slot.card.kind)} height={fruitImageSize(slot.card.kind)} opacity={countOf(run.draw, slot.card.kind) === 0 ? 0.35 : 1}>
                         <FruitBall kind={slot.card.kind} x={fruitImageSize(slot.card.kind) / 2} y={fruitImageSize(slot.card.kind) / 2} />
@@ -756,7 +758,7 @@ export function Play() {
                 <Flex direction="row" justifyContent="center" paddingTop={4}>
                   <TapButton label="Close" onPress={closePool} />
                 </Flex>
-              </Panel>
+              </Dialog>
             </Flex>
           </Flex>
         </Entity>

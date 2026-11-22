@@ -1,121 +1,103 @@
 import { Flex, Text, useTime } from "@tsengine/runtime/jsx";
 
-import { Panel } from "./Board.tsx";
+import { Dialog } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { TapButton } from "./KeyHint.tsx";
 import { Bloops } from "./Sounds.tsx";
-import { countUp, earnerKind } from "./layout.ts";
-import { RENT, topEarners, type Run } from "./rules/jar.ts";
-import { biggestFruit, fruitImageSize, BAR_GOLD, BAR_WELL, DISPLAY, DISPLAY_SIZE, GOOD, INK, INK_SOFT, WELL } from "./theme.ts";
+import { countUp, fruitResults, keywordResults } from "./layout.ts";
+import type { FruitKind } from "./rules/fruits.ts";
+import { RENT, type Run } from "./rules/jar.ts";
+import { fruitImageSize, BAD, BAR_GOLD, BAR_WELL, DISPLAY, DISPLAY_SIZE, GOOD, INK, INK_SOFT, WELL } from "./theme.ts";
 
 /**
- * The board's width, and the width of each of the three tiles in a row across it (the board's padding and two gaps taken off).
- * Above the tiles, the total on the left and what scored most on the right: three fruit side by side at their own size, each in
- * a place as wide as the biggest fruit (a Giant Pumpkin), so the board is wide rather than tall and fits on the screen.
+ * The board's width; the total's place in the strip across its top; how tall the fruit get before they scroll (a run seldom ends
+ * with more than two rows of them, across the whole board).
  */
 const END_W = 616;
-const TILE_GAP = 8;
-const TILE_W = (END_W - 32 - TILE_GAP * 2) / 3;
-const EARNER_W = 96;
-const EARNERS_W = EARNER_W * 3 + TILE_GAP * 2;
-const COLUMN_GAP = 16;
-const TOTAL_W = END_W - 32 - COLUMN_GAP - EARNERS_W;
-/** Seconds the total takes to count up, and when the rows under it come in, one after another. */
+const TOTAL_W = 150;
+const FRUIT_MAX_H = 188;
+/** Seconds the total takes to count up; when the fruit come in, and how far apart. */
 const COUNT_TIME = 0.9;
-const TILES_AT = 1.0;
-const EARNERS_AT = 1.4;
+const FRUIT_AT = 0.5;
+const FRUIT_GAP = 0.06;
 
-/** A number with what it is under it, on a tan tile: one of the three across the end board. */
-function Stat({ value, label, shown }: { value: string; label: string; shown: boolean }) {
+/** One thing about the run, in the summary: what it is, and how much. */
+function Stat({ label, value, color = INK }: { label: string; value: string; color?: string }) {
   return (
-    <Flex width={TILE_W} height={52} direction="column" alignItems="center" justifyContent="center" background={WELL} opacity={shown ? 1 : 0}>
-      <Flex height={26} direction="row" alignItems="center">
-        <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
-          {value}
-        </Text>
-      </Flex>
+    <Flex direction="row" gap={6}>
       <Text color={INK_SOFT}>{label}</Text>
+      <Text color={color}>{value}</Text>
+    </Flex>
+  );
+}
+
+/** A fruit's cell: the fruit at its own size, standing on its foot, what it scored, and a bar of its share of the run's points. */
+function FruitScore({ kind, points, total, shown }: { kind: FruitKind; points: number; total: number; shown: boolean }) {
+  const size = fruitImageSize(kind);
+  const width = Math.max(40, size) + 12;
+  const bar = width - 12;
+  const fill = points <= 0 || total <= 0 ? 0 : Math.max(2, Math.round((bar * Math.min(1, points / total)) / 2) * 2);
+  return (
+    <Flex width={width} direction="column" alignItems="center" gap={2} opacity={shown ? 1 : 0}>
+      <Flex width={size} height={size}>
+        <FruitBall kind={kind} x={size / 2} y={size / 2} />
+      </Flex>
+      <Text color={points < 0 ? BAD : INK}>{`${points}`}</Text>
+      <Flex width={bar} height={4} background={BAR_WELL}>
+        {fill > 0 && <Flex left={0} top={0} bottom={0} width={fill} background={BAR_GOLD} />}
+      </Flex>
     </Flex>
   );
 }
 
 /**
- * The end of a run, evicted or the jar won: what the run came to. The total counts up, big, with how near the last rent was
- * under it; beside it the three things that scored most (a fruit by its picture, a keyword by its name); then how far the run
- * got, its best turn and the pool it ended with. The buttons are there from the start: the board is not to be waited for.
+ * The end of a run, evicted or the jar won: what the run came to. Across the top the total counts up, big, beside how the run went
+ * (the cycle it got to, its best turn, its pool, evicted how near the last rent was, and what scored that was no fruit's own:
+ * Merge, Explode, a Spill). Under it every fruit that scored, with what it scored itself and a bar of its share of the
+ * run's points, best first; then the buttons, which are there from the start: the board is not to be waited for.
  */
 export function EndBoard({ run, rent, keys, onAgain, onTitle }: { run: Run; rent: number; keys: boolean; onAgain: () => void; onTitle: () => void }) {
   const time = useTime();
   const won = run.phase === "won";
-  const earners = topEarners(run, 3);
-  // The row of what scored most is as tall as its biggest fruit (a keyword takes a line), each fruit standing on its foot.
-  const earnerKinds = earners.map((e) => earnerKind(e.label)).filter((kind) => kind !== null);
-  const picture = Math.max(32, biggestFruit(earnerKinds));
+  const fruit = fruitResults(run);
+  const keywords = keywordResults(run);
   const near = Math.max(0, Math.min(1, rent === 0 ? 1 : run.cycleScore / rent));
   return (
     <Flex width={END_W} direction="column" alignItems="stretch">
-      {/* A bloop for each of the three tiles as it shows, and one for what scored most. */}
-      <Bloops start={TILES_AT} gap={0.12} count={3} />
-      <Panel title={won ? "The jar is yours" : "Evicted"}>
-        <Flex direction="row" gap={COLUMN_GAP} alignItems="end">
-          <Flex width={TOTAL_W} direction="column" alignItems="stretch">
-            <Flex height={58} direction="row" justifyContent="center" alignItems="end">
+      {/* A bloop for each of the first few fruit as they come in. */}
+      <Bloops start={FRUIT_AT} gap={FRUIT_GAP * 2} count={Math.min(5, fruit.length)} />
+      <Dialog title={won ? "The jar is yours" : "Evicted"} gap={4}>
+        {/* The strip across the top: the total and how the run went. */}
+        <Flex direction="row" alignItems="center" gap={14}>
+          <Flex width={TOTAL_W} direction="column" alignItems="center">
+            <Flex height={46} direction="row" alignItems="end">
               <Text font={DISPLAY} size={DISPLAY_SIZE * 2} color={won ? GOOD : INK}>{`${countUp(run.total, time, COUNT_TIME)}`}</Text>
             </Flex>
-            <Flex direction="row" justifyContent="center" paddingBottom={4}>
-              <Text color={won ? GOOD : INK_SOFT}>{won ? "points, and every rent paid" : "points"}</Text>
-            </Flex>
-            {/* How near the rent that ended it was. */}
-            {!won && (
-              <Flex direction="row" justifyContent="space-between">
-                <Text color={INK_SOFT}>The last rent</Text>
-                <Text color={INK}>{`${run.cycleScore} of ${rent}`}</Text>
-              </Flex>
-            )}
-            {!won && (
-              <Flex height={10} background={BAR_WELL}>
-                {near > 0 && <Flex left={2} top={2} bottom={2} width={Math.round(((TOTAL_W - 4) * near) / 2) * 2} background={BAR_GOLD} />}
-              </Flex>
-            )}
+            <Text color={won ? GOOD : INK_SOFT}>{won ? "Every rent paid" : "points"}</Text>
           </Flex>
-          <Flex width={EARNERS_W} direction="column" alignItems="stretch" opacity={time >= EARNERS_AT ? 1 : 0}>
-            {earners.length > 0 && (
-              <Flex direction="row" justifyContent="center">
-                <Text color={INK_SOFT}>What scored most</Text>
-              </Flex>
-            )}
-            <Flex direction="row" gap={TILE_GAP} justifyContent="center">
-              {earners.map((e) => (
-                <Flex key={e.label} width={EARNER_W} direction="column" alignItems="center">
-                  {/* A fruit by its picture, standing on its foot; a keyword (Merge, Explode) by its name, at the foot of the row. */}
-                  {earnerKind(e.label) !== null && (
-                    <Flex width={EARNER_W} height={picture}>
-                      <FruitBall kind={earnerKind(e.label) ?? "cherry"} x={EARNER_W / 2} y={picture - fruitImageSize(earnerKind(e.label) ?? "cherry") / 2} />
-                    </Flex>
-                  )}
-                  {earnerKind(e.label) === null && (
-                    <Flex width={EARNER_W} height={picture} direction="row" alignItems="end" justifyContent="center">
-                      <Text color={INK_SOFT}>{e.label}</Text>
-                    </Flex>
-                  )}
-                  <Flex height={26} direction="row" alignItems="center">
-                    <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`${e.points}`}</Text>
-                  </Flex>
-                </Flex>
-              ))}
-            </Flex>
+          <Flex width={2} height={64} background={WELL} />
+          {/* How the run went, then what scored that was no fruit's own: as many lines as they take (three at most, as tall as the total). */}
+          <Flex width="grow" direction="row" wrap rowGap={2} columnGap={18}>
+            <Stat label="Cycle" value={`${run.cycle} of ${RENT.length}`} />
+            <Stat label="Best turn" value={`${run.bestTurn}`} />
+            <Stat label="Pool" value={`${run.pool.length} fruit`} />
+            {!won && <Stat label="Last rent" value={`${run.cycleScore} of ${rent}`} color={BAD} />}
+            {keywords.map((k) => (
+              <Stat key={k.label} label={k.label} value={`${k.points}`} color={k.points < 0 ? BAD : INK} />
+            ))}
           </Flex>
         </Flex>
-        <Flex direction="row" gap={TILE_GAP} paddingTop={8}>
-          <Stat value={`${run.cycle} of ${RENT.length}`} label="cycle" shown={time >= TILES_AT} />
-          <Stat value={`${run.bestTurn}`} label="best turn" shown={time >= TILES_AT + 0.12} />
-          <Stat value={`${run.pool.length}`} label="in pool" shown={time >= TILES_AT + 0.24} />
+        {/* Every fruit that scored, best first, across the whole board. */}
+        <Flex maxHeight={FRUIT_MAX_H} direction="row" wrap justifyContent="center" alignItems="end" rowGap={4} columnGap={0} overflow="scroll" scrollbarColor={INK_SOFT}>
+          {fruit.map((f, i) => (
+            <FruitScore key={f.kind} kind={f.kind} points={f.points} total={run.total} shown={time >= FRUIT_AT + i * FRUIT_GAP} />
+          ))}
         </Flex>
-        <Flex direction="row" justifyContent="center" gap={12} paddingTop={8}>
+        <Flex direction="row" justifyContent="center" gap={16}>
           <TapButton keyName={keys ? "Enter" : ""} label="Play again" onPress={onAgain} />
           <TapButton keyName={keys ? "Esc" : ""} label="Title" onPress={onTitle} />
         </Flex>
-      </Panel>
+      </Dialog>
     </Flex>
   );
 }

@@ -37,8 +37,9 @@ export function KeyHint({ name, label, color = LIGHT }: KeyHintProps) {
 export function TapButton({ label, keyName = "", onPress }: { label: string; keyName?: string; onPress: () => void }) {
   return (
     <Flex direction="row" alignItems="center" gap={6}>
+      {/* As tall as the button beside it, so a row of them (Enter, Take out, Space, Back) lines up. */}
       {keyName !== "" && (
-        <Flex height={26} minWidth={26} paddingX={8} paddingTop={4} paddingBottom={2} backgroundImage="key.png" sliceTop={4} sliceBottom={8} sliceLeft={4} sliceRight={4} alignItems="center" justifyContent="center">
+        <Flex height={30} minWidth={30} paddingX={8} paddingTop={6} paddingBottom={4} backgroundImage="key.png" sliceTop={4} sliceBottom={8} sliceLeft={4} sliceRight={4} alignItems="center" justifyContent="center">
           <Text color={INK}>{keyName}</Text>
         </Flex>
       )}
