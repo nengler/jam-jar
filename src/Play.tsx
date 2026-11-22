@@ -2,7 +2,7 @@ import { Entity, Flex, Line, Shape, Sprite, Text, Tooltip, useInput, useInputDev
 
 import { Backdrop } from "./Backdrop.tsx";
 import { Letters, Panel } from "./Board.tsx";
-import { Coach, Spotlight } from "./Coach.tsx";
+import { Coach, Dim, Frame, Raise } from "./Coach.tsx";
 import { EndBoard } from "./EndBoard.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
@@ -14,6 +14,7 @@ import { Pause } from "./Pause.tsx";
 import { RentScore } from "./RentScore.tsx";
 import { RuleText } from "./RuleText.tsx";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/tutorial.ts";
+import { Lit } from "./lit.ts";
 import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { Terms } from "./Terms.tsx";
@@ -424,11 +425,16 @@ export function Play() {
   const coached = paused || s.whole || s.intro < INTRO.end ? null : lessonNow(tutorial, run);
   /** The slate that says what just happened shows when there is something to say and no lesson in its place. */
   const noted = coached === null && run.message !== "" && run.phase !== "shop";
+  /** What is picked out (Coach.tsx): what the lesson is about, or the jar while a Preserves Jar's fruit are chosen. */
+  const lit = coached !== null ? coached.target : preserving ? "jar" : null;
 
   return (
+    <Lit.Provider value={lit}>
     <Entity>
       <Backdrop />
 
+      {/* The jar, what is drawn on it and its points: all raised together when it is picked out. */}
+      <Raise id="jar">
       <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(booms)} />
       {/* What is drawn on the jar turns with it, about its low corner, when it leans (the Tilted jar). */}
       <Entity x={JAR.right} y={JAR.floor} rotation={lean(run)}>
@@ -478,6 +484,7 @@ export function Play() {
           {p.text}
         </Text>
       ))}
+      </Raise>
 
       {/* The items owned stand on the counter, left of the jar. */}
       {run.items.map((item, i) => (
@@ -486,14 +493,24 @@ export function Play() {
 
       {/* The shelf: the hand, each fruit over the lane it drops down. The chosen fruit is framed in amber; a held one is lifted. In the Blind
           jar each is under a cloth. */}
-      <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y - 80 * (1 - popIn(s.intro, INTRO.shelf, INTRO.pop))} />
+      <Raise id="shelf">
+        <Sprite image="shelf.png" x={jarMid - 104} y={SHELF_Y - 80 * (1 - popIn(s.intro, INTRO.shelf, INTRO.pop))} />
+      </Raise>
       {/* The basket's ledge and the inside of its rim: behind a fruit rolling out of it. */}
-      <Entity y={-80 * (1 - popIn(s.intro, INTRO.shelf, INTRO.pop))}>
-        <Sprite image="ledge.png" x={ROLL_FROM - LEDGE_W / 2} y={SHELF_Y} />
-        <Sprite image="basket-back.png" x={ROLL_FROM - BASKET_W / 2} y={SHELF_Y - BASKET_H} />
-      </Entity>
-      {/* The box that hears the hand being dragged and tapped: over the fruit on the shelf, and under their tooltips' boxes. */}
-      {ordering && !s.whole && <Flex x={shelfLeft} y={SHELF_Y - 44} width={handSlots(shelf) * SLOT} height={52} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} onPressOutside={untip} />}
+      <Raise id="pool">
+        <Entity y={-80 * (1 - popIn(s.intro, INTRO.shelf, INTRO.pop))}>
+          <Sprite image="ledge.png" x={ROLL_FROM - LEDGE_W / 2} y={SHELF_Y} />
+          <Sprite image="basket-back.png" x={ROLL_FROM - BASKET_W / 2} y={SHELF_Y - BASKET_H} />
+        </Entity>
+      </Raise>
+      <Raise id="shelf">
+      {/* The box that hears the hand being dragged and tapped: over the fruit on the shelf, and under their tooltips' boxes. The
+          tutorial's frame goes round it when the shelf is picked out. */}
+      {ordering && !s.whole && (
+        <Flex x={shelfLeft} y={SHELF_Y - 44} width={handSlots(shelf) * SLOT} height={52} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} onPressOutside={untip}>
+          <Frame id="shelf" pad={8} padBottom={4} />
+        </Flex>
+      )}
       {placed(shelf).map((slot) => (
         <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, spans, dragging && slot.at === run.cursor, s.dragX) + (ordering ? rollIn(s.roll, slot.at, ROLL_FROM - shelfX(slot.at, shelfLeft, SLOT, spans, false, 0)) : 0)} y={SHELF_Y - 18}>
           {/* A Wide fruit (a Pumpkin) takes two places: its frame spans both, and it is drawn at the pick cards' size. */}
@@ -502,15 +519,18 @@ export function Play() {
           {blind && (!ordering || rollStarted(s.roll, slot.at)) && <Sprite image="covered.png" x={-16} y={-16} />}
         </Entity>
       ))}
+      </Raise>
       {/* The pool's basket: what is still to be dealt this shuffle waits in it, and a dealt hand rolls out of it (drawn over the
           fruit, so they come out from behind its front). Beside it, how many are left; the mouse over it says of how many, and a
           tap on it (or D) opens the whole pool. At 0 it is refilled with every fruit before the next deal. */}
+      <Raise id="pool">
       <Entity y={-80 * (1 - popIn(s.intro, INTRO.shelf, INTRO.pop))}>
         <Sprite image="basket.png" x={ROLL_FROM - BASKET_W / 2} y={SHELF_Y - BASKET_H} />
         <Text x={ROLL_FROM + BASKET_W / 2 + 6} y={SHELF_Y - BASKET_H + 2} font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>
           {`${run.draw.length}`}
         </Text>
         <Flex x={ROLL_FROM - BASKET_W / 2} y={SHELF_Y - BASKET_H} width={BASKET_W + 40} height={BASKET_H} focusable={false} onPress={openPool}>
+          <Frame id="pool" pad={8} padBottom={4} />
           <Tooltip anchor="top-left" to="bottom-left" offsetX={0} offsetY={8} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
             <Flex width={BOARD_W} direction="column" alignItems="stretch">
               <Panel image={PLAQUE}>
@@ -522,12 +542,13 @@ export function Play() {
           </Tooltip>
         </Flex>
       </Entity>
+      </Raise>
       {/* What a fruit does shows for the one that was tapped (or the cursor is on, at a keyboard), and for one the mouse is over: in
           the top left corner whichever fruit it is for, so it never lies over the jar. Its box stays at the fruit's place on the
           shelf, not under a fruit being dragged (see the handlers above): one that followed the pointer and was moved back by as
           much shook as it was dragged. */}
       {!blind && (
-        <>
+        <Raise id="shelf">
           {placed(shelf).map((slot) => (
             <Flex key={`tip${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, spans, false, 0) - 20} y={SHELF_Y - 38} width={40} height={40}>
               <Tooltip show={!paused && !s.whole && ordering && slot.at === run.cursor && (keys || s.tip) ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X - (shelfX(slot.at, shelfLeft, SLOT, spans, false, 0) - 20)} offsetY={TIP_TOP - (SHELF_Y - 38)} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
@@ -535,7 +556,7 @@ export function Play() {
               </Tooltip>
             </Flex>
           ))}
-        </>
+        </Raise>
       )}
 
       {/* While ordering, a tap or a click on the jar drops the hand into it. */}
@@ -544,7 +565,9 @@ export function Play() {
       {/* Left: a column pinned to the screen's left edge. The rent board is as tall as what is on it: this cycle's score, big, and
           under it the rent it is counted against ("64 of 120 rent"); a bar of how much of the rent that is; the turn; and the
           coins. Nothing else is on this side: how to move a fruit and drop the hand is said on the fruit's card under the shelf. */}
+      <Raise id="rent">
       <Flex left={HUD_X - 240 * (1 - popIn(s.intro, INTRO.left, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch" gap={12}>
+        <Frame id="rent" pad={6} padBottom={10} />
         <Panel title={cycleTitle(run)}>
           {/* Between cycles (the clear-out) it counts the score down to 0 and the rent up to the next cycle's, at the clear-out's pace. */}
           <RentScore key={run.cycle} scored={clearing ? 0 : scored} rent={clearing ? rentFor(run.cycle + 1) : rent} width={BOARD_W - 36} time={clearing ? CLEAR_TIME * 0.8 : undefined} />
@@ -558,14 +581,11 @@ export function Play() {
           </Flex>
         </Panel>
       </Flex>
+      </Raise>
 
-      {/* What the lesson is about, framed, and the rest of the screen dimmed: after both boards, so they dim too, and before the
-          lesson's card, so it does not. */}
-      {coached?.target === "shelf" && <Spotlight x={shelfLeft - 8} y={SHELF_Y - 46} width={handSlots(shelf) * SLOT + 16} height={56} />}
-      {/* The jar is picked out the same way while a Preserves Jar's fruit are chosen (its board is drawn after, so it stays lit). */}
-      {(coached?.target === "jar" || (preserving && coached === null)) && <Spotlight x={JAR.left - 10} y={RIM - 28} width={JAR.right - JAR.left + 20} height={JAR.floor - RIM + 38} />}
-      {coached?.target === "rent" && <Spotlight x={HUD_X - 6} y={BOARD_Y + 6} width={BOARD_W + 12} height={152} />}
-      {coached?.target === "pool" && <Spotlight x={ROLL_FROM - BASKET_W / 2 - 8} y={SHELF_Y - BASKET_H - 8} width={BASKET_W + 56} height={BASKET_H + 22} />}
+      {/* While something is picked out (`lit`), the rest of the screen is dimmed: what is raised stands above the dark, and what
+          comes after this (the lesson's card, the Preserves Jar's board, the pause button) stays lit too. */}
+      <Dim />
       {/* The first game's tutorial takes the slate's place: one lesson at a time, about what is on screen now. */}
       {coached !== null && !picking && run.phase !== "shop" && (
         <Flex right={HUD_X} bottom={NOTE_FOOT}>
@@ -748,5 +768,6 @@ export function Play() {
       )}
       {paused && <Pause />}
     </Entity>
+    </Lit.Provider>
   );
 }

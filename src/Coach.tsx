@@ -1,8 +1,9 @@
-import { Entity, Flex, Shape, Text, useTime } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Text, useContext, useTime, type Child } from "@tsengine/runtime/jsx";
 
 import { Panel } from "./Board.tsx";
 import { TapButton } from "./KeyHint.tsx";
-import type { Lesson } from "./rules/tutorial.ts";
+import { Lit } from "./lit.ts";
+import type { Lesson, LessonTarget } from "./rules/tutorial.ts";
 import { CARD_SLICE, DIM, GOLD, LIGHT, PLAQUE, SELECT } from "./theme.ts";
 
 /**
@@ -39,20 +40,40 @@ export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { l
 /** The room the buttons take beside the words of a `wide` card, with the gap between them. */
 const WIDE_BUTTONS = 92;
 
-/**
- * What a lesson is about (the shelf, the jar, a board), picked out: the rest of the screen is dimmed, in four dark pieces
- * around it, and it stands in an amber frame that breathes, so the eye goes there. The dark is only drawn: a tap goes through
- * it to whatever is under. The lesson's card is drawn after this, so it stays lit too.
+/*
+ * What a lesson is about (the shelf, the jar, a board), picked out (`Lit`, provided by the play screen): the rest of the screen is
+ * dimmed and it stands in an amber frame that breathes, so the eye goes there. Nothing here is placed by hand: the part picked out
+ * is drawn above the dark (`Raise`), and its frame hangs off its own box (`Frame`), so both follow it wherever it is laid out.
  */
-export function Spotlight({ x, y, width, height }: { x: number; y: number; width: number; height: number }) {
+
+/** Draw order of a part that is picked out: above the dark, which is drawn at the default, 0, and so after everything else at 0. */
+const RAISED = 1;
+
+/** Its children, drawn above the dark while `id` is what is picked out. */
+export function Raise({ id, children }: { id: LessonTarget; children: Child }) {
+  const lit = useContext(Lit);
+  return <Entity z={lit !== null && lit === id ? RAISED : 0}>{children}</Entity>;
+}
+
+/**
+ * The amber frame, round the box of the `<Flex>` it is put in, `pad` pixels out from it on each side (`padBottom` at the foot, for a
+ * board whose shadow reaches lower), while `id` is what is picked out. It takes no room and no taps.
+ */
+export function Frame({ id, pad, padBottom }: { id: LessonTarget; pad: number; padBottom?: number }) {
+  const lit = useContext(Lit);
   const time = useTime();
+  // Always there, and clear while `id` is not picked out: as the component's own box, it is a child of the `<Flex>` it is put in,
+  // which is what its edges are measured from.
   return (
-    <Entity>
-      <Shape kind="rect" x={0} y={0} width={640} height={Math.max(0, y)} color={DIM} />
-      <Shape kind="rect" x={0} y={y + height} width={640} height={Math.max(0, 360 - y - height)} color={DIM} />
-      <Shape kind="rect" x={0} y={y} width={Math.max(0, x)} height={height} color={DIM} />
-      <Shape kind="rect" x={x + width} y={y} width={Math.max(0, 640 - x - width)} height={height} color={DIM} />
-      <Flex x={x} y={y} width={width} height={height} backgroundImage={SELECT} slice={CARD_SLICE} opacity={0.55 + 0.45 * Math.sin(time * 5)} />
-    </Entity>
+    <Flex left={-pad} right={-pad} top={-pad} bottom={-(padBottom ?? pad)} backgroundImage={SELECT} slice={CARD_SLICE} opacity={lit !== null && lit === id ? 0.55 + 0.45 * Math.sin(time * 5) : 0} />
   );
+}
+
+/**
+ * The dark over the whole game's area while something is picked out. It is only drawn: a tap goes through it to whatever is
+ * under. Put it after what it dims: what comes after it (the lesson's card, the pause button) stays lit, as does what is raised.
+ */
+export function Dim() {
+  const lit = useContext(Lit);
+  return <Flex left={0} right={0} top={0} bottom={0} background={DIM} opacity={lit !== null ? 1 : 0} />;
 }
