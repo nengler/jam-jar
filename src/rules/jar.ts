@@ -21,14 +21,14 @@ export interface JarBounds {
   floor: number;
 }
 
-export const JAR: JarBounds = { left: 224, right: 416, floor: 336 };
+export const JAR: JarBounds = { left: 224, right: 416, floor: 344 };
 export const GRAVITY = 1200;
 /** A fruit this close to the floor (beyond touching) is on it: a settled pile jitters by a fraction of a pixel. */
 const FLOOR_TOLERANCE = 1.5;
 /** The rim: a fruit whose top is above it once the jar settles spills out. */
-export const RIM = 104;
+export const RIM = 112;
 /** Where dropped fruit appear. */
-export const DROP_Y = 72;
+export const DROP_Y = 80;
 /**
  * The tray drop. The shelf is a tray over the jar with a slot per lane, and the whole hand is released together, hand index 0 in
  * the leftmost lane, so where a fruit stands on the shelf decides where it lands. Each fruit wobbles up to `wobble` px within its
@@ -71,6 +71,9 @@ export const LADDER = {
   smashBlasts: false,
 };
 
+/** Every fruit a pick or the shop can ever offer, whatever the run: what the pick's cards and the shop's baskets make room for. */
+export const OFFERED: readonly FruitKind[] = [...OFFERABLE, "melon", ...LEGENDARY];
+
 /** The fruit a pick or the shop can offer. */
 function offerList(): readonly FruitKind[] {
   return LADDER.melonPick ? [...OFFERABLE, "melon"] : OFFERABLE;
@@ -90,7 +93,7 @@ export const TURNS_PER_CYCLE = 5;
  */
 export const PICK_EVERY = 2;
 /** The boss jar's peg: a round post in the middle of the jar that splits the pile, on every third cycle. */
-export const PEG = { x: 320, y: 236, r: 22 };
+export const PEG = { x: 320, y: 244, r: 22 };
 export const BOSS_EVERY = 3;
 
 /** Whether a cycle is played in a boss jar. */
@@ -1658,17 +1661,17 @@ function pickStep(run: Run, keys: Keys): void {
   const move = (keys.right || keys.down ? 1 : 0) - (keys.left || keys.up ? 1 : 0);
   // No card is chosen until the player chooses one (the cursor is -1): an arrow goes to the first, the pointer to the one it is on.
   const pointed = keys.point >= 0 && keys.point < run.offers.length;
-  // A tap on a card that was not the chosen one only chooses it, so what it does can be read; a second tap takes it. With a
-  // mouse the card is chosen as the pointer comes over it, so one click takes it.
-  const fresh = pointed && keys.point !== run.offerCursor;
-  // A tap anywhere else puts the chosen card back: nothing is chosen, and its tooltip goes.
-  if (keys.away === true) run.offerCursor = -1;
-  const to = pointed ? keys.point : move === 0 ? run.offerCursor : Math.max(0, Math.min(run.offers.length - 1, run.offerCursor + move));
+  // A tap or a click on a card only chooses it, so what it does can be read (and a finger can drag its text to scroll it). What
+  // takes it is a confirm with no card pointed at: Enter, or the "Take" button under the cards, as in the take-out dialog.
+  // A tap anywhere else puts the chosen card back: nothing is chosen, and its tooltip goes. So does a tap on the chosen card.
+  const again = pointed && keys.confirm && keys.point === run.offerCursor;
+  if (keys.away === true || again) run.offerCursor = -1;
+  const to = again ? -1 : pointed ? keys.point : move === 0 ? run.offerCursor : Math.max(0, Math.min(run.offers.length - 1, run.offerCursor + move));
   if (to !== run.offerCursor) {
     run.offerCursor = to;
     sound(run, "tick");
   }
-  if (keys.confirm && !fresh && run.offerCursor >= 0) {
+  if (keys.confirm && !pointed && run.offerCursor >= 0) {
     const kind = run.offers[run.offerCursor] as FruitKind;
     run.pool.push(kind);
     // Shuffled into what is still to be dealt, so a new fruit shows up soon.
@@ -1689,15 +1692,6 @@ function startTurn(run: Run): void {
   run.offers = [];
   deal(run);
   run.phase = "order";
-}
-
-/** What earned the run's points, the most first: the fruit and keywords that scored, at most `count` of them, none that lost points. */
-export function topEarners(run: Run, count: number): { label: string; points: number }[] {
-  return Object.entries(run.earned)
-    .map(([label, points]) => ({ label, points }))
-    .filter((e) => e.points > 0)
-    .sort((a, b) => b.points - a.points || a.label.localeCompare(b.label))
-    .slice(0, count);
 }
 
 /** The kinds of fruit in the pool, in the fruit table's order: what the shop's removal chooses from. */
@@ -1726,7 +1720,8 @@ function leaveRent(run: Run): void {
   stock(run, run.shop);
   run.phase = "shop";
   const next = bossNow(run, run.cycle + 1);
-  run.message = next === null ? "The shop is open" : `Next cycle: the ${BOSS_NAME[next]}`;
+  // Nothing to say on opening, unless the next cycle is a boss jar.
+  run.message = next === null ? "" : `Next cycle: the ${BOSS_NAME[next]}`;
 }
 
 /** Fill the shop's shelf: three different fruit, and an item the player can use (none when there is none: `offerable`). */
@@ -1780,13 +1775,14 @@ function shopStep(run: Run, keys: Keys): void {
 
   // The shelf (0 to SHOP_ITEM) is the top row and the three actions the bottom one: left and right walk along both, up and
   // down change rows, keeping roughly the same place across.
-  // As in the pick: nothing is chosen at first (-1), an arrow goes to the first card, and a tap on a card that was not the
-  // chosen one only chooses it, so it can be read before it is bought. The three actions say all they do, and act on one tap.
+  // As in the pick: nothing is chosen at first (-1), an arrow goes to the first card, and a tap on a card only chooses it, so it
+  // can be read before it is bought; Enter or the "Buy" button buys it. The three actions say all they do, and act on one tap.
   const pointed = keys.point >= 0 && keys.point <= SHOP_LEAVE;
-  const fresh = pointed && keys.point !== shop.cursor && keys.point <= SHOP_ITEM;
-  // As in the pick, a tap anywhere else leaves nothing chosen.
-  if (keys.away === true) shop.cursor = -1;
-  let to = pointed ? keys.point : shop.cursor < 0 ? (across !== 0 || down !== 0 ? 0 : -1) : Math.max(0, Math.min(SHOP_LEAVE, shop.cursor + across));
+  const onCard = pointed && keys.point <= SHOP_ITEM;
+  // As in the pick, a tap anywhere else leaves nothing chosen, and so does a tap on the card already chosen.
+  const again = onCard && keys.confirm && keys.point === shop.cursor;
+  if (keys.away === true || again) shop.cursor = -1;
+  let to = again ? -1 : pointed ? keys.point : shop.cursor < 0 ? (across !== 0 || down !== 0 ? 0 : -1) : Math.max(0, Math.min(SHOP_LEAVE, shop.cursor + across));
   if (shop.cursor >= 0 && !pointed) {
     if (down > 0 && to <= SHOP_ITEM) to = SHOP_REMOVE + Math.min(2, Math.floor((to * 3) / (SHOP_ITEM + 1)));
     else if (down < 0 && to > SHOP_ITEM) to = Math.round(((to - SHOP_REMOVE) * SHOP_ITEM) / 2);
@@ -1798,7 +1794,7 @@ function shopStep(run: Run, keys: Keys): void {
     leaveShop(run);
     return;
   }
-  if (!keys.confirm || fresh || shop.cursor < 0) return;
+  if (!keys.confirm || onCard || shop.cursor < 0) return;
   if (shop.cursor < SHOP_FRUITS) {
     const kind = shop.fruits[shop.cursor];
     if (kind == null || !pay(run, FRUIT_PRICE)) return;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { blastBits, blastFlash, blastJolt, motes, poolRows, termsOf } from "../src/layout.ts";
+import { blastBits, blastFlash, blastJolt, fruitResults, keywordResults, motes, poolRows, termsOf } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
 import { APPLE, BANANA, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, SLICES, type FruitKind } from "../src/rules/fruits.ts";
@@ -28,7 +28,6 @@ import {
   newRun,
   NO_KEYS,
   onEdge,
-  topEarners,
   POINTS_PER_COIN,
   REMOVAL_PRICE,
   REMOVAL_STEP,
@@ -768,7 +767,7 @@ test("terms: cards keep to the vocabulary, every keyword is used, and a definiti
   }
 });
 
-test("the mouse: coming over a card chooses it, in the pick and in the shop, and a click on the chosen one is Enter on it", () => {
+test("a click or a tap on a card only chooses it, and a second puts it back, in the pick and in the shop; Enter or the Take/Buy button (a confirm on no place) takes it", () => {
   let run = jarWith([]);
   run.turn = 2;
   resolve(run);
@@ -776,38 +775,32 @@ test("the mouse: coming over a card chooses it, in the pick and in the shop, and
   assert.equal(run.offerCursor, -1, "no card is chosen at first");
   run = press(run, { confirm: true });
   assert.equal(run.phase, "pick", "and Enter on nothing takes nothing");
-  run = press(run, { point: 2 });
-  assert.equal(run.offerCursor, 2);
-  const kind = run.offers[1]!;
-  run = press(run, { point: 1 });
-  run = press(run, { point: 1, confirm: true });
-  assert.equal(run.pool.at(-1), kind, "clicked: taken");
-
-  let shop = inShop(10);
-  shop = press(shop, { point: SHOP_REROLL });
-  assert.equal(shop.shop!.cursor, SHOP_REROLL);
-  shop = press(shop, { point: SHOP_LEAVE, confirm: true });
-  assert.equal(shop.phase, "clear", "an action acts on one tap");
-});
-
-test("a finger: the first tap on a card chooses it, so it can be read, and a second takes or buys it", () => {
-  let run = jarWith([]);
-  run.turn = 2;
-  resolve(run);
   const before = run.pool.length;
   run = press(run, { point: 0, confirm: true });
   assert.deepEqual([run.phase, run.offerCursor, run.pool.length], ["pick", 0, before], "chosen, not taken");
   run = press(run, { point: 2, confirm: true });
-  assert.deepEqual([run.phase, run.offerCursor, run.pool.length], ["pick", 2, before], "another card: chosen again");
-  const kind = run.offers[2]!;
   run = press(run, { point: 2, confirm: true });
-  assert.equal(run.pool.at(-1), kind, "the same card again: taken");
+  assert.deepEqual([run.phase, run.offerCursor, run.pool.length], ["pick", -1, before], "the same card again: put back, not taken");
+  run = press(run, { point: 2, confirm: true });
+  assert.equal(run.offerCursor, 2, "and a third time: chosen again");
+  const kind = run.offers[2]!;
+  run = press(run, { confirm: true });
+  assert.equal(run.pool.at(-1), kind, "the button: taken");
 
   let shop = inShop(10);
   shop = press(shop, { point: 1, confirm: true });
-  assert.deepEqual([shop.shop!.cursor, shop.coins], [1, 10], "chosen, not bought");
   shop = press(shop, { point: 1, confirm: true });
-  assert.equal(shop.coins, 10 - FRUIT_PRICE);
+  assert.deepEqual([shop.shop!.cursor, shop.coins], [-1, 10], "tapped twice: put back, not bought");
+  shop = press(shop, { confirm: true });
+  assert.equal(shop.coins, 10, "and the button buys nothing while nothing is chosen");
+  shop = press(shop, { point: 1, confirm: true });
+  assert.equal(shop.shop!.cursor, 1, "chosen again");
+  shop = press(shop, { confirm: true });
+  assert.equal(shop.coins, 10 - FRUIT_PRICE, "the button: bought");
+  shop = press(shop, { point: SHOP_REROLL });
+  assert.equal(shop.shop!.cursor, SHOP_REROLL);
+  shop = press(shop, { point: SHOP_LEAVE, confirm: true });
+  assert.equal(shop.phase, "clear", "an action acts on one tap");
 });
 
 test("a tap that lands on no card leaves nothing chosen, in the pick and in the shop: the next tap on that card only chooses it again", () => {
@@ -1197,16 +1190,30 @@ test("the run keeps what its end board shows: its best turn, and what earned its
   resolve(run);
   assert.equal(run.bestTurn, 27, "three Apples simmering on the floor");
   assert.equal(run.turnScore, 0, "and the next turn starts from nothing");
-  assert.deepEqual(topEarners(run, 3), [{ label: "Apple", points: 27 }]);
+  assert.deepEqual(run.earned, { Apple: 27 });
   run.fruits = [fruit(4, "cherry", 250, JAR.floor - 14)];
   run.phase = "settle";
   resolve(run);
   assert.equal(run.bestTurn, 27, "a smaller turn leaves the best one");
-  run.earned = { Merge: 40, Apple: 90, Spill: -10, Cherry: 5, Crush: 12 };
+  run.pool = ["cherry", "cherry", "grape", "apple", "banana"];
+  run.earned = { Merge: 40, Apple: 90, Spill: -10, Cherry: 5, Crush: 12, Watermelon: 30 };
   assert.deepEqual(
-    topEarners(run, 3).map((e) => e.label),
-    ["Apple", "Merge", "Crush"],
-    "the three that scored most; what lost points is left out"
+    fruitResults(run),
+    [
+      { kind: "apple", points: 90 },
+      { kind: "watermelon", points: 30 },
+      { kind: "cherry", points: 5 },
+    ],
+    "every fruit that scored (a merge's Watermelon too), best first; the Grape and the Banana in the pool scored nothing"
+  );
+  assert.deepEqual(
+    keywordResults(run),
+    [
+      { label: "Merge", points: 40 },
+      { label: "Crush", points: 12 },
+      { label: "Spill", points: -10 },
+    ],
+    "what scored that was no fruit's own, what lost points included"
   );
 });
 
@@ -1234,6 +1241,9 @@ test("the tutorial's lessons: each waits for its moment, and is done when the pl
   assert.equal(lessonShows(lesson("score"), at("settle")), true);
   assert.equal(lessonShows(lesson("shop"), at("shop")), true);
   assert.equal(lessonDone(lesson("shop"), at("shop"), { ...none, acted: true }), true, "it lies over the shop's words, so it goes when there is something to read");
+  const shopping = inShop(10);
+  assert.equal(lessonDone(lesson("shop"), shopping, none), false, "nothing chosen yet");
+  assert.equal(lessonDone(lesson("shop"), press(shopping, { point: 1, confirm: true }), none), true, "a card chosen: the Buy button stands where it lies");
   // Every lesson fits its card: a title, and words for the pointer and for the keyboard.
   for (const l of LESSONS) assert.ok(l.title.length <= 14 && l.text.length <= 90 && l.keysText.length <= 90, l.id);
 });

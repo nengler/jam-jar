@@ -1,8 +1,7 @@
-# Pixel fruit
+# The fruit sheet
 
 `fruit-sheet.png` is a sheet of 16 x 16 pixel fruit (38 columns x 6 rows), supplied by the project owner as a free pixel fruit
-set. **Source and licence: to be filled in** (who made it, where it came from, and its licence, so the game can credit it).
+set, in its own colours. The placeholder fruit in `art/fruit/` were cut from it once; nothing reads it now.
 
-`tools/make-assets.py` picks one sprite per fruit (`FRUIT_SPRITES`) and scales it up with no smoothing. No sprite exists for a
-Durian (the Pineapple stands in), a Seed (the brown Kiwi), a Melon (the round green one), a Prune (the Blackberry), a Fig (the
-Aubergine) or a Honeydew (the golden Apple). The Fruit Fly is drawn by the script.
+**Source and licence: to be filled in** (who made it, where it came from, and its licence), so the game can credit it while any
+of its fruit are still in use.

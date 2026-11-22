@@ -1,12 +1,13 @@
-import { Button, Entity, Flex, Menu, Text, useInputDevice, useTime, useSound } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Menu, Text, useInputDevice, useTime } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
 import { DemoJar } from "./DemoJar.tsx";
 import { save, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
+import { PushButton } from "./PushButton.tsx";
 import { ENTER, entered, INTRO, jarDrop, LANDS, popIn } from "./layout.ts";
 import { Bloops, Thud } from "./Sounds.tsx";
-import { CLICK_VOLUME, BUTTON, BUTTON_GREY, BUTTON_SLICE, DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT_SOFT } from "./theme.ts";
+import { DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT_SOFT } from "./theme.ts";
 
 /** The title's two halves: the name and the menu are centred in the left `MENU_W` pixels, and the jar stands this far right of
  * where the play screen's does, in the middle of what is left. */
@@ -27,7 +28,6 @@ export function Title({ name }: { name: string }) {
   const keys = device === "keyboard";
   const hasSave = useGame((g) => g.hasSave);
   const { start, openSettings } = useGame.actions();
-  const playClick = useSound("click.wav");
   // The title comes in as a run does: the name drops onto the wall and bounces, the jar falls into place, the line under
   // the name appears, and the buttons slide in from the left one after another, each within its own place in the menu.
   const time = useTime();
@@ -53,25 +53,10 @@ export function Title({ name }: { name: string }) {
         </Flex>
         <Menu gap={8} alignItems="stretch" width={208} paddingTop={8} paddingBottom={8}>
           {hasSave && (
-            <Button x={-MENU_SLIDE * (1 - popIn(time, MENU_AT + 0 * ENTER.gap, ENTER.pop))} opacity={entered(time, 0, MENU_AT)} autoFocus onPress={() => {
-              playClick(CLICK_VOLUME);
-              save.load();
-            }} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
-              <Text color={INK}>Continue</Text>
-            </Button>
+            <PushButton focusable x={-MENU_SLIDE * (1 - popIn(time, MENU_AT + 0 * ENTER.gap, ENTER.pop))} opacity={entered(time, 0, MENU_AT)} autoFocus onPress={() => save.load()} height={40} label="Continue" />
           )}
-          <Button x={-MENU_SLIDE * (1 - popIn(time, MENU_AT + 1 * ENTER.gap, ENTER.pop))} opacity={entered(time, 1, MENU_AT)} autoFocus={!hasSave} onPress={() => {
-              playClick(CLICK_VOLUME);
-              start();
-            }} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
-            <Text color={INK}>{hasSave ? "New run" : "Play"}</Text>
-          </Button>
-          <Button x={-MENU_SLIDE * (1 - popIn(time, MENU_AT + 2 * ENTER.gap, ENTER.pop))} opacity={entered(time, 2, MENU_AT)} onPress={() => {
-              playClick(CLICK_VOLUME);
-              openSettings();
-            }} height={40} backgroundImage={BUTTON_GREY} focusBackgroundImage={BUTTON} hoverBackgroundImage={BUTTON} slice={BUTTON_SLICE} paddingTop={4} alignItems="center" justifyContent="center">
-            <Text color={INK}>Settings</Text>
-          </Button>
+          <PushButton focusable x={-MENU_SLIDE * (1 - popIn(time, MENU_AT + 1 * ENTER.gap, ENTER.pop))} opacity={entered(time, 1, MENU_AT)} autoFocus={!hasSave} onPress={start} height={40} label={hasSave ? "New run" : "Play"} />
+          <PushButton focusable x={-MENU_SLIDE * (1 - popIn(time, MENU_AT + 2 * ENTER.gap, ENTER.pop))} opacity={entered(time, 2, MENU_AT)} onPress={openSettings} height={40} label="Settings" />
         </Menu>
         {/* The keys, for a player at a keyboard, until a button has been pressed once. The row keeps its height after that, so the menu does not move. */}
         <Flex direction="row" gap={20} height={26}>
