@@ -1,9 +1,9 @@
 import { Entity, Flex, Shape, Sprite, Text, Tooltip, useTime, type Child } from "@tsengine/runtime/jsx";
 
-import { Dialog, Letters } from "./Board.tsx";
+import { Dialog } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
-import { KeyHint, TapButton } from "./KeyHint.tsx";
+import { TapButton } from "./KeyHint.tsx";
 import { chosenName, ENTER, entered, placed, popIn, poolRows } from "./layout.ts";
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { ITEMS, type ItemKind } from "./rules/items.ts";
@@ -30,7 +30,6 @@ import {
   LIGHT,
   SELECT,
   SHADE,
-  SIGN,
   SIGN_SLICE,
   signFor,
   SOLD,
@@ -51,10 +50,6 @@ const ACTION_W = 196;
 const ACTION_H = 36;
 const ACTION_GAP = 11;
 const ACTION_Y = 280;
-/** The heading's sign, hung on the awning's beam. */
-const HEADING_W = 120;
-const HANGING_H = 36;
-const HANGING_Y = 8;
 /**
  * The bar along the foot of the screen, under the actions: the pool's basket (as on the play screen, 56 x 38) on the left, the Buy
  * button or what just happened in the middle, and the coins on the right, clear of the pause button in the corner.
@@ -90,8 +85,6 @@ function removeCell(kind: FruitKind): number {
 interface ShopProps {
   run: Run;
   shop: ShopState;
-  /** Whether the keys are shown: the first visit, and the first time a fruit is taken out. */
-  hints: boolean;
   /** The mouse came over a card or an action (its place in the shop's cursor order), or pressed it. */
   onPoint: (place: number) => void;
   onClick: (place: number) => void;
@@ -216,10 +209,9 @@ function Words({ name, text }: { name: string; text: string }) {
 }
 
 /** A shop action: a wooden sign with what it does at its left end and what it costs at its right (or, for the way out, centred). */
-function ActionSign({ chosen, go = false, label, price, afford, keyName = "", onPoint, onPress }: { chosen: boolean; go?: boolean; label: string; price?: number; afford?: boolean; keyName?: string; onPoint: () => void; onPress: () => void }) {
+function ActionSign({ chosen, go = false, label, price, afford, onPoint, onPress }: { chosen: boolean; go?: boolean; label: string; price?: number; afford?: boolean; onPoint: () => void; onPress: () => void }) {
   return (
-    <Flex width={ACTION_W} height={ACTION_H} direction="row" alignItems="center" justifyContent={price === undefined ? "center" : "space-between"} gap={8} paddingX={keyName === "" ? 14 : 8} backgroundImage={signFor(chosen, go)} slice={SIGN_SLICE} focusable={false} onPointerEnter={onPoint} onPress={onPress}>
-      {keyName !== "" && <KeyHint name={keyName} label="" />}
+    <Flex width={ACTION_W} height={ACTION_H} direction="row" alignItems="center" justifyContent={price === undefined ? "center" : "space-between"} paddingX={14} backgroundImage={signFor(chosen, go)} slice={SIGN_SLICE} focusable={false} onPointerEnter={onPoint} onPress={onPress}>
       <Text color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>
         {label}
       </Text>
@@ -240,13 +232,13 @@ const CARD_DROP = 260;
 const ACTION_RISE = 120;
 
 /**
- * The shop between two cycles: a market stall over the dimmed kitchen. A striped awning across the top with the heading and the
- * purse hung from it; three fruit in baskets and an item on a cloth, each on a jam-jar label with a price tag, standing on the
- * stall's counter; then wooden signs for removal, a reroll and the way out. The rules (rules/jar.ts, `Shop`) hold what is for
- * sale and where the cursor is; this draws them. `hints` is whether the keys are shown: the first visit, and the first time a
- * fruit is taken out.
+ * The shop between two cycles: a market stall over the dimmed kitchen. A striped awning across the top; three fruit in baskets
+ * and an item on a cloth, each on a jam-jar label with its price in the corner, standing on the stall's counter; wooden signs
+ * for removal, a reroll and the way out; and a bar along the foot with the pool, the Buy button and the coins. No keys are shown
+ * on it: the arrows, Enter, Space and D work as on the play screen. The rules (rules/jar.ts, `Shop`) hold what is for sale and
+ * where the cursor is; this draws them.
  */
-export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, onSpace, onPool }: ShopProps) {
+export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, onPool }: ShopProps) {
   // The card the cursor is on shows what its keywords mean, but not over the pause menu.
   const paused = useGame((g) => g.paused);
   const kinds = poolRows(run.pool);
@@ -258,7 +250,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
   const chosen = shop.removing ? -1 : shop.cursor;
   // Whether the chosen place on the shelf has something for sale, for the Buy button: not an action, a sold place, or none.
   const forSale = forSaleAt(shop, chosen);
-  const awning = -(AWNING_H + HANGING_H) * (1 - popIn(time, 0, ENTER.pop));
+  const awning = -AWNING_H * (1 - popIn(time, 0, ENTER.pop));
   return (
     <Entity>
       {/* Shaded twice: the shop covers the whole screen, and the boards behind it should not show through. */}
@@ -299,24 +291,18 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
         </Offer>
       </Flex>
 
-      {/* The awning, over the top of the labels, with the heading's sign hung on its beam. */}
+      {/* The awning, over the top of the labels. */}
       <Sprite image={AWNING} x={0} y={awning} />
-      <Flex left={0} right={0} top={HANGING_Y + awning} direction="row" justifyContent="center">
-        <Flex width={HEADING_W} height={HANGING_H} direction="row" justifyContent="center" alignItems="center" backgroundImage={SIGN} slice={SIGN_SLICE}>
-          <Letters text="Shop" seed={3} />
-        </Flex>
-      </Flex>
       {/* The actions: wooden signs under the stall, the way out painted green. */}
       <Flex left={0} right={0} top={ACTION_Y} direction="row" justifyContent="center" gap={ACTION_GAP} y={ACTION_RISE * (1 - popIn(time, (SHOP_ITEM + 1) * ENTER.gap, ENTER.pop))} opacity={entered(time, SHOP_ITEM + 1)}>
         <ActionSign chosen={chosen === SHOP_REMOVE} label="Remove one" price={removalPrice(run)} afford={run.coins >= removalPrice(run)} onPoint={() => onPoint(SHOP_REMOVE)} onPress={() => onClick(SHOP_REMOVE)} />
         <ActionSign chosen={chosen === SHOP_REROLL} label="New shelf" price={rerollPrice(run)} afford={run.coins >= rerollPrice(run)} onPoint={() => onPoint(SHOP_REROLL)} onPress={() => onClick(SHOP_REROLL)} />
-        <ActionSign chosen={chosen === SHOP_LEAVE} go={true} label={hints ? "Next cycle" : "Next cycle >"} keyName={hints ? "Space" : ""} onPoint={() => onPoint(SHOP_LEAVE)} onPress={() => onClick(SHOP_LEAVE)} />
+        <ActionSign chosen={chosen === SHOP_LEAVE} go={true} label="Next cycle >" onPoint={() => onPoint(SHOP_LEAVE)} onPress={() => onClick(SHOP_LEAVE)} />
       </Flex>
 
       {/* The bar along the foot: the pool on the left, the coins on the right, and between them the Buy button while a card for sale
-          is chosen (a tap on a card only chooses it, so it can be read and its text scrolled first; Enter buys it too), else the
-          arrow keys the first time, else what just happened (a fruit bought, the shelf restocked). Each key is shown on what it
-          does, the first time: D on the pool, Enter on Buy, Space on the way out. */}
+          is chosen (a tap on a card only chooses it, so it can be read and its text scrolled first; Enter buys it too), else what
+          just happened (a fruit bought, the shelf restocked). */}
       <Flex left={BAR_SIDE} right={BAR_RIGHT} top={BAR_Y} height={BAR_H} direction="row" alignItems="center" justifyContent="space-between" opacity={entered(time, SHOP_ITEM + 1)}>
         <Flex direction="row" alignItems="center" gap={6} focusable={false} onPress={onPool}>
           <Flex width={POOL_BASKET_W} height={POOL_H}>
@@ -326,12 +312,10 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
             </Entity>
           </Flex>
           <Text color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>{`${run.pool.length} fruit`}</Text>
-          {hints && <KeyHint name="D" label="" />}
         </Flex>
         <Flex width="grow" direction="row" justifyContent="center">
-          {forSale && <TapButton label="Buy" keyName={hints ? "Enter" : ""} onPress={onConfirm} />}
-          {!forSale && hints && !shop.removing && <KeyHint name="arrows" label="Choose" />}
-          {!forSale && !hints && (
+          {forSale && <TapButton label="Buy" onPress={onConfirm} />}
+          {!forSale && (
             <Text width={BAR_MESSAGE_W} maxWidth={BAR_MESSAGE_W} align="center" color={LIGHT}>
               {run.message}
             </Text>
@@ -363,15 +347,12 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
                 {/* A tap on a kind only chooses it. What takes it out is this button (or Enter), which names it and its price,
                     so nothing leaves the pool by a slip of the finger. */}
                 <Flex direction="row" justifyContent="center" alignItems="center" gap={12} paddingTop={6}>
-                  {shop.removeCursor >= 0 && <TapButton label={`Take out ${chosenName(kinds, shop.removeCursor)}`} keyName={hints ? "Enter" : ""} onPress={onConfirm} />}
+                  {shop.removeCursor >= 0 && <TapButton label={`Take out ${chosenName(kinds, shop.removeCursor)}`} onPress={onConfirm} />}
                   {shop.removeCursor < 0 && <Text color={INK_SOFT}>Choose a fruit</Text>}
-                  <TapButton label="Back" keyName={hints ? "Space" : ""} onPress={onSpace} />
+                  <TapButton label="Back" onPress={onSpace} />
                 </Flex>
               </Dialog>
             </Flex>
-          </Flex>
-          <Flex left={0} right={0} bottom={2} direction="row" justifyContent="center" alignItems="center" gap={20}>
-            {hints && <KeyHint name="arrows" label="Choose" />}
           </Flex>
         </Entity>
       )}
