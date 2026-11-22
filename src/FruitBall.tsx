@@ -24,7 +24,7 @@ interface FruitBallProps {
 }
 
 /**
- * A fruit, centred on (x, y): its pixel sprite (tools/fruit), doubled with no smoothing by tools/make-assets.py. A rotten
+ * A fruit, centred on (x, y): its pixel sprite (art/fruit), doubled with no smoothing by tools/make-assets.py. A rotten
  * fruit is tinted brown, a honeyed one gold; a lit one flashes.
  */
 export function FruitBall({ kind, x, y, rotten = false, honeyed = false, pickled = false, frozen = false, lit = false, glow = 0, turn = 0 }: FruitBallProps) {

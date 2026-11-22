@@ -3,7 +3,7 @@ import { FRUIT_ART } from "./rules/sizes.ts";
 
 /**
  * Jam Jar's look, in one place. Every colour is from the Apollo palette (tools/palette/apollo.hex), which every picture is
- * snapped to or drawn in as well (tools/make-assets.py), and every picture is pixel art at 2x. The text is the engine's built-in
+ * drawn in as well (art/), and every picture is pixel art at 2x. The text is the engine's built-in
  * pixel fonts at 2x too: m5x7 for reading, Jersey 10 for headings and numbers.
  */
 export const INK = "#341c27";
@@ -43,7 +43,7 @@ export function cardFor(chosen: boolean): string {
 }
 
 /**
- * The shop is a market stall in the kitchen (tools/make-assets.py, "The shop"): a striped awning, the stall's counter, the offers
+ * The shop is a market stall in the kitchen (art/shop): a striped awning, the stall's counter, the offers
  * as jam-jar labels (a gingham band on the item's), paper price tags, a SOLD stamp, wooden signs for the heading, the purse and
  * the actions (green for the way out), and a jar of coins for the purse. The labels and signs are 9-sliced like the frames.
  */
