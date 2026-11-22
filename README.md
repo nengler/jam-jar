@@ -358,9 +358,12 @@ saved data and reads none.
   names the colours, the fonts and the Kenney frames every screen is made of. `settings.ts` is the player's settings, which the
   engine keeps between launches (the game has an id, `<Game id="jam-jar">`, which is what turns that on).
 - `tools/install-engine.ts` packs `../tse` and installs it without saving. `tools/balance.ts` is the balance run above.
-- `art/` holds every picture as it is drawn: at its art size (half its size on the screen), in the Apollo palette
-  (`art/README.md`). `tools/make-assets.py` (Python with Pillow) checks each and doubles it into `assets/`, writes each fruit's
-  ball size to `src/rules/sizes.ts`, copies the sounds and makes the tally's notes. Rerun it after changing a picture.
+- `art/` holds every picture as it is drawn, as an Aseprite file: at its art size (half its size on the screen), in the Apollo
+  palette (`art/README.md`). `tools/make-assets.py` (Python with Pillow) flattens each (`tools/aseprite.py` reads the files, so
+  Aseprite need not be installed), checks it and doubles it into `assets/` as a PNG, writes each fruit's ball size to
+  `src/rules/sizes.ts`, copies the sounds and makes the tally's notes. npm runs it before `dev`, `build`, `check`, `test` and
+  `package`, so a saved picture is in the game the next time it starts. `assets/` stays in git: the Pages build packages it
+  as it is, without Python.
 
 ## Credits
 
