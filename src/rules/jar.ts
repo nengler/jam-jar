@@ -57,6 +57,10 @@ export const SPOTS = { salt: 0 };
  * over everything but a Grape, Orange, Melon or Watermelon (`smashOther` "none"); with "destroy" it Smashes the biggest fruit of
  * any kind there, Crushing a Cherry, a Slice or a fruit off the ladder. `smashBlasts` (off: too strong, a Boom build gained 17%)
  * has an explosion Smash what it would destroy, where that fruit can be Smashed.
+ *
+ * The Plunge (bots only for now): `plunge` has a Pumpkin, once it lands, drive straight down through the pile to the floor (the
+ * lid, turned over), throwing aside and up each fruit in its way and, with `plungeSmash`, Smashing each Grape, Orange, Melon and
+ * Watermelon it hits, its pieces thrown out too. At the floor it shoves what is round it. See `plungeStep`.
  */
 export const LADDER = {
   melonPick: false,
@@ -69,6 +73,8 @@ export const LADDER = {
   smashOther: "none" as "destroy" | "none",
   smashAll: true,
   smashBlasts: false,
+  plunge: false,
+  plungeSmash: true,
 };
 
 /** Every fruit a pick or the shop can ever offer, whatever the run: what the pick's cards and the shop's baskets make room for. */
@@ -263,6 +269,9 @@ export interface Fruit {
   remerged?: boolean;
   /** Made by a Smash: a Merge of it and another piece makes a fruit that cannot Merge again this turn (the loop cap). */
   piece?: boolean;
+  /** A Pumpkin's Plunge: seconds it may still drive down (0 or absent: not plunging), and the fruit it has already hit on the way. */
+  plunging?: number;
+  hit?: number[];
   /** A Gourd that has taken in a rotten fruit: the Cherries it Bursts into are rotten. */
   tainted?: boolean;
   /** A Gourd's seconds until it can take in another fruit, so each growth can be seen. */
@@ -1011,6 +1020,7 @@ function shake(run: Run): void {
 export function simulate(run: Run, dt: number): void {
   copyKiwis(run);
   land(run);
+  plungeStep(run, dt);
   merge(run);
   absorb(run, dt);
   light(run);
@@ -1061,6 +1071,14 @@ export const CRUSH_BONUS = 3;
  * a Watermelon under it is Smashed into Slices. A frozen fruit holds.
  */
 function crush(run: Run, pumpkin: Fruit): void {
+  if (LADDER.plunge) {
+    // It does not stop where it lands: it drives down through the pile (`plungeStep`).
+    pumpkin.plunging = PLUNGE_LIMIT;
+    pumpkin.hit = [];
+    pulse(pumpkin);
+    run.message = "A Pumpkin Plunges";
+    return;
+  }
   if (LADDER.pumpkinSmash) {
     pumpkinSmash(run, pumpkin);
     return;
@@ -1092,6 +1110,74 @@ function crush(run: Run, pumpkin: Fruit): void {
   if (limes > 0) {
     pour(run, "lime", limes * LIME_JUICE);
     run.message = `A Pumpkin Crushes ${limes === 1 ? "a Lime" : `${limes} Limes`}: lime juice rises`;
+  }
+}
+
+/** The Plunge: the most seconds it drives down, how hard it throws what it hits (sideways and up, px/s), and how far round it the
+ * floor's shove reaches (px past touching) and how hard. Its ball's drive speed is the component's (`PLUNGE_SPEED` in Fruit.tsx). */
+export const PLUNGE_LIMIT = 1.2;
+export const PLUNGE_THROW = { side: 300, up: 260 };
+export const PLUNGE_SHOVE = { reach: 36, push: 280 };
+
+/**
+ * One step of each plunging Pumpkin: each fruit it touches that it has not hit yet is hit once. With `plungeSmash`, a Grape,
+ * Orange, Melon or Watermelon is Smashed and its pieces thrown out; anything else is thrown aside and up, away from its middle.
+ * A frozen fruit holds, and stops it. At the floor (the lid, turned over), or once its time is up, it stops and shoves what is
+ * round it.
+ */
+function plungeStep(run: Run, dt: number): void {
+  const plungers = run.fruits.filter((f) => (f.plunging ?? 0) > 0);
+  if (plungers.length === 0) return;
+  for (const p of plungers) {
+    if (!run.fruits.includes(p)) continue;
+    p.plunging = (p.plunging ?? 0) - dt;
+    const hit = p.hit ?? [];
+    const touched = run.fruits.filter((o) => p.touching.includes(o.id) && !hit.includes(o.id));
+    const born: Fruit[] = [];
+    const gone: Fruit[] = [];
+    for (const o of touched) {
+      hit.push(o.id);
+      if (o.frozen) {
+        // Ice holds: the Plunge stops on it.
+        p.plunging = 0;
+        continue;
+      }
+      if (o.kind === "giantpumpkin" || o.kind === "pumpkin") continue;
+      const side = o.x === p.x ? (o.id % 2 === 0 ? 1 : -1) : Math.sign(o.x - p.x);
+      if (LADDER.plungeSmash && smashable(o, true)) {
+        const pieces = smash(run, o);
+        for (const piece of pieces) {
+          hit.push(piece.id);
+          const out = piece.x === o.x ? side : Math.sign(piece.x - o.x);
+          kick(piece, (out * 0.6 + side * 0.4) * PLUNGE_THROW.side, -PLUNGE_THROW.up);
+        }
+        born.push(...pieces);
+        gone.push(o);
+      } else {
+        kick(o, side * PLUNGE_THROW.side, -PLUNGE_THROW.up);
+        pulse(o);
+      }
+    }
+    p.hit = hit;
+    if (gone.length > 0) {
+      run.fruits = [...run.fruits.filter((f) => !gone.includes(f)), ...born];
+      sound(run, "merge");
+    }
+    const down = run.flipped ? onLid(p) : onFloor(p);
+    if (down || (p.plunging ?? 0) <= 0) {
+      // Down: what is round it is shoved away.
+      p.plunging = 0;
+      for (const o of run.fruits) {
+        if (o === p || o.frozen) continue;
+        const dx = o.x - p.x;
+        const dy = o.y - p.y;
+        const d = Math.max(1, Math.hypot(dx, dy));
+        if (d > p.r + o.r + PLUNGE_SHOVE.reach) continue;
+        kick(o, (dx / d) * PLUNGE_SHOVE.push, -Math.abs(dy / d) * PLUNGE_SHOVE.push - 80);
+      }
+      pulse(p);
+      sound(run, "land");
+    }
   }
 }
 

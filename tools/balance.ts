@@ -258,6 +258,9 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   LADDER.smashOther = plan.includes("/psmash") && !plan.includes("/psmashladder") ? "destroy" : "none";
   LADDER.smashAll = !plan.includes("/nosmashall");
   LADDER.smashBlasts = plan.includes("/smashblasts");
+  // The Plunge: "/plunge" (the Pumpkin drives to the floor, Smashing ladder fruit and throwing the rest), "/plungenosmash" (only throwing).
+  LADDER.plunge = plan.includes("/plunge");
+  LADDER.plungeSmash = !plan.includes("/plungenosmash");
   LADDER.melonChance = Number(/\/melonchance(\d+)/.exec(plan)?.[1] ?? MELON_CHANCE * 100) / 100;
   LADDER.giantPoints = Number(/\/giant(\d+)/.exec(plan)?.[1] ?? FRUITS.giantpumpkin.points);
   LADDER.crushReach = Number(/\/reach(\d+)/.exec(plan)?.[1] ?? 8);
@@ -265,7 +268,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
   // With no luck to average over (a tray with no wobble), one try is the whole story.
   const tries = TRAY.on && TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
-  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots|melonchance\d+|melon|oranges|reach\d+|smallcrush|giant\d+|psmashladder|psmash|nosmashall|smashall|smashblasts|oldpumpkin)/g, "");
+  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots|melonchance\d+|melon|oranges|reach\d+|smallcrush|giant\d+|psmashladder|psmash|nosmashall|smashall|smashblasts|oldpumpkin|plungenosmash|plunge)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
