@@ -1720,7 +1720,8 @@ function leaveRent(run: Run): void {
   stock(run, run.shop);
   run.phase = "shop";
   const next = bossNow(run, run.cycle + 1);
-  run.message = next === null ? "The shop is open" : `Next cycle: the ${BOSS_NAME[next]}`;
+  // Nothing to say on opening, unless the next cycle is a boss jar.
+  run.message = next === null ? "" : `Next cycle: the ${BOSS_NAME[next]}`;
 }
 
 /** Fill the shop's shelf: three different fruit, and an item the player can use (none when there is none: `offerable`). */
