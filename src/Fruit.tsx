@@ -18,6 +18,8 @@ interface FruitProps {
   pickled: boolean;
   /** Held where it is: its ball is pinned while this is on. */
   frozen: boolean;
+  /** A Pumpkin's Plunge: its ball is driven straight down (up, turned over) through the pile while this is on. */
+  plunging: boolean;
   /** The y of the surface of lime juice in the jar, which floats the fruit in it; at or below the floor when there is none. */
   surface: number;
   /** A steady pull to the right, in pixels per second per second: the Tilted jar. */
@@ -53,6 +55,9 @@ const SQUASH_MOST = 0.22;
 /** How much of its sliding a fruit pressed against the jar loses each substep in the Tilted jar (the engine's default is 0.1). */
 const TILT_FRICTION = 0.01;
 
+/** A Pumpkin's Plunge: how fast its ball is driven down through the pile (px/s). Its weight (`heavy` in the fruit table) lets it through. */
+const PLUNGE_SPEED = 520;
+
 /** How much of its speed a fruit in juice loses each step. */
 const JUICE_DRAG = 0.12;
 
@@ -62,7 +67,7 @@ const JUICE_DRAG = 0.12;
  * blowing up). A blast reaches it as a kick through its props. The ball has no angle of its own, so the fruit's turning is
  * drawn from how it moves: it rolls along what it touches.
  */
-export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, surface, pull, flipped, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
+export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, plunging, surface, pull, flipped, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
   // `turn` is how far it has rolled, in degrees; `lastX` where it was a step ago.
   const s = useMutable({ kicked: 0, turn: 0, lastX: x0, lastY: y0, fall: 0, squash: 0, hit: 1, flat: 0 });
   const { x, y, contacts, push, speed, pin, setGravity, setGravityX, stick } = useBall({
@@ -90,6 +95,12 @@ export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, s
     setGravity(flipped ? -GRAVITY : GRAVITY * (1 - 2 * under));
     if (under > 0 && !flipped) push(-(x - s.lastX) * 60 * JUICE_DRAG, -(y - s.lastY) * 60 * JUICE_DRAG);
     setGravityX(pull);
+    if (plunging && dt > 0) {
+      // Driven straight down at `PLUNGE_SPEED`: what it moves across is cancelled, what it lacks downwards is added.
+      const vx = (x - s.lastX) / dt;
+      const vy = (y - s.lastY) / dt;
+      push(-vx, (flipped ? -PLUNGE_SPEED : PLUNGE_SPEED) - vy);
+    }
     if (kicks !== s.kicked) {
       s.kicked = kicks;
       push(kickX, kickY);

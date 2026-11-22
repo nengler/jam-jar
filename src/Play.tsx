@@ -346,7 +346,7 @@ export function Play() {
       <JarMarks run={run} onPoint={point} onChoose={click} />
       {/* The points stay upright over a leaning jar. */}
       {popups.map((p) => (
-        <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={2} shadowY={2}>
+        <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={p.big === true ? DISPLAY_SIZE * 2 : DISPLAY_SIZE} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={p.big === true ? 4 : 2} shadowY={p.big === true ? 4 : 2}>
           {p.text}
         </Text>
       ))}

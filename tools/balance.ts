@@ -11,10 +11,8 @@
  * - "/fair" is "/best" without the luck: it plays each arrangement 3 times (BALANCE_TRIES), each with other landing spots or
  *   another wobble (`SPOTS` in jar.ts), takes the one with the best average, and plays it with luck none of the tries saw. What
  *   it gains is what a player who reads the jar perfectly could gain; "/best" minus "/fair" is what seeing the luck was worth.
- * - "/tray", the game's drop, is accepted and changes nothing, so older result files still read.
- * - "/melonchance20" (a Melon in 20% of picks) and "/giant50" (what a Giant Pumpkin scores) turn the Ladder set's dials
- *   (`LADDER` in jar.ts). The variants the game turned down ("/spots", "/melon", "/oranges", "/reach16", "/smallcrush",
- *   "/oldpumpkin", "/psmash", "/nosmashall", "/smashblasts") were taken out of the rules; their results are in the README.
+ * - "/tray", the game's drop, is accepted and changes nothing, so older result files still read. "/spots" (a fruit at a time, each
+ *   at a random spot, the drop before the tray) was taken out of the rules; its results are in the README.
  *   "/wobble8" sets how far a fruit may wander in its lane (default 4 px; "/wobble0" lands every fruit mid-lane).
  *
  * A player ending "/thin" ("skip/thin") spends its coins in the shop taking Cherries out of its pool; the others buy nothing.
@@ -33,9 +31,9 @@ import { findComponent } from "@tsengine/testing";
 
 import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
-import { FRUITS, MELON_CHANCE, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
+import { FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
-import { bossNow, LADDER, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
+import { bossNow, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
 
 type Strategy = string;
@@ -227,14 +225,11 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   const thin = plan.includes("/thin");
   const order = plan.includes("/order");
   const search = plan.includes("/best") ? "best" : plan.includes("/worst") ? "worst" : plan.includes("/fair") ? "fair" : null;
-  const retired = /\/(spots|melon|oranges|reach\d+|smallcrush|oldpumpkin|psmash\w*|nosmashall|smashblasts)(\/|$)/.exec(plan);
-  if (retired !== null) throw new Error(`"/${retired[1]}" was a variant the game turned down, and the rules no longer have it`);
-  LADDER.melonChance = Number(/\/melonchance(\d+)/.exec(plan)?.[1] ?? MELON_CHANCE * 100) / 100;
-  LADDER.giantPoints = Number(/\/giant(\d+)/.exec(plan)?.[1] ?? FRUITS.giantpumpkin.points);
+  if (/\/spots(\/|$)/.test(plan)) throw new Error('"/spots" was the drop before the tray, and the rules no longer have it');
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
   // With no luck to average over (a tray with no wobble), one try is the whole story.
   const tries = TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
-  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|melonchance\d+|giant\d+|smashall)/g, "");
+  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
@@ -306,7 +301,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   }
   player.close();
   return { scores, pool, settles, mismatches, // Giant Pumpkins by the points they scored: "/best" and "/fair" play their turns out of this loop's sight, so ids miss them.
-    events: { earned: { ...earned }, giants: Math.max(giants.size, Math.round((earned["Giant Pumpkin"] ?? 0) / LADDER.giantPoints)), smashes: slices.size / 4 + pieces.size / 2 } };
+    events: { earned: { ...earned }, giants: Math.max(giants.size, Math.round((earned["Giant Pumpkin"] ?? 0) / FRUITS.giantpumpkin.points)), smashes: slices.size / 4 + pieces.size / 2 } };
 }
 
 const runs = Number(process.argv[2] ?? 20);
@@ -343,11 +338,11 @@ for (const strategy of players) {
   // The Ladder set's checks: how often its big-fruit events happen, their share of the points, and how much spills.
   const per = (label: string) => events.reduce((sum, e) => sum + (e.earned[label] ?? 0), 0) / runs;
   const total = events.reduce((sum, e) => sum + Object.values(e.earned).reduce((a, b) => a + Math.max(0, b), 0), 0) / runs;
-  const ladder = per("Slice") + per("Smash") + per("Crush") + per("Gourd") + per("Giant Pumpkin") + per("Pumpkin");
+  const ladder = per("Slice") + per("Smash") + per("Plunge") + per("Gourd") + per("Giant Pumpkin");
   const giantRuns = events.filter((e) => e.giants > 0).length;
   console.log(
     `${"".padEnd(34)} a run: ${total.toFixed(0)} points; Giant Pumpkins ${(events.reduce((a, e) => a + e.giants, 0) / runs).toFixed(2)} (in ${giantRuns}/${runs} runs), ` +
-      `Smashes ${(events.reduce((a, e) => a + e.smashes, 0) / runs).toFixed(2)} (+${(per("Slice") + per("Smash")).toFixed(0)}), Ladder events ${(events.reduce((a, e) => a + e.smashes + e.giants, 0) / runs).toFixed(2)}, Crush +${per("Crush").toFixed(0)}, Pumpkin +${per("Pumpkin").toFixed(0)}, Gourd +${per("Gourd").toFixed(0)}, ` +
+      `Smashes ${(events.reduce((a, e) => a + e.smashes, 0) / runs).toFixed(2)} (+${(per("Slice") + per("Smash") + per("Plunge")).toFixed(0)}), Ladder events ${(events.reduce((a, e) => a + e.smashes + e.giants, 0) / runs).toFixed(2)}, Plunge bursts +${per("Plunge").toFixed(0)}, Gourd +${per("Gourd").toFixed(0)}, ` +
       `Ladder share ${((100 * ladder) / Math.max(1, total)).toFixed(0)}%, spills ${(-per("Spill") / 5).toFixed(1)} (${(-per("Spill") / 5 / rent.length).toFixed(1)} a cycle)`
   );
   if (process.argv[4] !== "full") continue;
