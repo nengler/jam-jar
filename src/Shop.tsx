@@ -42,6 +42,8 @@ const CARD_W = 148;
 const CARD_H = 200;
 const CARD_GAP = 6;
 const CARD_LIFT = 10;
+/** The room left under a label's text, inside its frame: a longer text scrolls rather than running over it. */
+const LABEL_FOOT = 8;
 /** Where the stall's counter's top is: the labels stand on it. */
 const STALL_Y = 256;
 /** The actions: three signs under the stall, as wide across as the labels. */
@@ -123,10 +125,10 @@ function OnCloth({ item }: { item: ItemKind | null }) {
 }
 
 /** What a place on the stall shows once it is bought: its empty basket or cloth, stamped SOLD. */
-function Sold({ picture }: { picture: Child }) {
+function Sold({ children }: { children: Child }) {
   return (
     <Flex height="grow" direction="column" alignItems="center" justifyContent="center" gap={8} paddingBottom={20}>
-      {picture}
+      {children}
       <Sprite image={SOLD} />
     </Flex>
   );
@@ -148,21 +150,23 @@ interface OfferProps {
 function Offer({ at, chosen, item, drop, opacity, onClick, children }: OfferProps) {
   return (
     <Flex height={CARD_H + CARD_LIFT} direction="column" justifyContent={chosen ? "start" : "end"} y={-CARD_DROP * (1 - drop)} opacity={opacity}>
-      <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={14} backgroundImage={labelFor(chosen, item)} slice={LABEL_SLICE} focusable={false} onPress={() => onClick(at)}>
+      <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={14} paddingBottom={LABEL_FOOT} backgroundImage={labelFor(chosen, item)} slice={LABEL_SLICE} focusable={false} onPress={() => onClick(at)}>
         {children}
       </Flex>
     </Flex>
   );
 }
 
-/** An offer's name and its rule text, under its picture. */
+/** An offer's name and its rule text, under its picture. The text takes what is left of the label, and scrolls when it is longer. */
 function Words({ name, text }: { name: string; text: string }) {
   return (
-    <Flex direction="column" alignItems="center">
+    <Flex height="grow" direction="column" alignItems="center">
       <Text width={CARD_W - 12} maxWidth={CARD_W - 12} align="center" color={INK}>
         {name}
       </Text>
-      <RuleText x={0} y={0} width={CARD_W - 12} text={text} color={INK_SOFT} accent={KEYWORD} />
+      <Flex width={CARD_W - 12} height="grow" direction="column" alignItems="center" overflow="scroll" scrollbarColor={INK_SOFT}>
+        <RuleText x={0} y={0} width={CARD_W - 20} text={text} color={INK_SOFT} accent={KEYWORD} />
+      </Flex>
     </Flex>
   );
 }
@@ -198,7 +202,8 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
   // into theirs, and the purse slides in from the right. Each is moved within its own slot (its `y`), so the row is laid out as
   // it always is.
   const time = useTime();
-  const at = (place: number) => !shop.removing && shop.cursor === place;
+  // The place the cursor is on, or none while a fruit is being chosen to take out.
+  const chosen = shop.removing ? -1 : shop.cursor;
   const awning = -(AWNING_H + HANGING_H) * (1 - popIn(time, 0, ENTER.pop));
   return (
     <Entity>
@@ -215,28 +220,28 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
           does not choose it (see the pick). */}
       <Flex left={0} right={0} top={STALL_Y + 2 - CARD_H - CARD_LIFT} direction="row" justifyContent="center" gap={CARD_GAP} onPressOutside={onAway}>
         {placed(shop.fruits).map((slot) => (
-          <Offer key={slot.at} at={slot.at} chosen={at(slot.at)} item={false} drop={popIn(time, slot.at * ENTER.gap, ENTER.pop)} opacity={entered(time, slot.at)} onClick={onClick}>
+          <Offer key={slot.at} at={slot.at} chosen={chosen === slot.at} item={false} drop={popIn(time, slot.at * ENTER.gap, ENTER.pop)} opacity={entered(time, slot.at)} onClick={onClick}>
             {slot.card !== null && (
-              <Tooltip show={!paused && at(slot.at)} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <Tooltip show={!paused && chosen === slot.at} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                 <Terms text={FRUITS[slot.card].text} />
               </Tooltip>
             )}
             {slot.card !== null && <Basket kind={slot.card} />}
             {slot.card !== null && <Words name={FRUITS[slot.card].name} text={FRUITS[slot.card].text} />}
             {slot.card !== null && <PriceTag price={FRUIT_PRICE} afford={run.coins >= FRUIT_PRICE} />}
-            {slot.card === null && <Sold picture={<Basket kind={null} />} />}
+            {slot.card === null && <Sold><Basket kind={null} /></Sold>}
           </Offer>
         ))}
-        <Offer at={SHOP_ITEM} chosen={at(SHOP_ITEM)} item={true} drop={popIn(time, SHOP_ITEM * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_ITEM)} onClick={onClick}>
+        <Offer at={SHOP_ITEM} chosen={chosen === SHOP_ITEM} item={true} drop={popIn(time, SHOP_ITEM * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_ITEM)} onClick={onClick}>
           {shop.item !== null && (
-            <Tooltip show={!paused && at(SHOP_ITEM)} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+            <Tooltip show={!paused && chosen === SHOP_ITEM} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
               <Terms text={ITEMS[shop.item].text} />
             </Tooltip>
           )}
           {shop.item !== null && <OnCloth item={shop.item} />}
           {shop.item !== null && <Words name={ITEMS[shop.item].name} text={ITEMS[shop.item].text} />}
           {shop.item !== null && <PriceTag price={ITEMS[shop.item].price} afford={run.coins >= ITEMS[shop.item].price} />}
-          {shop.item === null && <Sold picture={<OnCloth item={null} />} />}
+          {shop.item === null && <Sold><OnCloth item={null} /></Sold>}
         </Offer>
       </Flex>
 
@@ -254,9 +259,9 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
 
       {/* The actions: wooden signs under the stall, the way out painted green. */}
       <Flex left={0} right={0} top={ACTION_Y} direction="row" justifyContent="center" gap={ACTION_GAP} y={ACTION_RISE * (1 - popIn(time, (SHOP_ITEM + 1) * ENTER.gap, ENTER.pop))} opacity={entered(time, SHOP_ITEM + 1)}>
-        <ActionSign chosen={at(SHOP_REMOVE)} label="Remove one" price={removalPrice(run)} afford={run.coins >= removalPrice(run)} onPoint={() => onPoint(SHOP_REMOVE)} onPress={() => onClick(SHOP_REMOVE)} />
-        <ActionSign chosen={at(SHOP_REROLL)} label="New shelf" price={rerollPrice(run)} afford={run.coins >= rerollPrice(run)} onPoint={() => onPoint(SHOP_REROLL)} onPress={() => onClick(SHOP_REROLL)} />
-        <ActionSign chosen={at(SHOP_LEAVE)} go={true} label="Next cycle >" onPoint={() => onPoint(SHOP_LEAVE)} onPress={() => onClick(SHOP_LEAVE)} />
+        <ActionSign chosen={chosen === SHOP_REMOVE} label="Remove one" price={removalPrice(run)} afford={run.coins >= removalPrice(run)} onPoint={() => onPoint(SHOP_REMOVE)} onPress={() => onClick(SHOP_REMOVE)} />
+        <ActionSign chosen={chosen === SHOP_REROLL} label="New shelf" price={rerollPrice(run)} afford={run.coins >= rerollPrice(run)} onPoint={() => onPoint(SHOP_REROLL)} onPress={() => onClick(SHOP_REROLL)} />
+        <ActionSign chosen={chosen === SHOP_LEAVE} go={true} label="Next cycle >" onPoint={() => onPoint(SHOP_LEAVE)} onPress={() => onClick(SHOP_LEAVE)} />
       </Flex>
 
       {/* What just happened (a fruit bought, the shelf restocked), under the actions. */}

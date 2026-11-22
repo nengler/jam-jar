@@ -96,6 +96,8 @@ const OFFER_W = 184;
 const OFFER_H = 232;
 const OFFER_GAP = 12;
 const OFFER_LIFT = 8;
+/** The room left under a pick card's text, inside its frame: a longer text scrolls rather than running over it. */
+const OFFER_FOOT = 10;
 
 /**
  * A run. The rules live in rules/jar.ts; each step this hands them the time, the keys and the fruit's reports, and keeps the run
@@ -609,7 +611,7 @@ export function Play() {
                   {/* What a card's keywords mean shows beside it while it is the chosen one, and only then. A tap or a click
                       chooses a card and a second takes it. The pointer coming over a card does not choose it: on a touchscreen
                       the pointer stays where the last tap was, which would choose a card before the player had. */}
-                  <Flex width={OFFER_W} height={OFFER_H} direction="column" alignItems="center" paddingTop={18} gap={4} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPress={() => click(offer.at)}>
+                  <Flex width={OFFER_W} height={OFFER_H} direction="column" alignItems="center" paddingTop={18} paddingBottom={OFFER_FOOT} gap={4} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPress={() => click(offer.at)}>
                     <Tooltip show={!paused && offer.at === run.offerCursor} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                       <Terms text={FRUITS[offer.card].text} />
                     </Tooltip>
@@ -619,7 +621,10 @@ export function Play() {
                     <Text width={OFFER_W} maxWidth={OFFER_W} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
                       {FRUITS[offer.card].name}
                     </Text>
-                    <RuleText x={0} y={0} width={OFFER_W - 24} text={FRUITS[offer.card].text} color={INK_SOFT} accent={KEYWORD} />
+                    {/* What it does takes what is left of the card, and scrolls when it is longer than that. */}
+                    <Flex width={OFFER_W - 16} height="grow" direction="column" alignItems="center" overflow="scroll" scrollbarColor={INK_SOFT}>
+                      <RuleText x={0} y={0} width={OFFER_W - 24} text={FRUITS[offer.card].text} color={INK_SOFT} accent={KEYWORD} />
+                    </Flex>
                   </Flex>
                 </Flex>
               ))}
