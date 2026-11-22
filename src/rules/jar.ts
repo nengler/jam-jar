@@ -60,7 +60,9 @@ export const SPOTS = { salt: 0 };
  *
  * The Plunge (bots only for now): `plunge` has a Pumpkin, once it lands, drive straight down through the pile to the floor (the
  * lid, turned over), throwing aside and up each fruit in its way and, with `plungeSmash`, Smashing each Grape, Orange, Melon and
- * Watermelon it hits, its pieces thrown out too. At the floor it shoves what is round it. See `plungeStep`.
+ * Watermelon it hits, its pieces thrown out too. At the floor it shoves what is round it. See `plungeStep`. Tuning it:
+ * `plungeScores` off, a Plunge's pieces score nothing as they are made (only what they go on to do); `plungeCap` above 0, it
+ * Smashes only that many fruit and throws the rest; `pumpkinPoints` is what a Pumpkin scores when it lands (its card's Fresh).
  */
 export const LADDER = {
   melonPick: false,
@@ -75,6 +77,9 @@ export const LADDER = {
   smashBlasts: false,
   plunge: false,
   plungeSmash: true,
+  plungeScores: true,
+  plungeCap: 0,
+  pumpkinPoints: FRUITS.pumpkin.points,
 };
 
 /** Every fruit a pick or the shop can ever offer, whatever the run: what the pick's cards and the shop's baskets make room for. */
@@ -272,6 +277,8 @@ export interface Fruit {
   /** A Pumpkin's Plunge: seconds it may still drive down (0 or absent: not plunging), and the fruit it has already hit on the way. */
   plunging?: number;
   hit?: number[];
+  /** How many fruit this Plunge has Smashed (`LADDER.plungeCap`). */
+  smashed?: number;
   /** A Gourd that has taken in a rotten fruit: the Cherries it Bursts into are rotten. */
   tainted?: boolean;
   /** A Gourd's seconds until it can take in another fruit, so each growth can be seen. */
@@ -1041,7 +1048,7 @@ function land(run: Run): void {
     sound(run, "land");
     const def = FRUITS[f.kind];
     if (def.scoring === "fresh") {
-      const earned = earn(run, near, i, def.points);
+      const earned = earn(run, near, i, f.kind === "pumpkin" ? LADDER.pumpkinPoints : def.points);
       // Landing is the commonest score: only a doubled one lights anything up.
       if (earned !== null && !earned.doubled) f.pulse = 0;
     }
@@ -1075,6 +1082,7 @@ function crush(run: Run, pumpkin: Fruit): void {
     // It does not stop where it lands: it drives down through the pile (`plungeStep`).
     pumpkin.plunging = PLUNGE_LIMIT;
     pumpkin.hit = [];
+    pumpkin.smashed = 0;
     pulse(pumpkin);
     run.message = "A Pumpkin Plunges";
     return;
@@ -1144,8 +1152,9 @@ function plungeStep(run: Run, dt: number): void {
       }
       if (o.kind === "giantpumpkin" || o.kind === "pumpkin") continue;
       const side = o.x === p.x ? (o.id % 2 === 0 ? 1 : -1) : Math.sign(o.x - p.x);
-      if (LADDER.plungeSmash && smashable(o, true)) {
-        const pieces = smash(run, o);
+      if (LADDER.plungeSmash && smashable(o, true) && (LADDER.plungeCap === 0 || (p.smashed ?? 0) < LADDER.plungeCap)) {
+        p.smashed = (p.smashed ?? 0) + 1;
+        const pieces = smash(run, o, LADDER.plungeScores);
         for (const piece of pieces) {
           hit.push(piece.id);
           const out = piece.x === o.x ? side : Math.sign(piece.x - o.x);
@@ -1239,7 +1248,7 @@ function sprout(run: Run, seed: Fruit): Fruit {
  * A Watermelon Smashed (Exploded, Crushed by a Pumpkin or caught in a Giant Pumpkin's Shockwave): `SLICES` Slices where it was,
  * already landed, which score as they are made, more together than the Watermelon did. The caller takes the Watermelon out.
  */
-function smash(run: Run, w: Fruit): Fruit[] {
+function smash(run: Run, w: Fruit, scores = true): Fruit[] {
   const into = SMASH_INTO[w.kind];
   if (w.kind !== "watermelon" && into !== undefined) {
     // The general rule: two of the next size down, side by side where it was, scoring as they are made.
@@ -1249,7 +1258,7 @@ function smash(run: Run, w: Fruit): Fruit[] {
       pulse(f);
       return f;
     });
-    if (!w.rotten) score(run, 2 * FRUITS[into].points, w.x, w.y - w.r, { label: "Smash" });
+    if (!w.rotten && scores) score(run, 2 * FRUITS[into].points, w.x, w.y - w.r, { label: "Smash" });
     return pieces;
   }
   const out: Fruit[] = [];
@@ -1262,7 +1271,7 @@ function smash(run: Run, w: Fruit): Fruit[] {
     pulse(f);
     out.push(f);
   }
-  if (!w.rotten) score(run, SLICES * FRUITS.slice.points, w.x, w.y - w.r, { label: "Slice", earner: FRUITS.slice.name });
+  if (!w.rotten && scores) score(run, SLICES * FRUITS.slice.points, w.x, w.y - w.r, { label: "Slice", earner: FRUITS.slice.name });
   return out;
 }
 
