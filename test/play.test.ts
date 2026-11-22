@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { createPlayer, parseInputScript, playGame, RecordingBackend, runScript, type GamePlay, type Player } from "@tsengine/player";
-import { getInputDevice } from "@tsengine/runtime";
+import { Flex, getInputDevice, type GameObject } from "@tsengine/runtime";
 import { findComponent } from "@tsengine/testing";
 
 import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
 import { settings } from "../src/settings.ts";
-import { JAR, RIM, type Fruit, type Run } from "../src/rules/jar.ts";
+import { FRUIT_PRICE, JAR, RIM, type Fruit, type Run } from "../src/rules/jar.ts";
 
 /** Which screen shows, whether play is paused, and the run's phase and jar when a run is on. */
 function seen(player: Player): { screen: string; paused: boolean; phase?: string; fruits?: number; hand?: number; dealt?: number } {
@@ -476,6 +476,67 @@ test("a tap off the cards of a pick leaves nothing chosen", () => {
   game.input("click@320,335, _*2");
   assert.equal(play.s.run.offerCursor, -1, "a tap under the cards, on nothing: none is chosen");
   assert.equal(play.s.run.phase, "pick");
+  game.close();
+});
+
+test("a pick by taps: a tap on a card only chooses it, again or not, and its Take button takes it", () => {
+  const game = startRun();
+  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
+  play.s.run = { ...play.s.run, turn: 2, phase: "settle", hand: [], calmTime: 10 };
+  game.stepUntil(() => play.s.run.phase === "pick");
+  const before = play.s.run.pool.length;
+  game.input("click@320,150, _*2, click@320,150, _*2");
+  assert.deepEqual([play.s.run.phase, play.s.run.offerCursor, play.s.run.pool.length], ["pick", 1, before], "tapped twice: chosen, not taken");
+  const kind = play.s.run.offers[1];
+  // The button stands on the chosen card's foot, in the middle of the screen. It is off the cards, but it does not put the
+  // chosen one back before taking it.
+  game.input("click@320,283, _*2");
+  assert.notEqual(play.s.run.phase, "pick", "taken");
+  assert.equal(play.s.run.pool.at(-1), kind);
+  game.close();
+});
+
+/** The first scroll box in the tree whose content overflows it, depth first. */
+function findScroller(object: GameObject): Flex | null {
+  if (object instanceof Flex && object.overflow === "scroll" && (object.box.scrollMax[1] ?? 0) > 0) return object;
+  for (const child of object.children) {
+    const found = findScroller(child);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
+test("a finger drags a pick card's text to scroll it, and that chooses the card but does not take it", () => {
+  const game = startRun();
+  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
+  play.s.run = { ...play.s.run, turn: 2, phase: "settle", hand: [], calmTime: 10 };
+  game.stepUntil(() => play.s.run.phase === "pick");
+  // The Pumpkin's text is longer than its card.
+  play.s.run = { ...play.s.run, offers: ["pumpkin", "cherry", "grape"] };
+  game.input("_*2");
+  const box = findScroller(game.player.world.root);
+  assert.ok(box !== null && box.box.scrollMax[1]! > 0, "the Pumpkin's text overflows its card");
+  const before = play.s.run.pool.length;
+  // A press on the text, then the mouse (a finger) moved up while it is held, then let go.
+  const held = [250, 250, 240, 230, 210, 190, 180, 180].map((y) => `MouseLeft+mouse@120,${y}`).join(", ");
+  game.input(`mouse@120,250, ${held}, _*2`);
+  assert.ok(box.scrollY > 0, `scrolled (${box.scrollY})`);
+  assert.deepEqual([play.s.run.phase, play.s.run.offerCursor, play.s.run.pool.length], ["pick", 0, before], "chosen, not taken");
+  game.close();
+});
+
+test("the shop by taps: a tap on a label only chooses it, and the Buy button under it buys it", () => {
+  const game = startRun();
+  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
+  play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["apple", "cherry", "grape"], item: null, cursor: -1, removing: false, removeCursor: -1 } };
+  game.input("_*60");
+  // The four labels stand across the stall, 148 wide with 6 between: the second's middle is at 243.
+  game.input("click@243,150, _*2, click@243,150, _*2");
+  assert.deepEqual([play.s.run.shop!.cursor, play.s.run.coins], [1, 20], "tapped twice: chosen, not bought");
+  // The Buy button is under the actions, below the chosen label. It is off the shelf, but it does not put the label back first.
+  game.input("click@243,339, _*2");
+  assert.equal(play.s.run.coins, 20 - FRUIT_PRICE, "bought");
+  assert.equal(play.s.run.shop!.fruits[1], null);
   game.close();
 });
 
