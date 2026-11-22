@@ -411,6 +411,24 @@ def key_cap(width: int = 8, arrow: str = "") -> Image.Image:
     return out
 
 
+def push_button(face: str, lip: str, down: bool = False) -> Image.Image:
+    """Every button's picture, a 9-slice in the pause button's look: a chunky key cap with an ink outline, a lit top edge, a face and
+    a deep lip under it. Sliced 8 at the top and bottom and 4 at the sides (screen pixels), so the face can be any size. Pushed in
+    (`down`), the face sits two art pixels lower on a lip one pixel deep, so the button reads as pressed into the counter; its top
+    two rows are empty, so both pictures share the same slices."""
+    out = Image.new("RGBA", (12, 12))
+    draw = ImageDraw.Draw(out)
+    top = 2 if down else 0
+    draw.rectangle((1, top, 10, top), fill=colour("#341c27"))
+    draw.rectangle((0, top + 1, 11, 10), fill=colour("#341c27"))
+    draw.rectangle((1, 11, 10, 11), fill=colour("#341c27"))
+    draw.line((1, top + 1, 10, top + 1), fill=colour("#e7d5b3"))
+    lip_top = 10 if down else 8
+    draw.rectangle((1, top + 2, 10, lip_top - 1), fill=colour(face))
+    draw.rectangle((1, lip_top, 10, 10), fill=colour(lip))
+    return doubled(out)
+
+
 def key_pair(first: str, second: str) -> Image.Image:
     """Two arrow keys side by side, an art pixel apart."""
     out = Image.new("RGBA", (27, 13))
@@ -747,6 +765,10 @@ def main() -> None:
     for name, (col, row, across, ramp) in ADVENTURE.items():
         recolor(adventure.crop((col * 32, row * 32, (col + across) * 32, row * 32 + 32)), RAMPS[ramp]).save(ASSETS / name)
     doubled(key_cap()).save(ASSETS / "key.png")
+    # Buttons: parchment, amber while hovered or focused, and amber pushed in for a moment when pressed (src/PushButton.tsx).
+    push_button("#d7b594", "#ad7757").save(ASSETS / "button.png")
+    push_button("#e8c170", "#be772b").save(ASSETS / "button-lit.png")
+    push_button("#e8c170", "#be772b", down=True).save(ASSETS / "button-down.png")
     key_pair("left", "right").save(ASSETS / "key-arrows.png")
     key_pair("up", "down").save(ASSETS / "key-updown.png")
     for name, picture in (
