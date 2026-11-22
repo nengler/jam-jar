@@ -1,5 +1,6 @@
-import { Collider, Entity, Shape, Sprite } from "@tsengine/runtime/jsx";
+import { Collider, Entity, Flex, Shape, Sprite } from "@tsengine/runtime/jsx";
 
+import { Frame } from "./Coach.tsx";
 import { Fruit } from "./Fruit.tsx";
 import { Peg } from "./Peg.tsx";
 import { JAR, PULSE, RIM, TILT_PULL, bossNow, lean, surface, type FruitReport, type Run } from "./rules/jar.ts";
@@ -36,7 +37,11 @@ export function Jar({ run, onReport, lift = 0 }: JarProps) {
           are moved in the jar's own frame, where the walls stand straight, and each fruit is drawn where the lean puts it. */}
       <Entity x={JAR.right} y={JAR.floor} rotation={angle}>
         <Entity x={-JAR.right} y={-JAR.floor - lift}>
-          <Sprite image="jar-back.png" x={x} y={y} />
+          {/* In a box as big as its picture, so the tutorial's frame (when the jar is picked out) goes round the picture. */}
+          <Flex x={x} y={y}>
+            <Sprite image="jar-back.png" />
+            <Frame id="jar" pad={-4} />
+          </Flex>
           {/* The liquid pooled at the bottom, behind the fruit, with a lighter line along its surface. */}
           {run.juice > 0 && <Shape kind="rect" x={JAR.left} y={top} width={width} height={run.juice} color={JUICE[liquid].body} />}
           {run.juice > 0 && <Shape kind="rect" x={JAR.left} y={top} width={width} height={2} color={JUICE[liquid].top} />}
