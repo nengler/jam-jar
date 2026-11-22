@@ -151,6 +151,16 @@ export const BOOM_LIFE = 0.54;
 
 export type Phase = "order" | "drop" | "settle" | "tally" | "pick" | "rent" | "shop" | "preserve" | "clear" | "over" | "won";
 
+/**
+ * Whether the jar's fruit are held where they are: in every phase but the drop and the settle. Once a turn is scored (the pile
+ * came to rest, or `SETTLE_LIMIT` ran out) nothing in the jar moves through the tally, the pick, the rent, the shop, the
+ * clear-out or the ordering of the next hand, so the pile the player looks at is the pile that was scored, and the one the next
+ * hand falls on. The next drop lets it go, from rest.
+ */
+export function jarHeld(run: Run): boolean {
+  return run.phase !== "drop" && run.phase !== "settle";
+}
+
 /** What the Juicer adds for each fruit it crushes, on top of the fruit's points. */
 export const JUICER_BONUS = 3;
 /** How hard the Shaker throws each fruit, at most, sideways and up (px/s). */

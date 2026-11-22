@@ -3,7 +3,7 @@ import { Collider, Entity, Flex, Shape, Sprite } from "@tsengine/runtime/jsx";
 import { Frame } from "./Coach.tsx";
 import { Fruit } from "./Fruit.tsx";
 import { Peg } from "./Peg.tsx";
-import { JAR, PULSE, RIM, TILT_PULL, bossNow, lean, surface, type FruitReport, type Run } from "./rules/jar.ts";
+import { JAR, PULSE, RIM, TILT_PULL, bossNow, jarHeld, lean, surface, type FruitReport, type Run } from "./rules/jar.ts";
 import { JUICE } from "./theme.ts";
 
 /** The jar's pictures reach this far outside its walls and above its glass, which starts this far above the rim. */
@@ -30,6 +30,8 @@ export function Jar({ run, onReport, lift = 0 }: JarProps) {
   const top = surface(run);
   const angle = lean(run);
   const pull = bossNow(run) === "tilt" ? TILT_PULL : 0;
+  // Between turns the whole pile is held still (`jarHeld`): from the end of the settle until the next drop.
+  const held = jarHeld(run);
   const liquid = run.lime && run.milk ? "both" : run.milk ? "milk" : "lime";
   return (
     <Entity>
@@ -67,6 +69,7 @@ export function Jar({ run, onReport, lift = 0 }: JarProps) {
           honeyed={f.honeyed}
           pickled={f.pickled}
           frozen={f.frozen}
+          held={held}
           plunging={(f.plunging ?? 0) > 0}
           surface={run.lime ? top : JAR.floor + 100}
           pull={pull}
