@@ -527,7 +527,7 @@ test("a finger drags a pick card's text to scroll it, and that chooses the card 
   game.close();
 });
 
-test("the shop by taps: a tap on a label only chooses it, a second puts it back, and the Buy button under it buys it", () => {
+test("the shop by taps: a tap on a label only chooses it, a second puts it back, and the Buy button buys it", () => {
   const game = startRun();
   const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
   play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["apple", "cherry", "grape"], item: null, cursor: -1, removing: false, removeCursor: -1 } };
@@ -537,8 +537,8 @@ test("the shop by taps: a tap on a label only chooses it, a second puts it back,
   assert.deepEqual([play.s.run.shop!.cursor, play.s.run.coins], [-1, 20], "tapped twice: put back, not bought");
   game.input("click@243,150, _*2");
   assert.deepEqual([play.s.run.shop!.cursor, play.s.run.coins], [1, 20], "a third time: chosen, not bought");
-  // The Buy button is under the actions, below the chosen label. It is off the shelf, but it does not put the label back first.
-  game.input("click@243,339, _*2");
+  // The Buy button is in the middle of the bar along the foot. It is off the shelf, but it does not put the label back first.
+  game.input("click@316,338, _*2");
   assert.equal(play.s.run.coins, 20 - FRUIT_PRICE, "bought");
   assert.equal(play.s.run.shop!.fruits[1], null);
   game.close();
@@ -550,8 +550,8 @@ test("the shop shows the pool's basket: a tap on it opens the board of the whole
   play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["apple", "cherry", "grape"], item: null, cursor: -1, removing: false, removeCursor: -1 } };
   game.input("_*60");
   assert.equal(play.s.whole, false);
-  // The basket hangs at the top left, 24 in.
-  game.input("click@52,22, _*2");
+  // The basket is at the left of the bar along the foot.
+  game.input("click@46,338, _*2");
   assert.equal(play.s.whole, true, "the pool board is open");
   assert.equal(play.s.run.phase, "shop", "over the shop");
   game.close();
