@@ -603,8 +603,8 @@ export function Play() {
           where the notes do, in place of one. */}
       {preserving && (
         <Flex right={HUD_X} bottom={NOTE_FOOT} width={BOARD_W} direction="column" alignItems="stretch">
-          <Panel heading={ITEMS[keepingJar(run.items) ?? "preserves"].name} gap={4}>
-            <Text width={BOARD_W - 32} maxWidth={BOARD_W - 32} align="center" color={INK_SOFT}>
+          <Dialog title={ITEMS[keepingJar(run.items) ?? "preserves"].name} gap={4}>
+            <Text width={BOARD_W - 40} maxWidth={BOARD_W - 40} align="center" color={INK_SOFT}>
               {`Tap fruit in the jar to keep them next cycle.`}
             </Text>
             <Flex direction="row" justifyContent="center">
@@ -613,7 +613,7 @@ export function Play() {
             <Flex direction="row" justifyContent="center" paddingTop={4}>
               <TapButton label={run.kept.length === 0 ? "Keep none" : "Keep these"} onPress={tapDrop} />
             </Flex>
-          </Panel>
+          </Dialog>
         </Flex>
       )}
       {noted && !preserving && (

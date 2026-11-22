@@ -19,7 +19,7 @@ export function Pause() {
     <Entity>
       <Flex modal width={640} height={360} paddingBottom={56} background={SHADE} alignItems="center" justifyContent="center">
         <Flex width={256} direction="column" alignItems="stretch">
-          <Dialog title="Paused">
+          <Dialog title="Paused" still>
             <Menu gap={8} alignItems="stretch" onBack={resume}>
               <PushButton focusable autoFocus onPress={resume} height={40} label="Resume" />
               <PushButton focusable onPress={toTitle} height={40} label="Quit to title" />
