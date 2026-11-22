@@ -2,7 +2,7 @@ import { Entity, Flex, Text, useTime, type Child } from "@tsengine/runtime/jsx";
 
 import { ripple } from "./layout.ts";
 
-import { DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT, PANEL, PANEL_SLICE, WALL_SHADOW } from "./theme.ts";
+import { DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT, PANEL, PANEL_SLICE, SIGN, SIGN_SLICE, WALL_SHADOW, WELL } from "./theme.ts";
 
 /** How far a titled board's frame starts below its top: the heading takes the top of the space the board is given. */
 const TITLE_ROOM = 12;
@@ -30,6 +30,37 @@ export function Panel({ title, heading, image = PANEL, gap = 0, children }: { ti
       )}
     </Flex>
   );
+}
+
+/** A dialog's sign: how tall it is, how much of it stands above the board, and the room left round its lettering. */
+const SIGN_H = 36;
+const SIGN_ABOVE = 18;
+const SIGN_PAD = 18;
+
+/**
+ * A dialog over the game (the pool, taking a fruit out, the rent, the pause menu, the end of a run): the parchment board, with
+ * room round what is on it, and its name lettered on a wooden sign nailed across its top edge, as the shop's heading is. It
+ * takes the width of the box it is in and is as tall as what is on it.
+ */
+export function Dialog({ title, gap = 6, children }: { title: string; gap?: number; children: Child }) {
+  return (
+    <Flex direction="column" alignItems="stretch" paddingTop={SIGN_ABOVE}>
+      <Flex left={4} right={-4} top={SIGN_ABOVE + 4} bottom={-4} background={WALL_SHADOW} />
+      <Flex direction="column" alignItems="stretch" gap={gap} paddingX={20} paddingTop={SIGN_H - SIGN_ABOVE + 10} paddingBottom={16} backgroundImage={PANEL} slice={PANEL_SLICE}>
+        {children}
+      </Flex>
+      <Flex left={0} right={0} top={0} height={SIGN_H} direction="row" justifyContent="center">
+        <Flex height={SIGN_H} paddingX={SIGN_PAD} direction="row" alignItems="center" backgroundImage={SIGN} slice={SIGN_SLICE}>
+          <Letters text={title} seed={title.length * 5} />
+        </Flex>
+      </Flex>
+    </Flex>
+  );
+}
+
+/** A thin rule across a dialog, between what is on it. */
+export function Rule() {
+  return <Flex height={2} background={WELL} />;
 }
 
 /** A dialog's heading, in ink at the top of its board. */

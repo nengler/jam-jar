@@ -1,6 +1,6 @@
 import { Entity, Flex, Shape, Sprite, Text, Tooltip, useTime, type Child } from "@tsengine/runtime/jsx";
 
-import { Letters, Panel } from "./Board.tsx";
+import { Dialog, Letters } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { KeyHint, TapButton } from "./KeyHint.tsx";
@@ -340,7 +340,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
           <Flex left={0} right={0} top={0} bottom={0} direction="column" alignItems="center" justifyContent="center">
             <Flex width={Math.max(240, Math.min(REMOVE_W, kinds.reduce((w, row) => w + removeCell(row.kind), 0) + 32))} direction="column" alignItems="stretch">
-              <Panel heading="Take out one">
+              <Dialog title="Take out one">
                 <Flex direction="row" wrap justifyContent="center" alignItems="end" rowGap={4} columnGap={0}>
                   {placed(kinds).map((cell) => (
                     <Flex key={cell.card.kind} width={removeCell(cell.card.kind)} direction="column" alignItems="center" focusable={false} onPress={() => onClick(cell.at)}>
@@ -358,7 +358,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
                   {shop.removeCursor < 0 && <Text color={INK_SOFT}>Choose a fruit</Text>}
                   <TapButton label="Back" keyName={hints ? "Space" : ""} onPress={onSpace} />
                 </Flex>
-              </Panel>
+              </Dialog>
             </Flex>
           </Flex>
           <Flex left={0} right={0} bottom={2} direction="row" justifyContent="center" alignItems="center" gap={20}>

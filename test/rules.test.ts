@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { blastBits, blastFlash, blastJolt, motes, poolRows, termsOf } from "../src/layout.ts";
+import { blastBits, blastFlash, blastJolt, fruitResults, keywordResults, motes, poolRows, termsOf } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
 import { APPLE, BANANA, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, SLICES, type FruitKind } from "../src/rules/fruits.ts";
@@ -28,7 +28,6 @@ import {
   newRun,
   NO_KEYS,
   onEdge,
-  topEarners,
   POINTS_PER_COIN,
   REMOVAL_PRICE,
   REMOVAL_STEP,
@@ -1185,16 +1184,32 @@ test("the run keeps what its end board shows: its best turn, and what earned its
   resolve(run);
   assert.equal(run.bestTurn, 27, "three Apples simmering on the floor");
   assert.equal(run.turnScore, 0, "and the next turn starts from nothing");
-  assert.deepEqual(topEarners(run, 3), [{ label: "Apple", points: 27 }]);
+  assert.deepEqual(run.earned, { Apple: 27 });
   run.fruits = [fruit(4, "cherry", 250, JAR.floor - 14)];
   run.phase = "settle";
   resolve(run);
   assert.equal(run.bestTurn, 27, "a smaller turn leaves the best one");
-  run.earned = { Merge: 40, Apple: 90, Spill: -10, Cherry: 5, Crush: 12 };
+  run.pool = ["cherry", "cherry", "grape", "apple", "banana"];
+  run.earned = { Merge: 40, Apple: 90, Spill: -10, Cherry: 5, Crush: 12, Watermelon: 30 };
   assert.deepEqual(
-    topEarners(run, 3).map((e) => e.label),
-    ["Apple", "Merge", "Crush"],
-    "the three that scored most; what lost points is left out"
+    fruitResults(run),
+    [
+      { kind: "apple", points: 90 },
+      { kind: "watermelon", points: 30 },
+      { kind: "cherry", points: 5 },
+      { kind: "grape", points: 0 },
+      { kind: "banana", points: 0 },
+    ],
+    "every fruit in the pool and every other that scored (a merge's Watermelon), best first, in the table's order when level"
+  );
+  assert.deepEqual(
+    keywordResults(run),
+    [
+      { label: "Merge", points: 40 },
+      { label: "Crush", points: 12 },
+      { label: "Spill", points: -10 },
+    ],
+    "what scored that was no fruit's own, what lost points included"
   );
 });
 

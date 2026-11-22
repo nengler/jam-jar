@@ -1693,15 +1693,6 @@ function startTurn(run: Run): void {
   run.phase = "order";
 }
 
-/** What earned the run's points, the most first: the fruit and keywords that scored, at most `count` of them, none that lost points. */
-export function topEarners(run: Run, count: number): { label: string; points: number }[] {
-  return Object.entries(run.earned)
-    .map(([label, points]) => ({ label, points }))
-    .filter((e) => e.points > 0)
-    .sort((a, b) => b.points - a.points || a.label.localeCompare(b.label))
-    .slice(0, count);
-}
-
 /** The kinds of fruit in the pool, in the fruit table's order: what the shop's removal chooses from. */
 export function poolKinds(pool: readonly FruitKind[]): FruitKind[] {
   return (Object.keys(FRUITS) as FruitKind[]).filter((kind) => pool.includes(kind));

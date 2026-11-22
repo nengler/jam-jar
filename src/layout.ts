@@ -384,3 +384,23 @@ export function rolledIn(before: number, after: number, count: number): boolean 
 
 /** When the jar (or the title's name) first touches down, in seconds into its fall: the first of the bounce's three arcs. */
 export const LANDS = INTRO.fall / 2.75;
+
+/**
+ * How each fruit did over a run, for the end board: every kind in the pool at the end and every kind that scored (one made by a
+ * merge, say), with what it scored itself, best first (in the fruit table's order when level).
+ */
+export function fruitResults(run: Run): { kind: FruitKind; points: number }[] {
+  const kinds = (Object.keys(FRUITS) as FruitKind[]).filter((kind) => run.pool.includes(kind) || run.earned[FRUITS[kind].name] !== undefined);
+  const order = Object.keys(FRUITS);
+  return kinds
+    .map((kind) => ({ kind, points: run.earned[FRUITS[kind].name] ?? 0 }))
+    .sort((a, b) => b.points - a.points || order.indexOf(a.kind) - order.indexOf(b.kind));
+}
+
+/** What scored over a run that is not a fruit's own: the keywords (Merge, Explode, Spill …), with what each came to, biggest first. */
+export function keywordResults(run: Run): { label: string; points: number }[] {
+  return Object.entries(run.earned)
+    .filter(([label, points]) => earnerKind(label) === null && points !== 0)
+    .map(([label, points]) => ({ label, points }))
+    .sort((a, b) => b.points - a.points || a.label.localeCompare(b.label));
+}
