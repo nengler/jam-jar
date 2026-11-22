@@ -1374,13 +1374,20 @@ function explode(run: Run, bomb: Fruit): void {
   }
 }
 
-/** The jar has settled: spill what is over the rim, Simmer fruit score, age and rot, then the pick (or rent after turn 5). */
-export function resolve(run: Run): void {
-  // What the tally shows one after another: each popup and each fruit to light up, with its place in the order.
-  const staged: { popup: Popup | null; fruits: Fruit[]; links: Link[]; slot: number }[] = [];
-  let slot = 0;
-  const popupsBefore = run.popups.length;
-  // The Flip jar has its lid on: nothing spills from it.
+/** What the tally shows one after another: each popup and each fruit to light up, with its place in the order. */
+interface Tally {
+  steps: { popup: Popup | null; fruits: Fruit[]; links: Link[]; slot: number }[];
+  slot: number;
+}
+
+/** Add one thing to the tally, in the next place of its order. */
+function stage(tally: Tally, popup: Popup | null, fruits: Fruit[], links: Link[]): void {
+  tally.slot += 1;
+  tally.steps.push({ popup, fruits, links, slot: tally.slot });
+}
+
+/** What is over the rim spills out, -5 each; the Flip jar has its lid on, and the Lid holds them in once. */
+function spillOver(run: Run): void {
   const spilled = bossNow(run) === "flip" ? [] : run.fruits.filter((f) => f.y - f.r < RIM);
   if (spilled.length > 0 && run.items.includes("lid")) {
     // The Lid holds them in, once: nothing spills and nothing is lost, and the Lid is used up.
@@ -1391,22 +1398,25 @@ export function resolve(run: Run): void {
     for (const f of spilled) score(run, -OVERFLOW_PENALTY, f.x, RIM - 12, { label: "Spill" });
     run.message = `Spill: ${spilled.length} fruit lost, -${spilled.length * OVERFLOW_PENALTY}`;
   }
+}
 
-  // The Juicer crushes what stands on the floor: each scores its points (nothing if rotten) and a bonus, and is gone.
-  if (run.items.includes("juicer")) {
-    const crushed = run.fruits.filter((f) => f.landed && onFloor(f));
-    for (const f of crushed) score(run, (f.rotten ? 0 : FRUITS[f.kind].points) + JUICER_BONUS, f.x, f.y - f.r, { label: "Crush" });
-    if (crushed.length > 0) {
-      run.fruits = run.fruits.filter((f) => !crushed.includes(f));
-      run.message = `Juicer: ${crushed.length} fruit Crushed`;
-      const limes = crushed.filter((f) => f.kind === "lime").length;
-      if (limes > 0) {
-        pour(run, "lime", limes * LIME_JUICE);
-        run.message = `Juicer: ${crushed.length} fruit Crushed. Lime juice rises`;
-      }
-    }
+/** The Juicer crushes what stands on the floor: each scores its points (nothing if rotten) and a bonus, and is gone. */
+function juicerCrush(run: Run): void {
+  if (!run.items.includes("juicer")) return;
+  const crushed = run.fruits.filter((f) => f.landed && onFloor(f));
+  for (const f of crushed) score(run, (f.rotten ? 0 : FRUITS[f.kind].points) + JUICER_BONUS, f.x, f.y - f.r, { label: "Crush" });
+  if (crushed.length === 0) return;
+  run.fruits = run.fruits.filter((f) => !crushed.includes(f));
+  run.message = `Juicer: ${crushed.length} fruit Crushed`;
+  const limes = crushed.filter((f) => f.kind === "lime").length;
+  if (limes > 0) {
+    pour(run, "lime", limes * LIME_JUICE);
+    run.message = `Juicer: ${crushed.length} fruit Crushed. Lime juice rises`;
   }
+}
 
+/** Simmer fruit, Prunes and honeyed fruit score. */
+function simmer(run: Run, tally: Tally): void {
   const near = links(run.fruits);
   run.fruits.forEach((f, i) => {
     const touched = neighbours(run.fruits, near, i);
@@ -1426,13 +1436,15 @@ export function resolve(run: Run): void {
     if (f.honeyed) points += HONEY_POINTS;
     const earned = earn(run, near, i, points);
     if (earned === null) return;
-    slot += 1;
     // A Prune's score is for the rot round it: a line from each rotten neighbour.
     const rot = f.kind === "prune" ? touched.filter((o) => o.rotten).map((o) => link(run, "rot", o, f)) : [];
-    staged.push({ popup: earned.popup, fruits: earned.fruits, links: [...earned.links, ...rot], slot });
+    stage(tally, earned.popup, earned.fruits, [...earned.links, ...rot]);
   });
+}
 
-  // Each Fruit Fly eats one rotten fruit it touches (never a Prune) and a new Fly hatches where it was.
+/** Each Fruit Fly eats one rotten fruit it touches (never a Prune) and a new Fly hatches where it was. */
+function fruitFliesEat(run: Run, tally: Tally): void {
+  const near = links(run.fruits);
   const eaten = new Set<number>();
   const hatched: Fruit[] = [];
   run.fruits.forEach((f, i) => {
@@ -1441,8 +1453,7 @@ export function resolve(run: Run): void {
     if (meal === undefined) return;
     eaten.add(meal.id);
     const earned = earn(run, near, i, FRUITS.fruitfly.points, "Eat");
-    slot += 1;
-    staged.push({ popup: earned?.popup ?? null, fruits: earned?.fruits ?? [f], links: [link(run, "eat", f, meal), ...(earned?.links ?? [])], slot });
+    stage(tally, earned?.popup ?? null, earned?.fruits ?? [f], [link(run, "eat", f, meal), ...(earned?.links ?? [])]);
     const fly = makeFruit(run, "fruitfly", meal.x, meal.y);
     fly.landed = true;
     hatched.push(fly);
@@ -1451,8 +1462,10 @@ export function resolve(run: Run): void {
     run.fruits = [...run.fruits.filter((f) => !eaten.has(f.id)), ...hatched];
     run.message = `Fruit Flies Eat ${eaten.size} Rotten fruit`;
   }
+}
 
-  // Each Pitaya eats one Cherry it touches, and every Pitaya scores 1 more from then on.
+/** Each Pitaya eats one Cherry it touches, and every Pitaya scores 1 more from then on. */
+function pitayasEat(run: Run, tally: Tally): void {
   const swallowed = new Set<number>();
   for (const f of run.fruits) {
     if (f.kind !== "pitaya" || f.rotten) continue;
@@ -1460,44 +1473,47 @@ export function resolve(run: Run): void {
     if (cherry === undefined) continue;
     swallowed.add(cherry.id);
     run.pitayaBonus += 1;
-    slot += 1;
-    staged.push({ popup: null, fruits: [f], links: [link(run, "eat", f, cherry)], slot });
+    stage(tally, null, [f], [link(run, "eat", f, cherry)]);
   }
   if (swallowed.size > 0) {
     run.fruits = run.fruits.filter((f) => !swallowed.has(f.id));
     run.message = `Pitayas Eat ${swallowed.size}: each scores +${run.pitayaBonus}`;
   }
+}
 
-  // A Coconut that has sat 3 turns cracks open and is gone, leaving its milk in the jar.
+/** A Coconut that has sat 3 turns cracks open and is gone, leaving its milk in the jar. */
+function coconutsCrack(run: Run): void {
   const cracked = run.fruits.filter((f) => f.kind === "coconut" && f.age >= COCONUT_TURNS - 1);
-  if (cracked.length > 0) {
-    run.fruits = run.fruits.filter((f) => !cracked.includes(f));
-    pour(run, "milk", cracked.length * COCONUT_MILK);
-    run.message = "A Coconut cracked: milk in the jar";
-  }
+  if (cracked.length === 0) return;
+  run.fruits = run.fruits.filter((f) => !cracked.includes(f));
+  pour(run, "milk", cracked.length * COCONUT_MILK);
+  run.message = "A Coconut cracked: milk in the jar";
+}
 
-  // Each Snow Pear freezes itself and every fruit it touches, where they are.
+/** Each Snow Pear freezes itself and every fruit it touches, where they are. */
+function snowPearsFreeze(run: Run, tally: Tally): void {
   for (const f of run.fruits) {
     if (f.kind !== "snowpear") continue;
     const fresh = [f, ...run.fruits.filter((o) => f.touching.includes(o.id))].filter((o) => !o.frozen);
     if (fresh.length === 0) continue;
     for (const o of fresh) o.frozen = true;
-    slot += 1;
-    staged.push({ popup: null, fruits: fresh, links: fresh.filter((o) => o !== f).map((o) => link(run, "freeze", f, o)), slot });
+    stage(tally, null, fresh, fresh.filter((o) => o !== f).map((o) => link(run, "freeze", f, o)));
   }
+}
 
-  // Each Honeydew honeys one fruit it touches.
+/** Each Honeydew honeys one fruit it touches. */
+function honeydewsHoney(run: Run, tally: Tally): void {
   for (const f of run.fruits) {
     if (f.kind !== "honeydew" || f.rotten) continue;
     const next = run.fruits.find((o) => !o.honeyed && !o.rotten && f.touching.includes(o.id));
-    if (next) {
-      next.honeyed = true;
-      slot += 1;
-      staged.push({ popup: null, fruits: [f, next], links: [link(run, "honey", f, next)], slot });
-    }
+    if (next === undefined) continue;
+    next.honeyed = true;
+    stage(tally, null, [f, next], [link(run, "honey", f, next)]);
   }
+}
 
-  // Age; Bananas rot after 3 turns, and each rotten fruit, Prunes too, rots one fruit it touches (never a Lemon or a Fruit Fly).
+/** Age; Bananas rot after 3 turns, and each rotten fruit, Prunes too, rots one fruit it touches (never a Lemon or a Fruit Fly). */
+function ageAndRot(run: Run, tally: Tally): void {
   for (const f of run.fruits) {
     if (f.pickled) continue;
     f.age += 1;
@@ -1506,20 +1522,42 @@ export function resolve(run: Run): void {
   const rotten = run.fruits.filter((f) => f.rotten);
   for (const r of rotten) {
     const next = run.fruits.find((o) => !o.rotten && !o.pickled && o.kind !== "lemon" && o.kind !== "fruitfly" && r.touching.includes(o.id));
-    if (next) {
-      next.rotten = true;
-      slot += 1;
-      staged.push({ popup: null, fruits: [next], links: [link(run, "rot", r, next)], slot });
-    }
+    if (next === undefined) continue;
+    next.rotten = true;
+    stage(tally, null, [next], [link(run, "rot", r, next)]);
   }
+}
 
-  // The loop cap lasts a turn: what Slices made may Merge again next turn.
+/** The loop cap lasts a turn: what Slices made may Merge again next turn. */
+function uncap(run: Run): void {
   for (const f of run.fruits) f.remerged = false;
+}
 
-  // Time the tally: a step between each thing, shorter when there are many, and how long the whole takes.
-  const step = Math.min(TALLY_STEP, TALLY_MOST / Math.max(1, slot));
-  const shown: Popup[] = run.popups.slice(popupsBefore).filter((p) => !staged.some((s) => s.popup === p));
-  for (const s of staged) {
+/**
+ * What happens at the end of a turn, in this order. Each may change the jar's fruit, so a step sees what the ones before it left:
+ * a fruit that spilled or was crushed does not score, a Fly's meal is gone before the rot spreads.
+ */
+const END_OF_TURN: readonly ((run: Run, tally: Tally) => void)[] = [
+  spillOver,
+  juicerCrush,
+  simmer,
+  fruitFliesEat,
+  pitayasEat,
+  coconutsCrack,
+  snowPearsFreeze,
+  honeydewsHoney,
+  ageAndRot,
+  uncap,
+];
+
+/**
+ * Time the tally: a step between each thing, shorter when there are many, and how long the whole takes. Popups made before it
+ * (a spill, the Juicer) show at once.
+ */
+function timeTally(run: Run, tally: Tally, popupsBefore: number): void {
+  const step = Math.min(TALLY_STEP, TALLY_MOST / Math.max(1, tally.slot));
+  const shown: Popup[] = run.popups.slice(popupsBefore).filter((p) => !tally.steps.some((s) => s.popup === p));
+  for (const s of tally.steps) {
     const delay = s.slot * step;
     if (s.popup !== null) {
       s.popup.delay = delay;
@@ -1529,25 +1567,38 @@ export function resolve(run: Run): void {
     for (const f of s.fruits) pulse(f, delay);
     for (const l of s.links) l.delay = delay;
   }
-  run.tallyTime = run.popups.length > popupsBefore || slot > 0 ? slot * step + TALLY_HOLD : 0;
+  run.tallyTime = run.popups.length > popupsBefore || tally.slot > 0 ? tally.slot * step + TALLY_HOLD : 0;
+}
+
+/** After the cycle's last turn the rent is due: paid, what is over it becomes coins; missed, the run is over. */
+function dueRent(run: Run): void {
+  run.phase = "rent";
+  const rent = rentFor(run.cycle);
+  if (run.cycleScore >= rent) {
+    const earned = Math.floor((run.cycleScore - rent) / POINTS_PER_COIN);
+    run.coins += earned;
+    run.message = `Rent paid! +${earned} coins`;
+    sound(run, "rent");
+  } else {
+    run.phase = "over";
+    run.message = `Rent was ${rent}; you scored ${run.cycleScore}. The jar is lost.`;
+    sound(run, "lose");
+  }
+}
+
+/** The jar has settled: the end of the turn (`END_OF_TURN`), its tally, then the pick, the next hand or the rent. */
+export function resolve(run: Run): void {
+  const tally: Tally = { steps: [], slot: 0 };
+  const popupsBefore = run.popups.length;
+  for (const step of END_OF_TURN) step(run, tally);
+  timeTally(run, tally, popupsBefore);
   run.scoreNote = 0;
 
   run.bestTurn = Math.max(run.bestTurn, run.turnScore);
   run.turnScore = 0;
 
   if (run.turn >= TURNS_PER_CYCLE) {
-    run.phase = "rent";
-    const rent = rentFor(run.cycle);
-    if (run.cycleScore >= rent) {
-      const earned = Math.floor((run.cycleScore - rent) / POINTS_PER_COIN);
-      run.coins += earned;
-      run.message = `Rent paid! +${earned} coins`;
-      sound(run, "rent");
-    } else {
-      run.phase = "over";
-      run.message = `Rent was ${rent}; you scored ${run.cycleScore}. The jar is lost.`;
-      sound(run, "lose");
-    }
+    dueRent(run);
     return;
   }
   run.turn += 1;
