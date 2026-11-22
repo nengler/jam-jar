@@ -6,8 +6,9 @@ the jar, the shelf, the pick cards, the shop and the boards all show it at that 
 
 To replace a fruit, draw over its file at the same size and run `python3 tools/make-assets.py`. The size is fixed by the fruit
 (`FRUIT_SIZES` in the script), because the merge ladder and each ball's radius depend on it: a file of another size stops the
-script with an error. Colours are snapped to the Apollo palette (`tools/palette/apollo.hex`), and the script says how many pixels
-of a file were not already in it. A pixel less than half opaque is clear.
+script with an error. Draw in the Apollo palette (`tools/palette/apollo.hex`, also on
+[Lospec](https://lospec.com/palette-list/apollo)), every pixel fully solid or fully clear: the file is used exactly as it is,
+and a pixel of any other colour, or half see-through, stops the script with where the first one is.
 
 | Size | Fruit |
 | --- | --- |
@@ -26,8 +27,8 @@ cut off by the top of the screen, and a Melon's by 2 pixels.
 ## Where the pictures came from
 
 The pictures here now are placeholders, cut from `fruit-sheet.png`: a sheet of 16 x 16 pixel fruit (38 columns x 6 rows),
-supplied by the project owner as a free pixel fruit set. **Source and licence: to be filled in** (who made it, where it came
-from, and its licence, so the game can credit it while any of its fruit are still in use). Each sprite was scaled to its fruit's
-art size with no smoothing. No sprite exists for a Durian (the Pineapple stands in), a Seed (the brown Kiwi), a Melon (the round
+supplied by the project owner as a free pixel fruit set, in its own colours. **Source and licence: to be filled in** (who made it, where it came
+from, and its licence, so the game can credit it while any of its fruit are still in use). Each sprite was snapped to Apollo and scaled
+to its fruit's art size with no smoothing. No sprite exists for a Durian (the Pineapple stands in), a Seed (the brown Kiwi), a Melon (the round
 green one), a Prune (the Blackberry), a Fig (the Aubergine) or a Honeydew (the golden Apple). The Fruit Fly was drawn for the
 game.

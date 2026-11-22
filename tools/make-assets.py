@@ -25,7 +25,8 @@ ASSETS = ROOT / "assets"
 KENNEY = ROOT / "tools" / "kenney"
 
 # The fruit: one picture each, tools/fruit/<kind>.png, drawn at its art size (half its size on the screen) and doubled with no
-# smoothing like all the art. The size is fixed by the fruit, not the file: the merge ladder grows Cherry -> Watermelon, and each
+# smoothing like all the art, as it is: it is drawn in the Apollo palette, every pixel solid or clear, and nothing recolours it.
+# The size is fixed by the fruit, not the file: the merge ladder grows Cherry -> Watermelon, and each
 # ball's radius comes from it. A picture of another size is an error, so a replaced fruit cannot change how it plays by accident.
 FRUIT_DIR = ROOT / "tools" / "fruit"
 FRUIT_SIZES = {
@@ -213,6 +214,19 @@ def to_palette(image: Image.Image) -> Image.Image:
                 cache[key] = min(PALETTE, key=lambda c: (c[0] - r) ** 2 + (c[1] - g) ** 2 + (c[2] - b) ** 2)
             px[x, y] = (*cache[key], 255)
     return out
+
+
+def off_palette(image: Image.Image) -> str | None:
+    """What is wrong with a picture that should be in Apollo colours: its first pixel that is half see-through, or of a colour
+    not in the palette (with how many such pixels there are); None when there is nothing."""
+    allowed = set(PALETTE)
+    bad = [(x, y, px) for y in range(image.height) for x in range(image.width) if (px := image.getpixel((x, y)))[3] != 0 and (px[3] != 255 or px[:3] not in allowed)]
+    if not bad:
+        return None
+    x, y, (r, g, b, a) = bad[0]
+    what = f"#{r:02x}{g:02x}{b:02x}" + (f" at {round(100 * a / 255)}% opacity" if a != 255 else "")
+    count = "1 pixel" if len(bad) == 1 else f"{len(bad)} pixels"
+    return f"{count} off the palette, the first at ({x}, {y}), {what}"
 
 
 def hexes(*codes: str) -> list[tuple[int, int, int]]:
@@ -714,13 +728,12 @@ def main() -> None:
         picture = Image.open(source)
         if picture.size != (art, art):
             raise SystemExit(f"{source.relative_to(ROOT)} is {picture.width} x {picture.height}: a {kind} is drawn at {art} x {art}")
-        snapped = to_palette(picture)
-        raw, out = picture.convert("RGBA").tobytes(), snapped.tobytes()
-        off = sum(1 for i in range(0, len(raw), 4) if raw[i + 3] >= 128 and raw[i : i + 3] != out[i : i + 3])
-        if off > 0:
-            print(f"note: {source.relative_to(ROOT)} has {off} pixels not in the Apollo palette; they take its nearest colours")
+        picture = picture.convert("RGBA")
+        wrong = off_palette(picture)
+        if wrong is not None:
+            raise SystemExit(f"{source.relative_to(ROOT)}: {wrong}. Fruit are drawn in the Apollo palette (tools/palette/apollo.hex), each pixel solid or clear")
         size = art * PX
-        doubled(snapped).save(ASSETS / f"fruit-{kind}.png")
+        doubled(picture).save(ASSETS / f"fruit-{kind}.png")
         lines.append(f"  {kind}: {{ size: {size}, radius: {round(size * SHARES.get(kind, BALL_SHARE))} }},")
     SIZES_FILE.write_text(
         "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
