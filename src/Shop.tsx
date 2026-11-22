@@ -51,16 +51,15 @@ const ACTION_H = 36;
 const ACTION_GAP = 11;
 const ACTION_Y = 280;
 /**
- * The bar along the foot of the screen, under the actions: the pool's basket (as on the play screen, 56 x 38) on the left, the Buy
- * button or what just happened in the middle, and the coins on the right, clear of the pause button in the corner.
+ * The bar along the foot of the screen, under the actions: the pool's basket (as on the play screen, 56 x 38) and the coins on the
+ * left, the Buy button or what just happened in the middle; the right is the pause button's.
  */
 const BAR_Y = ACTION_Y + ACTION_H + 2;
 const BAR_H = 360 - BAR_Y;
 const BAR_SIDE = 16;
-const BAR_RIGHT = 60;
 const POOL_BASKET_W = 56;
 const POOL_H = 38;
-const BAR_MESSAGE_W = 300;
+const BAR_MESSAGE_W = 280;
 /**
  * The picture at the top of a label: a fruit in its basket, or the item on its cloth. As wide as the biggest fruit the shop can
  * offer, and tall enough for it to sit in the basket with its top in the picture. The basket (56 x 38) and the cloth (60 x 12)
@@ -300,10 +299,12 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
         <ActionSign chosen={chosen === SHOP_LEAVE} go={true} label="Next cycle >" onPoint={() => onPoint(SHOP_LEAVE)} onPress={() => onClick(SHOP_LEAVE)} />
       </Flex>
 
-      {/* The bar along the foot: the pool on the left, the coins on the right, and between them the Buy button while a card for sale
-          is chosen (a tap on a card only chooses it, so it can be read and its text scrolled first; Enter buys it too), else what
-          just happened (a fruit bought, the shelf restocked). */}
-      <Flex left={BAR_SIDE} right={BAR_RIGHT} top={BAR_Y} height={BAR_H} direction="row" alignItems="center" justifyContent="space-between" opacity={entered(time, SHOP_ITEM + 1)}>
+      {/* The bar along the foot. On the left the fruit and the coins, as they are on the play screen: the pool's basket and how many
+          fruit are in it (a tap on it, or D, opens the board of the whole pool over the shop), then the jar of coins and how many.
+          In the middle the Buy button while a card for sale is chosen (a tap on a card only chooses it, so it can be read and its
+          text scrolled first; Enter buys it too), else what just happened (a fruit bought, the shelf restocked). The right is left
+          to the pause button. */}
+      <Flex left={BAR_SIDE} top={BAR_Y} height={BAR_H} direction="row" alignItems="center" gap={16} opacity={entered(time, SHOP_ITEM + 1)}>
         <Flex direction="row" alignItems="center" gap={6} focusable={false} onPress={onPool}>
           <Flex width={POOL_BASKET_W} height={POOL_H}>
             <Entity>
@@ -311,20 +312,20 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
               <Sprite image="basket.png" x={0} y={0} />
             </Entity>
           </Flex>
-          <Text color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>{`${run.pool.length} fruit`}</Text>
-        </Flex>
-        <Flex width="grow" direction="row" justifyContent="center">
-          {forSale && <TapButton label="Buy" onPress={onConfirm} />}
-          {!forSale && (
-            <Text width={BAR_MESSAGE_W} maxWidth={BAR_MESSAGE_W} align="center" color={LIGHT}>
-              {run.message}
-            </Text>
-          )}
+          <Text font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>{`${run.pool.length}`}</Text>
         </Flex>
         <Flex direction="row" alignItems="center" gap={6}>
           <Sprite image={COIN_JAR} />
-          <Text color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>{`${run.coins} ${run.coins === 1 ? "coin" : "coins"}`}</Text>
+          <Text font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>{`${run.coins}`}</Text>
         </Flex>
+      </Flex>
+      <Flex left={0} right={0} top={BAR_Y} height={BAR_H} direction="row" alignItems="center" justifyContent="center" opacity={entered(time, SHOP_ITEM + 1)}>
+        {forSale && <TapButton label="Buy" onPress={onConfirm} />}
+        {!forSale && (
+          <Text width={BAR_MESSAGE_W} maxWidth={BAR_MESSAGE_W} align="center" color={LIGHT}>
+            {run.message}
+          </Text>
+        )}
       </Flex>
 
       {/* Taking a fruit out: the pool by kind on a board in the middle of the screen, its kinds wrapping when there are many. */}

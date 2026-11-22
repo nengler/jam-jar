@@ -23,6 +23,7 @@ import { ITEMS, keepingJar } from "./rules/items.ts";
 import { advance, handSlots, newRun, slotsOf, OFFERED, BOOM_LIFE, CLEAR_TIME, keeps, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
   biggestFruit,
+  COIN_JAR,
   fruitImageSize,
   BAD,
   BAR_FILL,
@@ -85,6 +86,8 @@ const LEDGE_W = 60;
 const BASKET_W = 56;
 const BASKET_H = 38;
 const ROLL_FROM = (JAR.left + JAR.right) / 2 + 104 + LEDGE_GAP + LEDGE_W / 2;
+/** The coins stand to the right of the basket and its count, with room for a count of two figures between. */
+const COINS_X = ROLL_FROM + 56 / 2 + 50;
 /** Where the card of a fruit on the shelf stands: in the top left corner, over the rent board for as long as it is up, so it
  * never lies over the jar, which is what the player is deciding about. */
 const TIP_X = 4;
@@ -555,6 +558,13 @@ export function Play() {
         <Text x={ROLL_FROM + BASKET_W / 2 + 6} y={SHELF_Y - BASKET_H + 2} font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>
           {`${run.draw.length}`}
         </Text>
+        {/* The coins, beside the fruit: the jar of coins and how many, as in the shop, standing where the basket does. */}
+        <Flex x={COINS_X} y={SHELF_Y - BASKET_H} height={BASKET_H} direction="row" alignItems="end" gap={6}>
+          <Sprite image={COIN_JAR} />
+          <Flex height={BASKET_H} direction="row" alignItems="start" paddingTop={2}>
+            <Text font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>{`${run.coins}`}</Text>
+          </Flex>
+        </Flex>
         <Flex x={ROLL_FROM - BASKET_W / 2} y={SHELF_Y - BASKET_H} width={BASKET_W + 40} height={BASKET_H} focusable={false} onPress={openPool}>
           <Frame id="pool" pad={8} padBottom={4} />
           <Tooltip anchor="top-left" to="bottom-left" offsetX={0} offsetY={8} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
@@ -589,8 +599,8 @@ export function Play() {
       {ordering && <Flex x={JAR.left} y={RIM} width={jarWidth} height={JAR.floor - RIM} focusable={false} onPress={() => tapDrop()} />}
 
       {/* Left: a column pinned to the screen's left edge. The rent board is as tall as what is on it: this cycle's score, big, and
-          under it the rent it is counted against ("64 of 120 rent"); a bar of how much of the rent that is; the turn; and the
-          coins. Nothing else is on this side: how to move a fruit and drop the hand is said on the fruit's card under the shelf. */}
+          under it the rent it is counted against ("64 of 120 rent"); a bar of how much of the rent that is; and the turn. (The
+          coins are beside the pool's basket, at the shelf's end.) Nothing else is on this side: how to move a fruit and drop the hand is said on the fruit's card under the shelf. */}
       <Raise id="rent">
       <Flex left={HUD_X - 240 * (1 - popIn(s.intro, INTRO.left, INTRO.pop))} top={BOARD_Y} width={BOARD_W} direction="column" alignItems="stretch" gap={12}>
         <Frame id="rent" pad={6} padBottom={10} />
@@ -600,10 +610,6 @@ export function Play() {
           <Flex direction="row" justifyContent="space-between" paddingTop={6}>
             <Text color={turn >= TURNS_PER_CYCLE && !paid ? BAD : INK_SOFT}>{turn >= TURNS_PER_CYCLE ? "Last turn" : "Turn"}</Text>
             <Text color={turn >= TURNS_PER_CYCLE && !paid ? BAD : INK_SOFT}>{turn >= TURNS_PER_CYCLE ? `${turn}/${TURNS_PER_CYCLE}` : `${turn} of ${TURNS_PER_CYCLE}`}</Text>
-          </Flex>
-          <Flex direction="row" alignItems="center" gap={6}>
-            <Sprite image="coin.png" />
-            <Text color={INK}>{`${run.coins} ${run.coins === 1 ? "coin" : "coins"}`}</Text>
           </Flex>
         </Panel>
       </Flex>
