@@ -56,16 +56,16 @@ export function Raise({ id, children }: { id: LessonTarget; children: Child }) {
 }
 
 /**
- * The amber frame, round the box of the `<Flex>` it is put in, `pad` pixels out from it on each side (`padBottom` at the foot, for a
- * board whose shadow reaches lower), while `id` is what is picked out. It takes no room and no taps.
+ * The amber frame, round the box of the `<Flex>` it is put in, `pad` pixels out from it on each side (`padTop` and `padBottom` at the
+ * head and the foot, where they differ), while `id` is what is picked out. It takes no room and no taps.
  */
-export function Frame({ id, pad, padBottom }: { id: LessonTarget; pad: number; padBottom?: number }) {
+export function Frame({ id, pad, padTop, padBottom }: { id: LessonTarget; pad: number; padTop?: number; padBottom?: number }) {
   const lit = useContext(Lit);
   const time = useTime();
   // Always there, and clear while `id` is not picked out: as the component's own box, it is a child of the `<Flex>` it is put in,
   // which is what its edges are measured from.
   return (
-    <Flex left={-pad} right={-pad} top={-pad} bottom={-(padBottom ?? pad)} backgroundImage={SELECT} slice={CARD_SLICE} opacity={lit !== null && lit === id ? 0.55 + 0.45 * Math.sin(time * 5) : 0} />
+    <Flex left={-pad} right={-pad} top={-(padTop ?? pad)} bottom={-(padBottom ?? pad)} backgroundImage={SELECT} slice={CARD_SLICE} opacity={lit !== null && lit === id ? 0.55 + 0.45 * Math.sin(time * 5) : 0} />
   );
 }
 

@@ -324,7 +324,7 @@ saved data and reads none.
   Each step it reports where it is, its speed and which fruit it touches; a blast reaches it as a kick through its props.
 - `src/Play.tsx` collects the reports, calls `advance` once a step and draws the result: the jar (walls are `<Collider solid>`),
   the fruit, the hand on its shelf, the rent board and the keys on the left, the pool by kind and a note of what just happened
-  on the right, and the pick cards. `Shop.tsx` draws the shop (a market stall: an awning, jam-jar labels on a counter, wooden signs; its pieces are drawn in `tools/make-assets.py`) and `Peg.tsx` is the boss jar's peg (a ball too heavy to move). `Jar.tsx` is the jar and its
+  on the right, and the pick cards. `Shop.tsx` draws the shop (a market stall: an awning, jam-jar labels on a counter, wooden signs; its pieces are in `art/shop/`) and `Peg.tsx` is the boss jar's peg (a ball too heavy to move). `Jar.tsx` is the jar and its
   fruit, which the play screen and the title's `DemoJar.tsx` both draw.
   `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `RuleText.tsx` draws card text with its keywords in colour. `Board.tsx` is `Panel`, a parchment board
   with its heading that lays out what is on it and is as tall as that (the rent board, the pool, the note slate and every
@@ -332,33 +332,36 @@ saved data and reads none.
   names the colours, the fonts and the Kenney frames every screen is made of. `settings.ts` is the player's settings, which the
   engine keeps between launches (the game has an id, `<Game id="jam-jar">`, which is what turns that on).
 - `tools/install-engine.ts` packs `../tse` and installs it without saving. `tools/balance.ts` is the balance run above.
-- `tools/make-assets.py` (Python with Pillow) builds `assets/` from the free art in `tools/`, sizing each fruit to its radius in
-  `src/rules/fruits.ts`. Rerun it after changing a radius.
+- `art/` holds every picture as it is drawn: at its art size (half its size on the screen), in the Apollo palette
+  (`art/README.md`). `tools/make-assets.py` (Python with Pillow) checks each and doubles it into `assets/`, writes each fruit's
+  ball size to `src/rules/sizes.ts`, copies the sounds and makes the tally's notes. Rerun it after changing a picture.
 
 ## Credits
 
-- Fruit art: a 16 x 16 pixel fruit sheet (`tools/fruit/`; its source and licence are still to be added there). Stand-ins:
+- Fruit art: one picture per fruit in `art/fruit/`, for now cut from a 16 x 16 pixel fruit sheet (`tools/fruit/`; its source
+  and licence are still to be added there) and to be replaced one by one. Stand-ins:
   the Durian is the Pineapple, the Seed the brown Kiwi, the Melon the round green one, the Prune the Blackberry, the Fig the
   Aubergine and the Honeydew the golden Apple. The Pitaya is the sheet's Dragon Fruit and the Dragonfruit its
-  white-fleshed one. The Fruit Fly is drawn by `tools/make-assets.py`.
+  white-fleshed one. The Fruit Fly was drawn for the game.
 - There is no music for now: the tracks on hand are loops of 10 to 48 seconds (the one that played, Farm Frolics, is 10.7),
   which wear thin at once. `src/Main.tsx` says where a `<Music>` goes back, and the settings screen's music row is out with it.
 - [Kenney](https://kenney.nl) pixel art, CC0: the boards, cards, buttons and the slate (UI Pack - Pixel Adventure),
   the wallpaper's trellis (Pattern Pack Pixel), the coin (Pixel Platformer), blasts (Explosion Pack's pixel explosion), the
-  sounds and the music (Farm Frolics, from Music Loops). It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;
-  `tools/kenney/README.md` says which file each came from.
+  sounds and the music (Farm Frolics, from Music Loops). The pictures were recoloured onto Apollo and are in `art/`; the
+  frames and the explosion have finer detail than the art's pixel, so they are in `art/screen/` at screen size. The full bundle
+  is on this repo's `Assets` release; `tools/kenney/README.md` says which file each came from.
 - The backdrop moves a little: the wallpaper drifts slowly, and a few motes of dust rise through the air (`src/Backdrop.tsx`).
   No shader: the engine's software renderer, which the tests and `tse screenshot` use, runs none, and a shader would blend
   colours off the palette.
-- Drawn by `tools/make-assets.py`, in Apollo colours at the same 2x pixel: the kitchen (wallpaper over a wooden counter), the
-  jar's glass, the shelf and the key caps. The jar is two pictures, one behind the fruit and one (its near rim, shine and
-  fill line) in front of them.
+- Drawn for the game, in Apollo colours at the same 2x pixel: the kitchen (wallpaper over a wooden counter), the jar's glass,
+  the shelf, the key caps, the items and the shop's stall. The jar is two pictures, one behind the fruit and one (its near rim,
+  shine and fill line) in front of them.
 - Text: the engine's built-in pixel fonts, m5x7 for reading and Jersey 10 for headings and numbers, both at 2x.
 - Colours: the [Apollo palette](https://lospec.com/palette-list/apollo) by AdamCYounis (`tools/palette/apollo.hex`). Every
-  picture is snapped to it or drawn in it, the Kenney UI pieces are recoloured onto Apollo ramps, and `src/theme.ts` names
+  picture in `art/` is drawn in it, every pixel solid or clear (`tools/make-assets.py` stops on any other), and `src/theme.ts` names
   the UI's colours. Nothing is drawn see-through except the shade behind a menu or the pick.
-- Every picture is pixel art. Fruit sizes come from scaling their 16-pixel sprites: 2x to 4x, with Grape and Melon at 2.5x and
-  3.5x so the merge ladder has five sizes; each ball's radius is measured from its sprite (`src/rules/sizes.ts`).
+- Every picture is pixel art at 2x, the fruit included: each is drawn at its own size (16 to 48 art pixels, the merge ladder
+  going 16, 20, 24, 28, 32) and shown at that size everywhere; each ball's radius is measured from it (`src/rules/sizes.ts`).
 
 ## Engine notes
 
@@ -370,4 +373,4 @@ What the engine did and didn't cover for this game:
   `Play`'s state, fed by the fruit's reports a step behind. `advance` returns a copy each step, because render compares by `===`.
 - **Not on npm.** Hence `install-engine`, the same loop the engine's own Bramble game uses.
 - **Free assets.** Kenney has no pixel fruit, so the fruit come from a separate pixel sheet; the rest is Kenney pixel art or
-  drawn by `tools/make-assets.py`.
+  drawn for the game.

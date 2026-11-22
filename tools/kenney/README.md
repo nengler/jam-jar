@@ -1,7 +1,8 @@
 # Kenney art and sounds
 
 Everything here is by Kenney (https://kenney.nl), released under Creative Commons Zero (CC0 1.0): free for any use, no
-attribution required. `tools/make-assets.py` turns it into `assets/`.
+attribution required. The sounds are copied into `assets/` by `tools/make-assets.py`; the pictures were recoloured onto
+the Apollo palette once and are in `art/` (the frames and the explosion in `art/screen/`).
 
 - The `.wav` sounds come from the tse engine repo's games (`games/*/tools/kenney/`), already converted there to 22.05 kHz mono
   WAV. Each is named after its pack and its name there (`interface-sounds-glass-001.wav` is `glass_001` of Interface Sounds).

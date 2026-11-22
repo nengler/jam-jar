@@ -3,7 +3,7 @@ import { FRUIT_ART } from "./rules/sizes.ts";
 
 /**
  * Jam Jar's look, in one place. Every colour is from the Apollo palette (tools/palette/apollo.hex), which every picture is
- * snapped to or drawn in as well (tools/make-assets.py), and every picture is pixel art at 2x. The text is the engine's built-in
+ * drawn in as well (art/), and every picture is pixel art at 2x. The text is the engine's built-in
  * pixel fonts at 2x too: m5x7 for reading, Jersey 10 for headings and numbers.
  */
 export const INK = "#341c27";
@@ -43,7 +43,7 @@ export function cardFor(chosen: boolean): string {
 }
 
 /**
- * The shop is a market stall in the kitchen (tools/make-assets.py, "The shop"): a striped awning, the stall's counter, the offers
+ * The shop is a market stall in the kitchen (art/shop): a striped awning, the stall's counter, the offers
  * as jam-jar labels (a gingham band on the item's), paper price tags, a SOLD stamp, wooden signs for the heading, the purse and
  * the actions (green for the way out), and a jar of coins for the purse. The labels and signs are 9-sliced like the frames.
  */
@@ -70,10 +70,10 @@ export function signFor(chosen: boolean, go = false): string {
   return chosen ? "sign-chosen.png" : go ? SIGN_GO : SIGN;
 }
 
-/** Menu buttons: a parchment card, amber while focused or hovered. */
-export const BUTTON = CARD_CHOSEN;
-export const BUTTON_GREY = CARD;
-export const BUTTON_SLICE = CARD_SLICE;
+/** Every button (src/PushButton.tsx): a parchment key cap like the pause button, amber while focused or hovered, and pushed in when pressed. */
+export const BUTTON = "button.png";
+export const BUTTON_LIT = "button-lit.png";
+export const BUTTON_DOWN = "button-down.png";
 
 /** A rotten fruit is tinted this brown. */
 export const ROTTEN = "#ad7757";
@@ -107,19 +107,25 @@ export const KEYWORD = "#3c5e8b";
 export const KEYWORD_LIGHT = "#e8c170";
 
 
-/** Which picture of a fruit: its size in the jar, a 32-pixel icon, or a 64-pixel one for the pick cards. */
-export type FruitLook = "jar" | "icon" | "big";
-
-export function fruitImage(kind: FruitKind, look: FruitLook): string {
-  return look === "icon" ? `icon-${kind}.png` : look === "big" ? `big-${kind}.png` : `fruit-${kind}.png`;
+/**
+ * A fruit's picture, and its size in pixels: one picture, at its size in the jar, which the shelf, the cards and every board show
+ * too, so each fruit is drawn once and is the same size wherever it is.
+ */
+export function fruitImage(kind: FruitKind): string {
+  return `fruit-${kind}.png`;
 }
 
-export function fruitImageSize(kind: FruitKind, look: FruitLook): number {
-  return look === "icon" ? 32 : look === "big" ? 64 : FRUIT_ART[kind].size;
+export function fruitImageSize(kind: FruitKind): number {
+  return FRUIT_ART[kind].size;
+}
+
+/** The biggest of these fruit's pictures, in pixels (0 for none): how much room a row or a card of them needs. */
+export function biggestFruit(kinds: readonly FruitKind[]): number {
+  return Math.max(0, ...kinds.map((kind) => FRUIT_ART[kind].size));
 }
 
 /** Where the counter's top is on the screen: what stands on it (the jar, the title's fruit) has its foot here. */
-export const COUNTER_Y = 342;
+export const COUNTER_Y = 350;
 /** The shadow a thing standing on the counter casts on it. */
 export const COUNTER_SHADOW = "#090a1480";
 
