@@ -1,8 +1,9 @@
 """
 Lays out the game's assets/ from the free art in tools/:
 
-- tools/fruit/fruit-sheet.png: 16 x 16 pixel fruit. Each fruit is scaled up with no smoothing to its size in the jar,
-  fruit-<kind>.png, the one picture of it that the shelf, the cards and the boards show too; its ball's radius is written to src/rules/sizes.ts, so the physics matches the picture.
+- tools/fruit/<kind>.png: each fruit, at its art size (FRUIT_SIZES). It is doubled with no smoothing to fruit-<kind>.png,
+  the one picture of it that the jar, the shelf, the cards and the boards all show; its ball's radius is written to
+  src/rules/sizes.ts, so the physics matches the picture.
 - tools/kenney/: Kenney's CC0 assets (from the Kenney Game Assets All-in-1 bundle, and sounds from the tse repo's games):
   - the sounds, copied as they are;
   - pixel art only: UI Pack - Pixel Adventure frames (ADVENTURE), Pattern Pack Pixel's trellis (the wallpaper),
@@ -23,50 +24,48 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
 KENNEY = ROOT / "tools" / "kenney"
 
-# The fruit: 16 x 16 pixel sprites from tools/fruit/fruit-sheet.png (38 columns x 6 rows). Each kind is (column, row, scale):
-# the scale is how many screen pixels an art pixel takes, so the merge ladder grows Cherry -> Watermelon. Whole scales stay
-# crisp; Grape (2.5) and Melon (3.5) sit between them, as the ladder needs five sizes. No sprite exists for a Durian (the
-# Pineapple stands in), a Seed (the brown Kiwi), a Melon (the round green one), a Prune (the Blackberry), a Fig (the Aubergine)
-# or a Honeydew (the golden Apple). The Ladder set: a Slice is the sheet's watermelon wedge, the Pumpkin and the Giant Pumpkin
-# are the orange squash (two slots wide, and bigger again), and a Gourd is the ribbed green squash, drawn at its smallest
-# size (it grows in the jar by being scaled up).
-FRUIT_SPRITES = {
-    "cherry": (14, 1, 2),
-    "grape": (5, 1, 2.5),
-    "orange": (9, 1, 3),
-    "melon": (17, 1, 3.5),
-    "watermelon": (26, 2, 4),
-    "apple": (0, 1, 2.5),
-    "banana": (7, 1, 2.5),
-    "chili": (30, 1, 2),
-    "durian": (11, 1, 3),
-    "pomegranate": (13, 1, 2.5),
-    "blueberry": (16, 1, 2),
-    "lemon": (18, 1, 2),
-    "seed": (19, 1, 2),
-    "prune": (36, 1, 2),
-    "fig": (25, 2, 2.5),
-    "kiwi": (19, 2, 2.5),
-    "peach": (12, 0, 2.5),
-    "honeydew": (2, 1, 3),
-    "pitaya": (20, 0, 2.5),
-    "coconut": (22, 1, 3),
-    "lime": (17, 2, 2.5),
-    "dragonfruit": (21, 1, 3),
-    "snowpear": (10, 1, 2.5),
-    "slice": (26, 3, 2.5),
-    "pumpkin": (34, 1, 4.5),
-    "gourd": (22, 0, 2),
-    "giantpumpkin": (34, 2, 6),
+# The fruit: one picture each, tools/fruit/<kind>.png, drawn at its art size (half its size on the screen) and doubled with no
+# smoothing like all the art. The size is fixed by the fruit, not the file: the merge ladder grows Cherry -> Watermelon, and each
+# ball's radius comes from it. A picture of another size is an error, so a replaced fruit cannot change how it plays by accident.
+FRUIT_DIR = ROOT / "tools" / "fruit"
+FRUIT_SIZES = {
+    "cherry": 16,
+    "grape": 20,
+    "orange": 24,
+    "melon": 28,
+    "watermelon": 32,
+    "apple": 20,
+    "banana": 20,
+    "chili": 16,
+    "durian": 24,
+    "pomegranate": 20,
+    "blueberry": 16,
+    "lemon": 16,
+    "seed": 16,
+    "prune": 16,
+    "fig": 20,
+    "kiwi": 20,
+    "peach": 20,
+    "honeydew": 24,
+    "pitaya": 20,
+    "coconut": 24,
+    "lime": 20,
+    "dragonfruit": 24,
+    "snowpear": 20,
+    "slice": 20,
+    # Wide: it takes two places on the shelf.
+    "pumpkin": 36,
+    # Drawn at its smallest size: it grows in the jar by being scaled up.
+    "gourd": 16,
+    # Only made by merging two Watermelons.
+    "giantpumpkin": 48,
+    "fruitfly": 16,
 }
-# The Fruit Fly is not on the sheet: it is drawn here (`fruit_fly`), 16 x 16 like the others, at 2x.
-FLY_SCALE = 2
-FRUIT_SHEET = ROOT / "tools" / "fruit" / "fruit-sheet.png"
 SIZES_FILE = ROOT / "src" / "rules" / "sizes.ts"
 # A fruit's ball is a little smaller than its sprite's square: the art does not fill the corners. The Fruit Fly's is smaller
 # still: it is tiny in its square.
 BALL_SHARE = 0.45
-FLY_SHARE = 0.3
+SHARES = {"fruitfly": 0.3}
 
 # The tally's notes, made here and not taken from a pack: eight steps up a pentatonic scale from C5, so each score of a tally
 # rings one higher than the last and any run of them is in tune. Each is a small bell: the note, an octave and a fifth over it
@@ -528,21 +527,6 @@ def pointer() -> Image.Image:
     return doubled(out)
 
 
-def fruit_fly() -> Image.Image:
-    """The Fruit Fly, 16 x 16 art pixels: a dark body, a red eye and two pale wings."""
-    out = Image.new("RGBA", (16, 16))
-    draw = ImageDraw.Draw(out)
-    for box in ((2, 3, 7, 8), (8, 3, 13, 8)):
-        draw.ellipse(box, fill=colour("#577277"))
-        draw.ellipse((box[0] + 1, box[1] + 1, box[2] - 1, box[3] - 1), fill=colour("#c7cfcc"))
-    draw.ellipse((5, 6, 10, 12), fill=colour("#241527"))
-    draw.rectangle((6, 8, 9, 10), fill=colour("#4d2b32"))
-    draw.rectangle((6, 4, 9, 6), fill=colour("#241527"))
-    draw.point((6, 5), fill=colour("#cf573c"))
-    draw.point((9, 5), fill=colour("#cf573c"))
-    return out
-
-
 def coin() -> Image.Image:
     """Pixel Platformer's gold coin (tile 11, 7 of its 18 x 18 packed tiles)."""
     tiles = Image.open(KENNEY / "pixel-platformer-tiles.png").convert("RGBA")
@@ -724,14 +708,20 @@ def write_shop() -> None:
 
 def main() -> None:
     ASSETS.mkdir(exist_ok=True)
-    sheet = to_palette(Image.open(FRUIT_SHEET))
     lines = []
-    sprites = {kind: (sheet.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16)), scale, BALL_SHARE) for kind, (col, row, scale) in FRUIT_SPRITES.items()}
-    sprites["fruitfly"] = (fruit_fly(), FLY_SCALE, FLY_SHARE)
-    for kind, (sprite, scale, share) in sprites.items():
-        size = round(16 * scale)
-        sprite.resize((size, size), Image.NEAREST).save(ASSETS / f"fruit-{kind}.png")
-        lines.append(f"  {kind}: {{ size: {size}, radius: {round(size * share)} }},")
+    for kind, art in FRUIT_SIZES.items():
+        source = FRUIT_DIR / f"{kind}.png"
+        picture = Image.open(source)
+        if picture.size != (art, art):
+            raise SystemExit(f"{source.relative_to(ROOT)} is {picture.width} x {picture.height}: a {kind} is drawn at {art} x {art}")
+        snapped = to_palette(picture)
+        raw, out = picture.convert("RGBA").tobytes(), snapped.tobytes()
+        off = sum(1 for i in range(0, len(raw), 4) if raw[i + 3] >= 128 and raw[i : i + 3] != out[i : i + 3])
+        if off > 0:
+            print(f"note: {source.relative_to(ROOT)} has {off} pixels not in the Apollo palette; they take its nearest colours")
+        size = art * PX
+        doubled(snapped).save(ASSETS / f"fruit-{kind}.png")
+        lines.append(f"  {kind}: {{ size: {size}, radius: {round(size * SHARES.get(kind, BALL_SHARE))} }},")
     SIZES_FILE.write_text(
         "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
         "export const FRUIT_ART = {\n" + "\n".join(lines) + "\n} as const;\n"
@@ -773,7 +763,7 @@ def main() -> None:
     write_score_notes()
     write_last_turn()
     write_entrance_sounds()
-    print(f"wrote {len(sprites)} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds (the music among them)")
+    print(f"wrote {len(FRUIT_SIZES)} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds (the music among them)")
 
 
 if __name__ == "__main__":

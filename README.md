@@ -337,10 +337,11 @@ saved data and reads none.
 
 ## Credits
 
-- Fruit art: a 16 x 16 pixel fruit sheet (`tools/fruit/`; its source and licence are still to be added there). Stand-ins:
+- Fruit art: one picture per fruit in `tools/fruit/`, for now cut from a 16 x 16 pixel fruit sheet (its source and licence
+  are still to be added there) and to be replaced one by one. Stand-ins:
   the Durian is the Pineapple, the Seed the brown Kiwi, the Melon the round green one, the Prune the Blackberry, the Fig the
   Aubergine and the Honeydew the golden Apple. The Pitaya is the sheet's Dragon Fruit and the Dragonfruit its
-  white-fleshed one. The Fruit Fly is drawn by `tools/make-assets.py`.
+  white-fleshed one. The Fruit Fly was drawn for the game.
 - There is no music for now: the tracks on hand are loops of 10 to 48 seconds (the one that played, Farm Frolics, is 10.7),
   which wear thin at once. `src/Main.tsx` says where a `<Music>` goes back, and the settings screen's music row is out with it.
 - [Kenney](https://kenney.nl) pixel art, CC0: the boards, cards, buttons and the slate (UI Pack - Pixel Adventure),
@@ -357,8 +358,8 @@ saved data and reads none.
 - Colours: the [Apollo palette](https://lospec.com/palette-list/apollo) by AdamCYounis (`tools/palette/apollo.hex`). Every
   picture is snapped to it or drawn in it, the Kenney UI pieces are recoloured onto Apollo ramps, and `src/theme.ts` names
   the UI's colours. Nothing is drawn see-through except the shade behind a menu or the pick.
-- Every picture is pixel art. Fruit sizes come from scaling their 16-pixel sprites: 2x to 4x, with Grape and Melon at 2.5x and
-  3.5x so the merge ladder has five sizes; each ball's radius is measured from its sprite (`src/rules/sizes.ts`).
+- Every picture is pixel art at 2x, the fruit included: each is drawn at its own size (16 to 48 art pixels, the merge ladder
+  going 16, 20, 24, 28, 32) and shown at that size everywhere; each ball's radius is measured from it (`src/rules/sizes.ts`).
 
 ## Engine notes
 
