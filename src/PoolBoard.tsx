@@ -4,7 +4,7 @@ import { Dialog } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { TapButton } from "./KeyHint.tsx";
-import { countOf, grownOf, kindAt, placed, poolRows } from "./layout.ts";
+import { countOf, grownOf, kindAt, placed, poolRows, cardText } from "./layout.ts";
 import type { FruitKind } from "./rules/fruits.ts";
 import type { Run } from "./rules/jar.ts";
 import { CARD_SLICE, fruitImageSize, INK, INK_SOFT, SELECT, SHADE, TERM_W } from "./theme.ts";
@@ -40,7 +40,7 @@ export function PoolBoard({ run, chosenAt, onLook, onLookAway, onClose }: PoolBo
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
       <Flex left={0} right={0} top={0} bottom={0} direction="row" alignItems="center" justifyContent="center" gap={8}>
         <Flex width={TERM_W} direction="column" alignItems="stretch">
-          {looked !== null && <FruitTip kind={looked ?? "cherry"} grown={grownOf(run, looked ?? "cherry")} />}
+          {looked !== null && <FruitTip kind={looked ?? "cherry"} grown={grownOf(run, looked ?? "cherry")} text={cardText(run, looked ?? "cherry")} />}
         </Flex>
         <Flex width={Math.max(240, Math.min(POOL_W, whole.reduce((w, row) => w + poolCell(row.kind), 0) + 32))} direction="column" alignItems="stretch">
           <Dialog title={`Your pool: ${run.pool.length} fruit`}>

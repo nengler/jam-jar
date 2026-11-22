@@ -1,4 +1,4 @@
-import { FRUITS, type FruitKind } from "./rules/fruits.ts";
+import { FRUITS, pumpkinSeedText, type FruitKind } from "./rules/fruits.ts";
 import { BOSS_NAME, bossNow, newRun, RENT, type Run } from "./rules/jar.ts";
 import { KEYWORDS, keywordsIn } from "./rules/terms.ts";
 
@@ -167,6 +167,11 @@ export function ripple(text: string, time: number, seed: number): RippleLetter[]
  * blown up) and Pitayas (a Cherry eaten). Growth is the kind's, not one fruit's: every Banana or Pitaya has it, in the jar now
  * and dropped later.
  */
+/** What a fruit's card says in this run: its text, but a Pumpkin Seed's says what it grows now and when it grows bigger. */
+export function cardText(run: Run, kind: FruitKind): string {
+  return kind === "pumpkinseed" ? pumpkinSeedText(run.pumpkinSprouts) : FRUITS[kind].text;
+}
+
 export function grownOf(run: Run, kind: FruitKind): number {
   return kind === "banana" ? run.bananaBonus : kind === "pitaya" ? run.pitayaBonus : 0;
 }

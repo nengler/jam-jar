@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, PUMPKIN_SEED, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
 
@@ -333,8 +333,8 @@ export interface Run {
   bananaBonus: number;
   /** What every Pitaya scores on top of its own points: +1 for each Cherry one has eaten. */
   pitayaBonus: number;
-  /** How many times a Pumpkin Seed has Climbed this run: every `PUMPKIN_SEED.every` of them, its fruit grows a size bigger. */
-  climbs: number;
+  /** How many fruit have grown from Pumpkin Seeds this run: every `PUMPKIN_SEED.every` of them, the next grows a size bigger. */
+  pumpkinSprouts: number;
   /** The items owned, in the order they were bought. A used-up one (the Lid) is taken out. */
   items: ItemKind[];
   /** The shop, while the phase is "shop". */
@@ -481,7 +481,7 @@ export function newRun(seed: number): Run {
     milk: false,
     bananaBonus: 0,
     pitayaBonus: 0,
-    climbs: 0,
+    pumpkinSprouts: 0,
     items: [],
     shop: null,
     preserveCursor: 0,
@@ -1110,19 +1110,13 @@ function plungeStep(run: Run, dt: number): void {
   }
 }
 
-/** What a Pumpkin Seed's Climb grows now: a Cherry, and a size bigger after every `PUMPKIN_SEED.every` Climbs, up to a Melon. */
-export function climbKind(climbs: number): FruitKind {
-  const sizes = PUMPKIN_SEED.sizes;
-  return sizes[Math.min(Math.floor(climbs / PUMPKIN_SEED.every), sizes.length - 1)] as FruitKind;
-}
-
-/** A Pumpkin Seed's Climb: its fruit where the Seed was, already landed, scoring its points as it is made (nothing if the Seed was rotten). */
-function climb(run: Run, seed: Fruit): Fruit {
-  const kind = climbKind(run.climbs);
-  run.climbs += 1;
+/** An Exploded Pumpkin Seed's fruit (`pumpkinSprout`), where the Seed was, already landed, scoring its points as it is made (nothing if the Seed was rotten). */
+function pumpkinGrow(run: Run, seed: Fruit): Fruit {
+  const kind = pumpkinSprout(run.pumpkinSprouts);
+  run.pumpkinSprouts += 1;
   const grown = makeFruit(run, kind, inside(seed.x, FRUITS[kind].radius), seed.y);
   grown.landed = true;
-  if (!seed.rotten) score(run, FRUITS[kind].points, seed.x, seed.y - seed.r, { label: "Climb", earner: FRUITS.pumpkinseed.name });
+  if (!seed.rotten) score(run, FRUITS[kind].points, seed.x, seed.y - seed.r, { label: "Sprout", earner: FRUITS.pumpkinseed.name });
   return grown;
 }
 
@@ -1443,7 +1437,7 @@ function explode(run: Run, bomb: Fruit): void {
     if (f.kind === "fig" && f.rotten) figs += 1;
     if (f.kind === "lime") limes += 1;
     if (f.kind === "seed") born.push(sprout(run, f));
-    if (f.kind === "pumpkinseed") born.push(climb(run, f));
+    if (f.kind === "pumpkinseed") born.push(pumpkinGrow(run, f));
     payGolden(run, f);
   }
   // The blast pushes what is left away from it.

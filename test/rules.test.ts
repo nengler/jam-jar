@@ -1,16 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { blastBits, blastFlash, blastJolt, fruitResults, keywordResults, motes, poolRows, termsOf } from "../src/layout.ts";
+import { blastBits, blastFlash, blastJolt, fruitResults, keywordResults, motes, poolRows, termsOf, cardText } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
-import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, SLICES, type FruitKind } from "../src/rules/fruits.ts";
+import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
   BOSS_NAME,
   bossCycle,
-  climbKind,
   bossFor,
   bossNow,
   CLEAR_TIME,
@@ -246,28 +245,41 @@ test("a Pomegranate caught in a blast bursts into 5 Cherries", () => {
   assert.equal(run.fruits.filter((f) => f.kind === "cherry").length, 5);
 });
 
-test("a Pumpkin Seed caught in a blast Climbs: a fruit grows where it was and scores, a size bigger every 3 Climbs, up to a Melon", () => {
+test("a Pumpkin Seed caught in a blast grows a fruit where it was, which scores, a size bigger every 3 grown, up to a Melon", () => {
   assert.deepEqual(
-    Array.from({ length: 13 }, (_, n) => climbKind(n)),
+    Array.from({ length: 13 }, (_, n) => pumpkinSprout(n)),
     ["cherry", "cherry", "cherry", "grape", "grape", "grape", "orange", "orange", "orange", "melon", "melon", "melon", "melon"]
   );
   assert.equal(PUMPKIN_SEED.every, 3);
   const y = JAR.floor - 8;
   const run = jarWith([fruit(1, "pumpkinseed", 300, y)]);
-  run.climbs = 3;
+  run.pumpkinSprouts = 3;
   run.fruits.push({ ...fruit(2, "chili", 312, y), lit: true, fuse: 0 });
   simulate(run, DT);
   const grown = run.fruits.filter((f) => f.kind === "grape");
-  assert.equal(grown.length, 1, "the fourth Climb grows a Grape");
+  assert.equal(grown.length, 1, "the fourth grows a Grape");
   assert.equal(grown[0]!.landed, true);
-  assert.equal(run.climbs, 4, "the count is the run's");
+  assert.equal(run.pumpkinSprouts, 4, "the count is the run's");
   assert.equal(run.earned["Pumpkin Seed"], FRUITS.grape.points, "the Grape scores as it is made");
+});
+
+test("a Pumpkin Seed's card says what it grows now and how many more until the next size", () => {
+  assert.equal(pumpkinSeedText(0), "Exploded: grows a Cherry. 3 more: Grape.");
+  assert.equal(pumpkinSeedText(2), "Exploded: grows a Cherry. 1 more: Grape.");
+  assert.equal(pumpkinSeedText(3), "Exploded: grows a Grape. 3 more: Orange.");
+  assert.equal(pumpkinSeedText(8), "Exploded: grows an Orange. 1 more: Melon.");
+  assert.equal(pumpkinSeedText(9), "Exploded: grows a Melon.");
+  assert.equal(FRUITS.pumpkinseed.text, pumpkinSeedText(0));
+  const run = newRun(1);
+  run.pumpkinSprouts = 5;
+  assert.equal(cardText(run, "pumpkinseed"), pumpkinSeedText(5));
+  assert.equal(cardText(run, "chili"), FRUITS.chili.text);
 });
 
 test("a Pumpkin Seed's Melon grows inside the jar's walls", () => {
   const y = JAR.floor - 8;
   const run = jarWith([fruit(1, "pumpkinseed", JAR.left + 7, y)]);
-  run.climbs = 99;
+  run.pumpkinSprouts = 99;
   run.fruits.push({ ...fruit(2, "chili", JAR.left + 20, y), lit: true, fuse: 0 });
   simulate(run, DT);
   const melon = run.fruits.find((f) => f.kind === "melon");

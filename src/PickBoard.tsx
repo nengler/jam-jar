@@ -4,7 +4,7 @@ import { Letters } from "./Board.tsx";
 import { Coach } from "./Coach.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { TapButton } from "./KeyHint.tsx";
-import { placed } from "./layout.ts";
+import { placed, cardText } from "./layout.ts";
 import { RuleText } from "./RuleText.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
@@ -66,7 +66,7 @@ export function PickBoard({ run, paused, hints, keys, coached, onChoose, onAway,
                   a touchscreen the pointer stays where the last tap was, which would choose a card before the player had. */}
               <Flex width={OFFER_W} height={OFFER_H} direction="column" alignItems="center" paddingTop={18} paddingBottom={offer.at === run.offerCursor ? OFFER_FOOT + TAKE_TUCK : OFFER_FOOT} gap={4} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPress={() => onChoose(offer.at)}>
                 <Tooltip show={!paused && offer.at === run.offerCursor} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                  <Terms text={FRUITS[offer.card].text} />
+                  <Terms text={cardText(run, offer.card)} />
                 </Tooltip>
                 <Flex width={OFFER_PICTURE} height={OFFER_PICTURE}>
                   <FruitBall kind={offer.card} x={OFFER_PICTURE / 2} y={OFFER_PICTURE - fruitImageSize(offer.card) / 2} />
@@ -76,7 +76,7 @@ export function PickBoard({ run, paused, hints, keys, coached, onChoose, onAway,
                 </Text>
                 {/* What it does takes what is left of the card, and scrolls when it is longer than that. */}
                 <Flex width={OFFER_W - 16} height="grow" direction="column" alignItems="center" overflow="scroll" scrollbarColor={INK_SOFT}>
-                  <RuleText x={0} y={0} width={OFFER_W - 24} text={FRUITS[offer.card].text} color={INK_SOFT} accent={KEYWORD} />
+                  <RuleText x={0} y={0} width={OFFER_W - 24} text={cardText(run, offer.card)} color={INK_SOFT} accent={KEYWORD} />
                 </Flex>
               </Flex>
               {/* What takes the chosen card, on its foot (its keywords open beside it, never over this): a tap or a click
