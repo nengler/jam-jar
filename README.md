@@ -91,12 +91,13 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Juice / Milk | Pours juice in the jar: fruit in it float / pours milk in the jar: fruit in it score x2. |
 | Skip | A Merge touching it skips a size. |
 | Legendary | Rare, and never in the shop. |
-| Crush, Shake, Preserve, Pickled, Once | The items' words: the Juicer, the Shaker, the jars and the Lid. Crush is also the Pumpkin's. |
-| Smashed | Exploded, Crushed or caught in a Shockwave. |
+| Crush, Shake, Preserve, Pickled, Once | The items' words: the Juicer, the Shaker, the jars and the Lid. |
+| Smashed | Breaks into 2 of the next size down, scoring. |
 | Slice | Breaks into this many Slices, Fresh 15 each. |
 | Wide | Takes 2 places on the shelf: 2 lanes. |
 | Absorb | Takes in a fruit no bigger and grows a size. |
-| Shockwave | Throws the pile aside, Smashes Watermelons. |
+| Shockwave | Throws the pile aside, Smashes what it hits. |
+| Plunge | Sinks to the floor; Smashes pay 75% at once. |
 | Frozen | Held in place. Explosions can't destroy it. |
 | Spill | Fruit over the rim are lost: -5 each. |
 
@@ -136,17 +137,18 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   - The liquid is one pool: it gets deeper with each Lime and Coconut, up to 120 pixels, holds whatever went into it,
     and goes when the rent empties the jar.
 - The Ladder set (big fruit; merge up, smash down):
-  - Smashed: a Grape, Orange or Melon that is Smashed (by a Pumpkin or a Shockwave) breaks into 2 of the next size down,
-    which score as they are made. A Watermelon that is Smashed (by a Pumpkin, a Shockwave or an explosion) breaks into 4
+  - Smashed: a Grape, Orange or Melon that is Smashed (by a Pumpkin's Plunge or a Shockwave) breaks into 2 of the next size
+    down, which score as they are made. A Watermelon that is Smashed (by a Plunge, a Shockwave or an explosion) breaks into 4
     Slices, Fresh 15 each, so 60 in place of the Watermelon's 50; two Slices merge back into a Melon. Explosions destroy
     everything else, as before. The loop cap: a fruit made by merging two pieces cannot merge again until the turn is
     scored, so merge up, smash down cannot chain for ever in one settle.
-  - Pumpkin: Fresh 24, Heavy and Wide: it takes 2 of the shelf's 4 places, so a hand with one is 3 fruit, and it drops
-    down the middle of its two lanes. A Wide fruit that would not fit in what is left of the shelf waits on top of the
-    pool for the next hand. When it lands it Smashes the biggest Grape, Orange, Melon or Watermelon under it, reaching 8
-    pixels past touching (a near miss still counts); other fruit it leaves alone, so it spares garden builds. (As first
-    built it Crushed the Cherries, Grapes, Seeds and Limes under it instead, worth about 15 points a run: small fruit settle
-    low in the pile, and a Pumpkin lands on top. The bots keep that one as "/oldpumpkin".)
+  - Pumpkin: Heavy and Wide: it takes 2 of the shelf's 4 places, so a hand with one is 3 fruit, and it drops down the
+    middle of its two lanes. A Wide fruit that would not fit in what is left of the shelf waits on top of the pool for the
+    next hand. It scores nothing for landing. It Plunges: once it lands, its ball is driven straight down through the pile
+    to the floor (the lid, in the Flip jar turned over), many times heavier than its size. Each Grape, Orange, Melon or
+    Watermelon it hits is Smashed and its pieces thrown out; anything else is thrown aside and up; a frozen fruit stops it.
+    Its Smashes pay 75% of what their pieces are worth, all at once when it reaches the floor, in one popup twice the size
+    ("+45") with a blast, and what it threw lands on new neighbours and merges. Set up big fruit for a big burst.
   - Gourd: Fresh 4, Cherry-sized. It takes in a fruit it touches that is no bigger than itself, scoring that fruit's
     points, and grows a size (Cherry, Grape, Orange). Grown past an Orange it Bursts into 4 Cherries, rotten if it took
     in anything rotten.
@@ -173,7 +175,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     big-fruit events are rare: a Giant Pumpkin formed in 1 run in 24 (the doc aims for one every 2 or 3), a Watermelon was
     Smashed about once in 12 runs, and a Crush is worth some 15 points a run. Bots that buy nothing in the shop and empty
     the jar every cycle seldom build two Watermelons. (These runs were before the Melon pick, with a Giant Pumpkin at 150.)
-  - Variants tried with the bots (`LADDER` in jar.ts, all off in the game; 24 seeds each):
+  - Variants tried with the bots (bot switches since removed; 24 seeds each):
 
     | Variant and player | A run | Giant Pumpkins | Last rent (400) made |
     | --- | --- | --- | --- |
@@ -201,12 +203,30 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     | Melon whenever offered | 1318 | in 11/24 runs (0.75 a run) | 2/24 |
     | Durian whenever offered | 1307 | in 3/24 runs | 1/24 |
     | Pumpkin + Melon | 1207 | in 3/24 runs | 2/24 |
-  - The proposed Smashed rework, tried with the bots only (`/psmash`, `/psmashladder`, `/smashall`, `/smashblasts`): a Pumpkin
-    that Smashes the biggest ladder fruit under it, with Smashed a general rule (a Melon into 2 Oranges, and so on), gives a
+  - Pumpkins tried before the Plunge (their bot switches are gone): as first built it Crushed the Cherries, Grapes, Seeds
+    and Limes under it, worth about 15 points a run, since small fruit settle low and a Pumpkin lands on top. Then a Pumpkin
+    that Smashed the biggest ladder fruit under it, with Smashed a general rule (a Melon into 2 Oranges, and so on), gave a
     Pumpkin player about 3.7 Smashes a run (0.13 today) and Pumpkin + Melon about 4.4, for 25 to 40 more points a run.
     It costs a garden no more than today's Pumpkin (1018 against 1002; 1073 with no Pumpkin), and Giant Pumpkins stay at 3
     runs in 24 for Pumpkin + Melon. Blasts that Smash too lifted Chili + Durian from 1262 to 1480 a run, with the last rent
-    made in 9 of 24 runs.
+    made in 9 of 24 runs, so explosions still destroy what they hit (but a Watermelon).
+  - The Plunge, tuned with the bots (24 seeds, rent ignored; points a run, and the last rent made in 24 runs):
+
+    | Pumpkin | Pumpkin alone | Pumpkin + Melon |
+    | --- | --- | --- |
+    | Smashing the biggest ladder fruit under it, Fresh 24 | 1090, 0 | 1238, 2 |
+    | Plunge, pieces scoring as made, Fresh 24 | 1333, 3 | 1521, 6 |
+    | Plunge, Fresh 6 | 1225, 3 | 1423, 5 |
+    | Plunge, Smashing at most 2 | 1160, 0 | 1337, 2 |
+    | Plunge, pieces scoring nothing | 1194, 0 | 1360, 2 |
+    | Plunge, Fresh 0, one burst paying 100% | 1189, 2 | 1390, 4 |
+    | **Plunge, Fresh 0, one burst paying 75% (the game)** | **1162, 2** | **1357, 2** |
+    | Plunge, Fresh 0, one burst paying 50% | 1119, 0 | 1310, 2 |
+
+    About 20 Smashes a run, against 4. Durian scores about 1307 and a Melon build 1318, each making the last rent in 1 or
+    2 runs of 24. A Plunge that only throws (no Smashing) scored 1089, the same as no Plunge. Gardens lose nothing to it
+    (1079 a run with a Plunging Pumpkin, 1021 with the one before). Spills stay near none (about 2 fruit in 24 runs); the
+    slowest tenth of turns settle in about 4 seconds, against 3.3, and up to 1 turn in 100 reaches the 8 second limit.
 - The title has a jar filling up by itself: a run the rules play (`src/rules/demo.ts`: each hand dropped as dealt, every
   pick skipped, a new run a moment after the rent comes due).
 - Fruit roll: the physics has no angle, so each fruit's turning is drawn from how far it moves along what it touches.
@@ -259,7 +279,7 @@ The design doc's biggest risk is that a pile of fruit is harder to read than a g
 - A hand drops a fruit at a time: the next waits until the last has landed and the pile it set moving has come to rest
   (its merges and Blasts too), so what each fruit scored is seen before the next adds to it. No more than 3 seconds, so a
   pile that will not rest cannot stall a hand.
-- A popup names what earned its points when that has a name ("Merge +8", "Blast +14", "Spill -5", "Eat +8", "Crush +6"), and
+- A popup names what earned its points when that has a name ("Merge +8", "Blast +14", "Spill -5", "Eat +8", "Crush +6", and a Plunge's burst, twice the size and with no name: "+45"), and
   ends "x2" when a Booster doubled them.
 - Fruit light up when something happens because of them: the Lemon that doubled a score, what set a Chili or a Durian off,
   a fruit a Merge made, one that just rotted or was honeyed.

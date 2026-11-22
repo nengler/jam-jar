@@ -67,6 +67,7 @@ export function Jar({ run, onReport, lift = 0 }: JarProps) {
           honeyed={f.honeyed}
           pickled={f.pickled}
           frozen={f.frozen}
+          plunging={(f.plunging ?? 0) > 0}
           surface={run.lime ? top : JAR.floor + 100}
           pull={pull}
           flipped={run.flipped}
