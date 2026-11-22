@@ -2,8 +2,8 @@
 Lays out the game's assets/ from the free art in tools/:
 
 - tools/fruit/fruit-sheet.png: 16 x 16 pixel fruit. Each fruit is scaled up with no smoothing to its size in the jar,
-  fruit-<kind>.png, to a 32-pixel icon for the shelf and the pool, icon-<kind>.png, and to 64 pixels for the pick cards,
-  big-<kind>.png; its ball's radius is written to src/rules/sizes.ts, so the physics matches the picture.
+  fruit-<kind>.png, which the pick cards, the shop and the boards show too, and to a 32-pixel icon for the shelf,
+  icon-<kind>.png; its ball's radius is written to src/rules/sizes.ts, so the physics matches the picture.
 - tools/kenney/: Kenney's CC0 assets (from the Kenney Game Assets All-in-1 bundle, and sounds from the tse repo's games):
   - the sounds, copied as they are;
   - pixel art only: UI Pack - Pixel Adventure frames (ADVENTURE), Pattern Pack Pixel's trellis (the wallpaper),
@@ -265,9 +265,8 @@ def recolor(image: Image.Image, ramp: list[tuple[int, int, int]]) -> Image.Image
 # match the font's and each other's.
 PX = 2
 WIDTH, HEIGHT = 640, 360
+# The shelf's icons: its places are a lane of the jar each, too narrow for the bigger fruit at their size.
 ICON = 32
-# The pick screen's cards show each fruit at 4x.
-BIG = 64
 
 EXPLOSION_FRAMES = 9
 BOOM_SIZE = 96
@@ -736,7 +735,6 @@ def main() -> None:
         size = round(16 * scale)
         sprite.resize((size, size), Image.NEAREST).save(ASSETS / f"fruit-{kind}.png")
         sprite.resize((ICON, ICON), Image.NEAREST).save(ASSETS / f"icon-{kind}.png")
-        sprite.resize((BIG, BIG), Image.NEAREST).save(ASSETS / f"big-{kind}.png")
         lines.append(f"  {kind}: {{ size: {size}, radius: {round(size * share)} }},")
     SIZES_FILE.write_text(
         "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
@@ -779,7 +777,7 @@ def main() -> None:
     write_score_notes()
     write_last_turn()
     write_entrance_sounds()
-    print(f"wrote {len(sprites) * 3} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds (the music among them)")
+    print(f"wrote {len(sprites) * 2} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds (the music among them)")
 
 
 if __name__ == "__main__":

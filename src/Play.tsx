@@ -17,10 +17,12 @@ import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/t
 import { learn } from "./settings.ts";
 import { Shop } from "./Shop.tsx";
 import { Terms } from "./Terms.tsx";
-import { FRUITS } from "./rules/fruits.ts";
+import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { ITEMS, keepingJar } from "./rules/items.ts";
-import { advance, handSlots, newRun, slotsOf, BOOM_LIFE, CLEAR_TIME, keeps, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
+import { advance, handSlots, newRun, slotsOf, OFFERED, BOOM_LIFE, CLEAR_TIME, keeps, bossNow, dramatic, lean, shownScore, preservable, JAR, rentFor, RENT, RIM, TURNS_PER_CYCLE, type FruitReport, type Run } from "./rules/jar.ts";
 import {
+  biggestFruit,
+  fruitImageSize,
   BAD,
   BAR_FILL,
   BODY_SIZE,
@@ -98,6 +100,15 @@ const OFFER_GAP = 12;
 const OFFER_LIFT = 8;
 /** The room left under a pick card's text, inside its frame: a longer text scrolls rather than running over it. */
 const OFFER_FOOT = 10;
+/** The picture at the top of a pick card: square, as big as the biggest fruit a pick can offer, each fruit standing on its foot. */
+const OFFER_PICTURE = biggestFruit(OFFERED);
+/** The whole-pool board: each kind in a cell its own fruit's width and a little more, a row as tall as its tallest, wrapping at this width. */
+const POOL_W = 392;
+
+/** A kind's cell on the pool board: its fruit's width with room for the frame that marks the chosen one, and never narrower than its count. */
+function poolCell(kind: FruitKind): number {
+  return Math.max(40, fruitImageSize(kind)) + 12;
+}
 
 /**
  * A run. The rules live in rules/jar.ts; each step this hands them the time, the keys and the fruit's reports, and keeps the run
@@ -487,7 +498,7 @@ export function Play() {
       {ordering && !s.whole && <Flex x={shelfLeft} y={SHELF_Y - 44} width={handSlots(shelf) * SLOT} height={52} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} onPressOutside={untip} />}
       {placed(shelf).map((slot) => (
         <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelfLeft, SLOT, spans, dragging && slot.at === run.cursor, s.dragX) + (ordering ? rollIn(s.roll, slot.at, ROLL_FROM - shelfX(slot.at, shelfLeft, SLOT, spans, false, 0)) : 0)} y={SHELF_Y - 18}>
-          {/* A Wide fruit (a Pumpkin) takes two places: its frame spans both, and it is drawn at the pick cards' size. */}
+          {/* A Wide fruit (a Pumpkin) takes two places: its frame spans both, and its icon is drawn bigger (WIDE_SCALE). */}
           {ordering && !blind && slot.at === run.cursor && (keys || s.tip) && <Flex x={-20 - (SLOT * ((spans[slot.at] ?? 1) - 1)) / 2} y={run.holding ? -28 : -20} width={40 + SLOT * ((spans[slot.at] ?? 1) - 1)} height={40} backgroundImage={SELECT} slice={CARD_SLICE} />}
           {!blind && (!ordering || rollStarted(s.roll, slot.at)) && <Entity y={(ordering && run.holding && slot.at === run.cursor ? -8 : 0) - ((spans[slot.at] ?? 1) > 1 ? WIDE_LIFT : 0)} scaleX={(spans[slot.at] ?? 1) > 1 ? WIDE_SCALE : 1} scaleY={(spans[slot.at] ?? 1) > 1 ? WIDE_SCALE : 1}><FruitBall kind={slot.card} x={0} y={0} turn={ordering ? rollIn(s.roll, slot.at, ROLL_FROM - shelfX(slot.at, shelfLeft, SLOT, spans, false, 0)) / 16 : 0} look="icon" /></Entity>}
           {blind && (!ordering || rollStarted(s.roll, slot.at)) && <Sprite image="covered.png" x={-16} y={-16} />}
@@ -615,8 +626,8 @@ export function Play() {
                     <Tooltip show={!paused && offer.at === run.offerCursor} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                       <Terms text={FRUITS[offer.card].text} />
                     </Tooltip>
-                    <Flex width={64} height={64}>
-                      <FruitBall kind={offer.card} x={32} y={32} look="big" />
+                    <Flex width={OFFER_PICTURE} height={OFFER_PICTURE}>
+                      <FruitBall kind={offer.card} x={OFFER_PICTURE / 2} y={OFFER_PICTURE - fruitImageSize(offer.card) / 2} />
                     </Flex>
                     <Text width={OFFER_W} maxWidth={OFFER_W} align="center" font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
                       {FRUITS[offer.card].name}
@@ -677,17 +688,17 @@ export function Play() {
             <Flex width={TERM_W} direction="column" alignItems="stretch">
               {looked !== null && <FruitTip kind={looked ?? "cherry"} grown={grownOf(run, looked ?? "cherry")} />}
             </Flex>
-            <Flex width={Math.max(240, Math.min(whole.length, 6) * 56 + 32)} direction="column" alignItems="stretch">
+            <Flex width={Math.max(240, Math.min(POOL_W, whole.reduce((w, row) => w + poolCell(row.kind), 0) + 32))} direction="column" alignItems="stretch">
               <Panel heading={`Your pool: ${run.pool.length} fruit`} gap={4}>
                 <Flex direction="row" justifyContent="center">
                   <Text color={INK_SOFT}>{"Under each: left to deal / in pool"}</Text>
                 </Flex>
-                <Flex direction="row" wrap justifyContent="center" rowGap={4} columnGap={0} onPressOutside={lookAway}>
+                <Flex direction="row" wrap justifyContent="center" alignItems="end" rowGap={4} columnGap={0} onPressOutside={lookAway}>
                   {placed(whole).map((slot) => (
-                    <Flex key={slot.card.kind} width={56} direction="column" alignItems="center" backgroundImage={s.poolAt === slot.at ? SELECT : undefined} slice={CARD_SLICE} focusable={false} onPress={() => lookAt(slot.at)}>
+                    <Flex key={slot.card.kind} width={poolCell(slot.card.kind)} direction="column" alignItems="center" paddingTop={4} backgroundImage={s.poolAt === slot.at ? SELECT : undefined} slice={CARD_SLICE} focusable={false} onPress={() => lookAt(slot.at)}>
                       {/* A kind with none left to deal this shuffle is faded; under each, how many are left of how many there are. */}
-                      <Flex width={40} height={40} opacity={countOf(run.draw, slot.card.kind) === 0 ? 0.35 : 1}>
-                        <FruitBall kind={slot.card.kind} x={20} y={20} look="icon" />
+                      <Flex width={fruitImageSize(slot.card.kind)} height={fruitImageSize(slot.card.kind)} opacity={countOf(run.draw, slot.card.kind) === 0 ? 0.35 : 1}>
+                        <FruitBall kind={slot.card.kind} x={fruitImageSize(slot.card.kind) / 2} y={fruitImageSize(slot.card.kind) / 2} />
                       </Flex>
                       <Text color={countOf(run.draw, slot.card.kind) === 0 ? INK_SOFT : INK}>{`${countOf(run.draw, slot.card.kind)}/${slot.card.count}`}</Text>
                     </Flex>

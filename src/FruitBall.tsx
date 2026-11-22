@@ -21,7 +21,7 @@ interface FruitBallProps {
   turn?: number;
   /** Lit up, 0 to 1: a softer flash than `lit`, fading as what caused it passes. */
   glow?: number;
-  /** "jar": its size in the jar (the default); "icon": 32 px, for the shelf and the pool; "big": 64 px, for the pick cards. */
+  /** "jar": its size in the jar, as everywhere but the shelf (the default); "icon": 32 px, for the shelf. */
   look?: FruitLook;
 }
 

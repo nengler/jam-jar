@@ -107,15 +107,23 @@ export const KEYWORD = "#3c5e8b";
 export const KEYWORD_LIGHT = "#e8c170";
 
 
-/** Which picture of a fruit: its size in the jar, a 32-pixel icon, or a 64-pixel one for the pick cards. */
-export type FruitLook = "jar" | "icon" | "big";
+/**
+ * Which picture of a fruit: its own, at its size in the jar, which every board and card shows too, so each fruit is drawn once;
+ * or a 32-pixel icon, for the shelf, whose places are a lane of the jar each and too narrow for the bigger fruit.
+ */
+export type FruitLook = "jar" | "icon";
 
 export function fruitImage(kind: FruitKind, look: FruitLook): string {
-  return look === "icon" ? `icon-${kind}.png` : look === "big" ? `big-${kind}.png` : `fruit-${kind}.png`;
+  return look === "icon" ? `icon-${kind}.png` : `fruit-${kind}.png`;
 }
 
-export function fruitImageSize(kind: FruitKind, look: FruitLook): number {
-  return look === "icon" ? 32 : look === "big" ? 64 : FRUIT_ART[kind].size;
+export function fruitImageSize(kind: FruitKind, look: FruitLook = "jar"): number {
+  return look === "icon" ? 32 : FRUIT_ART[kind].size;
+}
+
+/** The biggest of these fruit's pictures, in pixels (0 for none): how much room a row or a card of them needs. */
+export function biggestFruit(kinds: readonly FruitKind[]): number {
+  return Math.max(0, ...kinds.map((kind) => FRUIT_ART[kind].size));
 }
 
 /** Where the counter's top is on the screen: what stands on it (the jar, the title's fruit) has its foot here. */

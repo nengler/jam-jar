@@ -71,6 +71,9 @@ export const LADDER = {
   smashBlasts: false,
 };
 
+/** Every fruit a pick or the shop can ever offer, whatever the run: what the pick's cards and the shop's baskets make room for. */
+export const OFFERED: readonly FruitKind[] = [...OFFERABLE, "melon", ...LEGENDARY];
+
 /** The fruit a pick or the shop can offer. */
 function offerList(): readonly FruitKind[] {
   return LADDER.melonPick ? [...OFFERABLE, "melon"] : OFFERABLE;
