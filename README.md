@@ -254,6 +254,42 @@ saved data and reads none.
 - `tools/make-assets.py` (Python with Pillow) builds `assets/` from the free art in `tools/`, sizing each fruit to its radius in
   `src/rules/fruits.ts`. Rerun it after changing a radius.
 
+## Art sizes
+
+The screen is 640 x 360 and every picture is pixel art at 2x: one art pixel is 2 x 2 screen pixels, so new art is drawn at
+half the sizes below and scaled up with no smoothing (`tools/make-assets.py` does this). All of it is in `assets/`, in the
+Apollo palette.
+
+| Picture | File | Size on screen | Drawn at |
+| --- | --- | --- | --- |
+| A fruit in the jar | `fruit-<kind>.png` | 32, 40, 48, 56 or 64 square (see below) | 16 x 16, scaled 2x to 4x |
+| A fruit on the shelf, in the Pool, on a board | `icon-<kind>.png` | 32 x 32 | 16 x 16 |
+| A fruit on a pick's or the shop's card | `big-<kind>.png` | 64 x 64 | 16 x 16 |
+| An item (Lid, Juicer, Shaker, the jars) | `item-<kind>.png` | 48 x 40 | 24 x 20 |
+| The jar, behind and in front of the fruit | `jar-back.png`, `jar-front.png` | 216 x 288 | 108 x 144 |
+| The shelf (also the Flip jar's lid) | `shelf.png` | 208 x 12 | 104 x 6 |
+| The Peg jar's peg | `peg.png` | 44 x 44 | 22 x 22 |
+| The Blind jar's cloth over a fruit | `covered.png` | 32 x 32 | 16 x 16 |
+| A blast, 9 frames | `boom-0.png` to `boom-8.png` | 96 x 96, drawn twice as big | 48 x 48 |
+| The wallpaper | `wall.png` | 672 x 392 (the screen and one 32-pixel tile each way, so it can drift) | 16 x 16 tile |
+| The counter | `counter.png` | 640 x 360, see-through above the counter | 320 x 180 |
+| A board, a card, the chosen card, the slate, the frame round a chosen fruit | `frame.png`, `hud.png`, `frame-chosen.png`, `plaque.png`, `select.png` | 32 x 32, stretched by 9-slice with an 8-pixel border | 16 x 16 |
+| The coin | `coin.png` | 24 x 24 | 12 x 12 |
+| A key cap, and the two arrow-key pairs | `key.png`, `key-arrows.png`, `key-updown.png` | 16 x 26, 54 x 26 | 8 x 13, 27 x 13 |
+| The pointer over a fruit to keep | `pointer.png` | 18 x 14 | 9 x 7 |
+
+A fruit's size in the jar is its place on the ladder, and its ball is a little smaller than its picture (`src/rules/sizes.ts`):
+
+| Size in the jar | Scale | Ball's radius | Fruit |
+| --- | --- | --- | --- |
+| 32 x 32 | 2x | 14 (the Fruit Fly 10) | Cherry, Chili, Blueberry, Lemon, Seed, Prune, Fruit Fly |
+| 40 x 40 | 2.5x | 18 | Grape, Apple, Banana, Pomegranate, Fig, Kiwi, Peach, Pitaya, Lime, Snow Pear |
+| 48 x 48 | 3x | 22 | Orange, Durian, Honeydew, Coconut, Dragonfruit |
+| 56 x 56 | 3.5x | 25 | Melon |
+| 64 x 64 | 4x | 29 | Watermelon |
+
+Text is the engine's pixel fonts at 2x: m5x7 at 20 pixels for reading, Jersey 10 at 28 for headings and numbers.
+
 ## Credits
 
 - Fruit art: a 16 x 16 pixel fruit sheet (`tools/fruit/`; its source and licence are still to be added there). Stand-ins:
@@ -266,9 +302,9 @@ saved data and reads none.
   the wallpaper's trellis (Pattern Pack Pixel), the coin (Pixel Platformer), blasts (Explosion Pack's pixel explosion), the
   sounds and the music (Farm Frolics, from Music Loops). It is all drawn at exactly 2x on the 640 x 360 screen. The full bundle is on this repo's `Assets` release;
   `tools/kenney/README.md` says which file each came from.
-- The backdrop moves a little: the wallpaper drifts slowly, and a few motes of dust rise through the air (`src/Backdrop.tsx`).
-  No shader: the engine's software renderer, which the tests and `tse screenshot` use, runs none, and a shader would blend
-  colours off the palette.
+- The backdrop moves a little: the wallpaper drifts slowly, soft bands of light move over it (a shader, `assets/wall.glsl`,
+  in steps and by the art's own pixels), and a few motes of dust rise through the air (`src/Backdrop.tsx`). The engine's
+  software renderer, which the tests and `tse screenshot` use, runs no shader and draws the plain wall; `tse screenshot --gpu` shows it.
 - Drawn by `tools/make-assets.py`, in Apollo colours at the same 2x pixel: the kitchen (wallpaper over a wooden counter), the
   jar's glass, the shelf and the key caps. The jar is two pictures, one behind the fruit and one (its near rim, shine and
   fill line) in front of them.
