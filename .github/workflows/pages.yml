@@ -30,6 +30,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # A main that fails its checks is not published; the page stays at the last good build.
+      - run: npm run check
       - run: npx tse package . --engine web
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

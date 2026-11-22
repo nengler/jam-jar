@@ -21,6 +21,8 @@ npm run dev              # play in a window, with hot reload (needs tse's native
 npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out shots   # a screenshot without a window
 ```
 
+`.github/workflows/ci.yml` runs `npm run check` on every pull request and every push to `main`.
+
 ## Controls
 
 Everything can also be done with the mouse or a finger, with no keyboard: drag a fruit along the shelf to where it should stand, tap the jar to drop the hand into it, and tap the buttons for what Space, Esc and Enter do elsewhere (Skip,
