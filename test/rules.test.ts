@@ -17,6 +17,7 @@ import {
   dramatic,
   GIANT_LIFE,
   handSlots,
+  jarHeld,
   PLUNGE_PAY,
   FRUIT_PRICE,
   JAR,
@@ -1389,4 +1390,22 @@ test("two Watermelons make a Giant Pumpkin: it scores, its Shockwave throws the 
   assert.equal(run.cycleScore, FRUITS.giantpumpkin.points + SLICES * FRUITS.slice.points);
   for (let t = 0; t <= GIANT_LIFE + DT; t += DT) simulate(run, DT);
   assert.ok(!run.fruits.some((f) => f.kind === "giantpumpkin"), "it is gone");
+});
+
+test("the jar's fruit are held still from the end of the settle until the next drop, the settle's time limit included", () => {
+  const run = newRun(7);
+  assert.equal(run.phase, "order");
+  assert.equal(jarHeld(run), true, "held while the hand is ordered");
+  // Space drops the hand: the pile is let go.
+  let next = advance(run, 1 / 60, { ...NO_KEYS, drop: true });
+  assert.equal(next.phase, "drop");
+  assert.equal(jarHeld(next), false);
+  // A pile that never comes to rest (every fruit reported moving) is scored when SETTLE_LIMIT runs out, and held from then on.
+  for (let i = 0; i < 60 * 20 && (next.phase === "drop" || next.phase === "settle"); i++) {
+    assert.equal(jarHeld(next), false, `let go while it plays (${next.phase})`);
+    next = advance(next, 1 / 60, NO_KEYS, next.fruits.map((f) => ({ id: f.id, x: f.x, y: f.y, speed: 100, touching: [] })));
+  }
+  assert.notEqual(next.phase, "settle", "the settle gave up");
+  assert.equal(jarHeld(next), true, `held once it is scored (${next.phase})`);
+  for (const phase of ["tally", "pick", "rent", "shop", "preserve", "clear", "over", "won"] as const) assert.equal(jarHeld({ ...next, phase }), true, phase);
 });

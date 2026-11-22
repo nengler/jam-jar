@@ -13,6 +13,8 @@ import { CARD_SLICE, fruitImageSize, INK, INK_SOFT, SELECT, SHADE, TERM_W } from
 const POOL_W = 400;
 /** The tallest the pool board's fruit get before they scroll: what keeps the board on the screen with its sign and its button. */
 const POOL_MAX_H = 256;
+/** The tallest a kind's card and keywords get beside the board before they scroll. */
+const TIP_MAX_H = 352;
 
 /** A kind's cell on the pool board: its fruit's width with room for the frame that marks the chosen one, and never narrower than its count. */
 function poolCell(kind: FruitKind): number {
@@ -39,7 +41,8 @@ export function PoolBoard({ run, chosenAt, onLook, onLookAway, onClose }: PoolBo
     <Entity>
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
       <Flex left={0} right={0} top={0} bottom={0} direction="row" alignItems="center" justifyContent="center" gap={8}>
-        <Flex width={TERM_W} direction="column" alignItems="stretch">
+        {/* At most as tall as the screen: a Watermelon's card and keywords are a little taller, and scroll. */}
+        <Flex width={TERM_W} maxHeight={TIP_MAX_H} direction="column" alignItems="stretch" overflow="scroll" scrollbarColor={INK_SOFT}>
           {looked !== null && <FruitTip kind={looked ?? "cherry"} grown={grownOf(run, looked ?? "cherry")} />}
         </Flex>
         <Flex width={Math.max(240, Math.min(POOL_W, whole.reduce((w, row) => w + poolCell(row.kind), 0) + 32))} direction="column" alignItems="stretch">

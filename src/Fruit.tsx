@@ -18,6 +18,8 @@ interface FruitProps {
   pickled: boolean;
   /** Held where it is: its ball is pinned while this is on. */
   frozen: boolean;
+  /** Held still between turns (`jarHeld`): pinned like a frozen fruit, but not drawn as one. Let go, it starts from rest. */
+  held: boolean;
   /** A Pumpkin's Plunge: its ball is driven straight down (up, turned over) through the pile while this is on. */
   plunging: boolean;
   /** The y of the surface of lime juice in the jar, which floats the fruit in it; at or below the floor when there is none. */
@@ -67,7 +69,7 @@ const JUICE_DRAG = 0.12;
  * blowing up). A blast reaches it as a kick through its props. The ball has no angle of its own, so the fruit's turning is
  * drawn from how it moves: it rolls along what it touches.
  */
-export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, plunging, surface, pull, flipped, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
+export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, held, plunging, surface, pull, flipped, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
   // `turn` is how far it has rolled, in degrees; `lastX` where it was a step ago.
   const s = useMutable({ kicked: 0, turn: 0, lastX: x0, lastY: y0, fall: 0, squash: 0, hit: 1, flat: 0 });
   const { x, y, contacts, push, speed, pin, setGravity, setGravityX, stick } = useBall({
@@ -81,11 +83,11 @@ export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, p
     // In the Tilted jar the pull presses fruit against the low wall and along the floor, and the walls' usual grip held them
     // there: a fruit in the right lane took 3 seconds to slide down the wall (now about 0.8 s, against 0.7 s falling free). The jar is fixed for the cycle, so this is too.
     friction: pull !== 0 ? TILT_FRICTION : undefined,
-    // A fruit that comes back from a save frozen is held from its first step.
-    pinned: frozen,
+    // A fruit that comes back from a save frozen, or between turns, is held from its first step.
+    pinned: frozen || held,
   });
   useUpdate((dt) => {
-    pin(frozen);
+    pin(frozen || held);
     // Honey is sticky: a honeyed fruit holds on to every fruit that comes to touch it, and they move as one lump.
     if (honeyed) stick("fruit");
     // In lime juice it floats: the more of it is under the surface, the less it weighs, down to rising as hard as it would fall,
