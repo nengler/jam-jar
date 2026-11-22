@@ -18,6 +18,12 @@
     "@types/node": "^22.10.0"
   },
   "scripts": {
+    "assets": "python3 tools/make-assets.py",
+    "predev": "npm run -s assets",
+    "prebuild": "npm run -s assets",
+    "precheck": "npm run -s assets",
+    "pretest": "npm run -s assets",
+    "prepackage": "npm run -s assets",
     "build": "tse build",
     "dev": "tse dev",
     "check": "tse check",
