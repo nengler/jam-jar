@@ -732,6 +732,8 @@ export function Play() {
           </Flex>
         </Entity>
       )}
+      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} onPoint={point} onClick={click} onAway={away} onConfirm={tapConfirm} onSpace={tapDrop} onPool={openPool} />}
+      {/* After the shop, so the pool board opened from it (its basket, or D) is over it. */}
       {/* The whole pool: every kind in it and how many, dealt or not. */}
       {s.whole && (
         <Entity>
@@ -763,7 +765,6 @@ export function Play() {
           </Flex>
         </Entity>
       )}
-      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} hints={hints} onPoint={point} onClick={click} onAway={away} onConfirm={tapConfirm} onSpace={tapDrop} />}
       {/* The first shop of the first game: the lesson lies along the foot of the screen, under the shop's actions, until the player does something there. */}
       {run.phase === "shop" && coached !== null && (
         <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center">

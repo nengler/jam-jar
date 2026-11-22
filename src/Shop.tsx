@@ -55,8 +55,12 @@ const ACTION_GAP = 11;
 const ACTION_Y = 284;
 /** The heading's sign and the purse's, hung on the awning's beam. */
 const HEADING_W = 120;
-const PURSE_W = 84;
-const HANGING_H = 36;
+/** The pool's basket at the top left, as on the play screen (56 x 38). */
+const POOL_BASKET_W = 56;
+const POOL_H = 38;
+/** The signs hung on the awning's beam (the pool, the heading, the purse): as tall as the basket on the pool's, and how far down. */
+const HANGING_H = 42;
+const HANGING_Y = 4;
 /**
  * The picture at the top of a label: a fruit in its basket, or the item on its cloth. As wide as the biggest fruit the shop can
  * offer, and tall enough for it to sit in the basket with its top in the picture. The basket (56 x 38) and the cloth (60 x 12)
@@ -92,6 +96,8 @@ interface ShopProps {
   onConfirm: () => void;
   /** A button that does what Space does was pressed: leave the shop, or back out of taking a fruit out. */
   onSpace: () => void;
+  /** The pool's basket was tapped: open the board of the whole pool, to compare what is for sale with what is in it. */
+  onPool: () => void;
 }
 
 /** A price: the coin and the number, in a row. The number is red when the run has not the coins. */
@@ -233,7 +239,7 @@ const ACTION_RISE = 120;
  * sale and where the cursor is; this draws them. `hints` is whether the keys are shown: the first visit, and the first time a
  * fruit is taken out.
  */
-export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, onSpace }: ShopProps) {
+export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, onSpace, onPool }: ShopProps) {
   // The card the cursor is on shows what its keywords mean, but not over the pause menu.
   const paused = useGame((g) => g.paused);
   const kinds = poolRows(run.pool);
@@ -286,16 +292,28 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
         </Offer>
       </Flex>
 
-      {/* The awning, over the top of the labels, with the heading's sign and the purse's hung on its beam. */}
+      {/* The awning, over the top of the labels, with the heading's sign, the pool's and the purse's hung on its beam. */}
       <Sprite image={AWNING} x={0} y={awning} />
-      <Flex left={0} right={0} top={8 + awning} direction="row" justifyContent="center">
+      <Flex left={0} right={0} top={HANGING_Y + awning} direction="row" justifyContent="center">
         <Flex width={HEADING_W} height={HANGING_H} direction="row" justifyContent="center" alignItems="center" backgroundImage={SIGN} slice={SIGN_SLICE}>
           <Letters text="Shop" seed={3} />
         </Flex>
       </Flex>
-      <Flex right={24 - 160 * (1 - popIn(time, 0.3, ENTER.pop))} top={8} width={PURSE_W} height={HANGING_H} direction="row" alignItems="center" justifyContent="space-between" paddingX={10} backgroundImage={SIGN} slice={SIGN_SLICE}>
+      {/* The purse, on the right: how many coins there are to spend. */}
+      <Flex right={24 - 200 * (1 - popIn(time, 0.3, ENTER.pop))} top={HANGING_Y} height={HANGING_H} direction="row" alignItems="center" gap={8} paddingX={12} backgroundImage={SIGN} slice={SIGN_SLICE}>
         <Sprite image={COIN_JAR} />
-        <Text font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>{`${run.coins}`}</Text>
+        <Text font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>{`${run.coins} ${run.coins === 1 ? "coin" : "coins"}`}</Text>
+      </Flex>
+      {/* The pool, on the left: its sign with the basket from the play screen and how many fruit are in it. A tap on it (or D) opens
+          the board of the whole pool over the shop, to compare what is for sale with what the pool has. */}
+      <Flex left={24 - 200 * (1 - popIn(time, 0.3, ENTER.pop))} top={HANGING_Y} height={HANGING_H} direction="row" alignItems="center" gap={8} paddingLeft={6} paddingRight={12} backgroundImage={SIGN} slice={SIGN_SLICE} focusable={false} onPress={onPool}>
+        <Flex width={POOL_BASKET_W} height={POOL_H}>
+          <Entity>
+            <Sprite image="basket-back.png" x={0} y={0} />
+            <Sprite image="basket.png" x={0} y={0} />
+          </Entity>
+        </Flex>
+        <Text font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>{`${run.pool.length} fruit`}</Text>
       </Flex>
 
       {/* The actions: wooden signs under the stall, the way out painted green. */}
@@ -331,6 +349,7 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
           <KeyHint name="arrows" label="Choose" />
           <KeyHint name="Enter" label="Buy" />
           <KeyHint name="Space" label="Next cycle" />
+          <KeyHint name="D" label="Pool" />
         </Flex>
       )}
 

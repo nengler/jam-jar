@@ -479,14 +479,16 @@ test("a tap off the cards of a pick leaves nothing chosen", () => {
   game.close();
 });
 
-test("a pick by taps: a tap on a card only chooses it, again or not, and its Take button takes it", () => {
+test("a pick by taps: a tap on a card only chooses it, a second puts it back, and its Take button takes it", () => {
   const game = startRun();
   const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
   play.s.run = { ...play.s.run, turn: 2, phase: "settle", hand: [], calmTime: 10 };
   game.stepUntil(() => play.s.run.phase === "pick");
   const before = play.s.run.pool.length;
   game.input("click@320,150, _*2, click@320,150, _*2");
-  assert.deepEqual([play.s.run.phase, play.s.run.offerCursor, play.s.run.pool.length], ["pick", 1, before], "tapped twice: chosen, not taken");
+  assert.deepEqual([play.s.run.phase, play.s.run.offerCursor, play.s.run.pool.length], ["pick", -1, before], "tapped twice: put back, not taken");
+  game.input("click@320,150, _*2");
+  assert.deepEqual([play.s.run.phase, play.s.run.offerCursor, play.s.run.pool.length], ["pick", 1, before], "a third time: chosen, not taken");
   const kind = play.s.run.offers[1];
   // The button stands on the chosen card's foot, in the middle of the screen. It is off the cards, but it does not put the
   // chosen one back before taking it.
@@ -525,18 +527,33 @@ test("a finger drags a pick card's text to scroll it, and that chooses the card 
   game.close();
 });
 
-test("the shop by taps: a tap on a label only chooses it, and the Buy button under it buys it", () => {
+test("the shop by taps: a tap on a label only chooses it, a second puts it back, and the Buy button under it buys it", () => {
   const game = startRun();
   const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
   play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["apple", "cherry", "grape"], item: null, cursor: -1, removing: false, removeCursor: -1 } };
   game.input("_*60");
   // The four labels stand across the stall, 148 wide with 6 between: the second's middle is at 243.
   game.input("click@243,150, _*2, click@243,150, _*2");
-  assert.deepEqual([play.s.run.shop!.cursor, play.s.run.coins], [1, 20], "tapped twice: chosen, not bought");
+  assert.deepEqual([play.s.run.shop!.cursor, play.s.run.coins], [-1, 20], "tapped twice: put back, not bought");
+  game.input("click@243,150, _*2");
+  assert.deepEqual([play.s.run.shop!.cursor, play.s.run.coins], [1, 20], "a third time: chosen, not bought");
   // The Buy button is under the actions, below the chosen label. It is off the shelf, but it does not put the label back first.
   game.input("click@243,339, _*2");
   assert.equal(play.s.run.coins, 20 - FRUIT_PRICE, "bought");
   assert.equal(play.s.run.shop!.fruits[1], null);
+  game.close();
+});
+
+test("the shop shows the pool's basket: a tap on it opens the board of the whole pool over the shop", () => {
+  const game = startRun();
+  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run; whole: boolean } };
+  play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["apple", "cherry", "grape"], item: null, cursor: -1, removing: false, removeCursor: -1 } };
+  game.input("_*60");
+  assert.equal(play.s.whole, false);
+  // The basket hangs at the top left, 24 in.
+  game.input("click@52,22, _*2");
+  assert.equal(play.s.whole, true, "the pool board is open");
+  assert.equal(play.s.run.phase, "shop", "over the shop");
   game.close();
 });
 

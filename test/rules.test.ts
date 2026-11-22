@@ -767,7 +767,7 @@ test("terms: cards keep to the vocabulary, every keyword is used, and a definiti
   }
 });
 
-test("a click or a tap on a card only chooses it, in the pick and in the shop; Enter or the Take/Buy button (a confirm on no place) takes it", () => {
+test("a click or a tap on a card only chooses it, and a second puts it back, in the pick and in the shop; Enter or the Take/Buy button (a confirm on no place) takes it", () => {
   let run = jarWith([]);
   run.turn = 2;
   resolve(run);
@@ -780,7 +780,9 @@ test("a click or a tap on a card only chooses it, in the pick and in the shop; E
   assert.deepEqual([run.phase, run.offerCursor, run.pool.length], ["pick", 0, before], "chosen, not taken");
   run = press(run, { point: 2, confirm: true });
   run = press(run, { point: 2, confirm: true });
-  assert.deepEqual([run.phase, run.offerCursor, run.pool.length], ["pick", 2, before], "the same card again: still only chosen");
+  assert.deepEqual([run.phase, run.offerCursor, run.pool.length], ["pick", -1, before], "the same card again: put back, not taken");
+  run = press(run, { point: 2, confirm: true });
+  assert.equal(run.offerCursor, 2, "and a third time: chosen again");
   const kind = run.offers[2]!;
   run = press(run, { confirm: true });
   assert.equal(run.pool.at(-1), kind, "the button: taken");
@@ -788,7 +790,11 @@ test("a click or a tap on a card only chooses it, in the pick and in the shop; E
   let shop = inShop(10);
   shop = press(shop, { point: 1, confirm: true });
   shop = press(shop, { point: 1, confirm: true });
-  assert.deepEqual([shop.shop!.cursor, shop.coins], [1, 10], "chosen twice, not bought");
+  assert.deepEqual([shop.shop!.cursor, shop.coins], [-1, 10], "tapped twice: put back, not bought");
+  shop = press(shop, { confirm: true });
+  assert.equal(shop.coins, 10, "and the button buys nothing while nothing is chosen");
+  shop = press(shop, { point: 1, confirm: true });
+  assert.equal(shop.shop!.cursor, 1, "chosen again");
   shop = press(shop, { confirm: true });
   assert.equal(shop.coins, 10 - FRUIT_PRICE, "the button: bought");
   shop = press(shop, { point: SHOP_REROLL });
