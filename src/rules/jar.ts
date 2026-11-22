@@ -682,6 +682,11 @@ function links(fruits: readonly Fruit[]): number[][] {
   return fruits.map((f) => f.touching.map((id) => at.get(id)).filter((i): i is number => i !== undefined));
 }
 
+/** The fruit that the fruit at index `i` touches, by `links` of the same list. */
+function neighbours(fruits: readonly Fruit[], links: readonly number[][], i: number): Fruit[] {
+  return (links[i] ?? []).map((j) => fruits[j]).filter((o): o is Fruit => o !== undefined);
+}
+
 function onFloor(f: Fruit): boolean {
   return f.y + f.r >= JAR.floor - FLOOR_TOLERANCE;
 }
@@ -738,12 +743,13 @@ interface Earned {
 
 /** Score what a fruit (by index) earns, doubled if it touches a Booster: the popup then says "x2" and the Boosters light up too. */
 function earn(run: Run, links: readonly number[][], i: number, points: number, label?: string): Earned | null {
-  const f = run.fruits[i] as Fruit;
+  const f = run.fruits[i];
+  if (f === undefined) return null;
   // Doubled by a Lemon it touches, or by Coconut milk it sits in (once, not twice over).
   const doubled = boosted(run.fruits, links, i) || (run.milk && soaked(run, f));
   const popup = score(run, points * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled, earner: FRUITS[f.kind].name });
   if (popup === null) return null;
-  const boosters = doubled ? (links[i] ?? []).map((j) => run.fruits[j] as Fruit).filter((o) => o.kind === "lemon") : [];
+  const boosters = doubled ? neighbours(run.fruits, links, i).filter((o) => o.kind === "lemon") : [];
   const fruits = [f, ...boosters];
   for (const o of fruits) pulse(o);
   return { popup, doubled, fruits, links: boosters.map((booster) => link(run, "boost", booster, f)) };
@@ -1003,8 +1009,7 @@ function land(run: Run): void {
     if (f.kind === "peach") {
       // It bounces once, and shoves what it landed on away to each side.
       kick(f, 0, -PEACH_BOUNCE);
-      for (const j of near[i] ?? []) {
-        const o = run.fruits[j] as Fruit;
+      for (const o of neighbours(run.fruits, near, i)) {
         kick(o, (o.x < f.x ? -1 : 1) * PEACH_SHOVE, -PEACH_SHOVE / 3);
       }
     }
@@ -1099,7 +1104,7 @@ function copyKiwis(run: Run): void {
   const near = links(run.fruits);
   run.fruits = run.fruits.map((f, i) => {
     if (f.kind !== "kiwi") return f;
-    const on = (near[i] ?? []).map((j) => run.fruits[j] as Fruit).find((o) => o.landed && o.kind !== "kiwi" && o.kind !== "giantpumpkin");
+    const on = neighbours(run.fruits, near, i).find((o) => o.landed && o.kind !== "kiwi" && o.kind !== "giantpumpkin");
     if (on === undefined) return f;
     return makeFruit(run, on.kind, f.x, f.y);
   });
@@ -1114,12 +1119,11 @@ function merge(run: Run): void {
   const gone = new Set<number>();
   const born: Fruit[] = [];
   const giants: Fruit[] = [];
-  for (let i = 0; i < run.fruits.length; i++) {
-    const a = run.fruits[i] as Fruit;
+  for (const [i, a] of run.fruits.entries()) {
     if (gone.has(a.id) || !canMerge(a) || nearLemon(run.fruits, near, i)) continue;
     for (const j of near[i] ?? []) {
-      const b = run.fruits[j] as Fruit;
-      if (j <= i || gone.has(b.id) || b.kind !== a.kind || !canMerge(b) || nearLemon(run.fruits, near, j)) continue;
+      const b = run.fruits[j];
+      if (b === undefined || j <= i || gone.has(b.id) || b.kind !== a.kind || !canMerge(b) || nearLemon(run.fruits, near, j)) continue;
       gone.add(a.id);
       gone.add(b.id);
       const mx = (a.x + b.x) / 2;
@@ -1141,7 +1145,7 @@ function merge(run: Run): void {
       } else {
         // A Merge that touches a Dragonfruit skips a size, when there is one to skip to.
         const next = FRUITS[a.kind].mergesInto as FruitKind;
-        const dragon = [...(near[i] ?? []), ...(near[j] ?? [])].map((k) => run.fruits[k] as Fruit).find((o) => o.kind === "dragonfruit");
+        const dragon = [...neighbours(run.fruits, near, i), ...neighbours(run.fruits, near, j)].find((o) => o.kind === "dragonfruit");
         // A Giant Pumpkin is only ever made by two Watermelons: a Skip stops at the Watermelon.
         const skipped = FRUITS[next].mergesInto;
         const into = dragon === undefined || skipped === undefined || skipped === "giantpumpkin" ? next : skipped;
@@ -1211,9 +1215,7 @@ function absorb(run: Run, dt: number): void {
       return;
     }
     if (!f.landed || f.frozen) return;
-    const meal = (near[i] ?? [])
-      .map((j) => run.fruits[j] as Fruit)
-      .find((o) => !gone.has(o.id) && o.landed && o.kind !== "gourd" && o.kind !== "giantpumpkin" && !o.frozen && !o.lit && o.r <= f.r + 0.5);
+    const meal = neighbours(run.fruits, near, i).find((o) => !gone.has(o.id) && o.landed && o.kind !== "gourd" && o.kind !== "giantpumpkin" && !o.frozen && !o.lit && o.r <= f.r + 0.5);
     if (meal === undefined) return;
     gone.add(meal.id);
     gone.add(f.id);
@@ -1257,11 +1259,12 @@ function light(run: Run): void {
   run.fruits.forEach((f, i) => {
     if (f.lit || !f.landed) return;
     if (f.kind === "chili") {
-      const weight = (near[i] ?? []).reduce((sum, j) => sum + FRUITS[(run.fruits[j] as Fruit).kind].touchWeight, 0);
+      const touched = neighbours(run.fruits, near, i);
+      const weight = touched.reduce((sum, o) => sum + FRUITS[o.kind].touchWeight, 0);
       if (weight >= 4) {
         ignite(f, 0.3);
         // What set it off lights up.
-        for (const j of near[i] ?? []) pulse(run.fruits[j] as Fruit);
+        for (const o of touched) pulse(o);
       }
     } else if (f.kind === "durian") {
       const above = run.fruits.filter((o) => o !== f && o.landed && o.y < f.y - f.r * 0.5 && Math.abs(o.x - f.x) < f.r + o.r);
@@ -1406,7 +1409,7 @@ export function resolve(run: Run): void {
 
   const near = links(run.fruits);
   run.fruits.forEach((f, i) => {
-    const touched = (near[i] ?? []).map((j) => run.fruits[j] as Fruit);
+    const touched = neighbours(run.fruits, near, i);
     let points = 0;
     if (f.kind === "prune") {
       // Rotten from the start, and the one rotten fruit that scores: for the rot around it.
@@ -1434,7 +1437,7 @@ export function resolve(run: Run): void {
   const hatched: Fruit[] = [];
   run.fruits.forEach((f, i) => {
     if (f.kind !== "fruitfly") return;
-    const meal = (near[i] ?? []).map((j) => run.fruits[j] as Fruit).find((o) => o.rotten && o.kind !== "prune" && !eaten.has(o.id));
+    const meal = neighbours(run.fruits, near, i).find((o) => o.rotten && o.kind !== "prune" && !eaten.has(o.id));
     if (meal === undefined) return;
     eaten.add(meal.id);
     const earned = earn(run, near, i, FRUITS.fruitfly.points, "Eat");
@@ -1765,8 +1768,9 @@ function preserveStep(run: Run, keys: Keys): void {
   const to = keys.point >= 0 && keys.point < fruits.length ? keys.point : Math.max(0, Math.min(fruits.length - 1, run.preserveCursor + move));
   if (to !== run.preserveCursor) sound(run, "tick");
   run.preserveCursor = to;
-  if (keys.confirm) {
-    const id = (fruits[run.preserveCursor] as Fruit).id;
+  const chosen = fruits[run.preserveCursor];
+  if (keys.confirm && chosen !== undefined) {
+    const id = chosen.id;
     if (run.kept.includes(id)) run.kept = run.kept.filter((k) => k !== id);
     else if (run.kept.length < keeps(run)) run.kept.push(id);
     else run.message = `It holds ${keeps(run)}: let one go first`;
