@@ -18,11 +18,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Two jobs, as GitHub's own Pages workflows have them: the build uploads the page, and the deploy, which starts only once the
+  # build has finished, publishes it. With both in one job, deploy-pages asked for the artifact a moment after the upload and
+  # sometimes found none ("No artifacts named github-pages"), and a re-run then found two.
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,5 +35,13 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist/jam-jar-web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
