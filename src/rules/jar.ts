@@ -21,14 +21,14 @@ export interface JarBounds {
   floor: number;
 }
 
-export const JAR: JarBounds = { left: 224, right: 416, floor: 336 };
+export const JAR: JarBounds = { left: 224, right: 416, floor: 344 };
 export const GRAVITY = 1200;
 /** A fruit this close to the floor (beyond touching) is on it: a settled pile jitters by a fraction of a pixel. */
 const FLOOR_TOLERANCE = 1.5;
 /** The rim: a fruit whose top is above it once the jar settles spills out. */
-export const RIM = 104;
+export const RIM = 112;
 /** Where dropped fruit appear. */
-export const DROP_Y = 72;
+export const DROP_Y = 80;
 /**
  * The tray drop. The shelf is a tray over the jar with a slot per lane, and the whole hand is released together, hand index 0 in
  * the leftmost lane, so where a fruit stands on the shelf decides where it lands. Each fruit wobbles up to `wobble` px within its
@@ -93,7 +93,7 @@ export const TURNS_PER_CYCLE = 5;
  */
 export const PICK_EVERY = 2;
 /** The boss jar's peg: a round post in the middle of the jar that splits the pile, on every third cycle. */
-export const PEG = { x: 320, y: 236, r: 22 };
+export const PEG = { x: 320, y: 244, r: 22 };
 export const BOSS_EVERY = 3;
 
 /** Whether a cycle is played in a boss jar. */

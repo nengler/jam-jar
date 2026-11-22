@@ -2,8 +2,7 @@
 Lays out the game's assets/ from the free art in tools/:
 
 - tools/fruit/fruit-sheet.png: 16 x 16 pixel fruit. Each fruit is scaled up with no smoothing to its size in the jar,
-  fruit-<kind>.png, which the pick cards, the shop and the boards show too, and to a 32-pixel icon for the shelf,
-  icon-<kind>.png; its ball's radius is written to src/rules/sizes.ts, so the physics matches the picture.
+  fruit-<kind>.png, the one picture of it that the shelf, the cards and the boards show too; its ball's radius is written to src/rules/sizes.ts, so the physics matches the picture.
 - tools/kenney/: Kenney's CC0 assets (from the Kenney Game Assets All-in-1 bundle, and sounds from the tse repo's games):
   - the sounds, copied as they are;
   - pixel art only: UI Pack - Pixel Adventure frames (ADVENTURE), Pattern Pack Pixel's trellis (the wallpaper),
@@ -265,8 +264,6 @@ def recolor(image: Image.Image, ramp: list[tuple[int, int, int]]) -> Image.Image
 # match the font's and each other's.
 PX = 2
 WIDTH, HEIGHT = 640, 360
-# The shelf's icons: its places are a lane of the jar each, too narrow for the bigger fruit at their size.
-ICON = 32
 
 EXPLOSION_FRAMES = 9
 BOOM_SIZE = 96
@@ -284,13 +281,13 @@ def colour(code: str) -> tuple[int, int, int, int]:
 
 # The jar, as src/rules/jar.ts has it (JAR and RIM), in art pixels (half the screen's): its inside, the line fruit must stay
 # under, and where its glass starts. The glass is 3 art pixels thick, and the pictures reach MARGIN art pixels outside the walls.
-JAR_LEFT, JAR_RIGHT, JAR_FLOOR, JAR_RIM, JAR_TOP = 112, 208, 168, 52, 36
+JAR_LEFT, JAR_RIGHT, JAR_FLOOR, JAR_RIM, JAR_TOP = 112, 208, 172, 56, 40
 GLASS = 3
 MARGIN = 6
 # How far the mouth's rim reaches above and below the glass's top.
 MOUTH = 4
 # Where the counter's top starts, where its front starts, in art pixels: the jar's foot stands on the top.
-COUNTER_TOP, COUNTER_FRONT = 162, 173
+COUNTER_TOP, COUNTER_FRONT = 166, 177
 
 
 def wallpaper() -> Image.Image:
@@ -734,7 +731,6 @@ def main() -> None:
     for kind, (sprite, scale, share) in sprites.items():
         size = round(16 * scale)
         sprite.resize((size, size), Image.NEAREST).save(ASSETS / f"fruit-{kind}.png")
-        sprite.resize((ICON, ICON), Image.NEAREST).save(ASSETS / f"icon-{kind}.png")
         lines.append(f"  {kind}: {{ size: {size}, radius: {round(size * share)} }},")
     SIZES_FILE.write_text(
         "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
@@ -777,7 +773,7 @@ def main() -> None:
     write_score_notes()
     write_last_turn()
     write_entrance_sounds()
-    print(f"wrote {len(sprites) * 2} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds (the music among them)")
+    print(f"wrote {len(sprites)} fruit images, the kitchen, the jar, the shelf, {len(ADVENTURE)} frames, the keys, the coin, the blast and {len(SOUNDS)} sounds (the music among them)")
 
 
 if __name__ == "__main__":
