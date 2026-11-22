@@ -71,12 +71,11 @@ export const BANANA = { base: 4, ripen: 2, rots: 3 };
 export const HONEY = 4;
 /**
  * The Ladder set (design doc, "Next fruit set: Ladder"): merge up, smash down. A Watermelon that is Smashed breaks into `SLICES`
- * Slices, which score more together than it did. A Pumpkin Crushes the `CRUSHABLE` fruit it lands on. A Gourd takes in fruit no
+ * Slices, which score more together than it did. A Pumpkin Smashes the biggest ladder fruit it lands on. A Gourd takes in fruit no
  * bigger than itself, a size at a time along `GOURD_SIZES` (Cherry, Grape, Orange), and at Melon size Bursts into `GOURD_BURST`
  * Cherries. Two Watermelons make a Giant Pumpkin, which scores, throws the pile aside and is gone.
  */
 export const SLICES = 4;
-export const CRUSHABLE: readonly FruitKind[] = ["cherry", "grape", "seed", "lime"];
 export const GOURD_BURST = 4;
 export const GOURD_SIZES: readonly number[] = [FRUIT_ART.cherry.radius, FRUIT_ART.grape.radius, FRUIT_ART.orange.radius];
 

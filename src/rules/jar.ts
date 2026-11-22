@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { APPLE, BANANA, CRUSHABLE, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
 
@@ -33,53 +33,31 @@ export const DROP_Y = 80;
  * The tray drop. The shelf is a tray over the jar with a slot per lane, and the whole hand is released together, hand index 0 in
  * the leftmost lane, so where a fruit stands on the shelf decides where it lands. Each fruit wobbles up to `wobble` px within its
  * lane, so a setup is never pixel-perfect. Chosen on 20 November over dropping one at a time at random spots, where arranging the
- * hand did nothing measurable; the balance bots can still play that way ("/spots" in `tools/balance.ts`).
+ * hand did nothing measurable. `wobble` is a dial the balance bots turn ("/wobble0" in `tools/balance.ts`).
  */
-export const TRAY = { on: true, wobble: 4 };
+export const TRAY = { wobble: 4 };
 /**
- * For the balance bots: where dropped fruit land (today's random spots, or the tray's wobble) is drawn from another stream when
+ * For the balance bots: where dropped fruit land (the tray's wobble) is drawn from another stream when
  * `salt` is not 0. The run's own stream still moves on exactly as with 0, so the rest of the run is unchanged: a bot can try a
  * turn with other luck, and then play it for real with luck it has not seen. 0 in the game.
  */
 export const SPOTS = { salt: 0 };
 
 /**
- * For the balance bots: variants of the Ladder set to compare; the game plays with these defaults. `melonPick` puts the Melon among the fruit a
- * pick and the shop offer; `oranges` rolls a starting pool with more Oranges (1–3, against 0–2); `crushReach` is how far past
- * touching a Pumpkin's Crush reaches; `crushSmall` lets it Crush any fruit no bigger than a Grape, not only the four it names.
- * `melonChance` is how often a Melon takes the middle place of a pick (`MELON_CHANCE` in the game), as a Legendary takes the
- * last; `giantPoints` is what a Giant Pumpkin scores (its card's Fresh).
- *
- * The Smashed rework (design doc, adopted 21 November; the game plays it): `smashAll` makes Smashed a general rule, so a Melon, Orange or
- * Grape that is Smashed breaks into 2 of the next size down (`SMASH_INTO`), which score as they are made, as a Watermelon breaks
- * into Slices; a Giant Pumpkin's Shockwave Smashes them too. `pumpkinSmash` has a Pumpkin Smash the biggest fruit it lands on
- * instead of Crushing small ones (off, the first-built Pumpkin: it Crushes the `CRUSHABLE` fruit it lands on). The game passes
- * over everything but a Grape, Orange, Melon or Watermelon (`smashOther` "none"); with "destroy" it Smashes the biggest fruit of
- * any kind there, Crushing a Cherry, a Slice or a fruit off the ladder. `smashBlasts` (off: too strong, a Boom build gained 17%)
- * has an explosion Smash what it would destroy, where that fruit can be Smashed.
+ * The Ladder set's dials, for the balance bots; the game plays these defaults. `melonChance` is how often a Melon takes the middle
+ * place of a pick (`MELON_CHANCE`), as a Legendary takes the last; `giantPoints` is what a Giant Pumpkin scores (its card's Fresh).
+ * The variants the bots tried and the game turned down (more Oranges in the starting pool, the first-built Pumpkin that Crushed
+ * small fruit, a wider Crush, a Pumpkin or a blast that Smashes any fruit) are in the README's tables and in git history.
  */
 export const LADDER = {
-  melonPick: false,
   melonChance: MELON_CHANCE,
   giantPoints: FRUITS.giantpumpkin.points,
-  oranges: false,
-  crushReach: 8,
-  crushSmall: false,
-  pumpkinSmash: true,
-  smashOther: "none" as "destroy" | "none",
-  smashAll: true,
-  smashBlasts: false,
 };
 
 /** Every fruit a pick or the shop can ever offer, whatever the run: what the pick's cards and the shop's baskets make room for. */
 export const OFFERED: readonly FruitKind[] = [...OFFERABLE, "melon", ...LEGENDARY];
 
-/** The fruit a pick or the shop can offer. */
-function offerList(): readonly FruitKind[] {
-  return LADDER.melonPick ? [...OFFERABLE, "melon"] : OFFERABLE;
-}
-
-/** Where the next fruit lands: from the run's stream, or (`SPOTS.salt`) from another one, the run's stream moving on the same. */
+/** Where in its lane the next fruit lands: from the run's stream, or (`SPOTS.salt`) from another one, the run's stream moving on the same. */
 function spot(rng: Rng, low: number, high: number): number {
   const own = rng.range(low, high);
   if (SPOTS.salt === 0) return own;
@@ -111,8 +89,6 @@ export type Boss = "peg" | "blind" | "tilt" | "flip";
 export const BOSS_NAME: Readonly<Record<Boss, string>> = { peg: "Peg jar", blind: "Blind jar", tilt: "Tilted jar", flip: "Flip jar" };
 const BOSS_RULE: Readonly<Record<Boss, string>> = { peg: "A post splits the pile.", blind: "The hand is covered.", tilt: "Everything rolls right.", flip: "Gravity flips every turn." };
 const BOSSES: readonly Boss[] = ["blind", "peg", "tilt", "flip"];
-/** In the Flip jar, how many fruit drop between one turn of its gravity and the next (when they drop one at a time, not on the tray). */
-export const FLIP_EVERY = 2;
 
 /** The boss jar a run meets: one of them, by its seed. */
 export function bossFor(seed: number): Boss {
@@ -142,12 +118,12 @@ export function bossNow(run: Run, cycle = run.cycle): Boss | null {
 export const RENT: readonly number[] = [120, 180, 240, 320, 400];
 /** Points over the rent that make one coin. */
 export const POINTS_PER_COIN = 10;
-/** Seconds between drops in a hand, at the least: the next fruit also waits for the pile to have been calm for `DROP_CALM`
- * seconds, but no longer than `DROP_LIMIT` since the last drop (a pile that will not rest cannot stall a hand). */
+/** Seconds between releases of the tray, at the least. In the Flip jar a release also waits for the pile to have been calm for
+ * `DROP_CALM` seconds, but no longer than `DROP_LIMIT` since the last (a pile that will not rest cannot stall a hand). */
 const DROP_GAP = 0.35;
 const DROP_CALM = 0.2;
 const DROP_LIMIT = 3;
-/** A fruit slower than this (px/s) is calm: it has landed, and the next of the hand may drop. */
+/** A fruit slower than this (px/s) is calm: it has landed, and (in the Flip jar) gravity may turn over. */
 const CALM_SPEED = 20;
 /**
  * The turn is scored once the jar has settled: every fruit slower than `SETTLE_SPEED` (px/s; slow enough to look still) for
@@ -458,10 +434,10 @@ export const NO_KEYS: Keys = { up: false, down: false, left: false, right: false
 /** The starting pool: 1 Apple plus 8 starters, 3–5 Cherries, 2–4 Grapes and 0–2 Oranges (see the design doc). */
 export function rollPool(rng: Rng): FruitKind[] {
   for (;;) {
-    const cherries = LADDER.oranges ? rng.int(2, 4) : rng.int(3, 5);
+    const cherries = rng.int(3, 5);
     const grapes = rng.int(2, 4);
     const oranges = 8 - cherries - grapes;
-    if (oranges < (LADDER.oranges ? 1 : 0) || oranges > (LADDER.oranges ? 3 : 2)) continue;
+    if (oranges < 0 || oranges > 2) continue;
     return [
       ...Array<FruitKind>(cherries).fill("cherry"),
       ...Array<FruitKind>(grapes).fill("grape"),
@@ -897,8 +873,8 @@ function order(run: Run, keys: Keys): void {
 }
 
 /**
- * The hand drops a fruit at a time: the next one waits until the last has landed and the pile it set moving (its merges and
- * blasts too) has come to rest, so what each fruit scored can be seen before the next adds to it.
+ * The hand drops: the tray releases it all at once. In the Flip jar it is released in parts, and gravity turns over between them
+ * once the pile has come to rest.
  */
 function dropStep(run: Run, dt: number): void {
   run.dropTimer -= dt;
@@ -914,23 +890,9 @@ function dropStep(run: Run, dt: number): void {
     run.dropTimer = DROP_GAP;
     run.dropWait = 0;
     run.calmTime = 0;
-  } else if (TRAY.on && run.dropTimer <= 0 && run.queue.length > 0 && !(flip && (!ready || (run.drops > 0 && flipDue(run))))) {
+  } else if (run.dropTimer <= 0 && run.queue.length > 0 && !(flip && (!ready || (run.drops > 0 && flipDue(run))))) {
     // In the Flip jar the tray waits for its gravity to turn over (above), and for the pile to come to rest after it.
     trayRelease(run, flip);
-  } else if (run.dropTimer <= 0 && ready && run.queue.length > 0) {
-    const kind = run.queue.shift() as FruitKind;
-    const r = FRUITS[kind].radius;
-    const rng = new Rng(run.seed);
-    const x = spot(rng, JAR.left + r, JAR.right - r);
-    run.seed = rng.seed;
-    // Under its lid, a fruit starts inside the jar, at the end it will fall away from.
-    const y = !flip ? DROP_Y : run.flipped ? JAR.floor - r - 2 : RIM + r + 2;
-    run.fruits.push(makeFruit(run, kind, x, y));
-    run.drops += 1;
-    run.discard.push(kind);
-    run.dropTimer = DROP_GAP;
-    run.dropWait = 0;
-    run.calmTime = 0;
   }
   simulate(run, dt);
   // The last fruit's landing is the settle phase's to wait for.
@@ -943,12 +905,11 @@ function dropStep(run: Run, dt: number): void {
 }
 
 /**
- * Whether the Flip jar's gravity turns over before the next drop. On the tray: before every release but the cycle's first, so the
- * pile lies on the floor, then the lid, then the floor. One at a time: after every `FLIP_EVERY` drops.
+ * Whether the Flip jar's gravity turns over before the next release of the tray: before every release but the cycle's first, so
+ * the pile lies on the floor, then the lid, then the floor.
  */
 function flipDue(run: Run): boolean {
-  if (TRAY.on) return run.flipped !== (Math.ceil(run.drops / HAND_SIZE) % 2 === 1);
-  return run.drops % FLIP_EVERY === 0 && run.flipped === (Math.floor(run.drops / FLIP_EVERY) % 2 === 0);
+  return run.flipped !== (Math.ceil(run.drops / HAND_SIZE) % 2 === 1);
 }
 
 /**
@@ -1049,95 +1010,41 @@ function land(run: Run): void {
     }
     if (f.kind === "pumpkin") pumpkins.push(f);
   });
-  for (const p of pumpkins) if (run.fruits.includes(p)) crush(run, p);
+  for (const p of pumpkins) if (run.fruits.includes(p)) pumpkinSmash(run, p);
 }
 
-/** What a Pumpkin's Crush adds for each fruit Crushed. How far past touching it reaches is `LADDER.crushReach`: a near miss still counts. */
-export const CRUSH_BONUS = 3;
+/** How far past touching a Pumpkin's Smash reaches, in pixels: a near miss still counts. */
+const PUMPKIN_REACH = 8;
 
-/**
- * A Pumpkin has landed: the Cherries, Grapes, Seeds and Limes under it (and a little to the side) are Crushed, each scoring its
- * points (nothing if rotten) and `CRUSH_BONUS`, doubled by a Lemon it touched. A Lime Crushed pours its juice, a Seed Sprouts, and
- * a Watermelon under it is Smashed into Slices. A frozen fruit holds.
- */
-function crush(run: Run, pumpkin: Fruit): void {
-  if (LADDER.pumpkinSmash) {
-    pumpkinSmash(run, pumpkin);
-    return;
-  }
-  const near = links(run.fruits);
-  const doubled = new Set(run.fruits.filter((_, i) => boosted(run.fruits, near, i)).map((f) => f.id));
-  const under = run.fruits.filter(
-    (o) => o !== pumpkin && !o.frozen && o.y > pumpkin.y - pumpkin.r * 0.25 && Math.hypot(o.x - pumpkin.x, o.y - pumpkin.y) < pumpkin.r + o.r + LADDER.crushReach
-  );
-  const crushed = under.filter((o) =>
-    LADDER.crushSmall ? o.r <= FRUITS.grape.radius && o.kind !== "watermelon" && !o.lit : CRUSHABLE.includes(o.kind)
-  );
-  const smashed = under.filter((o) => o.kind === "watermelon");
-  if (crushed.length === 0 && smashed.length === 0) return;
-  const born: Fruit[] = [];
-  let points = 0;
-  let limes = 0;
-  for (const f of crushed) {
-    points += ((f.rotten ? 0 : FRUITS[f.kind].points) + CRUSH_BONUS) * (doubled.has(f.id) ? 2 : 1);
-    if (f.kind === "lime") limes += 1;
-    if (f.kind === "seed") born.push(sprout(run, f));
-  }
-  for (const w of smashed) born.push(...smash(run, w));
-  run.fruits = [...run.fruits.filter((f) => !crushed.includes(f) && !smashed.includes(f)), ...born];
-  score(run, points, pumpkin.x, pumpkin.y - pumpkin.r, { label: "Crush" });
-  pulse(pumpkin);
-  sound(run, "merge");
-  run.message = smashed.length > 0 ? "A Pumpkin Smashes a Watermelon into Slices" : `A Pumpkin Crushes ${crushed.length} fruit`;
-  if (limes > 0) {
-    pour(run, "lime", limes * LIME_JUICE);
-    run.message = `A Pumpkin Crushes ${limes === 1 ? "a Lime" : `${limes} Limes`}: lime juice rises`;
-  }
-}
-
-/** The ladder fruit a Smash breaks into two of, under the general rule (`LADDER.smashAll`, or a Pumpkin's with `pumpkinSmash`). */
+/** The ladder fruit a Smash breaks into two of. A Watermelon breaks into Slices instead. */
 const SMASH_INTO: Readonly<Partial<Record<FruitKind, FruitKind>>> = { melon: "orange", orange: "grape", grape: "cherry" };
 
-/** Whether a Smash breaks this fruit into pieces: a Watermelon always, and under the general rule a Melon, Orange or Grape. */
-function smashable(f: Fruit, general = LADDER.smashAll): boolean {
-  return f.kind === "watermelon" || (general && SMASH_INTO[f.kind] !== undefined);
+/** Whether a Smash breaks this fruit into pieces: a Watermelon, Melon, Orange or Grape. */
+function smashable(f: Fruit): boolean {
+  return f.kind === "watermelon" || SMASH_INTO[f.kind] !== undefined;
 }
 
 /**
- * The reworked Pumpkin (`LADDER.pumpkinSmash`): it Smashes the biggest Grape, Orange, Melon or Watermelon under it, which in a
- * pile is where the big fruit are. With `smashOther` "destroy" it takes the biggest fruit of any kind, and Crushes one that cannot
- * be Smashed.
+ * A Pumpkin has landed: it Smashes the biggest Grape, Orange, Melon or Watermelon under it (and a little to the side), which in a
+ * pile is where the big fruit are. Other fruit it leaves alone, and a frozen one holds.
  */
 function pumpkinSmash(run: Run, pumpkin: Fruit): void {
-  const near = links(run.fruits);
-  const doubled = new Set(run.fruits.filter((_, i) => boosted(run.fruits, near, i)).map((f) => f.id));
   const under = run.fruits.filter(
     (o) =>
       o !== pumpkin &&
       !o.frozen &&
       !o.lit &&
-      o.kind !== "pumpkin" &&
-      o.kind !== "giantpumpkin" &&
-      (LADDER.smashOther === "destroy" || smashable(o, true)) &&
+      smashable(o) &&
       o.y > pumpkin.y - pumpkin.r * 0.25 &&
-      Math.hypot(o.x - pumpkin.x, o.y - pumpkin.y) < pumpkin.r + o.r + LADDER.crushReach
+      Math.hypot(o.x - pumpkin.x, o.y - pumpkin.y) < pumpkin.r + o.r + PUMPKIN_REACH
   );
   const target = under.sort((a, b) => b.r - a.r || Math.hypot(a.x - pumpkin.x, a.y - pumpkin.y) - Math.hypot(b.x - pumpkin.x, b.y - pumpkin.y))[0];
   if (target === undefined) return;
   pulse(pumpkin);
   sound(run, "merge");
-  if (smashable(target, true)) {
-    const pieces = smash(run, target);
-    run.fruits = [...run.fruits.filter((f) => f !== target), ...pieces];
-    run.message = `A Pumpkin Smashes a ${FRUITS[target.kind].name}`;
-    return;
-  }
-  // Crushed: its points and the bonus; a Lime pours its juice and a Seed Sprouts, as before.
-  const born = target.kind === "seed" ? [sprout(run, target)] : [];
-  run.fruits = [...run.fruits.filter((f) => f !== target), ...born];
-  score(run, ((target.rotten ? 0 : FRUITS[target.kind].points) + CRUSH_BONUS) * (doubled.has(target.id) ? 2 : 1), pumpkin.x, pumpkin.y - pumpkin.r, { label: "Crush" });
-  if (target.kind === "lime") pour(run, "lime", LIME_JUICE);
-  run.message = `A Pumpkin Crushes a ${FRUITS[target.kind].name}`;
+  const pieces = smash(run, target);
+  run.fruits = [...run.fruits.filter((f) => f !== target), ...pieces];
+  run.message = `A Pumpkin Smashes a ${FRUITS[target.kind].name}`;
 }
 
 /** A Seed's Sprout: a Cherry, Grape or Orange where it was, already landed. */
@@ -1150,13 +1057,14 @@ function sprout(run: Run, seed: Fruit): Fruit {
 }
 
 /**
- * A Watermelon Smashed (Exploded, Crushed by a Pumpkin or caught in a Giant Pumpkin's Shockwave): `SLICES` Slices where it was,
- * already landed, which score as they are made, more together than the Watermelon did. The caller takes the Watermelon out.
+ * A fruit Smashed (by a Pumpkin, by a Giant Pumpkin's Shockwave, or a Watermelon by an explosion), already landed: a Watermelon
+ * breaks into `SLICES` Slices, which score more together than it did; a Melon, Orange or Grape into 2 of the next size down. The
+ * pieces score as they are made. The caller takes the Smashed fruit out.
  */
 function smash(run: Run, w: Fruit): Fruit[] {
   const into = SMASH_INTO[w.kind];
   if (w.kind !== "watermelon" && into !== undefined) {
-    // The general rule: two of the next size down, side by side where it was, scoring as they are made.
+    // Two of the next size down, side by side where it was.
     const pieces = [-1, 1].map((side) => {
       const f = makeFruit(run, into, inside(w.x + side * w.r * 0.45, FRUITS[into].radius), w.y);
       Object.assign(f, { landed: true, rotten: w.rotten, piece: true });
@@ -1424,8 +1332,8 @@ function explode(run: Run, bomb: Fruit): void {
       continue;
     }
     victims.push(f);
-    // A Watermelon is Smashed (and with `smashBlasts`, any fruit that can be): its pieces score in its place.
-    const smashing = f.kind === "watermelon" || (LADDER.smashBlasts && smashable(f));
+    // A Watermelon is Smashed: its Slices score in its place.
+    const smashing = f.kind === "watermelon";
     const value = FRUITS[f.kind].scoring === "booster" || f.rotten || smashing ? 0 : FRUITS[f.kind].points;
     if (smashing) born.push(...smash(run, f));
     points += (value + (BLAST_BONUS[bomb.kind] ?? 0)) * (doubled.has(f.id) ? 2 : 1);
@@ -1647,7 +1555,7 @@ export function resolve(run: Run): void {
 
 function offer(run: Run): void {
   const rng = new Rng(run.seed);
-  run.offers = rng.shuffle(offerList()).slice(0, 3);
+  run.offers = rng.shuffle(OFFERABLE).slice(0, 3);
   // Now and then a Legendary takes the last place.
   if (rng.next() < LEGENDARY_CHANCE) run.offers[2] = rng.pick(LEGENDARY);
   // And now and then a Melon takes the middle one: the Ladder build's way to Watermelons.
@@ -1727,7 +1635,7 @@ function leaveRent(run: Run): void {
 /** Fill the shop's shelf: three different fruit, and an item the player can use (none when there is none: `offerable`). */
 function stock(run: Run, shop: Shop): void {
   const rng = new Rng(run.seed);
-  shop.fruits = rng.shuffle(offerList()).slice(0, SHOP_FRUITS);
+  shop.fruits = rng.shuffle(OFFERABLE).slice(0, SHOP_FRUITS);
   const choices = offerable(run.items);
   shop.item = choices.length === 0 ? null : rng.pick(choices);
   run.seed = rng.seed;
