@@ -10,8 +10,10 @@ import { ITEMS, type ItemKind } from "./rules/items.ts";
 import { RuleText } from "./RuleText.tsx";
 import { Bloops } from "./Sounds.tsx";
 import { Terms } from "./Terms.tsx";
-import { FRUIT_PRICE, removalPrice, rerollPrice, SHOP_ITEM, SHOP_LEAVE, SHOP_REMOVE, SHOP_REROLL, type Run, type Shop as ShopState } from "./rules/jar.ts";
+import { FRUIT_PRICE, removalPrice, rerollPrice, SHOP_ITEM, SHOP_LEAVE, SHOP_REMOVE, SHOP_REROLL, OFFERED, type Run, type Shop as ShopState } from "./rules/jar.ts";
 import {
+  biggestFruit,
+  fruitImageSize,
   AWNING,
   AWNING_H,
   BAD,
@@ -55,14 +57,26 @@ const ACTION_Y = 284;
 const HEADING_W = 120;
 const PURSE_W = 84;
 const HANGING_H = 36;
-/** The picture at the top of a label: a fruit in its basket, or the item on its cloth. */
-const PICTURE_W = 64;
-const PICTURE_H = 76;
-const BASKET_X = 4;
-const BASKET_Y = 34;
-/** Choosing a fruit to take out: the pool's kinds in cells on a board, this many to a row before they wrap. */
-const CELL = 56;
-const CELLS_ACROSS = 8;
+/**
+ * The picture at the top of a label: a fruit in its basket, or the item on its cloth. As wide as the biggest fruit the shop can
+ * offer, and tall enough for it to sit in the basket with its top in the picture. The basket (56 x 38) and the cloth (60 x 12)
+ * are centred across it, and the item (48 x 40) stands on the cloth.
+ */
+const PICTURE_W = Math.max(64, biggestFruit(OFFERED));
+const PICTURE_H = 88;
+const BASKET_W = 56;
+const BASKET_Y = 46;
+const CLOTH_W = 60;
+const ITEM_W = 48;
+/** How deep a fruit sits in its basket: this share of its height is below the basket's rim. */
+const BASKET_SINK = 0.4;
+/** Choosing a fruit to take out: the pool's kinds on a board, each in a cell its fruit's width and a little more, wrapping at this width. */
+const REMOVE_W = 520;
+
+/** A kind's cell on the take-out board: its fruit's width with room for the frame round the chosen one. */
+function removeCell(kind: FruitKind): number {
+  return Math.max(32, fruitImageSize(kind)) + 16;
+}
 
 interface ShopProps {
   run: Run;
@@ -103,13 +117,26 @@ function PriceTag({ price, afford }: { price: number; afford: boolean }) {
   );
 }
 
+/**
+ * A clear rectangle the size of a label's picture, first in the Entity that holds the picture's parts. The parts are in one
+ * Entity so the box's layout places them as one (it would lay its children out in a row), and the layout places an Entity by
+ * where its drawing starts: this makes that the picture's top left corner, whatever is drawn in it.
+ */
+function PictureRoom() {
+  return <Shape kind="rect" x={0} y={0} width={PICTURE_W} height={PICTURE_H} color="#00000000" />;
+}
+
 /** A fruit in its basket: the basket's back, the fruit sitting in it, and the basket's front over the fruit's bottom. */
 function Basket({ kind }: { kind: FruitKind | null }) {
+  const size = kind === null ? 0 : fruitImageSize(kind);
   return (
     <Flex width={PICTURE_W} height={PICTURE_H}>
-      <Sprite image="basket-back.png" x={BASKET_X} y={BASKET_Y} />
-      {kind !== null && <FruitBall kind={kind} x={PICTURE_W / 2} y={38} look="big" />}
-      <Sprite image="basket.png" x={BASKET_X} y={BASKET_Y} />
+      <Entity>
+        <PictureRoom />
+        <Sprite image="basket-back.png" x={(PICTURE_W - BASKET_W) / 2} y={BASKET_Y} />
+        {kind !== null && <FruitBall kind={kind} x={PICTURE_W / 2} y={BASKET_Y + Math.round(size * BASKET_SINK / 2) * 2 - size / 2} />}
+        <Sprite image="basket.png" x={(PICTURE_W - BASKET_W) / 2} y={BASKET_Y} />
+      </Entity>
     </Flex>
   );
 }
@@ -118,8 +145,11 @@ function Basket({ kind }: { kind: FruitKind | null }) {
 function OnCloth({ item }: { item: ItemKind | null }) {
   return (
     <Flex width={PICTURE_W} height={PICTURE_H}>
-      <Sprite image={CLOTH} x={2} y={62} />
-      {item !== null && <Sprite image={`item-${item}.png`} x={8} y={26} />}
+      <Entity>
+        <PictureRoom />
+        <Sprite image={CLOTH} x={(PICTURE_W - CLOTH_W) / 2} y={PICTURE_H - 14} />
+        {item !== null && <Sprite image={`item-${item}.png`} x={(PICTURE_W - ITEM_W) / 2} y={PICTURE_H - 50} />}
+      </Entity>
     </Flex>
   );
 }
@@ -309,13 +339,13 @@ export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, on
         <Entity>
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
           <Flex left={0} right={0} top={0} bottom={0} direction="column" alignItems="center" justifyContent="center">
-            <Flex width={Math.max(240, Math.min(kinds.length, CELLS_ACROSS) * CELL + 32)} direction="column" alignItems="stretch">
+            <Flex width={Math.max(240, Math.min(REMOVE_W, kinds.reduce((w, row) => w + removeCell(row.kind), 0) + 32))} direction="column" alignItems="stretch">
               <Panel heading="Take out one">
-                <Flex direction="row" wrap justifyContent="center" rowGap={4} columnGap={0}>
+                <Flex direction="row" wrap justifyContent="center" alignItems="end" rowGap={4} columnGap={0}>
                   {placed(kinds).map((cell) => (
-                    <Flex key={cell.card.kind} width={CELL} direction="column" alignItems="center" focusable={false} onPress={() => onClick(cell.at)}>
-                      <Flex width={40} height={40} backgroundImage={cell.at === shop.removeCursor ? SELECT : undefined} slice={CARD_SLICE}>
-                        <FruitBall kind={cell.card.kind} x={20} y={20} look="icon" />
+                    <Flex key={cell.card.kind} width={removeCell(cell.card.kind)} direction="column" alignItems="center" focusable={false} onPress={() => onClick(cell.at)}>
+                      <Flex width={removeCell(cell.card.kind) - 4} height={fruitImageSize(cell.card.kind) + 8} backgroundImage={cell.at === shop.removeCursor ? SELECT : undefined} slice={CARD_SLICE}>
+                        <FruitBall kind={cell.card.kind} x={(removeCell(cell.card.kind) - 4) / 2} y={fruitImageSize(cell.card.kind) / 2 + 4} />
                       </Flex>
                       <Text color={INK}>{`${cell.card.count}`}</Text>
                     </Flex>

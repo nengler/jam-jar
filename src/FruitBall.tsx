@@ -1,7 +1,7 @@
 import { Sprite } from "@tsengine/runtime/jsx";
 
 import type { FruitKind } from "./rules/fruits.ts";
-import { fruitImage, fruitImageSize, FROZEN, HONEYED, LIGHT, PICKLED, ROTTEN, type FruitLook } from "./theme.ts";
+import { fruitImage, fruitImageSize, FROZEN, HONEYED, LIGHT, PICKLED, ROTTEN } from "./theme.ts";
 
 interface FruitBallProps {
   kind: FruitKind;
@@ -21,19 +21,17 @@ interface FruitBallProps {
   turn?: number;
   /** Lit up, 0 to 1: a softer flash than `lit`, fading as what caused it passes. */
   glow?: number;
-  /** "jar": its size in the jar (the default); "icon": 32 px, for the shelf and the pool; "big": 64 px, for the pick cards. */
-  look?: FruitLook;
 }
 
 /**
- * A fruit, centred on (x, y): its pixel sprite (tools/fruit), scaled up with no smoothing by tools/make-assets.py. A rotten
+ * A fruit, centred on (x, y): its pixel sprite (art/fruit), doubled with no smoothing by tools/make-assets.py. A rotten
  * fruit is tinted brown, a honeyed one gold; a lit one flashes.
  */
-export function FruitBall({ kind, x, y, rotten = false, honeyed = false, pickled = false, frozen = false, lit = false, glow = 0, turn = 0, look = "jar" }: FruitBallProps) {
-  const half = fruitImageSize(kind, look) / 2;
+export function FruitBall({ kind, x, y, rotten = false, honeyed = false, pickled = false, frozen = false, lit = false, glow = 0, turn = 0 }: FruitBallProps) {
+  const half = fruitImageSize(kind) / 2;
   return (
     <Sprite
-      image={fruitImage(kind, look)}
+      image={fruitImage(kind)}
       x={x}
       y={y}
       originX={half}
