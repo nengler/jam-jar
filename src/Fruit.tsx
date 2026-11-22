@@ -3,7 +3,7 @@ import { Entity, useBall, useMutable, useUpdate } from "@tsengine/runtime/jsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { leanX, leanY } from "./layout.ts";
-import { GRAVITY, JAR, LADDER, type FruitReport } from "./rules/jar.ts";
+import { GRAVITY, JAR, type FruitReport } from "./rules/jar.ts";
 
 interface FruitProps {
   id: number;
@@ -55,9 +55,8 @@ const SQUASH_MOST = 0.22;
 /** How much of its sliding a fruit pressed against the jar loses each substep in the Tilted jar (the engine's default is 0.1). */
 const TILT_FRICTION = 0.01;
 
-/** A Pumpkin's Plunge (`LADDER.plunge`): how fast its ball is driven down through the pile (px/s), and how many times heavier it is. */
+/** A Pumpkin's Plunge: how fast its ball is driven down through the pile (px/s). Its weight (`heavy` in the fruit table) lets it through. */
 const PLUNGE_SPEED = 520;
-const PLUNGE_MASS = 12;
 
 /** How much of its speed a fruit in juice loses each step. */
 const JUICE_DRAG = 0.12;
@@ -75,8 +74,7 @@ export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, p
     x: x0,
     y: y0,
     radius: r,
-    // A Pumpkin that Plunges is far heavier, so it drives through the pile instead of resting on it.
-    mass: r * r * (FRUITS[kind].heavy ?? 1) * (kind === "pumpkin" && LADDER.plunge ? PLUNGE_MASS : 1),
+    mass: r * r * (FRUITS[kind].heavy ?? 1),
     gravity: GRAVITY,
     tag: "fruit",
     data: { id: id },
