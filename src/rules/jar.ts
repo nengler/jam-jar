@@ -63,6 +63,8 @@ export const SPOTS = { salt: 0 };
  * Watermelon it hits, its pieces thrown out too. At the floor it shoves what is round it. See `plungeStep`. Tuning it:
  * `plungeScores` off, a Plunge's pieces score nothing as they are made (only what they go on to do); `plungeCap` above 0, it
  * Smashes only that many fruit and throws the rest; `pumpkinPoints` is what a Pumpkin scores when it lands (its card's Fresh).
+ * `plungeBurst` gathers what a Plunge's Smashes score into one popup at the floor ("Plunge +84"), and `plungePay` is the share
+ * of the pieces' points a Plunge's Smash pays (1: all).
  */
 export const LADDER = {
   melonPick: false,
@@ -80,6 +82,8 @@ export const LADDER = {
   plungeScores: true,
   plungeCap: 0,
   pumpkinPoints: FRUITS.pumpkin.points,
+  plungeBurst: false,
+  plungePay: 1,
 };
 
 /** Every fruit a pick or the shop can ever offer, whatever the run: what the pick's cards and the shop's baskets make room for. */
@@ -277,8 +281,9 @@ export interface Fruit {
   /** A Pumpkin's Plunge: seconds it may still drive down (0 or absent: not plunging), and the fruit it has already hit on the way. */
   plunging?: number;
   hit?: number[];
-  /** How many fruit this Plunge has Smashed (`LADDER.plungeCap`). */
+  /** How many fruit this Plunge has Smashed (`LADDER.plungeCap`), and what its Smashes have scored so far (`LADDER.plungeBurst`). */
   smashed?: number;
+  burst?: number;
   /** A Gourd that has taken in a rotten fruit: the Cherries it Bursts into are rotten. */
   tainted?: boolean;
   /** A Gourd's seconds until it can take in another fruit, so each growth can be seen. */
@@ -1083,6 +1088,7 @@ function crush(run: Run, pumpkin: Fruit): void {
     pumpkin.plunging = PLUNGE_LIMIT;
     pumpkin.hit = [];
     pumpkin.smashed = 0;
+    pumpkin.burst = 0;
     pulse(pumpkin);
     run.message = "A Pumpkin Plunges";
     return;
@@ -1154,7 +1160,11 @@ function plungeStep(run: Run, dt: number): void {
       const side = o.x === p.x ? (o.id % 2 === 0 ? 1 : -1) : Math.sign(o.x - p.x);
       if (LADDER.plungeSmash && smashable(o, true) && (LADDER.plungeCap === 0 || (p.smashed ?? 0) < LADDER.plungeCap)) {
         p.smashed = (p.smashed ?? 0) + 1;
-        const pieces = smash(run, o, LADDER.plungeScores);
+        // What the pieces are worth, at `plungePay`: scored as they are made, or gathered for one popup at the floor.
+        const worth = LADDER.plungeScores ? Math.round(smashWorth(o) * LADDER.plungePay) : 0;
+        const pieces = smash(run, o, false);
+        if (LADDER.plungeBurst) p.burst = (p.burst ?? 0) + worth;
+        else score(run, worth, o.x, o.y - o.r, o.kind === "watermelon" ? { label: "Slice", earner: FRUITS.slice.name } : { label: "Smash" });
         for (const piece of pieces) {
           hit.push(piece.id);
           const out = piece.x === o.x ? side : Math.sign(piece.x - o.x);
@@ -1186,6 +1196,13 @@ function plungeStep(run: Run, dt: number): void {
       }
       pulse(p);
       sound(run, "land");
+      if ((p.burst ?? 0) > 0) {
+        // The burst: all its Smashes' points at once, where it came down.
+        score(run, p.burst ?? 0, p.x, p.y - p.r, { label: "Plunge", earner: "Smash" });
+        p.burst = 0;
+        effect(run, "boom", p.x, p.y, p.r * 3);
+        sound(run, "boom");
+      }
     }
   }
 }
@@ -1248,6 +1265,14 @@ function sprout(run: Run, seed: Fruit): Fruit {
  * A Watermelon Smashed (Exploded, Crushed by a Pumpkin or caught in a Giant Pumpkin's Shockwave): `SLICES` Slices where it was,
  * already landed, which score as they are made, more together than the Watermelon did. The caller takes the Watermelon out.
  */
+/** What a Smash of this fruit scores, as its pieces are made: nothing if it is rotten. */
+function smashWorth(w: Fruit): number {
+  if (w.rotten) return 0;
+  if (w.kind === "watermelon") return SLICES * FRUITS.slice.points;
+  const into = SMASH_INTO[w.kind];
+  return into === undefined ? 0 : 2 * FRUITS[into].points;
+}
+
 function smash(run: Run, w: Fruit, scores = true): Fruit[] {
   const into = SMASH_INTO[w.kind];
   if (w.kind !== "watermelon" && into !== undefined) {
