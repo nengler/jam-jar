@@ -1,26 +1,63 @@
-import { Entity, Flex, Shape, Sprite, Text, Tooltip, useTime } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Shape, Sprite, Text, Tooltip, useTime, type Child } from "@tsengine/runtime/jsx";
 
 import { Letters, Panel } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { KeyHint, TapButton } from "./KeyHint.tsx";
 import { chosenName, ENTER, entered, placed, popIn, poolRows } from "./layout.ts";
-import { FRUITS } from "./rules/fruits.ts";
-import { ITEMS } from "./rules/items.ts";
+import { FRUITS, type FruitKind } from "./rules/fruits.ts";
+import { ITEMS, type ItemKind } from "./rules/items.ts";
 import { RuleText } from "./RuleText.tsx";
 import { Bloops } from "./Sounds.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUIT_PRICE, removalPrice, rerollPrice, SHOP_ITEM, SHOP_LEAVE, SHOP_REMOVE, SHOP_REROLL, type Run, type Shop as ShopState } from "./rules/jar.ts";
-import { BAD, cardFor, CARD_SLICE, INK, INK_SOFT, KEYWORD, LIGHT, PANEL, PANEL_SLICE, SELECT, SHADE, WELL } from "./theme.ts";
+import {
+  AWNING,
+  AWNING_H,
+  BAD,
+  CARD_SLICE,
+  CLOTH,
+  COIN_JAR,
+  DISPLAY,
+  DISPLAY_SIZE,
+  INK,
+  INK_SOFT,
+  KEYWORD,
+  LABEL_SLICE,
+  labelFor,
+  LIGHT,
+  SELECT,
+  SHADE,
+  SIGN,
+  SIGN_SLICE,
+  signFor,
+  SOLD,
+  STALL,
+  TAG,
+  TAG_SLICE,
+} from "./theme.ts";
 
-/** The shelf: four cards in a row, and how far the chosen one is raised. */
+/** The stall: four labels in a row standing on its counter, and how far the chosen one is raised. */
 const CARD_W = 148;
-const CARD_H = 204;
+const CARD_H = 200;
 const CARD_GAP = 6;
-const CARD_LIFT = 8;
-/** The actions: three buttons under the shelf. */
+const CARD_LIFT = 10;
+/** Where the stall's counter's top is: the labels stand on it. */
+const STALL_Y = 256;
+/** The actions: three signs under the stall, as wide across as the labels. */
 const ACTION_W = 196;
 const ACTION_H = 36;
+const ACTION_GAP = 11;
+const ACTION_Y = 284;
+/** The heading's sign and the purse's, hung on the awning's beam. */
+const HEADING_W = 120;
+const PURSE_W = 84;
+const HANGING_H = 36;
+/** The picture at the top of a label: a fruit in its basket, or the item on its cloth. */
+const PICTURE_W = 64;
+const PICTURE_H = 76;
+const BASKET_X = 4;
+const BASKET_Y = 34;
 /** Choosing a fruit to take out: the pool's kinds in cells on a board, this many to a row before they wrap. */
 const CELL = 56;
 const CELLS_ACROSS = 8;
@@ -42,11 +79,102 @@ interface ShopProps {
 }
 
 /** A price: the coin and the number, in a row. The number is red when the run has not the coins. */
-function Price({ price, afford }: { price: number; afford: boolean }) {
+function Price({ price, afford, color = INK }: { price: number; afford: boolean; color?: string }) {
   return (
     <Flex direction="row" alignItems="center" gap={4}>
       <Sprite image="coin.png" />
-      <Text color={afford ? INK : BAD}>{`${price}`}</Text>
+      {color === LIGHT ? (
+        <Text color={afford ? LIGHT : BAD} shadow={INK} shadowX={2} shadowY={2}>{`${price}`}</Text>
+      ) : (
+        <Text color={afford ? color : BAD}>{`${price}`}</Text>
+      )}
+    </Flex>
+  );
+}
+
+/** A paper price tag tied to a label's top left corner, hanging a little past its edge. */
+function PriceTag({ price, afford }: { price: number; afford: boolean }) {
+  return (
+    <Flex left={-8} top={10} width={58} height={24} direction="row" alignItems="center" paddingLeft={14} backgroundImage={TAG} slice={TAG_SLICE}>
+      <Price price={price} afford={afford} />
+    </Flex>
+  );
+}
+
+/** A fruit in its basket: the basket's back, the fruit sitting in it, and the basket's front over the fruit's bottom. */
+function Basket({ kind }: { kind: FruitKind | null }) {
+  return (
+    <Flex width={PICTURE_W} height={PICTURE_H}>
+      <Sprite image="basket-back.png" x={BASKET_X} y={BASKET_Y} />
+      {kind !== null && <FruitBall kind={kind} x={PICTURE_W / 2} y={38} look="big" />}
+      <Sprite image="basket.png" x={BASKET_X} y={BASKET_Y} />
+    </Flex>
+  );
+}
+
+/** The item standing on its folded gingham cloth, or the cloth alone once it is bought. */
+function OnCloth({ item }: { item: ItemKind | null }) {
+  return (
+    <Flex width={PICTURE_W} height={PICTURE_H}>
+      <Sprite image={CLOTH} x={2} y={62} />
+      {item !== null && <Sprite image={`item-${item}.png`} x={8} y={26} />}
+    </Flex>
+  );
+}
+
+/** What a place on the stall shows once it is bought: its empty basket or cloth, stamped SOLD. */
+function Sold({ picture }: { picture: Child }) {
+  return (
+    <Flex height="grow" direction="column" alignItems="center" justifyContent="center" gap={8} paddingBottom={20}>
+      {picture}
+      <Sprite image={SOLD} />
+    </Flex>
+  );
+}
+
+interface OfferProps {
+  /** Its place in the shop's cursor order. */
+  at: number;
+  chosen: boolean;
+  item: boolean;
+  /** How far into the shop's coming in it is (0 to 1), and how far it has faded in. */
+  drop: number;
+  opacity: number;
+  onClick: (place: number) => void;
+  children: Child;
+}
+
+/** One place on the stall: a label standing on the counter, raised when it is the chosen one, dropping into place as the shop comes in. */
+function Offer({ at, chosen, item, drop, opacity, onClick, children }: OfferProps) {
+  return (
+    <Flex height={CARD_H + CARD_LIFT} direction="column" justifyContent={chosen ? "start" : "end"} y={-CARD_DROP * (1 - drop)} opacity={opacity}>
+      <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={14} backgroundImage={labelFor(chosen, item)} slice={LABEL_SLICE} focusable={false} onPress={() => onClick(at)}>
+        {children}
+      </Flex>
+    </Flex>
+  );
+}
+
+/** An offer's name and its rule text, under its picture. */
+function Words({ name, text }: { name: string; text: string }) {
+  return (
+    <Flex direction="column" alignItems="center">
+      <Text width={CARD_W - 12} maxWidth={CARD_W - 12} align="center" color={INK}>
+        {name}
+      </Text>
+      <RuleText x={0} y={0} width={CARD_W - 12} text={text} color={INK_SOFT} accent={KEYWORD} />
+    </Flex>
+  );
+}
+
+/** A shop action: a wooden sign with what it does at its left end and what it costs at its right (or, for the way out, centred). */
+function ActionSign({ chosen, go = false, label, price, afford, onPoint, onPress }: { chosen: boolean; go?: boolean; label: string; price?: number; afford?: boolean; onPoint: () => void; onPress: () => void }) {
+  return (
+    <Flex width={ACTION_W} height={ACTION_H} direction="row" alignItems="center" justifyContent={price === undefined ? "center" : "space-between"} paddingX={14} backgroundImage={signFor(chosen, go)} slice={SIGN_SLICE} focusable={false} onPointerEnter={onPoint} onPress={onPress}>
+      <Text color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>
+        {label}
+      </Text>
+      {price !== undefined && <Price price={price} afford={afford === true} color={LIGHT} />}
     </Flex>
   );
 }
@@ -56,125 +184,86 @@ const CARD_DROP = 260;
 const ACTION_RISE = 120;
 
 /**
- * The shop between two cycles, over the dimmed kitchen: three fruit and an item on cards, then removal, a reroll and the way out.
- * The rules (rules/jar.ts, `Shop`) hold what is for sale and where the cursor is; this draws them. `hints` is whether the keys are
- * shown: the first visit, and the first time a fruit is taken out.
+ * The shop between two cycles: a market stall over the dimmed kitchen. A striped awning across the top with the heading and the
+ * purse hung from it; three fruit in baskets and an item on a cloth, each on a jam-jar label with a price tag, standing on the
+ * stall's counter; then wooden signs for removal, a reroll and the way out. The rules (rules/jar.ts, `Shop`) hold what is for
+ * sale and where the cursor is; this draws them. `hints` is whether the keys are shown: the first visit, and the first time a
+ * fruit is taken out.
  */
 export function Shop({ run, shop, hints, onPoint, onClick, onAway, onConfirm, onSpace }: ShopProps) {
   // The card the cursor is on shows what its keywords mean, but not over the pause menu.
   const paused = useGame((g) => g.paused);
   const kinds = poolRows(run.pool);
-  // The shop comes in as a run does: each card drops into its place, one after another, the actions rise into theirs, and the
-  // purse slides in from the right. Each is moved within its own slot (its `y`), so the row is laid out as it always is.
+  // The shop comes in as a run does: the awning drops down, each label drops onto the counter one after another, the signs rise
+  // into theirs, and the purse slides in from the right. Each is moved within its own slot (its `y`), so the row is laid out as
+  // it always is.
   const time = useTime();
+  const at = (place: number) => !shop.removing && shop.cursor === place;
+  const awning = -(AWNING_H + HANGING_H) * (1 - popIn(time, 0, ENTER.pop));
   return (
     <Entity>
-      {/* Shaded twice: the shop covers the whole screen, and the boards behind it should not show through its header. */}
+      {/* Shaded twice: the shop covers the whole screen, and the boards behind it should not show through. */}
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
       {/* A bloop for each card as it drops in, and one for the actions. */}
       <Bloops start={ENTER.pop * 0.6} gap={ENTER.gap} count={SHOP_ITEM + 2} />
 
-      {/* The whole shop is one column down the middle of the screen: its heading, the shelf, the actions, and what just happened. */}
-      <Flex left={0} right={0} top={10} bottom={0} direction="column" alignItems="center" gap={6}>
-        <Flex direction="row" justifyContent="center" height={32}>
+      {/* The stall's counter, which the labels stand on. */}
+      <Sprite image={STALL} x={0} y={STALL_Y} />
+
+      {/* The stall: three fruit and the item. A tap or a click chooses a label and a second buys it; the pointer coming over one
+          does not choose it (see the pick). */}
+      <Flex left={0} right={0} top={STALL_Y + 2 - CARD_H - CARD_LIFT} direction="row" justifyContent="center" gap={CARD_GAP} onPressOutside={onAway}>
+        {placed(shop.fruits).map((slot) => (
+          <Offer key={slot.at} at={slot.at} chosen={at(slot.at)} item={false} drop={popIn(time, slot.at * ENTER.gap, ENTER.pop)} opacity={entered(time, slot.at)} onClick={onClick}>
+            {slot.card !== null && (
+              <Tooltip show={!paused && at(slot.at)} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                <Terms text={FRUITS[slot.card].text} />
+              </Tooltip>
+            )}
+            {slot.card !== null && <Basket kind={slot.card} />}
+            {slot.card !== null && <Words name={FRUITS[slot.card].name} text={FRUITS[slot.card].text} />}
+            {slot.card !== null && <PriceTag price={FRUIT_PRICE} afford={run.coins >= FRUIT_PRICE} />}
+            {slot.card === null && <Sold picture={<Basket kind={null} />} />}
+          </Offer>
+        ))}
+        <Offer at={SHOP_ITEM} chosen={at(SHOP_ITEM)} item={true} drop={popIn(time, SHOP_ITEM * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_ITEM)} onClick={onClick}>
+          {shop.item !== null && (
+            <Tooltip show={!paused && at(SHOP_ITEM)} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <Terms text={ITEMS[shop.item].text} />
+            </Tooltip>
+          )}
+          {shop.item !== null && <OnCloth item={shop.item} />}
+          {shop.item !== null && <Words name={ITEMS[shop.item].name} text={ITEMS[shop.item].text} />}
+          {shop.item !== null && <PriceTag price={ITEMS[shop.item].price} afford={run.coins >= ITEMS[shop.item].price} />}
+          {shop.item === null && <Sold picture={<OnCloth item={null} />} />}
+        </Offer>
+      </Flex>
+
+      {/* The awning, over the top of the labels, with the heading's sign and the purse's hung on its beam. */}
+      <Sprite image={AWNING} x={0} y={awning} />
+      <Flex left={0} right={0} top={8 + awning} direction="row" justifyContent="center">
+        <Flex width={HEADING_W} height={HANGING_H} direction="row" justifyContent="center" alignItems="center" backgroundImage={SIGN} slice={SIGN_SLICE}>
           <Letters text="Shop" seed={3} />
         </Flex>
+      </Flex>
+      <Flex right={24 - 160 * (1 - popIn(time, 0.3, ENTER.pop))} top={8} width={PURSE_W} height={HANGING_H} direction="row" alignItems="center" justifyContent="space-between" paddingX={10} backgroundImage={SIGN} slice={SIGN_SLICE}>
+        <Sprite image={COIN_JAR} />
+        <Text font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>{`${run.coins}`}</Text>
+      </Flex>
 
-        {/* The shelf. Each place is a little taller than its card, and the chosen card stands at the top of its place. A tap or a
-            click chooses a card and a second buys it; the pointer coming over one does not choose it (see the pick). */}
-        <Flex direction="row" gap={CARD_GAP} onPressOutside={onAway}>
-          {placed(shop.fruits).map((slot) => (
-            <Flex key={slot.at} height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === slot.at ? "start" : "end"} y={-CARD_DROP * (1 - popIn(time, slot.at * ENTER.gap, ENTER.pop))} opacity={entered(time, slot.at)}>
-              <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={8} backgroundImage={cardFor(!shop.removing && shop.cursor === slot.at)} slice={CARD_SLICE} focusable={false} onPress={() => onClick(slot.at)}>
-                {slot.card !== null && (
-                  <Tooltip show={!paused && !shop.removing && shop.cursor === slot.at} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                    <Terms text={FRUITS[slot.card].text} />
-                  </Tooltip>
-                )}
-                {slot.card !== null && (
-                  <Flex left={8} top={6}>
-                    <Price price={FRUIT_PRICE} afford={run.coins >= FRUIT_PRICE} />
-                  </Flex>
-                )}
-                {slot.card !== null && (
-                  <Flex width={64} height={64}>
-                    <FruitBall kind={slot.card} x={32} y={32} look="big" />
-                  </Flex>
-                )}
-                {slot.card !== null && (
-                  <Text width={CARD_W - 12} maxWidth={CARD_W - 12} align="center" color={INK}>
-                    {FRUITS[slot.card].name}
-                  </Text>
-                )}
-                {slot.card !== null && <RuleText x={0} y={0} width={CARD_W - 12} text={FRUITS[slot.card].text} color={INK_SOFT} accent={KEYWORD} />}
-                {slot.card === null && (
-                  <Flex height="grow" direction="column" justifyContent="center">
-                    <Text color={WELL}>Sold</Text>
-                  </Flex>
-                )}
-              </Flex>
-            </Flex>
-          ))}
-          <Flex height={CARD_H + CARD_LIFT} direction="column" justifyContent={!shop.removing && shop.cursor === SHOP_ITEM ? "start" : "end"} y={-CARD_DROP * (1 - popIn(time, SHOP_ITEM * ENTER.gap, ENTER.pop))} opacity={entered(time, SHOP_ITEM)}>
-            <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={8} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_ITEM)} slice={CARD_SLICE} focusable={false} onPress={() => onClick(SHOP_ITEM)}>
-              {shop.item !== null && (
-                <Tooltip show={!paused && !shop.removing && shop.cursor === SHOP_ITEM} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                  <Terms text={ITEMS[shop.item].text} />
-                </Tooltip>
-              )}
-              {shop.item !== null && (
-                <Flex left={8} top={6}>
-                  <Price price={ITEMS[shop.item].price} afford={run.coins >= ITEMS[shop.item].price} />
-                </Flex>
-              )}
-              {shop.item !== null && (
-                <Flex width={64} height={64}>
-                  <Sprite image={`item-${shop.item}.png`} x={8} y={16} />
-                </Flex>
-              )}
-              {shop.item !== null && (
-                <Text width={CARD_W - 12} maxWidth={CARD_W - 12} align="center" color={INK}>
-                  {ITEMS[shop.item].name}
-                </Text>
-              )}
-              {shop.item !== null && <RuleText x={0} y={0} width={CARD_W - 12} text={ITEMS[shop.item].text} color={INK_SOFT} accent={KEYWORD} />}
-              {shop.item === null && (
-                <Flex height="grow" direction="column" justifyContent="center">
-                  <Text color={WELL}>No item</Text>
-                </Flex>
-              )}
-            </Flex>
-          </Flex>
-        </Flex>
+      {/* The actions: wooden signs under the stall, the way out painted green. */}
+      <Flex left={0} right={0} top={ACTION_Y} direction="row" justifyContent="center" gap={ACTION_GAP} y={ACTION_RISE * (1 - popIn(time, (SHOP_ITEM + 1) * ENTER.gap, ENTER.pop))} opacity={entered(time, SHOP_ITEM + 1)}>
+        <ActionSign chosen={at(SHOP_REMOVE)} label="Remove one" price={removalPrice(run)} afford={run.coins >= removalPrice(run)} onPoint={() => onPoint(SHOP_REMOVE)} onPress={() => onClick(SHOP_REMOVE)} />
+        <ActionSign chosen={at(SHOP_REROLL)} label="New shelf" price={rerollPrice(run)} afford={run.coins >= rerollPrice(run)} onPoint={() => onPoint(SHOP_REROLL)} onPress={() => onClick(SHOP_REROLL)} />
+        <ActionSign chosen={at(SHOP_LEAVE)} go={true} label="Next cycle >" onPoint={() => onPoint(SHOP_LEAVE)} onPress={() => onClick(SHOP_LEAVE)} />
+      </Flex>
 
-        {/* The actions: what each does at its left end and what it costs at its right. */}
-        <Flex direction="row" gap={CARD_GAP} y={ACTION_RISE * (1 - popIn(time, (SHOP_ITEM + 1) * ENTER.gap, ENTER.pop))} opacity={entered(time, SHOP_ITEM + 1)}>
-          <Flex width={ACTION_W} height={ACTION_H} direction="row" alignItems="center" justifyContent="space-between" paddingX={14} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_REMOVE)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(SHOP_REMOVE)} onPress={() => onClick(SHOP_REMOVE)}>
-            <Text color={INK}>Remove one</Text>
-            <Price price={removalPrice(run)} afford={run.coins >= removalPrice(run)} />
-          </Flex>
-          <Flex width={ACTION_W} height={ACTION_H} direction="row" alignItems="center" justifyContent="space-between" paddingX={14} backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_REROLL)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(SHOP_REROLL)} onPress={() => onClick(SHOP_REROLL)}>
-            <Text color={INK}>New shelf</Text>
-            <Price price={rerollPrice(run)} afford={run.coins >= rerollPrice(run)} />
-          </Flex>
-          <Flex width={ACTION_W} height={ACTION_H} direction="row" alignItems="center" justifyContent="center" backgroundImage={cardFor(!shop.removing && shop.cursor === SHOP_LEAVE)} slice={CARD_SLICE} focusable={false} onPointerEnter={() => onPoint(SHOP_LEAVE)} onPress={() => onClick(SHOP_LEAVE)}>
-            <Text color={INK}>Next cycle</Text>
-          </Flex>
-        </Flex>
-
-        {/* What just happened (a fruit bought, the shelf restocked), under the actions. */}
+      {/* What just happened (a fruit bought, the shelf restocked), under the actions. */}
+      <Flex left={0} right={0} top={ACTION_Y + ACTION_H + 6} direction="row" justifyContent="center">
         <Text width={400} maxWidth={400} align="center" color={LIGHT}>
           {run.message}
         </Text>
-      </Flex>
-
-      {/* The purse, in the top right corner. */}
-      <Flex right={24 - 160 * (1 - popIn(time, 0.3, ENTER.pop))} top={12} width={104}>
-        <Flex width={104} height={32} direction="row" alignItems="center" justifyContent="space-between" paddingX={10} backgroundImage={PANEL} slice={PANEL_SLICE}>
-          <Sprite image="coin.png" />
-          <Text color={INK}>{`${run.coins}`}</Text>
-        </Flex>
       </Flex>
 
       {!shop.removing && hints && (

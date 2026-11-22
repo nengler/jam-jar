@@ -324,7 +324,7 @@ saved data and reads none.
   Each step it reports where it is, its speed and which fruit it touches; a blast reaches it as a kick through its props.
 - `src/Play.tsx` collects the reports, calls `advance` once a step and draws the result: the jar (walls are `<Collider solid>`),
   the fruit, the hand on its shelf, the rent board and the keys on the left, the pool by kind and a note of what just happened
-  on the right, and the pick cards. `Shop.tsx` draws the shop and `Peg.tsx` is the boss jar's peg (a ball too heavy to move). `Jar.tsx` is the jar and its
+  on the right, and the pick cards. `Shop.tsx` draws the shop (a market stall: an awning, jam-jar labels on a counter, wooden signs; its pieces are drawn in `tools/make-assets.py`) and `Peg.tsx` is the boss jar's peg (a ball too heavy to move). `Jar.tsx` is the jar and its
   fruit, which the play screen and the title's `DemoJar.tsx` both draw.
   `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `RuleText.tsx` draws card text with its keywords in colour. `Board.tsx` is `Panel`, a parchment board
   with its heading that lays out what is on it and is as tall as that (the rent board, the pool, the note slate and every
