@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { createPlayer, parseInputScript, playGame, RecordingBackend, runScript, type GamePlay, type Player } from "@tsengine/player";
-import { getInputDevice } from "@tsengine/runtime";
+import { Flex, getInputDevice, type GameObject } from "@tsengine/runtime";
 import { findComponent } from "@tsengine/testing";
 
 import { bindings, gameConfig } from "../game.ts";
@@ -493,6 +493,35 @@ test("a pick by taps: a tap on a card only chooses it, again or not, and its Tak
   game.input("click@320,283, _*2");
   assert.notEqual(play.s.run.phase, "pick", "taken");
   assert.equal(play.s.run.pool.at(-1), kind);
+  game.close();
+});
+
+/** The first scroll box in the tree whose content overflows it, depth first. */
+function findScroller(object: GameObject): Flex | null {
+  if (object instanceof Flex && object.overflow === "scroll" && (object.box.scrollMax[1] ?? 0) > 0) return object;
+  for (const child of object.children) {
+    const found = findScroller(child);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
+test("a finger drags a pick card's text to scroll it, and that chooses the card but does not take it", () => {
+  const game = startRun();
+  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
+  play.s.run = { ...play.s.run, turn: 2, phase: "settle", hand: [], calmTime: 10 };
+  game.stepUntil(() => play.s.run.phase === "pick");
+  // The Pumpkin's text is longer than its card.
+  play.s.run = { ...play.s.run, offers: ["pumpkin", "cherry", "grape"] };
+  game.input("_*2");
+  const box = findScroller(game.player.world.root);
+  assert.ok(box !== null && box.box.scrollMax[1]! > 0, "the Pumpkin's text overflows its card");
+  const before = play.s.run.pool.length;
+  // A press on the text, then the mouse (a finger) moved up while it is held, then let go.
+  const held = [250, 250, 240, 230, 210, 190, 180, 180].map((y) => `MouseLeft+mouse@120,${y}`).join(", ");
+  game.input(`mouse@120,250, ${held}, _*2`);
+  assert.ok(box.scrollY > 0, `scrolled (${box.scrollY})`);
+  assert.deepEqual([play.s.run.phase, play.s.run.offerCursor, play.s.run.pool.length], ["pick", 0, before], "chosen, not taken");
   game.close();
 });
 
