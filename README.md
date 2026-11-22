@@ -10,7 +10,7 @@ Built on the [tse engine](https://github.com/nengler/tse). The design doc is the
 
 ## Running it
 
-The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.20.0), with
+The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.21.0), with
 `overrides` so the packs' own dependencies on each other resolve to the same release:
 
 ```sh
@@ -338,13 +338,17 @@ saved data and reads none.
 
 - `src/rules/` holds the whole game as plain TypeScript with no engine imports, so it is tested directly with `node:test`:
   - `jar.ts` is the run: deal, order, drop, settle, resolve, pick, rent and the shop. `advance(run, dt, keys, reports)` returns the next
-    run. It never moves a fruit: it reads where each one reported being.
+    run. It never moves a fruit: it reads where each one reported being. What happens at the end of a turn is a list of steps
+    run in order (`END_OF_TURN`: the spill, the Juicer, Simmer scores, the Fruit Flies and so on); a new end-of-turn fruit is one more.
   - `fruits.ts` is the fruit table, `items.ts` the item table and `terms.ts` the keywords their text is written in. `rng.ts` is a seeded generator, so a seed plus the inputs replay a run exactly.
 - `src/Fruit.tsx` is one fruit: a ball (the engine's `useBall`) that falls, piles up and is stopped by the jar's solid colliders.
   Each step it reports where it is, its speed and which fruit it touches; a blast reaches it as a kick through its props.
-- `src/Play.tsx` collects the reports, calls `advance` once a step and draws the result: the jar (walls are `<Collider solid>`),
-  the fruit, the hand on its shelf, the rent board and the keys on the left, the pool by kind and a note of what just happened
-  on the right, and the pick cards. `Shop.tsx` draws the shop (a market stall: an awning, jam-jar labels on a counter, wooden signs; its pieces are in `art/shop/`) and `Peg.tsx` is the boss jar's peg (a ball too heavy to move). `Jar.tsx` is the jar and its
+- `src/Play.tsx` holds the run: it collects the reports, calls `advance` once a step, plays the sounds, hears the taps and drags,
+  and lays out the play screen from its parts, each in its own file: `JarMarks.tsx` (what is drawn over the jar's fruit: blasts,
+  the lines between fruit, the Preserves Jar's frames), `Shelf.tsx` (the hand and what each fruit does), `PoolBasket.tsx` (the
+  pool's basket and the coins), `RentBoard.tsx`, `PickBoard.tsx` (the pick cards), `PoolBoard.tsx` (the whole pool),
+  `PreserveBoard.tsx`, `CycleEnd.tsx` (rent paid, or the run over) and `LastTurn.tsx` (the banner). `places.ts` says where the
+  shelf, the basket and the boards stand. `Shop.tsx` draws the shop (a market stall: an awning, jam-jar labels on a counter, wooden signs; its pieces are in `art/shop/`) and `Peg.tsx` is the boss jar's peg (a ball too heavy to move). `Jar.tsx` is the jar and its
   fruit, which the play screen and the title's `DemoJar.tsx` both draw.
   `FruitBall.tsx` draws a fruit's sprite, tinted when rotten and flashing when about to blow. `RuleText.tsx` draws card text with its keywords in colour. `Board.tsx` is `Panel`, a parchment board
   with its heading that lays out what is on it and is as tall as that (the rent board, the pool, the note slate and every

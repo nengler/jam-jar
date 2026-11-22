@@ -33,11 +33,11 @@ export const DROP_Y = 80;
  * The tray drop. The shelf is a tray over the jar with a slot per lane, and the whole hand is released together, hand index 0 in
  * the leftmost lane, so where a fruit stands on the shelf decides where it lands. Each fruit wobbles up to `wobble` px within its
  * lane, so a setup is never pixel-perfect. Chosen on 20 November over dropping one at a time at random spots, where arranging the
- * hand did nothing measurable; the balance bots can still play that way ("/spots" in `tools/balance.ts`).
+ * hand did nothing measurable. `wobble` is a dial the balance bots turn ("/wobble0" in `tools/balance.ts`).
  */
-export const TRAY = { on: true, wobble: 4 };
+export const TRAY = { wobble: 4 };
 /**
- * For the balance bots: where dropped fruit land (today's random spots, or the tray's wobble) is drawn from another stream when
+ * For the balance bots: where dropped fruit land (the tray's wobble) is drawn from another stream when
  * `salt` is not 0. The run's own stream still moves on exactly as with 0, so the rest of the run is unchanged: a bot can try a
  * turn with other luck, and then play it for real with luck it has not seen. 0 in the game.
  */
@@ -46,7 +46,7 @@ export const SPOTS = { salt: 0 };
 /** Every fruit a pick or the shop can ever offer, whatever the run: what the pick's cards and the shop's baskets make room for. */
 export const OFFERED: readonly FruitKind[] = [...OFFERABLE, "melon", ...LEGENDARY];
 
-/** Where the next fruit lands: from the run's stream, or (`SPOTS.salt`) from another one, the run's stream moving on the same. */
+/** Where in its lane the next fruit lands: from the run's stream, or (`SPOTS.salt`) from another one, the run's stream moving on the same. */
 function spot(rng: Rng, low: number, high: number): number {
   const own = rng.range(low, high);
   if (SPOTS.salt === 0) return own;
@@ -78,8 +78,6 @@ export type Boss = "peg" | "blind" | "tilt" | "flip";
 export const BOSS_NAME: Readonly<Record<Boss, string>> = { peg: "Peg jar", blind: "Blind jar", tilt: "Tilted jar", flip: "Flip jar" };
 const BOSS_RULE: Readonly<Record<Boss, string>> = { peg: "A post splits the pile.", blind: "The hand is covered.", tilt: "Everything rolls right.", flip: "Gravity flips every turn." };
 const BOSSES: readonly Boss[] = ["blind", "peg", "tilt", "flip"];
-/** In the Flip jar, how many fruit drop between one turn of its gravity and the next (when they drop one at a time, not on the tray). */
-export const FLIP_EVERY = 2;
 
 /** The boss jar a run meets: one of them, by its seed. */
 export function bossFor(seed: number): Boss {
@@ -109,12 +107,12 @@ export function bossNow(run: Run, cycle = run.cycle): Boss | null {
 export const RENT: readonly number[] = [120, 180, 240, 320, 400];
 /** Points over the rent that make one coin. */
 export const POINTS_PER_COIN = 10;
-/** Seconds between drops in a hand, at the least: the next fruit also waits for the pile to have been calm for `DROP_CALM`
- * seconds, but no longer than `DROP_LIMIT` since the last drop (a pile that will not rest cannot stall a hand). */
+/** Seconds between releases of the tray, at the least. In the Flip jar a release also waits for the pile to have been calm for
+ * `DROP_CALM` seconds, but no longer than `DROP_LIMIT` since the last (a pile that will not rest cannot stall a hand). */
 const DROP_GAP = 0.35;
 const DROP_CALM = 0.2;
 const DROP_LIMIT = 3;
-/** A fruit slower than this (px/s) is calm: it has landed, and the next of the hand may drop. */
+/** A fruit slower than this (px/s) is calm: it has landed, and (in the Flip jar) gravity may turn over. */
 const CALM_SPEED = 20;
 /**
  * The turn is scored once the jar has settled: every fruit slower than `SETTLE_SPEED` (px/s; slow enough to look still) for
@@ -682,6 +680,11 @@ function links(fruits: readonly Fruit[]): number[][] {
   return fruits.map((f) => f.touching.map((id) => at.get(id)).filter((i): i is number => i !== undefined));
 }
 
+/** The fruit that the fruit at index `i` touches, by `links` of the same list. */
+function neighbours(fruits: readonly Fruit[], links: readonly number[][], i: number): Fruit[] {
+  return (links[i] ?? []).map((j) => fruits[j]).filter((o): o is Fruit => o !== undefined);
+}
+
 function onFloor(f: Fruit): boolean {
   return f.y + f.r >= JAR.floor - FLOOR_TOLERANCE;
 }
@@ -738,12 +741,13 @@ interface Earned {
 
 /** Score what a fruit (by index) earns, doubled if it touches a Booster: the popup then says "x2" and the Boosters light up too. */
 function earn(run: Run, links: readonly number[][], i: number, points: number, label?: string): Earned | null {
-  const f = run.fruits[i] as Fruit;
+  const f = run.fruits[i];
+  if (f === undefined) return null;
   // Doubled by a Lemon it touches, or by Coconut milk it sits in (once, not twice over).
   const doubled = boosted(run.fruits, links, i) || (run.milk && soaked(run, f));
   const popup = score(run, points * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled, earner: FRUITS[f.kind].name });
   if (popup === null) return null;
-  const boosters = doubled ? (links[i] ?? []).map((j) => run.fruits[j] as Fruit).filter((o) => o.kind === "lemon") : [];
+  const boosters = doubled ? neighbours(run.fruits, links, i).filter((o) => o.kind === "lemon") : [];
   const fruits = [f, ...boosters];
   for (const o of fruits) pulse(o);
   return { popup, doubled, fruits, links: boosters.map((booster) => link(run, "boost", booster, f)) };
@@ -873,8 +877,8 @@ function order(run: Run, keys: Keys): void {
 }
 
 /**
- * The hand drops a fruit at a time: the next one waits until the last has landed and the pile it set moving (its merges and
- * blasts too) has come to rest, so what each fruit scored can be seen before the next adds to it.
+ * The hand drops: the tray releases it all at once. In the Flip jar it is released in parts, and gravity turns over between them
+ * once the pile has come to rest.
  */
 function dropStep(run: Run, dt: number): void {
   run.dropTimer -= dt;
@@ -890,23 +894,9 @@ function dropStep(run: Run, dt: number): void {
     run.dropTimer = DROP_GAP;
     run.dropWait = 0;
     run.calmTime = 0;
-  } else if (TRAY.on && run.dropTimer <= 0 && run.queue.length > 0 && !(flip && (!ready || (run.drops > 0 && flipDue(run))))) {
+  } else if (run.dropTimer <= 0 && run.queue.length > 0 && !(flip && (!ready || (run.drops > 0 && flipDue(run))))) {
     // In the Flip jar the tray waits for its gravity to turn over (above), and for the pile to come to rest after it.
     trayRelease(run, flip);
-  } else if (run.dropTimer <= 0 && ready && run.queue.length > 0) {
-    const kind = run.queue.shift() as FruitKind;
-    const r = FRUITS[kind].radius;
-    const rng = new Rng(run.seed);
-    const x = spot(rng, JAR.left + r, JAR.right - r);
-    run.seed = rng.seed;
-    // Under its lid, a fruit starts inside the jar, at the end it will fall away from.
-    const y = !flip ? DROP_Y : run.flipped ? JAR.floor - r - 2 : RIM + r + 2;
-    run.fruits.push(makeFruit(run, kind, x, y));
-    run.drops += 1;
-    run.discard.push(kind);
-    run.dropTimer = DROP_GAP;
-    run.dropWait = 0;
-    run.calmTime = 0;
   }
   simulate(run, dt);
   // The last fruit's landing is the settle phase's to wait for.
@@ -919,12 +909,11 @@ function dropStep(run: Run, dt: number): void {
 }
 
 /**
- * Whether the Flip jar's gravity turns over before the next drop. On the tray: before every release but the cycle's first, so the
- * pile lies on the floor, then the lid, then the floor. One at a time: after every `FLIP_EVERY` drops.
+ * Whether the Flip jar's gravity turns over before the next release of the tray: before every release but the cycle's first, so
+ * the pile lies on the floor, then the lid, then the floor.
  */
 function flipDue(run: Run): boolean {
-  if (TRAY.on) return run.flipped !== (Math.ceil(run.drops / HAND_SIZE) % 2 === 1);
-  return run.drops % FLIP_EVERY === 0 && run.flipped === (Math.floor(run.drops / FLIP_EVERY) % 2 === 0);
+  return run.flipped !== (Math.ceil(run.drops / HAND_SIZE) % 2 === 1);
 }
 
 /**
@@ -1019,8 +1008,7 @@ function land(run: Run): void {
     if (f.kind === "peach") {
       // It bounces once, and shoves what it landed on away to each side.
       kick(f, 0, -PEACH_BOUNCE);
-      for (const j of near[i] ?? []) {
-        const o = run.fruits[j] as Fruit;
+      for (const o of neighbours(run.fruits, near, i)) {
         kick(o, (o.x < f.x ? -1 : 1) * PEACH_SHOVE, -PEACH_SHOVE / 3);
       }
     }
@@ -1152,7 +1140,7 @@ function smashWorth(w: Fruit): number {
 function smash(run: Run, w: Fruit, scores = true): Fruit[] {
   const into = SMASH_INTO[w.kind];
   if (w.kind !== "watermelon" && into !== undefined) {
-    // The general rule: two of the next size down, side by side where it was, scoring as they are made.
+    // Two of the next size down, side by side where it was.
     const pieces = [-1, 1].map((side) => {
       const f = makeFruit(run, into, inside(w.x + side * w.r * 0.45, FRUITS[into].radius), w.y);
       Object.assign(f, { landed: true, rotten: w.rotten, piece: true });
@@ -1187,7 +1175,7 @@ function copyKiwis(run: Run): void {
   const near = links(run.fruits);
   run.fruits = run.fruits.map((f, i) => {
     if (f.kind !== "kiwi") return f;
-    const on = (near[i] ?? []).map((j) => run.fruits[j] as Fruit).find((o) => o.landed && o.kind !== "kiwi" && o.kind !== "giantpumpkin");
+    const on = neighbours(run.fruits, near, i).find((o) => o.landed && o.kind !== "kiwi" && o.kind !== "giantpumpkin");
     if (on === undefined) return f;
     return makeFruit(run, on.kind, f.x, f.y);
   });
@@ -1202,12 +1190,11 @@ function merge(run: Run): void {
   const gone = new Set<number>();
   const born: Fruit[] = [];
   const giants: Fruit[] = [];
-  for (let i = 0; i < run.fruits.length; i++) {
-    const a = run.fruits[i] as Fruit;
+  for (const [i, a] of run.fruits.entries()) {
     if (gone.has(a.id) || !canMerge(a) || nearLemon(run.fruits, near, i)) continue;
     for (const j of near[i] ?? []) {
-      const b = run.fruits[j] as Fruit;
-      if (j <= i || gone.has(b.id) || b.kind !== a.kind || !canMerge(b) || nearLemon(run.fruits, near, j)) continue;
+      const b = run.fruits[j];
+      if (b === undefined || j <= i || gone.has(b.id) || b.kind !== a.kind || !canMerge(b) || nearLemon(run.fruits, near, j)) continue;
       gone.add(a.id);
       gone.add(b.id);
       const mx = (a.x + b.x) / 2;
@@ -1229,7 +1216,7 @@ function merge(run: Run): void {
       } else {
         // A Merge that touches a Dragonfruit skips a size, when there is one to skip to.
         const next = FRUITS[a.kind].mergesInto as FruitKind;
-        const dragon = [...(near[i] ?? []), ...(near[j] ?? [])].map((k) => run.fruits[k] as Fruit).find((o) => o.kind === "dragonfruit");
+        const dragon = [...neighbours(run.fruits, near, i), ...neighbours(run.fruits, near, j)].find((o) => o.kind === "dragonfruit");
         // A Giant Pumpkin is only ever made by two Watermelons: a Skip stops at the Watermelon.
         const skipped = FRUITS[next].mergesInto;
         const into = dragon === undefined || skipped === undefined || skipped === "giantpumpkin" ? next : skipped;
@@ -1299,9 +1286,7 @@ function absorb(run: Run, dt: number): void {
       return;
     }
     if (!f.landed || f.frozen) return;
-    const meal = (near[i] ?? [])
-      .map((j) => run.fruits[j] as Fruit)
-      .find((o) => !gone.has(o.id) && o.landed && o.kind !== "gourd" && o.kind !== "giantpumpkin" && !o.frozen && !o.lit && o.r <= f.r + 0.5);
+    const meal = neighbours(run.fruits, near, i).find((o) => !gone.has(o.id) && o.landed && o.kind !== "gourd" && o.kind !== "giantpumpkin" && !o.frozen && !o.lit && o.r <= f.r + 0.5);
     if (meal === undefined) return;
     gone.add(meal.id);
     gone.add(f.id);
@@ -1345,11 +1330,12 @@ function light(run: Run): void {
   run.fruits.forEach((f, i) => {
     if (f.lit || !f.landed) return;
     if (f.kind === "chili") {
-      const weight = (near[i] ?? []).reduce((sum, j) => sum + FRUITS[(run.fruits[j] as Fruit).kind].touchWeight, 0);
+      const touched = neighbours(run.fruits, near, i);
+      const weight = touched.reduce((sum, o) => sum + FRUITS[o.kind].touchWeight, 0);
       if (weight >= 4) {
         ignite(f, 0.3);
         // What set it off lights up.
-        for (const j of near[i] ?? []) pulse(run.fruits[j] as Fruit);
+        for (const o of touched) pulse(o);
       }
     } else if (f.kind === "durian") {
       const above = run.fruits.filter((o) => o !== f && o.landed && o.y < f.y - f.r * 0.5 && Math.abs(o.x - f.x) < f.r + o.r);
@@ -1460,13 +1446,20 @@ function explode(run: Run, bomb: Fruit): void {
   }
 }
 
-/** The jar has settled: spill what is over the rim, Simmer fruit score, age and rot, then the pick (or rent after turn 5). */
-export function resolve(run: Run): void {
-  // What the tally shows one after another: each popup and each fruit to light up, with its place in the order.
-  const staged: { popup: Popup | null; fruits: Fruit[]; links: Link[]; slot: number }[] = [];
-  let slot = 0;
-  const popupsBefore = run.popups.length;
-  // The Flip jar has its lid on: nothing spills from it.
+/** What the tally shows one after another: each popup and each fruit to light up, with its place in the order. */
+interface Tally {
+  steps: { popup: Popup | null; fruits: Fruit[]; links: Link[]; slot: number }[];
+  slot: number;
+}
+
+/** Add one thing to the tally, in the next place of its order. */
+function stage(tally: Tally, popup: Popup | null, fruits: Fruit[], links: Link[]): void {
+  tally.slot += 1;
+  tally.steps.push({ popup, fruits, links, slot: tally.slot });
+}
+
+/** What is over the rim spills out, -5 each; the Flip jar has its lid on, and the Lid holds them in once. */
+function spillOver(run: Run): void {
   const spilled = bossNow(run) === "flip" ? [] : run.fruits.filter((f) => f.y - f.r < RIM);
   if (spilled.length > 0 && run.items.includes("lid")) {
     // The Lid holds them in, once: nothing spills and nothing is lost, and the Lid is used up.
@@ -1477,25 +1470,28 @@ export function resolve(run: Run): void {
     for (const f of spilled) score(run, -OVERFLOW_PENALTY, f.x, RIM - 12, { label: "Spill" });
     run.message = `Spill: ${spilled.length} fruit lost, -${spilled.length * OVERFLOW_PENALTY}`;
   }
+}
 
-  // The Juicer crushes what stands on the floor: each scores its points (nothing if rotten) and a bonus, and is gone.
-  if (run.items.includes("juicer")) {
-    const crushed = run.fruits.filter((f) => f.landed && onFloor(f));
-    for (const f of crushed) score(run, (f.rotten ? 0 : FRUITS[f.kind].points) + JUICER_BONUS, f.x, f.y - f.r, { label: "Crush" });
-    if (crushed.length > 0) {
-      run.fruits = run.fruits.filter((f) => !crushed.includes(f));
-      run.message = `Juicer: ${crushed.length} fruit Crushed`;
-      const limes = crushed.filter((f) => f.kind === "lime").length;
-      if (limes > 0) {
-        pour(run, "lime", limes * LIME_JUICE);
-        run.message = `Juicer: ${crushed.length} fruit Crushed. Lime juice rises`;
-      }
-    }
+/** The Juicer crushes what stands on the floor: each scores its points (nothing if rotten) and a bonus, and is gone. */
+function juicerCrush(run: Run): void {
+  if (!run.items.includes("juicer")) return;
+  const crushed = run.fruits.filter((f) => f.landed && onFloor(f));
+  for (const f of crushed) score(run, (f.rotten ? 0 : FRUITS[f.kind].points) + JUICER_BONUS, f.x, f.y - f.r, { label: "Crush" });
+  if (crushed.length === 0) return;
+  run.fruits = run.fruits.filter((f) => !crushed.includes(f));
+  run.message = `Juicer: ${crushed.length} fruit Crushed`;
+  const limes = crushed.filter((f) => f.kind === "lime").length;
+  if (limes > 0) {
+    pour(run, "lime", limes * LIME_JUICE);
+    run.message = `Juicer: ${crushed.length} fruit Crushed. Lime juice rises`;
   }
+}
 
+/** Simmer fruit, Prunes and honeyed fruit score. */
+function simmer(run: Run, tally: Tally): void {
   const near = links(run.fruits);
   run.fruits.forEach((f, i) => {
-    const touched = (near[i] ?? []).map((j) => run.fruits[j] as Fruit);
+    const touched = neighbours(run.fruits, near, i);
     let points = 0;
     if (f.kind === "prune") {
       // Rotten from the start, and the one rotten fruit that scores: for the rot around it.
@@ -1512,23 +1508,24 @@ export function resolve(run: Run): void {
     if (f.honeyed) points += HONEY_POINTS;
     const earned = earn(run, near, i, points);
     if (earned === null) return;
-    slot += 1;
     // A Prune's score is for the rot round it: a line from each rotten neighbour.
     const rot = f.kind === "prune" ? touched.filter((o) => o.rotten).map((o) => link(run, "rot", o, f)) : [];
-    staged.push({ popup: earned.popup, fruits: earned.fruits, links: [...earned.links, ...rot], slot });
+    stage(tally, earned.popup, earned.fruits, [...earned.links, ...rot]);
   });
+}
 
-  // Each Fruit Fly eats one rotten fruit it touches (never a Prune) and a new Fly hatches where it was.
+/** Each Fruit Fly eats one rotten fruit it touches (never a Prune) and a new Fly hatches where it was. */
+function fruitFliesEat(run: Run, tally: Tally): void {
+  const near = links(run.fruits);
   const eaten = new Set<number>();
   const hatched: Fruit[] = [];
   run.fruits.forEach((f, i) => {
     if (f.kind !== "fruitfly") return;
-    const meal = (near[i] ?? []).map((j) => run.fruits[j] as Fruit).find((o) => o.rotten && o.kind !== "prune" && !eaten.has(o.id));
+    const meal = neighbours(run.fruits, near, i).find((o) => o.rotten && o.kind !== "prune" && !eaten.has(o.id));
     if (meal === undefined) return;
     eaten.add(meal.id);
     const earned = earn(run, near, i, FRUITS.fruitfly.points, "Eat");
-    slot += 1;
-    staged.push({ popup: earned?.popup ?? null, fruits: earned?.fruits ?? [f], links: [link(run, "eat", f, meal), ...(earned?.links ?? [])], slot });
+    stage(tally, earned?.popup ?? null, earned?.fruits ?? [f], [link(run, "eat", f, meal), ...(earned?.links ?? [])]);
     const fly = makeFruit(run, "fruitfly", meal.x, meal.y);
     fly.landed = true;
     hatched.push(fly);
@@ -1537,8 +1534,10 @@ export function resolve(run: Run): void {
     run.fruits = [...run.fruits.filter((f) => !eaten.has(f.id)), ...hatched];
     run.message = `Fruit Flies Eat ${eaten.size} Rotten fruit`;
   }
+}
 
-  // Each Pitaya eats one Cherry it touches, and every Pitaya scores 1 more from then on.
+/** Each Pitaya eats one Cherry it touches, and every Pitaya scores 1 more from then on. */
+function pitayasEat(run: Run, tally: Tally): void {
   const swallowed = new Set<number>();
   for (const f of run.fruits) {
     if (f.kind !== "pitaya" || f.rotten) continue;
@@ -1546,44 +1545,47 @@ export function resolve(run: Run): void {
     if (cherry === undefined) continue;
     swallowed.add(cherry.id);
     run.pitayaBonus += 1;
-    slot += 1;
-    staged.push({ popup: null, fruits: [f], links: [link(run, "eat", f, cherry)], slot });
+    stage(tally, null, [f], [link(run, "eat", f, cherry)]);
   }
   if (swallowed.size > 0) {
     run.fruits = run.fruits.filter((f) => !swallowed.has(f.id));
     run.message = `Pitayas Eat ${swallowed.size}: each scores +${run.pitayaBonus}`;
   }
+}
 
-  // A Coconut that has sat 3 turns cracks open and is gone, leaving its milk in the jar.
+/** A Coconut that has sat 3 turns cracks open and is gone, leaving its milk in the jar. */
+function coconutsCrack(run: Run): void {
   const cracked = run.fruits.filter((f) => f.kind === "coconut" && f.age >= COCONUT_TURNS - 1);
-  if (cracked.length > 0) {
-    run.fruits = run.fruits.filter((f) => !cracked.includes(f));
-    pour(run, "milk", cracked.length * COCONUT_MILK);
-    run.message = "A Coconut cracked: milk in the jar";
-  }
+  if (cracked.length === 0) return;
+  run.fruits = run.fruits.filter((f) => !cracked.includes(f));
+  pour(run, "milk", cracked.length * COCONUT_MILK);
+  run.message = "A Coconut cracked: milk in the jar";
+}
 
-  // Each Snow Pear freezes itself and every fruit it touches, where they are.
+/** Each Snow Pear freezes itself and every fruit it touches, where they are. */
+function snowPearsFreeze(run: Run, tally: Tally): void {
   for (const f of run.fruits) {
     if (f.kind !== "snowpear") continue;
     const fresh = [f, ...run.fruits.filter((o) => f.touching.includes(o.id))].filter((o) => !o.frozen);
     if (fresh.length === 0) continue;
     for (const o of fresh) o.frozen = true;
-    slot += 1;
-    staged.push({ popup: null, fruits: fresh, links: fresh.filter((o) => o !== f).map((o) => link(run, "freeze", f, o)), slot });
+    stage(tally, null, fresh, fresh.filter((o) => o !== f).map((o) => link(run, "freeze", f, o)));
   }
+}
 
-  // Each Honeydew honeys one fruit it touches.
+/** Each Honeydew honeys one fruit it touches. */
+function honeydewsHoney(run: Run, tally: Tally): void {
   for (const f of run.fruits) {
     if (f.kind !== "honeydew" || f.rotten) continue;
     const next = run.fruits.find((o) => !o.honeyed && !o.rotten && f.touching.includes(o.id));
-    if (next) {
-      next.honeyed = true;
-      slot += 1;
-      staged.push({ popup: null, fruits: [f, next], links: [link(run, "honey", f, next)], slot });
-    }
+    if (next === undefined) continue;
+    next.honeyed = true;
+    stage(tally, null, [f, next], [link(run, "honey", f, next)]);
   }
+}
 
-  // Age; Bananas rot after 3 turns, and each rotten fruit, Prunes too, rots one fruit it touches (never a Lemon or a Fruit Fly).
+/** Age; Bananas rot after 3 turns, and each rotten fruit, Prunes too, rots one fruit it touches (never a Lemon or a Fruit Fly). */
+function ageAndRot(run: Run, tally: Tally): void {
   for (const f of run.fruits) {
     if (f.pickled) continue;
     f.age += 1;
@@ -1592,20 +1594,42 @@ export function resolve(run: Run): void {
   const rotten = run.fruits.filter((f) => f.rotten);
   for (const r of rotten) {
     const next = run.fruits.find((o) => !o.rotten && !o.pickled && o.kind !== "lemon" && o.kind !== "fruitfly" && r.touching.includes(o.id));
-    if (next) {
-      next.rotten = true;
-      slot += 1;
-      staged.push({ popup: null, fruits: [next], links: [link(run, "rot", r, next)], slot });
-    }
+    if (next === undefined) continue;
+    next.rotten = true;
+    stage(tally, null, [next], [link(run, "rot", r, next)]);
   }
+}
 
-  // The loop cap lasts a turn: what Slices made may Merge again next turn.
+/** The loop cap lasts a turn: what Slices made may Merge again next turn. */
+function uncap(run: Run): void {
   for (const f of run.fruits) f.remerged = false;
+}
 
-  // Time the tally: a step between each thing, shorter when there are many, and how long the whole takes.
-  const step = Math.min(TALLY_STEP, TALLY_MOST / Math.max(1, slot));
-  const shown: Popup[] = run.popups.slice(popupsBefore).filter((p) => !staged.some((s) => s.popup === p));
-  for (const s of staged) {
+/**
+ * What happens at the end of a turn, in this order. Each may change the jar's fruit, so a step sees what the ones before it left:
+ * a fruit that spilled or was crushed does not score, a Fly's meal is gone before the rot spreads.
+ */
+const END_OF_TURN: readonly ((run: Run, tally: Tally) => void)[] = [
+  spillOver,
+  juicerCrush,
+  simmer,
+  fruitFliesEat,
+  pitayasEat,
+  coconutsCrack,
+  snowPearsFreeze,
+  honeydewsHoney,
+  ageAndRot,
+  uncap,
+];
+
+/**
+ * Time the tally: a step between each thing, shorter when there are many, and how long the whole takes. Popups made before it
+ * (a spill, the Juicer) show at once.
+ */
+function timeTally(run: Run, tally: Tally, popupsBefore: number): void {
+  const step = Math.min(TALLY_STEP, TALLY_MOST / Math.max(1, tally.slot));
+  const shown: Popup[] = run.popups.slice(popupsBefore).filter((p) => !tally.steps.some((s) => s.popup === p));
+  for (const s of tally.steps) {
     const delay = s.slot * step;
     if (s.popup !== null) {
       s.popup.delay = delay;
@@ -1615,25 +1639,38 @@ export function resolve(run: Run): void {
     for (const f of s.fruits) pulse(f, delay);
     for (const l of s.links) l.delay = delay;
   }
-  run.tallyTime = run.popups.length > popupsBefore || slot > 0 ? slot * step + TALLY_HOLD : 0;
+  run.tallyTime = run.popups.length > popupsBefore || tally.slot > 0 ? tally.slot * step + TALLY_HOLD : 0;
+}
+
+/** After the cycle's last turn the rent is due: paid, what is over it becomes coins; missed, the run is over. */
+function dueRent(run: Run): void {
+  run.phase = "rent";
+  const rent = rentFor(run.cycle);
+  if (run.cycleScore >= rent) {
+    const earned = Math.floor((run.cycleScore - rent) / POINTS_PER_COIN);
+    run.coins += earned;
+    run.message = `Rent paid! +${earned} coins`;
+    sound(run, "rent");
+  } else {
+    run.phase = "over";
+    run.message = `Rent was ${rent}; you scored ${run.cycleScore}. The jar is lost.`;
+    sound(run, "lose");
+  }
+}
+
+/** The jar has settled: the end of the turn (`END_OF_TURN`), its tally, then the pick, the next hand or the rent. */
+export function resolve(run: Run): void {
+  const tally: Tally = { steps: [], slot: 0 };
+  const popupsBefore = run.popups.length;
+  for (const step of END_OF_TURN) step(run, tally);
+  timeTally(run, tally, popupsBefore);
   run.scoreNote = 0;
 
   run.bestTurn = Math.max(run.bestTurn, run.turnScore);
   run.turnScore = 0;
 
   if (run.turn >= TURNS_PER_CYCLE) {
-    run.phase = "rent";
-    const rent = rentFor(run.cycle);
-    if (run.cycleScore >= rent) {
-      const earned = Math.floor((run.cycleScore - rent) / POINTS_PER_COIN);
-      run.coins += earned;
-      run.message = `Rent paid! +${earned} coins`;
-      sound(run, "rent");
-    } else {
-      run.phase = "over";
-      run.message = `Rent was ${rent}; you scored ${run.cycleScore}. The jar is lost.`;
-      sound(run, "lose");
-    }
+    dueRent(run);
     return;
   }
   run.turn += 1;
@@ -1854,8 +1891,9 @@ function preserveStep(run: Run, keys: Keys): void {
   const to = keys.point >= 0 && keys.point < fruits.length ? keys.point : Math.max(0, Math.min(fruits.length - 1, run.preserveCursor + move));
   if (to !== run.preserveCursor) sound(run, "tick");
   run.preserveCursor = to;
-  if (keys.confirm) {
-    const id = (fruits[run.preserveCursor] as Fruit).id;
+  const chosen = fruits[run.preserveCursor];
+  if (keys.confirm && chosen !== undefined) {
+    const id = chosen.id;
     if (run.kept.includes(id)) run.kept = run.kept.filter((k) => k !== id);
     else if (run.kept.length < keeps(run)) run.kept.push(id);
     else run.message = `It holds ${keeps(run)}: let one go first`;

@@ -4,16 +4,15 @@
  * each fruit takes that fruit whenever it is offered and nothing else, which shows what the fruit is worth next to "skip"
  * ("chili+blueberry+seed" takes any of those). They drop each hand as dealt, unless the player says how to arrange it:
  *
- * - "/order" ("random/order") arranges it greedily first (`trayHand`, or `orderHand` with "/spots"), which shows what a
- *   sensible arrangement is worth.
+ * - "/order" ("random/order") arranges it greedily first (`trayHand`), which shows what a sensible arrangement is worth.
  * - "/best" plays the turn once for every arrangement of the hand (the physics is seeded, so each is played exactly as it would
  *   be), then plays the one that scored most that turn; "/worst" the one that scored least. They see what a player cannot, so
  *   the gap between them is the most arranging the hand could be worth. 24 tries a turn: about 25 times slower.
  * - "/fair" is "/best" without the luck: it plays each arrangement 3 times (BALANCE_TRIES), each with other landing spots or
  *   another wobble (`SPOTS` in jar.ts), takes the one with the best average, and plays it with luck none of the tries saw. What
  *   it gains is what a player who reads the jar perfectly could gain; "/best" minus "/fair" is what seeing the luck was worth.
- * - "/spots" plays the drop the game had before the tray (`TRAY` in jar.ts): a fruit at a time, each at a random spot. "/tray",
- *   the game's drop, is accepted and changes nothing, so older result files still read.
+ * - "/tray", the game's drop, is accepted and changes nothing, so older result files still read. "/spots" (a fruit at a time, each
+ *   at a random spot, the drop before the tray) was taken out of the rules; its results are in the README.
  *   "/wobble8" sets how far a fruit may wander in its lane (default 4 px; "/wobble0" lands every fruit mid-lane).
  *
  * A player ending "/thin" ("skip/thin") spends its coins in the shop taking Cherries out of its pool; the others buy nothing.
@@ -48,26 +47,6 @@ const DOWN = frame("down");
 
 /** BALANCE_BOSS=flip plays every run's boss cycle in that jar, to compare the boss jars with each other. */
 const forcedBoss = process.env["BALANCE_BOSS"] as Boss | undefined;
-
-/**
- * A greedy order for a hand, index 0 dropping first. Fruit dropped first end up lower and get buried, so: the heavy fruit and
- * the Durian (which explodes under 3 fruit) first, the Apple next (it scores while it touches the floor or a wall), the small fruit
- * that pack the pile (Cherries, Blueberries, Seeds) before the Chili, the Chili last so it lands in a packed pile, and a Kiwi
- * straight after the fruit worth most to copy.
- */
-function orderHand(hand: readonly FruitKind[]): FruitKind[] {
-  const rank = (kind: FruitKind): number =>
-    kind === "durian" || kind === "coconut" ? 0 : kind === "apple" ? 1 : kind === "chili" ? 4 : ["cherry", "blueberry", "seed", "pomegranate"].includes(kind) ? 3 : 2;
-  const order: FruitKind[] = hand.filter((kind) => kind !== "kiwi").sort((a, b) => rank(a) - rank(b));
-  for (const _ of hand.filter((kind) => kind === "kiwi")) {
-    let best = -1;
-    order.forEach((kind, i) => {
-      if (kind !== "kiwi" && (best < 0 || FRUITS[kind].points > FRUITS[order[best] as FruitKind].points)) best = i;
-    });
-    order.splice(best + 1, 0, "kiwi");
-  }
-  return order;
-}
 
 /** Every different arrangement of a hand (fewer than 24 when it holds two of a kind). */
 function arrangements(hand: readonly FruitKind[]): FruitKind[][] {
@@ -246,11 +225,11 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   const thin = plan.includes("/thin");
   const order = plan.includes("/order");
   const search = plan.includes("/best") ? "best" : plan.includes("/worst") ? "worst" : plan.includes("/fair") ? "fair" : null;
-  TRAY.on = !plan.includes("/spots");
+  if (/\/spots(\/|$)/.test(plan)) throw new Error('"/spots" was the drop before the tray, and the rules no longer have it');
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
   // With no luck to average over (a tray with no wobble), one try is the whole story.
-  const tries = TRAY.on && TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
-  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+|spots)/g, "");
+  const tries = TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
+  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
@@ -292,7 +271,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
         wait = 0;
         continue;
       }
-      if (order && !blind) found.s.run = { ...run, hand: TRAY.on ? trayHand(run.hand) : orderHand(run.hand) };
+      if (order && !blind) found.s.run = { ...run, hand: trayHand(run.hand) };
       queued = [SPACE];
     }
     else if (run.phase === "pick") {

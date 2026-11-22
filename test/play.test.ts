@@ -509,7 +509,7 @@ function findScroller(object: GameObject): Flex | null {
   return null;
 }
 
-test("a finger drags a pick card's text to scroll it, and that chooses the card but does not take it", () => {
+test("a finger drags a pick card's text to scroll it, which neither chooses nor takes the card; a tap on the text chooses it", () => {
   const game = startRun();
   const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
   play.s.run = { ...play.s.run, turn: 2, phase: "settle", hand: [], calmTime: 10 };
@@ -528,7 +528,36 @@ test("a finger drags a pick card's text to scroll it, and that chooses the card 
     const held = [250, 250, 240, 230, 210, 190, 180, 180].map((y) => `MouseLeft+mouse@120,${y}`).join(", ");
     game.input(`mouse@120,250, ${held}, _*2`);
     assert.ok(box.scrollY > 0, `scrolled (${box.scrollY})`);
-    assert.deepEqual([play.s.run.phase, play.s.run.offerCursor, play.s.run.pool.length], ["pick", 0, before], "chosen, not taken");
+    assert.deepEqual([play.s.run.phase, play.s.run.offerCursor, play.s.run.pool.length], ["pick", -1, before], "scrolled only");
+    game.input("click@120,200, _*2");
+    assert.deepEqual([play.s.run.phase, play.s.run.offerCursor, play.s.run.pool.length], ["pick", 0, before], "a tap: chosen, not taken");
+  } finally {
+    snowpear.text = text;
+  }
+  game.close();
+});
+
+test("in the shop, scrolling a chosen label's text keeps it chosen: the scroll is not a second tap", () => {
+  const game = startRun();
+  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
+  // No label's text is longer than its label today, so the Snow Pear's is made twice as long for this test.
+  const snowpear = FRUITS.snowpear as { text: string };
+  const text = snowpear.text;
+  snowpear.text = `${text} ${text}`;
+  try {
+    play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["snowpear", "cherry", "grape"], item: null, cursor: -1, removing: false, removeCursor: -1 } };
+    game.input("_*60");
+    const box = findScroller(game.player.world.root);
+    assert.ok(box !== null, "the Snow Pear's text overflows its label");
+    const at = box.worldTransform();
+    const x = Math.round(at.x + 20);
+    const y = Math.round(at.y + 30);
+    game.input(`click@${x},${y}, _*2`);
+    assert.equal(play.s.run.shop!.cursor, 0, "tapped: chosen");
+    const held = [y, y, y - 10, y - 20, y - 40, y - 50, y - 50].map((to) => `MouseLeft+mouse@${x},${to}`).join(", ");
+    game.input(`mouse@${x},${y}, ${held}, _*2`);
+    assert.ok(box.scrollY > 0, `scrolled (${box.scrollY})`);
+    assert.deepEqual([play.s.run.shop!.cursor, play.s.run.coins], [0, 20], "still chosen, nothing bought");
   } finally {
     snowpear.text = text;
   }

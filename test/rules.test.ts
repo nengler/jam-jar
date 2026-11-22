@@ -970,32 +970,6 @@ test("readability: a line joins a Booster to the fruit it doubled, and rot to th
   assert.equal(later.links.length, 0, "and gone afterwards");
 });
 
-test("without the tray (the bots' /spots), a hand drops a fruit at a time: the next waits for the last to land and the pile to rest, but not for ever", () => {
-  TRAY.on = false;
-  try {
-    let run = newRun(3);
-    run = press(run, { drop: true });
-    run = press(run, {});
-    assert.equal(run.fruits.length, 1, "the first drops at once");
-    for (let i = 0; i < 60; i++) run = press(run, {});
-    assert.equal(run.fruits.length, 1, "the second waits: the first is still falling");
-
-    // The first reports landing and lying still: the second follows.
-    const first = run.fruits[0]!;
-    const still = { id: first.id, x: first.x, y: JAR.floor - first.r, speed: 0, touching: [] };
-    for (let i = 0; i < 20 && run.fruits.length === 1; i++) run = advance(run, DT, NO_KEYS, [still]);
-    assert.equal(run.fruits.length, 2);
-
-    // The second never reports anything: the third drops anyway after 3 seconds.
-    let frames = 0;
-    for (; frames < 400 && run.fruits.length === 2; frames++) run = press(run, {});
-    assert.equal(run.fruits.length, 3);
-    assert.ok(frames > 150 && frames < 200, `${frames} frames`);
-  } finally {
-    TRAY.on = true;
-  }
-});
-
 test("a Merge that touches a Dragonfruit skips a size: two Cherries make an Orange, two Melons a Watermelon all the same", () => {
   const y = JAR.floor - 14;
   const run = jarWith([fruit(1, "cherry", 300, y, [2, 3]), fruit(2, "cherry", 326, y, [1]), fruit(3, "dragonfruit", 270, y, [1])]);
