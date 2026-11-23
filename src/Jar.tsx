@@ -16,6 +16,8 @@ interface JarProps {
   onReport: (report: FruitReport) => void;
   /** How far above its place the jar's pictures are drawn, as it falls into place when a run begins. Its walls and floor do not move. */
   lift?: number;
+  /** How far the jar is drawn leaning, in radians, while it tilts over or back (the play screen eases it); the run's lean otherwise. */
+  angle?: number;
 }
 
 /**
@@ -23,12 +25,12 @@ interface JarProps {
  * the fruit, its front (shine and fill line) over them, and the solid walls and floor the fruit's balls are stopped by. The
  * play screen draws a run in it, and the title a run that plays itself.
  */
-export function Jar({ run, onReport, lift = 0 }: JarProps) {
+export function Jar({ run, onReport, lift = 0, angle: drawn }: JarProps) {
+  const angle = drawn ?? lean(run);
   const x = JAR.left - JAR_MARGIN;
   const y = RIM - JAR_NECK - JAR_MARGIN;
   const width = JAR.right - JAR.left;
   const top = surface(run);
-  const angle = lean(run);
   const pull = bossNow(run) === "tilt" ? TILT_PULL : 0;
   // Between turns the whole pile is held still (`jarHeld`): from the end of the settle until the next drop.
   const held = jarHeld(run);

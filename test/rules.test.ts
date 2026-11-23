@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { blastBits, blastFlash, blastJolt, fruitResults, keywordResults, motes, poolRows, termsOf } from "../src/layout.ts";
+import { blastBits, blastFlash, blastJolt, fruitResults, keywordResults, motes, poolRows, termsOf, TILT_TIME, tilted } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
 import { APPLE, BANANA, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, SLICES, type FruitKind } from "../src/rules/fruits.ts";
@@ -1420,4 +1420,15 @@ test("the jar's fruit are held still from the end of the settle until the next d
   assert.notEqual(next.phase, "settle", "the settle gave up");
   assert.equal(jarHeld(next), true, `held once it is scored (${next.phase})`);
   for (const phase of ["tally", "pick", "rent", "shop", "preserve", "clear", "over", "won"] as const) assert.equal(jarHeld({ ...next, phase }), true, phase);
+});
+
+test("the Tilted jar leans over gradually, rocks a little past its lean, and settles on it", () => {
+  const to = 0.1;
+  assert.ok(Math.abs(tilted(0, to, 0)) < 1e-9, "upright as it sets off");
+  assert.ok(tilted(0, to, TILT_TIME * 0.25) > 0 && tilted(0, to, TILT_TIME * 0.25) < to, "partway over a quarter of the way in");
+  let most = 0;
+  for (let t = 0; t <= TILT_TIME; t += TILT_TIME / 50) most = Math.max(most, tilted(0, to, t));
+  assert.ok(most > to, "it rocks past its lean");
+  assert.ok(Math.abs(tilted(0, to, TILT_TIME) - to) < 1e-9, "and rests on it");
+  assert.ok(Math.abs(tilted(to, 0, TILT_TIME * 2)) < 1e-9, "standing up again ends upright");
 });

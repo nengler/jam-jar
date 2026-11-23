@@ -9,7 +9,7 @@ import { JarMarks } from "./JarMarks.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { PauseButton } from "./KeyHint.tsx";
 import { LastTurn } from "./LastTurn.tsx";
-import { atRest, crossed, LANDS, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, shelfSlot, startingRun } from "./layout.ts";
+import { atRest, crossed, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, shelfSlot, startingRun } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { PickBoard } from "./PickBoard.tsx";
 import { BOARD_W, HUD_X, JAR_MID, SHELF_Y, shelfOf, SLOT } from "./places.ts";
@@ -62,7 +62,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -120,6 +120,19 @@ export function Play() {
       if (crossed(before, s.intro, INTRO.right + INTRO.pop * 0.6)) playPop1(POP_VOLUME);
       if (crossed(before, s.intro, INTRO.shelf + INTRO.pop * 0.6)) playPop2(POP_VOLUME);
       if (crossed(before, s.intro, INTRO.jar + LANDS)) playThud(THUD_VOLUME);
+    }
+    // The jar leans over as a Tilted jar's cycle begins and stands up again after it, rocking a little past before it settles
+    // (only its drawing: its fruit are moved in its own frame), with a knock as it comes to rest.
+    const leanTo = lean(s.run);
+    if (leanTo !== s.tiltTo) {
+      s.tiltFrom = tilted(s.tiltFrom, s.tiltTo, s.tiltT);
+      s.tiltTo = leanTo;
+      s.tiltT = 0;
+    }
+    if (s.tiltT < TILT_TIME) {
+      const before = s.tiltT;
+      s.tiltT += dt;
+      if (crossed(before, s.tiltT, TILT_TIME * 0.5)) playTock(TOCK_VOLUME);
     }
     const deal = `${s.run.cycle} ${s.run.turn}`;
     if (s.run.phase === "order" && deal !== s.dealt) {
@@ -319,7 +332,9 @@ export function Play() {
   const run = s.run;
   // The score on screen runs behind the run's while the tally's popups are still to come, and catches up as each shows.
   const scored = shownScore(run);
-  const popups = leaned(run.popups.filter((p) => p.delay <= 0), lean(run), JAR.right, JAR.floor);
+  /** How far the jar is drawn leaning now: it eases over as a Tilted jar's cycle begins, and back after. */
+  const angle = tilted(s.tiltFrom, s.tiltTo, s.tiltT);
+  const popups = leaned(run.popups.filter((p) => p.delay <= 0), angle, JAR.right, JAR.floor);
   const ordering = run.phase === "order";
   const picking = run.phase === "pick";
   /** Whether this moment's keys are shown: to a player at a keyboard, and only until they have been through it once. */
@@ -342,8 +357,8 @@ export function Play() {
 
       {/* The jar, what is drawn on it and its points: all raised together when it is picked out. */}
       <Raise id="jar">
-      <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(run.effects.filter((e) => e.kind === "boom"))} />
-      <JarMarks run={run} onPoint={point} onChoose={click} />
+      <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(run.effects.filter((e) => e.kind === "boom"))} angle={angle} />
+      <JarMarks run={run} angle={angle} onPoint={point} onChoose={click} />
       {/* The points stay upright over a leaning jar. */}
       {popups.map((p) => (
         <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={p.big === true ? DISPLAY_SIZE * 2 : DISPLAY_SIZE} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={p.big === true ? 4 : 2} shadowY={p.big === true ? 4 : 2}>
