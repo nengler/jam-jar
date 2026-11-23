@@ -70,7 +70,7 @@ const JUICE_DRAG = 0.12;
  * drawn from how it moves: it rolls along what it touches.
  */
 export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, held, plunging, surface, pull, flipped, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
-  // `turn` is how far it has rolled, in degrees; `lastX` where it was a step ago.
+  // `turn` is how far it has rolled, in radians; `lastX` where it was a step ago.
   const s = useMutable({ kicked: 0, turn: 0, lastX: x0, lastY: y0, fall: 0, squash: 0, hit: 1, flat: 0 });
   const { x, y, contacts, push, speed, pin, setGravity, setGravityX, stick } = useBall({
     x: x0,
@@ -109,7 +109,7 @@ export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, h
     }
     const touching = contacts("fruit").map((c) => c.data.id);
     // It rolls: while it touches a fruit or the floor, it turns by how far it moved across, as a wheel of its size would.
-    if (touching.length > 0 || y + r >= JAR.floor - 2) s.turn += (((x - s.lastX) / r) * 180 * ROLL) / Math.PI;
+    if (touching.length > 0 || y + r >= JAR.floor - 2) s.turn += ((x - s.lastX) / r) * ROLL;
     // Drawn only: when it stops falling all at once (it hit the floor or the pile), it squashes flat and springs back.
     const fall = dt > 0 ? Math.abs(y - s.lastY) / dt : 0;
     const impact = s.fall - fall;
@@ -130,7 +130,7 @@ export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, h
   const grow = r / FRUITS[kind].radius;
   return (
     <Entity x={leanX(x, y, lean, JAR.right, JAR.floor)} y={leanY(x, y, lean, JAR.right, JAR.floor) + sink} scaleX={grow * (1 + s.squash)} scaleY={grow * (1 - s.squash)}>
-      <FruitBall kind={kind} x={0} y={0} turn={s.turn + (lean * 180) / Math.PI} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} />
+      <FruitBall kind={kind} x={0} y={0} turn={s.turn + lean} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} />
     </Entity>
   );
 }

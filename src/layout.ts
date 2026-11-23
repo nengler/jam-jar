@@ -413,7 +413,7 @@ export const LIGHT_CHECK_TURNS: readonly number[] = [0, 45, 90, 135, 180, 225, 2
 export interface LightCheckRow {
   readonly kind: FruitKind;
   readonly y: number;
-  /** Each turn in degrees, and as `FruitBall` takes it: its `turn` goes to the sprite's rotation as it is, which is in radians. */
+  /** Each turn in degrees, for the test, and in radians, as `FruitBall` takes it. */
   readonly turns: readonly { readonly turn: number; readonly radians: number; readonly x: number }[];
 }
 

@@ -17,7 +17,7 @@ interface FruitBallProps {
   frozen?: boolean;
   /** About to explode: drawn flashing. */
   lit?: boolean;
-  /** How far it has rolled, in degrees. */
+  /** How far it has turned, in radians (the sprite's rotation): its roll, and the jar's lean. */
   turn?: number;
   /** Lit up, 0 to 1: a softer flash than `lit`, fading as what caused it passes. */
   glow?: number;
