@@ -19,7 +19,7 @@
 // - the shine on each part, two pixels in from its edge toward the light, across its middle: a short streak, or one speck;
 // - a line one pixel across (a stalk) in two tones, and an inner line between two parts as the deepest shadow;
 // - a stem is a dark stalk;
-// - the outline is not black: a dark step of what it is beside, the darkest only where it faces right away from the light;
+// - the outline is not black: a dark step of what it is beside, the first toward the light and the darkest away from it;
 // - turned, it is drawn in whole art pixels on the screen's grid, its outline made again round the turned shape.
 //
 // params[0]: how strongly it is lit (1: as painted); params[1]: how much the edge away from the light darkens (0.8);
@@ -37,6 +37,8 @@ const float BAND_IN = 0.6;
 const float BAND_FACING = 1.5;
 const float BAND_FROM = -1.6;
 const float DARKEST = -1.9;
+// Where the outline turns from its first dark step to its darkest, by how it faces the light.
+const float OUTLINE_TURN = 0.0;
 
 int middle;
 int rows;
@@ -207,9 +209,9 @@ vec4 effect(vec2 uv) {
   vec3 normal = normalAt(at);
   float facing = dot(normal, light) * params[0];
 
-  // The edge on the screen: the outline, a dark step of the fruit's colour, the darkest only where it faces right away from the
-  // light, so the violet is a short run at the far side, not a ring round half the fruit.
-  if (asEdge) return vec4(stepOf(row, facing > -0.35 ? -1 : -2), c.a);
+  // The edge on the screen: the outline, a dark step of the fruit's colour, the first (crimson on a red fruit) where it faces the
+  // light and the darkest (violet) along the side away from it, as the old Apple's outline is.
+  if (asEdge) return vec4(stepOf(row, facing > OUTLINE_TURN ? -1 : -2), c.a);
 
   // The outline: a dark step of the colour beside it, the first where it faces the light, the darkest where it does not.
   if (same(c.rgb, OUTLINE)) {
@@ -229,9 +231,8 @@ vec4 effect(vec2 uv) {
                           : vec2(j == 4 || j == 5 ? 2.0 : -2.0, j == 4 || j == 6 ? 2.0 : -2.0);
         if (pixelAt(at + near).a < 0.5) outer = true;
       }
-      // The outer outline: the first dark step, and the darkest only where it faces right away from the light, so the violet is a
-      // short run at the far side, not a ring round half the fruit.
-      return vec4(stepOf(besideRow, outer && facing > -0.35 ? -1 : -2), c.a);
+      // The outer outline: the first dark step where it faces the light, the darkest along the side away from it.
+      return vec4(stepOf(besideRow, outer && facing > OUTLINE_TURN ? -1 : -2), c.a);
     }
     return c;
   }
