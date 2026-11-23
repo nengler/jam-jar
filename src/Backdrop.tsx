@@ -1,7 +1,7 @@
 import { Entity, Layer, Shape, Sprite, useTime } from "@tsengine/runtime/jsx";
 
 import { motes } from "./layout.ts";
-import { MOTE, MOTE_LIT } from "./theme.ts";
+import { MOTE } from "./theme.ts";
 
 /** The wallpaper's tile, in pixels, and how fast it drifts, in pixels a second: slow enough to be felt more than seen. */
 const TILE = 32;
@@ -24,7 +24,7 @@ export function Backdrop() {
         <Sprite image="wall.png" x={shift - TILE} y={shift - TILE} />
       </Layer>
       {motes(time).map((m) => (
-        <Shape key={m.id} kind="rect" x={m.x} y={m.y} width={2} height={2} color={m.lit ? MOTE_LIT : MOTE[m.shade]} />
+        <Shape key={m.id} kind="rect" x={m.x} y={m.y} width={2} height={2} color={MOTE[m.shade]} />
       ))}
       <Sprite image="counter.png" />
     </Entity>
