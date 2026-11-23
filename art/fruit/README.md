@@ -43,9 +43,10 @@ The light follows each fruit's own shape: which way a pixel faces comes from the
 lines included, and stems), mixed with a ball over the whole fruit. So an inner line in the outline colour makes each part its
 own round, lit and shining on its own: draw one wherever one part of a fruit stands in front of another. The shading is after
 the old pictures, the Apple most of all: the side toward the light a step up, stopping a pixel short of the outline (a thin
-falloff on the sunny side); the edge away from it and the far side darker (a wide one on the shadow side); a speck of shine on
-each part; and the outline in a dark step of the colour beside it, crimson toward the light and violet away from it on a red
-fruit. The falloff is thin on one side and wide on the other, never the same all round (pillow shading). How much of a fruit
+falloff on the sunny side); the edge away from it and the far side darker (a wide one on the shadow side); one speck of shine
+on each part, the pixel that faces the light best; the outline in a dark step of the colour beside it, crimson toward the
+light and violet away from it on a red fruit; an inner line between two parts in the darkest step, so they stay apart however
+they turn; and a line one pixel across, as a cherry's stalk, in two tones, not shaded as a round. The falloff is thin on one side and wide on the other, never the same all round (pillow shading). How much of a fruit
 falls in each step was matched to the old Apple, which is about a quarter lit, a quarter its plain colour and the rest in
 shadow, an eighth of it the darkest step: a fruit is mostly in shadow, and the light is what stands out. Stems are drawn in
 `#4d2b32`, kept for stems: the light draws them as dark stalks, and the fruit dips toward them.

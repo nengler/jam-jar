@@ -15,7 +15,8 @@
 // - the side facing the light is lit, a step up, over most of it, stopping a pixel short of the outline on the sunny side;
 // - the edge away from the light is a step darker, and what faces away falls to the darkest step: thin on one side and wide on
 //   the other, so it is lit from one side (the same edge all round would be pillow shading);
-// - the shine, a pixel or two, where a part faces halfway between the light and the eye;
+// - the shine, one speck on each part, where it faces halfway between the light and the eye;
+// - a line one pixel across (a stalk) in two tones, and an inner line between two parts as the deepest shadow;
 // - a stem is a dark stalk;
 // - the outline is not black: a dark step of what it is beside, the first toward the light and the darkest away from it.
 //
@@ -119,9 +120,23 @@ vec4 effect(vec2 uv) {
       if (beside.a < 0.5 || same(beside.rgb, OUTLINE) || same(beside.rgb, STEM)) continue;
       int besideRow = rowOf(beside.rgb);
       if (besideRow < 0) continue;
-      return vec4(stepOf(besideRow, facing > -0.1 ? -1 : -2), c.a);
+      // An inner line, one with no clear around it (between two cherries, berries or bananas), is the deepest shadow, where one
+      // part tucks behind the other: it keeps the parts apart however they are lit.
+      bool outer = false;
+      for (int j = 0; j < 8; j++) {
+        vec2 near = j < 4 ? (j == 0 ? vec2(2.0, 0.0) : j == 1 ? vec2(-2.0, 0.0) : j == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0))
+                          : vec2(j == 4 || j == 5 ? 2.0 : -2.0, j == 4 || j == 6 ? 2.0 : -2.0);
+        if (pixelAt(at + near).a < 0.5) outer = true;
+      }
+      return vec4(stepOf(besideRow, outer && facing > -0.1 ? -1 : -2), c.a);
     }
     return c;
+  }
+
+  // A thin line of colour, one pixel across (a cherry's stalk, a leaf's tip): two tones, its side toward the light and the rest,
+  // not shaded as a round.
+  if ((edgeAt(at + vec2(2.0, 0.0)) && edgeAt(at - vec2(2.0, 0.0))) || (edgeAt(at + vec2(0.0, 2.0)) && edgeAt(at - vec2(0.0, 2.0)))) {
+    return vec4(stepOf(row, edgeAt(at + toward * 2.0) ? 0 : -1), c.a);
   }
 
   // The edges right beside it, toward the light and away from it.
@@ -131,8 +146,20 @@ vec4 effect(vec2 uv) {
   float level = facing * 2.8 - 1.0 - (shadowEdge ? params[1] : 0.0);
   int step = level > 0.6 ? 1 : level > -0.2 ? 0 : level > -1.7 ? -1 : -2;
   if (litEdge) step = min(step, 0);
-  // The shine: where a part faces halfway between the light and the eye, off its edges.
+  // The shine: one speck on each part, the pixel that faces halfway between the light and the eye best of those around it.
   vec3 halfway = normalize(light + vec3(0.0, 0.0, 1.0));
-  if (params[2] > 0.0 && !litEdge && !shadowEdge && dot(normal, halfway) > 1.0 - params[2] * 0.12) step = 2;
+  float gleam = dot(normal, halfway);
+  if (params[2] > 0.0 && !litEdge && !shadowEdge && gleam > 1.0 - params[2] * 0.6) {
+    bool best = true;
+    for (int i = 0; i < 8; i++) {
+      vec2 by = i < 4 ? (i == 0 ? vec2(2.0, 0.0) : i == 1 ? vec2(-2.0, 0.0) : i == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0))
+                      : vec2(i == 4 || i == 5 ? 2.0 : -2.0, i == 4 || i == 6 ? 2.0 : -2.0);
+      if (edgeAt(at + by)) continue;
+      // Ties go to the pixel nearer the light, so a flat patch still shines in one place.
+      float other = dot(normalAt(at + by), halfway);
+      if (other > gleam || (other == gleam && dot(by, toward) > 0.0)) best = false;
+    }
+    if (best) step = 2;
+  }
   return vec4(stepOf(row, step), c.a);
 }
