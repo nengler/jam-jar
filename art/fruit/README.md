@@ -34,7 +34,8 @@ their light drawn in.
 
 Flat now: Apple, Banana, Blueberry, Cherry, Chili, Lemon, Orange and Watermelon. They were flattened from the placeholders: the
 body one colour, the stems and leaves one each, the edge the outline. What the placeholders drew that is not light was kept:
-the lines between the Blueberry's three berries and the seam where one Cherry overlaps the other (in the outline colour), and
+the lines between the Blueberry's three berries, the seam where one Cherry overlaps the other and the one between the Banana's
+two bananas (in the outline colour), and
 the Lemon's and Orange's peel dots (a lighter colour on the body). Each file keeps the old picture as a hidden layer, "old
 shading", which the game leaves out.
 
@@ -44,7 +45,9 @@ own round, lit and shining on its own: draw one wherever one part of a fruit sta
 the old pictures, the Apple most of all: the side toward the light a step up, stopping a pixel short of the outline (a thin
 falloff on the sunny side); the edge away from it and the far side darker (a wide one on the shadow side); a speck of shine on
 each part; and the outline in a dark step of the colour beside it, crimson toward the light and violet away from it on a red
-fruit. The falloff is thin on one side and wide on the other, never the same all round (pillow shading). Stems are drawn in
+fruit. The falloff is thin on one side and wide on the other, never the same all round (pillow shading). How much of a fruit
+falls in each step was matched to the old Apple, which is about a quarter lit, a quarter its plain colour and the rest in
+shadow, an eighth of it the darkest step: a fruit is mostly in shadow, and the light is what stands out. Stems are drawn in
 `#4d2b32`, kept for stems: the light draws them as dark stalks, and the fruit dips toward them.
 
 Draw a flat fruit in a colour a step below how most of it should look lit (the Lemon in `#de9e41`, which lights to `#e8c170`),

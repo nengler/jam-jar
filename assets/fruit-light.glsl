@@ -128,11 +128,11 @@ vec4 effect(vec2 uv) {
   bool litEdge = edgeAt(at + toward * 2.0);
   bool shadowEdge = edgeAt(at - toward * 2.0);
 
-  float level = facing * 2.8 - 0.25 - (shadowEdge ? params[1] : 0.0);
-  int step = level > 0.5 ? 1 : level > -0.5 ? 0 : level > -1.5 ? -1 : -2;
+  float level = facing * 2.8 - 1.0 - (shadowEdge ? params[1] : 0.0);
+  int step = level > 0.6 ? 1 : level > -0.2 ? 0 : level > -1.7 ? -1 : -2;
   if (litEdge) step = min(step, 0);
   // The shine: where a part faces halfway between the light and the eye, off its edges.
   vec3 halfway = normalize(light + vec3(0.0, 0.0, 1.0));
-  if (params[2] > 0.0 && !litEdge && !shadowEdge && dot(normal, halfway) > 1.0 - params[2] * 0.08) step = 2;
+  if (params[2] > 0.0 && !litEdge && !shadowEdge && dot(normal, halfway) > 1.0 - params[2] * 0.12) step = 2;
   return vec4(stepOf(row, step), c.a);
 }
