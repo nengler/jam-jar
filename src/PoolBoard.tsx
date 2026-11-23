@@ -4,7 +4,8 @@ import { Dialog } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { TapButton } from "./KeyHint.tsx";
-import { countOf, grownOf, kindAt, placed, poolRows, cardText } from "./layout.ts";
+import { GlazeMark } from "./GlazeMark.tsx";
+import { countOf, glazesOf, grownOf, kindAt, placed, poolRows, cardText } from "./layout.ts";
 import type { FruitKind } from "./rules/fruits.ts";
 import type { Run } from "./rules/jar.ts";
 import { CARD_SLICE, fruitImageSize, INK, INK_SOFT, SELECT, SHADE, TERM_W } from "./theme.ts";
@@ -55,6 +56,16 @@ export function PoolBoard({ run, chosenAt, onLook, onLookAway, onClose }: PoolBo
                     <FruitBall kind={slot.card.kind} x={fruitImageSize(slot.card.kind) / 2} y={fruitImageSize(slot.card.kind) / 2} />
                   </Flex>
                   <Text color={countOf(run.draw, slot.card.kind) === 0 ? INK_SOFT : INK}>{`${countOf(run.draw, slot.card.kind)}/${slot.card.count}`}</Text>
+                  {/* A badge for each of the kind's fruit that is glazed. */}
+                  {glazesOf(run, slot.card.kind).length > 0 && (
+                    <Flex width={glazesOf(run, slot.card.kind).length * 14} height={12}>
+                      <Entity>
+                        {glazesOf(run, slot.card.kind).map((glaze, k) => (
+                          <GlazeMark key={`${glaze}${k}`} glaze={glaze} x={6 + k * 14} y={6} />
+                        ))}
+                      </Entity>
+                    </Flex>
+                  )}
                 </Flex>
               ))}
             </Flex>

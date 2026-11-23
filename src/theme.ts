@@ -1,4 +1,5 @@
 import type { FruitKind } from "./rules/fruits.ts";
+import type { Glaze } from "./rules/glazes.ts";
 import { FRUIT_ART } from "./rules/sizes.ts";
 
 /**
@@ -147,3 +148,15 @@ export const THUD_VOLUME = 0.6;
 
 /** How loud a button's click is, of the sounds' volume: there are many, so it is soft. */
 export const CLICK_VOLUME = 0.5;
+
+/**
+ * Each glaze's colour (rules/glazes.ts), for the badge a glazed fruit wears: Spicy red, Ripe orange, Fizzy pink, Seeded green and
+ * Anchored slate. A stand-in until the fruit are redrawn by hand with an overlay for each.
+ */
+export const GLAZE_COLOR: Readonly<Record<Glaze, string>> = {
+  spicy: "#cf573c",
+  ripe: "#de9e41",
+  fizzy: "#c65197",
+  seeded: "#75a743",
+  anchored: "#819796",
+};

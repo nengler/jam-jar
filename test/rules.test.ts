@@ -12,6 +12,10 @@ import {
   CHAIN_TIERS,
   chainTier,
   SET_OFF_LINKS,
+  arrangeHand,
+  glazeKinds,
+  glazeOne,
+  withGlazes,
   shownLinks,
   BOSS_NAME,
   bossCycle,
@@ -42,6 +46,7 @@ import {
   resolve,
   rollPool,
   RIM,
+  SHOP_GLAZE,
   SHOP_ITEM,
   SHOP_LEAVE,
   SHOP_REMOVE,
@@ -55,6 +60,7 @@ import {
   type Run,
 } from "../src/rules/jar.ts";
 import { ITEMS, offerable } from "../src/rules/items.ts";
+import { FIZZY_LINKS, GLAZE_PRICE, GLAZES, glazeFits, ripened, SPICY } from "../src/rules/glazes.ts";
 import { BOOK, FAMILIES, MEASURED, ROLES } from "../tools/fruit-book/book.ts";
 import { Rng } from "../src/rules/rng.ts";
 import { keywordOf, KEYWORDS, keywordsIn, ruleWords } from "../src/rules/terms.ts";
@@ -520,7 +526,7 @@ test("the shop: up and down change rows, and the last action leaves for the next
   run = press(run, { right: true });
   assert.equal(run.shop!.cursor, SHOP_LEAVE);
   run = press(run, { up: true });
-  assert.equal(run.shop!.cursor, SHOP_ITEM);
+  assert.equal(run.shop!.cursor, SHOP_GLAZE, "up from the way out: the last label, the glaze");
   run = press(run, { down: true });
   run = cleared(press(run, { confirm: true }));
   assert.equal(run.phase, "order");
@@ -837,7 +843,7 @@ test("terms: the numbers on the cards are the rules' numbers", () => {
 test("terms: cards keep to the vocabulary, every keyword is used, and a definition fits its tooltip", () => {
   const banned = /\b(blast|blasted|blow|blown|blows|overflow|explosion)\b/i;
   const used = new Set<string>();
-  for (const def of [...Object.values(FRUITS), ...Object.values(ITEMS)]) {
+  for (const def of [...Object.values(FRUITS), ...Object.values(ITEMS), ...Object.values(GLAZES)]) {
     assert.ok(!banned.test(def.text), `${def.name}: "${def.text}"`);
     assert.ok(def.text.endsWith("."), `${def.name} ends with a full stop`);
     assert.ok(keywordsIn(def.text).length <= 4, `${def.name}: a tooltip holds four keywords`);
@@ -1619,4 +1625,148 @@ test("a chain: a blast set off by another blast adds two links", () => {
   assert.equal(run.fruits.find((f) => f.id === 3)?.setOff, true, "it lit the other Chili");
   for (let i = 0; i < 30; i++) run = press(run, {});
   assert.equal(run.chainLinks, 1 + SET_OFF_LINKS);
+});
+
+test("glazes: the shop sells one a visit, put on a plain fruit of a kind it fits, paid for once it is on", () => {
+  let run = inShop(GLAZE_PRICE + 1);
+  assert.ok(run.shop!.glaze !== null, "a glaze on the shelf");
+  run.shop!.glaze = "ripe";
+  run.pool = ["cherry", "cherry", "chili", "apple"];
+  run.poolGlazes = [null, null, null, null];
+  assert.deepEqual(glazeKinds(run, "ripe"), ["cherry"], "Ripe fits the smallest of the ladder");
+  assert.equal(glazeFits("ripe", "apple"), false);
+  run.shop!.cursor = SHOP_GLAZE;
+  run = press(run, { confirm: true });
+  assert.equal(run.shop!.glazing, true);
+  assert.equal(run.coins, GLAZE_PRICE + 1, "nothing paid yet");
+  run = press(run, { drop: true });
+  assert.equal(run.shop!.glazing, false, "backed out, free");
+  run = press(run, { confirm: true });
+  run = press(run, { point: 0, confirm: true });
+  run = press(run, { confirm: true });
+  assert.deepEqual(run.poolGlazes, ["ripe", null, null, null], "on the first plain Cherry");
+  assert.equal(run.coins, 1);
+  assert.equal(run.shop!.glaze, null, "sold");
+  assert.equal(glazeOne(run, "chili", "ripe"), true, "glazeOne itself does not check the fit");
+});
+
+test("glazes: a glazed fruit is dealt glazed, moves with its glaze on the shelf, and lands wearing it", () => {
+  let run = newRun(3);
+  run.pool = ["cherry", "grape", "orange", "apple"];
+  run.poolGlazes = ["fizzy", null, null, null];
+  run.draw = run.pool.slice();
+  run.drawGlazes = run.poolGlazes.slice();
+  run.hand = [];
+  run.handGlazes = [];
+  run.discard = [];
+  run.discardGlazes = [];
+  run.phase = "order";
+  run.turn = 1;
+  // Deal by playing a pick's skip: the next hand comes from the draw.
+  run.phase = "pick";
+  run.offers = ["cherry", "grape", "orange"];
+  run = press(run, { drop: true });
+  assert.equal(run.handGlazes[run.hand.indexOf("cherry")], "fizzy");
+  arrangeHand(run, ["apple", "orange", "grape", "cherry"]);
+  assert.deepEqual(run.handGlazes, [null, null, null, "fizzy"], "it went where the Cherry went");
+  run = press(run, { drop: true });
+  for (let i = 0; i < 5 && !run.fruits.some((f) => f.kind === "cherry"); i++) run = press(run, {});
+  assert.equal(run.fruits.find((f) => f.kind === "cherry")?.glaze, "fizzy");
+  assert.equal(run.discardGlazes[run.discard.indexOf("cherry")], "fizzy", "and goes back to the deck glazed");
+});
+
+test("glazes: a run kept from before glazes loads with every fruit plain", () => {
+  const old = newRun(5) as Partial<Run>;
+  delete old.poolGlazes;
+  delete old.drawGlazes;
+  const loaded = withGlazes(old as Run);
+  assert.equal(loaded.poolGlazes.length, loaded.pool.length);
+  assert.ok(loaded.poolGlazes.every((g) => g === null) && loaded.drawGlazes.length === loaded.draw.length);
+});
+
+test("Ripe: a Ripe fruit lands one size bigger, as a plain fruit", () => {
+  assert.equal(ripened("cherry"), "grape");
+  assert.equal(ripened("watermelon"), undefined, "no Ripe Watermelon into a Giant Pumpkin");
+  assert.equal(ripened("orange"), undefined, "nor an Orange into a Melon: the ladder's top is out of reach");
+  assert.equal(ripened("chili"), undefined);
+  let run = newRun(3);
+  run.phase = "order";
+  run.hand = ["cherry"];
+  run.handGlazes = ["ripe"];
+  run = press(run, { drop: true });
+  for (let i = 0; i < 5 && run.fruits.length === 0; i++) run = press(run, {});
+  assert.equal(run.fruits[0]?.kind, "grape");
+  assert.equal(run.fruits[0]?.glaze, undefined);
+  assert.equal(run.discard.at(-1), "cherry", "the pool's fruit is still a Ripe Cherry");
+  assert.equal(run.discardGlazes.at(-1), "ripe");
+});
+
+test("Spicy: a Spicy fruit's Merge explodes, sparing what it made, which is plain after", () => {
+  const y = JAR.floor - FRUITS.cherry.radius;
+  let run = jarWith([{ ...fruit(1, "cherry", 300, y, [2]), glaze: "spicy" }, fruit(2, "cherry", 312, y, [1]), fruit(3, "orange", 330, JAR.floor - FRUITS.orange.radius)]);
+  run = press(run, {});
+  const grape = run.fruits.find((f) => f.kind === "grape")!;
+  assert.ok(grape.lit && grape.flare === true, "lit");
+  for (let i = 0; i < Math.ceil(SPICY.fuse / DT) + 2; i++) run = press(run, {});
+  assert.ok(run.fruits.some((f) => f.kind === "grape" && !f.lit && f.glaze === undefined), "spared, and plain");
+  assert.ok(!run.fruits.some((f) => f.kind === "orange"), "what was near it was destroyed");
+  assert.ok(run.popups.some((p) => p.text.startsWith("Explode")));
+});
+
+test("Fizzy: each of its scores adds 2 more links to the chain", () => {
+  const run = jarWith([{ ...fruit(1, "apple", 250, JAR.floor - FRUITS.apple.radius), glaze: "fizzy" }]);
+  run.turn = 2;
+  resolve(run);
+  assert.equal(run.chainLinks, 1 + FIZZY_LINKS);
+  assert.equal(run.popups.find((p) => p.points > 0)?.links, 1 + FIZZY_LINKS, "the chain on screen counts them as its score shows");
+});
+
+test("Seeded: blown up or Crushed, a plain one grows where it was", () => {
+  const y = JAR.floor - 8;
+  const run = jarWith([{ ...fruit(1, "cherry", 300, y), glaze: "seeded" }]);
+  run.fruits.push({ ...fruit(9, "chili", 290, y), lit: true, fuse: 0 });
+  simulate(run, DT);
+  assert.ok(!run.fruits.some((f) => f.kind === "cherry"), "destroyed");
+  run.turn = 2;
+  resolve(run);
+  const regrown = run.fruits.filter((f) => f.kind === "cherry");
+  assert.equal(regrown.length, 1, "it grows back at the end of the turn");
+  assert.equal(regrown[0]?.glaze, undefined, "plain");
+  assert.equal(run.chainLinks, 2, "the blast and the regrowth");
+
+  const bomb = jarWith([]);
+  bomb.fruits.push({ ...fruit(9, "chili", 290, y), lit: true, fuse: 0, glaze: "seeded" });
+  simulate(bomb, DT);
+  bomb.turn = 2;
+  resolve(bomb);
+  assert.ok(bomb.fruits.some((f) => f.kind === "chili" && !f.lit && f.glaze === undefined), "a Seeded Chili grows back after its own blast");
+});
+
+test("Anchored: a Plunge neither Smashes nor throws it", () => {
+  const m = FRUITS.melon.radius;
+  const p = FRUITS.pumpkin.radius;
+  const run = jarWith([{ ...fruit(1, "melon", 320, JAR.floor - 120), glaze: "anchored" }]);
+  run.fruits.push({ ...fruit(3, "pumpkin", 330, JAR.floor - 120 - m - p, [1]), landed: false });
+  simulate(run, DT);
+  const melon = run.fruits.find((f) => f.id === 1);
+  assert.ok(melon !== undefined && melon.kicks === 0, "still a Melon, not thrown");
+});
+
+test("a Kiwi copies the glaze of what it copies", () => {
+  const y = JAR.floor - 20;
+  const run = jarWith([{ ...fruit(1, "kiwi", 300, y, [2]), landed: false, glaze: "fizzy" }, { ...fruit(2, "orange", 340, y, [1]), glaze: "seeded" }]);
+  simulate(run, DT);
+  assert.deepEqual(run.fruits.map((f) => [f.kind, f.glaze]), [["orange", "seeded"], ["orange", "seeded"]]);
+});
+
+test("taking a fruit out takes a plain one of its kind before a glazed one", () => {
+  let run = inShop(REMOVAL_PRICE);
+  run.pool = ["cherry", "cherry", "grape", "grape", "apple"];
+  run.poolGlazes = ["spicy", null, null, null, null];
+  run.shop!.cursor = SHOP_REMOVE;
+  run = press(run, { confirm: true });
+  run = press(run, { point: 0, confirm: true });
+  run = press(run, { confirm: true });
+  assert.deepEqual(run.pool, ["cherry", "grape", "grape", "apple"]);
+  assert.deepEqual(run.poolGlazes, ["spicy", null, null, null]);
 });

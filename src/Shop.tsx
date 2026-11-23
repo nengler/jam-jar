@@ -10,7 +10,9 @@ import { ITEMS, type ItemKind } from "./rules/items.ts";
 import { RuleText } from "./RuleText.tsx";
 import { Bloops } from "./Sounds.tsx";
 import { Terms } from "./Terms.tsx";
-import { FRUIT_PRICE, removalPrice, rerollPrice, SHOP_ITEM, SHOP_LEAVE, SHOP_REMOVE, SHOP_REROLL, OFFERED, type Run, type Shop as ShopState } from "./rules/jar.ts";
+import { FRUIT_PRICE, glazeKinds, removalPrice, rerollPrice, SHOP_GLAZE, SHOP_ITEM, SHOP_LEAVE, SHOP_REMOVE, SHOP_REROLL, OFFERED, type Run, type Shop as ShopState } from "./rules/jar.ts";
+import { GLAZE_PRICE, GLAZES, type Glaze } from "./rules/glazes.ts";
+import { GlazeMark } from "./GlazeMark.tsx";
 import {
   biggestFruit,
   fruitImageSize,
@@ -18,6 +20,7 @@ import {
   AWNING_H,
   BAD,
   CARD_SLICE,
+  GLAZE_COLOR,
   CLOTH,
   COIN_JAR,
   DISPLAY,
@@ -36,8 +39,8 @@ import {
   STALL,
 } from "./theme.ts";
 
-/** The stall: four labels in a row standing on its counter, and how far the chosen one is raised. */
-const CARD_W = 148;
+/** The stall: five labels in a row standing on its counter (three fruit, the item and a glaze), and how far the chosen one is raised. */
+const CARD_W = 120;
 const CARD_H = 200;
 const CARD_GAP = 6;
 const CARD_LIFT = 10;
@@ -118,6 +121,29 @@ function Price({ price, afford, color = INK }: { price: number; afford: boolean;
  */
 function PictureRoom() {
   return <Shape kind="rect" x={0} y={0} width={PICTURE_W} height={PICTURE_H} color="#00000000" />;
+}
+
+/** How big the pot of glaze on its label is across, and the ring of ink round it. */
+const POT = 40;
+const POT_RING = 3;
+
+/** A glaze for sale: a round pot of it standing on a cloth, or the cloth alone once it is bought. */
+function GlazePot({ glaze }: { glaze: Glaze | null }) {
+  return (
+    <Flex width={PICTURE_W} height={PICTURE_H}>
+      <Entity>
+        <PictureRoom />
+        <Sprite image={CLOTH} x={(PICTURE_W - CLOTH_W) / 2} y={PICTURE_H - 14} />
+        {glaze !== null && (
+          <Entity>
+            <Shape kind="circle" x={(PICTURE_W - POT) / 2} y={PICTURE_H - 12 - POT} width={POT} height={POT} color={INK} />
+            <Shape kind="circle" x={(PICTURE_W - POT) / 2 + POT_RING} y={PICTURE_H - 12 - POT + POT_RING} width={POT - POT_RING * 2} height={POT - POT_RING * 2} color={GLAZE_COLOR[glaze]} />
+            <Shape kind="rect" x={PICTURE_W / 2 - 8} y={PICTURE_H - 12 - POT + 8} width={4} height={4} color={LIGHT} />
+          </Entity>
+        )}
+      </Entity>
+    </Flex>
+  );
 }
 
 /** A fruit in its basket: the basket's back, the fruit sitting in it, and the basket's front over the fruit's bottom. */
@@ -222,6 +248,7 @@ function ActionSign({ chosen, go = false, label, price, afford, onPoint, onPress
 /** Whether the shop's place `at` has something for sale: a fruit or the item not yet bought (not an action, nor none). */
 function forSaleAt(shop: ShopState, at: number): boolean {
   if (at >= 0 && at < SHOP_ITEM) return shop.fruits[at] != null;
+  if (at === SHOP_GLAZE) return shop.glaze !== null;
   return at === SHOP_ITEM && shop.item !== null;
 }
 
@@ -240,13 +267,16 @@ const ACTION_RISE = 120;
 export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, onPool }: ShopProps) {
   // The card the cursor is on shows what its keywords mean, but not over the pause menu.
   const paused = useGame((g) => g.paused);
-  const kinds = poolRows(run.pool);
+  // The kinds on the board for taking one out, or, for a glaze bought, those it can go on.
+  const glazable = shop.glaze === null ? [] : glazeKinds(run, shop.glaze);
+  const kinds = shop.glazing ? poolRows(run.pool).filter((row) => glazable.includes(row.kind)) : poolRows(run.pool);
+  const choosing = shop.removing || shop.glazing;
   // The shop comes in as a run does: the awning drops down, each label drops onto the counter one after another, the signs rise
   // into theirs, and the purse slides in from the right. Each is moved within its own slot (its `y`), so the row is laid out as
   // it always is.
   const time = useTime();
   // The place the cursor is on, or none while a fruit is being chosen to take out.
-  const chosen = shop.removing ? -1 : shop.cursor;
+  const chosen = choosing ? -1 : shop.cursor;
   // Whether the chosen place on the shelf has something for sale, for the Buy button: not an action, a sold place, or none.
   const forSale = forSaleAt(shop, chosen);
   const awning = -AWNING_H * (1 - popIn(time, 0, ENTER.pop));
@@ -256,7 +286,7 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
       {/* A bloop for each card as it drops in, and one for the actions. */}
-      <Bloops start={ENTER.pop * 0.6} gap={ENTER.gap} count={SHOP_ITEM + 2} />
+      <Bloops start={ENTER.pop * 0.6} gap={ENTER.gap} count={SHOP_GLAZE + 2} />
 
       {/* The stall's counter, which the labels stand on. */}
       <Sprite image={STALL} x={0} y={STALL_Y} />
@@ -288,12 +318,23 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
           {shop.item !== null && <OnLabel price={ITEMS[shop.item].price} afford={run.coins >= ITEMS[shop.item].price} />}
           {shop.item === null && <Sold><OnCloth item={null} /></Sold>}
         </Offer>
+        <Offer at={SHOP_GLAZE} chosen={chosen === SHOP_GLAZE} item={true} drop={popIn(time, SHOP_GLAZE * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_GLAZE)} onClick={onClick}>
+          {shop.glaze !== null && (
+            <Tooltip show={!paused && chosen === SHOP_GLAZE} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <Terms text={GLAZES[shop.glaze].text} />
+            </Tooltip>
+          )}
+          {shop.glaze !== null && <GlazePot glaze={shop.glaze} />}
+          {shop.glaze !== null && <Words name={`${GLAZES[shop.glaze].name} glaze`} text={GLAZES[shop.glaze].text} />}
+          {shop.glaze !== null && <OnLabel price={GLAZE_PRICE} afford={run.coins >= GLAZE_PRICE} />}
+          {shop.glaze === null && <Sold><GlazePot glaze={null} /></Sold>}
+        </Offer>
       </Flex>
 
       {/* The awning, over the top of the labels. */}
       <Sprite image={AWNING} x={0} y={awning} />
       {/* The actions: wooden signs under the stall, the way out painted green. */}
-      <Flex left={0} right={0} top={ACTION_Y} direction="row" justifyContent="center" gap={ACTION_GAP} y={ACTION_RISE * (1 - popIn(time, (SHOP_ITEM + 1) * ENTER.gap, ENTER.pop))} opacity={entered(time, SHOP_ITEM + 1)}>
+      <Flex left={0} right={0} top={ACTION_Y} direction="row" justifyContent="center" gap={ACTION_GAP} y={ACTION_RISE * (1 - popIn(time, (SHOP_GLAZE + 1) * ENTER.gap, ENTER.pop))} opacity={entered(time, SHOP_GLAZE + 1)}>
         <ActionSign chosen={chosen === SHOP_REMOVE} label="Remove one" price={removalPrice(run)} afford={run.coins >= removalPrice(run)} onPoint={() => onPoint(SHOP_REMOVE)} onPress={() => onClick(SHOP_REMOVE)} />
         <ActionSign chosen={chosen === SHOP_REROLL} label="New shelf" price={rerollPrice(run)} afford={run.coins >= rerollPrice(run)} onPoint={() => onPoint(SHOP_REROLL)} onPress={() => onClick(SHOP_REROLL)} />
         <ActionSign chosen={chosen === SHOP_LEAVE} go={true} label="Next cycle >" onPoint={() => onPoint(SHOP_LEAVE)} onPress={() => onClick(SHOP_LEAVE)} />
@@ -304,7 +345,7 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
           In the middle the Buy button while a card for sale is chosen (a tap on a card only chooses it, so it can be read and its
           text scrolled first; Enter buys it too), else what just happened (a fruit bought, the shelf restocked). The right is left
           to the pause button. */}
-      <Flex left={BAR_SIDE} top={BAR_Y} height={BAR_H} direction="row" alignItems="center" gap={16} opacity={entered(time, SHOP_ITEM + 1)}>
+      <Flex left={BAR_SIDE} top={BAR_Y} height={BAR_H} direction="row" alignItems="center" gap={16} opacity={entered(time, SHOP_GLAZE + 1)}>
         <Flex direction="row" alignItems="center" gap={6} focusable={false} onPress={onPool}>
           <Flex width={POOL_BASKET_W} height={POOL_H}>
             <Entity>
@@ -319,7 +360,7 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
           <Text font={DISPLAY} size={DISPLAY_SIZE} color={LIGHT} shadow={INK} shadowX={2} shadowY={2}>{`${run.coins}`}</Text>
         </Flex>
       </Flex>
-      <Flex left={0} right={0} top={BAR_Y} height={BAR_H} direction="row" alignItems="center" justifyContent="center" opacity={entered(time, SHOP_ITEM + 1)}>
+      <Flex left={0} right={0} top={BAR_Y} height={BAR_H} direction="row" alignItems="center" justifyContent="center" opacity={entered(time, SHOP_GLAZE + 1)}>
         {forSale && <TapButton label="Buy" onPress={onConfirm} />}
         {!forSale && (
           <Text width={BAR_MESSAGE_W} maxWidth={BAR_MESSAGE_W} align="center" color={LIGHT}>
@@ -328,13 +369,14 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
         )}
       </Flex>
 
-      {/* Taking a fruit out: the pool by kind on a board in the middle of the screen, its kinds wrapping when there are many. */}
-      {shop.removing && (
+      {/* Taking a fruit out, or choosing one for a glaze: the pool by kind on a board in the middle of the screen, its kinds
+          wrapping when there are many (for a glaze, only those it can go on). */}
+      {choosing && (
         <Entity>
           <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
           <Flex left={0} right={0} top={0} bottom={0} direction="column" alignItems="center" justifyContent="center">
             <Flex width={Math.max(240, Math.min(REMOVE_W, kinds.reduce((w, row) => w + removeCell(row.kind), 0) + 32))} direction="column" alignItems="stretch">
-              <Dialog title="Take out one">
+              <Dialog title={shop.glazing && shop.glaze !== null ? `${GLAZES[shop.glaze].name} glaze: on which?` : "Take out one"}>
                 <Flex direction="row" wrap justifyContent="center" alignItems="end" rowGap={4} columnGap={0}>
                   {placed(kinds).map((cell) => (
                     <Flex key={cell.card.kind} width={removeCell(cell.card.kind)} direction="column" alignItems="center" focusable={false} onPress={() => onClick(cell.at)}>
@@ -342,13 +384,20 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
                         <FruitBall kind={cell.card.kind} x={(removeCell(cell.card.kind) - 4) / 2} y={fruitImageSize(cell.card.kind) / 2 + 4} />
                       </Flex>
                       <Text color={INK}>{`${cell.card.count}`}</Text>
+                      {shop.glazing && shop.glaze !== null && cell.at === shop.removeCursor && (
+                        <Flex width={12} height={12}>
+                          <Entity>
+                            <GlazeMark glaze={shop.glaze} x={6} y={6} />
+                          </Entity>
+                        </Flex>
+                      )}
                     </Flex>
                   ))}
                 </Flex>
                 {/* A tap on a kind only chooses it. What takes it out is this button (or Enter), which names it and its price,
                     so nothing leaves the pool by a slip of the finger. */}
                 <Flex direction="row" justifyContent="center" alignItems="center" gap={12} paddingTop={6}>
-                  {shop.removeCursor >= 0 && <TapButton label={`Take out ${chosenName(kinds, shop.removeCursor)}`} onPress={onConfirm} />}
+                  {shop.removeCursor >= 0 && <TapButton label={shop.glazing ? `Glaze ${chosenName(kinds, shop.removeCursor)}` : `Take out ${chosenName(kinds, shop.removeCursor)}`} onPress={onConfirm} />}
                   {shop.removeCursor < 0 && <Text color={INK_SOFT}>Choose a fruit</Text>}
                   <TapButton label="Back" onPress={onSpace} />
                 </Flex>

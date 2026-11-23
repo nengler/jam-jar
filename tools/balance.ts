@@ -17,7 +17,9 @@
  *
  * A player ending "/thin" ("skip/thin") spends its coins in the shop taking Cherries out of its pool. One with "/shop" buys the
  * fruit it would pick from the shop's shelf ("random/shop" buys whatever is there, left to right), as long as its coins last;
- * with both it thins first. The others buy nothing.
+ * with both it thins first. One with "/glaze" buys the shop's glaze whenever it can, and puts it on the first kind it would pick
+ * that the glaze fits, else on the glaze's own choice (`GLAZE_ON`). BALANCE_GLAZE=spicy makes every shop's glaze that one.
+ * The others buy nothing.
  * The flags combine ("random/tray/best/thin"). A player with "@" owns those items from the start ("skip@juicer",
  * "random@shaker+lid"). The rent is ignored (set to 0), so every run plays all its cycles.
  *
@@ -39,7 +41,8 @@ import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
 import { FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
-import { bossNow, CHAIN_TIERS, FRUIT_PRICE, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
+import { GLAZE_PRICE, type Glaze } from "../src/rules/glazes.ts";
+import { arrangeHand, bossNow, CHAIN_TIERS, FRUIT_PRICE, glazeKinds, POINTS_PER_COIN, SHOP_GLAZE, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
 
 type Strategy = string;
@@ -55,6 +58,17 @@ const DOWN = frame("down");
 /** BALANCE_CHAINS=off: no tiers, so the chain still counts its links but multiplies nothing. */
 const tiers = CHAIN_TIERS.slice();
 if (process.env["BALANCE_CHAINS"] === "off") (CHAIN_TIERS as number[]).length = 0;
+
+/** BALANCE_GLAZE=spicy: every shop sells that glaze, to measure one at a time. */
+const forcedGlaze = (process.env["BALANCE_GLAZE"] || undefined) as Glaze | undefined;
+/** Where a "/glaze" bot puts a glaze when none of its own picks fits: what each is for (the design doc's "Best with"). */
+const GLAZE_ON: Readonly<Record<Glaze, readonly FruitKind[]>> = {
+  spicy: ["cherry", "grape", "orange"],
+  ripe: ["grape", "orange", "cherry", "gourd"],
+  fizzy: ["apple", "banana", "pitaya", "honeydew"],
+  seeded: ["chili", "durian", "apple"],
+  anchored: ["apple", "banana", "honeydew"],
+};
 
 /** BALANCE_BOSS=flip plays every run's boss cycle in that jar, to compare the boss jars with each other. */
 const forcedBoss = process.env["BALANCE_BOSS"] as Boss | undefined;
@@ -155,7 +169,9 @@ function advance(player: Player, backend: RecordingBackend): void {
 function playTurn(player: Player, backend: RecordingBackend, hand: FruitKind[], settles?: number[], trial = false): number {
   const start = findPlay(player)!;
   const before = start.s.run.total;
-  start.s.run = { ...start.s.run, hand };
+  const arranged = { ...start.s.run };
+  arrangeHand(arranged, hand);
+  start.s.run = arranged;
   backend.queueInput(SPACE);
   advance(player, backend);
   let left = false;
@@ -215,8 +231,9 @@ interface Events {
   smashes: number;
   /** Each turn's chain, in links (the run's own `chains`). */
   chains: number[];
-  /** Fruit bought in the shop ("/shop"). */
+  /** Fruit bought in the shop ("/shop"), and glazed fruit in the pool at the end ("/glaze"). */
   bought: number;
+  glazed: number;
 }
 
 function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[]; mismatches: number; events: Events } {
@@ -237,18 +254,20 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   let chains: number[] = [];
   let bought = 0;
   let shopPool = -1;
+  let glazed = 0;
   let wait = 0;
   let coins = 0;
   const [plan = "", owned = ""] = strategy.split("@");
   const thin = plan.includes("/thin");
   const shopping = plan.includes("/shop");
+  const glazing = plan.includes("/glaze");
   const order = plan.includes("/order");
   const search = plan.includes("/best") ? "best" : plan.includes("/worst") ? "worst" : plan.includes("/fair") ? "fair" : null;
   if (/\/spots(\/|$)/.test(plan)) throw new Error('"/spots" was the drop before the tray, and the rules no longer have it');
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
   // With no luck to average over (a tray with no wobble), one try is the whole story.
   const tries = TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
-  const picks = plan.replace(/\/(thin|shop|order|best|worst|fair|tray|wobble\d+)/g, "");
+  const picks = plan.replace(/\/(thin|shop|glaze|order|best|worst|fair|tray|wobble\d+)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
@@ -267,6 +286,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
       const inShop = found.s.run.phase === "shop" ? found.s.run.pool.length : -1;
       if (inShop > shopPool && shopPool >= 0) bought += inShop - shopPool;
       shopPool = inShop;
+      glazed = found.s.run.poolGlazes.filter((g) => g !== null).length;
     }
     if (found !== null && found.s.run.phase === "settle") settling = found.s.run.settleTime;
     else if (settling >= 0) {
@@ -295,7 +315,11 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
         wait = 0;
         continue;
       }
-      if (order && !blind) found.s.run = { ...run, hand: trayHand(run.hand) };
+      if (order && !blind) {
+        const arranged = { ...run };
+        arrangeHand(arranged, trayHand(run.hand));
+        found.s.run = arranged;
+      }
       queued = [SPACE];
     }
     else if (run.phase === "pick") {
@@ -310,7 +334,21 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
       scores.push(run.cycleScore);
       queued = [ENTER];
     } else if (run.phase === "shop") {
-      const shop = run.shop!;
+      if (forcedGlaze !== undefined && run.shop !== null && run.shop.glaze !== null && run.shop.glaze !== forcedGlaze) found.s.run = { ...run, shop: { ...run.shop, glaze: forcedGlaze } };
+      const shop = found.s.run.shop!;
+      // Glazing: to the glaze's label, Enter, then along the board's kinds to the one it goes on, and Enter.
+      if (glazing && shop.glazing && shop.glaze !== null) {
+        const kinds = glazeKinds(run, shop.glaze);
+        const wanted = [...picks.split("+"), ...GLAZE_ON[shop.glaze]];
+        // The first wanted kind it fits, else the first it fits at all.
+        const best = wanted.map((kind) => kinds.indexOf(kind as FruitKind)).find((at) => at >= 0) ?? 0;
+        queued = shop.removeCursor === best ? [ENTER] : shop.removeCursor < best ? [RIGHT] : [LEFT];
+        continue;
+      }
+      if (glazing && !shop.removing && shop.glaze !== null && run.coins >= GLAZE_PRICE && glazeKinds(run, shop.glaze).length > 0) {
+        queued = shop.cursor === SHOP_GLAZE ? [ENTER] : shop.cursor < SHOP_GLAZE ? [RIGHT] : [LEFT];
+        continue;
+      }
       const canThin = thin && run.coins >= removalPrice(run) && run.pool.length > 4 && run.pool.includes("cherry");
       // Buying: the first fruit on the shelf it would pick. The cursor walks the shelf with Left and Right (from nothing chosen,
       // Right goes to the first), and Enter on a card buys it.
@@ -330,7 +368,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   }
   player.close();
   return { scores, pool, settles, mismatches, // Giant Pumpkins by the points they scored: "/best" and "/fair" play their turns out of this loop's sight, so ids miss them.
-    events: { earned: { ...earned }, giants: Math.max(giants.size, Math.round((earned["Giant Pumpkin"] ?? 0) / FRUITS.giantpumpkin.points)), smashes: slices.size / 4 + pieces.size / 2, chains: chains.slice(), bought } };
+    events: { earned: { ...earned }, giants: Math.max(giants.size, Math.round((earned["Giant Pumpkin"] ?? 0) / FRUITS.giantpumpkin.points)), smashes: slices.size / 4 + pieces.size / 2, chains: chains.slice(), bought, glazed } };
 }
 
 const runs = Number(process.argv[2] ?? 20);
@@ -379,7 +417,7 @@ for (const strategy of players) {
   console.log(
     `${"".padEnd(34)} chains: ${(turns.reduce((a, b) => a + b, 0) / Math.max(1, turns.length)).toFixed(1)} links a turn, ` +
       `${tiers.map((at, k) => `x${k + 2} in ${reached(at)}`).join(", ")} of turns, longest ${Math.max(0, ...turns)}; ` +
-      `fruit bought a run ${(events.reduce((a, e) => a + e.bought, 0) / runs).toFixed(1)}`
+      `fruit bought a run ${(events.reduce((a, e) => a + e.bought, 0) / runs).toFixed(1)}, glazed ${(events.reduce((a, e) => a + e.glazed, 0) / runs).toFixed(1)}`
   );
   if (process.argv[4] !== "full") continue;
   // What earned the points, a run on average, the most first.

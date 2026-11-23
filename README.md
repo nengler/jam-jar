@@ -125,7 +125,22 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   and so does each score at the tally. What a trigger scores is multiplied by the tier the chain has reached when it happens:
   x2 from the 5th link, x3 from the 10th, x4 from the 15th (`CHAIN_TIERS`). A landing adds no link and is never multiplied,
   nor is a spill. A Merge with a piece of a Smash adds no link (it is part of the Smash) but still scores at the tier, and a
-  blast that another blast set off adds 2 (`SET_OFF_LINKS`). The chain starts again with each hand dropped, and carries from the settle into the tally, so a garden
+  blast that another blast set off adds 2 (`SET_OFF_LINKS`).
+- Glazes (`src/rules/glazes.ts`): an upgrade on one fruit in the pool, not on its kind. The shop sells one a visit, for 4
+  coins, put on a plain fruit the player chooses of a kind the glaze fits; the fruit is dealt glazed for the rest of the
+  run and wears a badge in its glaze's colour. A glazed fruit that merges or changes in the jar loses the glaze, and what it
+  becomes is plain, but the fruit in the pool keeps it. A Kiwi copies the glaze with the fruit it copies. Taking a fruit out
+  takes a plain one of its kind first.
+  - Spicy (fruit that Merge): its Merge explodes (44 px, +12 a fruit), sparing what the Merge made.
+  - Ripe (the Cherry and the Gourd): it lands one size bigger, as a plain fruit (a Grape; a Grape-sized Gourd).
+  - Fizzy (fruit that score): each of its scores adds 1 more link to the chain, before it scores.
+  - Seeded: blown up (its own blast included) or Crushed, a plain one of its kind grows back where it was at the end of
+    the turn.
+  - Anchored: a Plunge or a Shockwave neither Smashes nor throws it.
+
+  The shop's stall has five labels (three fruit, the item and the glaze); its glaze is drawn from a seed of its own, so the
+  rest of what a seed decides is as it was. The badges are stand-ins until the fruit are redrawn with an overlay for each
+  glaze. A run kept from before glazes loads with every fruit plain (`withGlazes`). The chain starts again with each hand dropped, and carries from the settle into the tally, so a garden
   reaches the tiers with its Simmer scores alone. It stacks with a Booster: a Lemon's x2 at x4 is x8.
 - The Boom group: Chili (explodes touching 4+ fruit), Durian (big blast once 3 fruit sit on it), Pomegranate (bursts into 5
   Cherries when hit; two that merge burst into 5 between them), Blueberry (counts as 3 fruit for touch checks) and Seed (sprouts a starter when blown up; the Pumpkin Seed is under the Ladder set). Blasts
@@ -401,6 +416,29 @@ the shop is for: Durian that also takes Cherries out scores 1836 and makes the l
 Golden Apple costs a build points (Durian 1521 alone, 1293 with it; Garden 1296 and 1233): its coins buy little more, since
 the shelf seldom has what the build wants. No bot reaches the old count of 10 last rents in 24 even shopping, so that count
 did not come from shopping.
+
+### Glazes, measured (23 November)
+
+`/glaze` makes a bot buy the shop's glaze whenever it can and put it on the fruit it is for; `BALANCE_GLAZE=fizzy` makes every
+shop sell that one. 24 seeds each, chains on, rent ignored; a bot ends a run with about 4 glazed fruit:
+
+| Glaze | Player | A run, no glaze / glaze | Last rent made |
+| --- | --- | --- | --- |
+| Ripe | Never picks | 1372 / 1624 (+18%) | 0 / 6 |
+| Ripe | Pumpkin + Melon | 1473 / 1676 (+14%) | 5 / 10 |
+| Fizzy | Never picks | 1372 / 1516 (+10%) | 0 / 7 |
+| Fizzy | Garden | 1288 / 1425 (+11%) | 1 / 3 |
+| Seeded | Boom | 1394 / 1504 (+8%) | 4 / 8 |
+| Spicy | Never picks | 1372 / 1444 (+5%) | 0 / 0 |
+| Spicy | Boom | 1394 / 1455 (+4%) | 4 / 3 |
+| Anchored | Never picks, Garden, Pumpkin + Melon | +0% to +1% | no change |
+
+Four were tuned down from the first try, which was far stronger: Ripe ripened any ladder fruit (a Ripe Orange landing as a
+Melon: +30% and +33%, the last rent in 11 and 15 runs of 24), then Cherries and Grapes (+25%, +31%), and now only Cherries and
+the Gourd. Fizzy added 2 links (+21%, Garden at x2 in 67% of turns), now 1. Seeded grew back at once, so a Seeded Chili went
+off again in the same settle (Boom +28%); now it grows back at the end of the turn. Spicy's blast scored +6 a fruit and cost
+its build points (it destroys starters that would have merged), now +12. Ripe is still the strongest, and the one to watch
+in playtests. Anchored does nothing for these bots: it is for a garden sharing a jar with Pumpkins, which none of them plays.
 
 ## Looking at it without playing
 

@@ -1,6 +1,8 @@
 import { Entity, useBall, useMutable, useUpdate } from "@tsengine/runtime/jsx";
 
 import { FruitBall } from "./FruitBall.tsx";
+import { GlazeMark } from "./GlazeMark.tsx";
+import type { Glaze } from "./rules/glazes.ts";
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { leanX, leanY } from "./layout.ts";
 import { GRAVITY, JAR, type FruitReport } from "./rules/jar.ts";
@@ -32,6 +34,8 @@ interface FruitProps {
    * jar's own frame, where the walls stand straight. */
   lean: number;
   lit: boolean;
+  /** Its glaze, worn as a badge at its top right. */
+  glaze?: Glaze;
   /** How lit up it is, 0 to 1: something just happened to it or because of it. */
   glow: number;
   /** Each time `kicks` goes up, the ball is pushed by (`kickX`, `kickY`) px/s: a blast. */
@@ -69,7 +73,7 @@ const JUICE_DRAG = 0.12;
  * blowing up). A blast reaches it as a kick through its props. The ball has no angle of its own, so the fruit's turning is
  * drawn from how it moves: it rolls along what it touches.
  */
-export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, held, plunging, surface, pull, flipped, lean, lit, glow, kicks, kickX, kickY, onReport }: FruitProps) {
+export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, held, plunging, surface, pull, flipped, lean, lit, glaze, glow, kicks, kickX, kickY, onReport }: FruitProps) {
   // `turn` is how far it has rolled, in radians; `lastX` where it was a step ago.
   const s = useMutable({ kicked: 0, turn: 0, lastX: x0, lastY: y0, fall: 0, squash: 0, hit: 1, flat: 0 });
   const { x, y, contacts, push, speed, pin, setGravity, setGravityX, stick } = useBall({
@@ -131,6 +135,7 @@ export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, h
   return (
     <Entity x={leanX(x, y, lean, JAR.right, JAR.floor)} y={leanY(x, y, lean, JAR.right, JAR.floor) + sink} scaleX={grow * (1 + s.squash)} scaleY={grow * (1 - s.squash)}>
       <FruitBall kind={kind} x={0} y={0} turn={s.turn + lean} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} />
+      {glaze !== undefined && <GlazeMark glaze={glaze} x={FRUITS[kind].radius * 0.65} y={-FRUITS[kind].radius * 0.65} />}
     </Entity>
   );
 }

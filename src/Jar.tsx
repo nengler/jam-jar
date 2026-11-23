@@ -78,6 +78,7 @@ export function Jar({ run, onReport, lift = 0, angle: drawn }: JarProps) {
           flipped={run.flipped}
           lean={angle}
           lit={f.lit && Math.floor(f.fuse * 20) % 2 === 0}
+          glaze={f.glaze}
           glow={f.pulseDelay > 0 ? 0 : f.pulse / PULSE}
           kicks={f.kicks}
           kickX={f.kickX}

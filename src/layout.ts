@@ -1,5 +1,6 @@
 import { FRUITS, pumpkinSeedText, type FruitKind } from "./rules/fruits.ts";
-import { BOSS_NAME, bossNow, newRun, RENT, type Run } from "./rules/jar.ts";
+import { GLAZES, type Glaze } from "./rules/glazes.ts";
+import { BOSS_NAME, bossNow, newRun, RENT, withGlazes, type Run } from "./rules/jar.ts";
 import { KEYWORDS, keywordsIn } from "./rules/terms.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
@@ -46,13 +47,14 @@ export function atRest(run: Run): boolean {
 /** The moment of a run whose keys a hint row shows, for `learned` in the game's state: "" when there are none to show. */
 export function moment(run: Run): string {
   if (run.phase === "order" || run.phase === "pick" || run.phase === "preserve") return run.phase;
-  if (run.phase === "shop") return run.shop?.removing === true ? "remove" : "shop";
+  if (run.phase === "shop") return run.shop?.removing === true || run.shop?.glazing === true ? "remove" : "shop";
   return "";
 }
 
 /** The run the play screen starts with: the one read from the player's files (a copy: the game state's is not to be changed), or a new one. */
 export function startingRun(saved: unknown, seed: number): Run {
-  return saved === null || saved === undefined ? newRun(seed) : (JSON.parse(JSON.stringify(saved)) as Run);
+  // A run kept before glazes has none: `withGlazes` makes every fruit of it plain.
+  return saved === null || saved === undefined ? newRun(seed) : withGlazes(JSON.parse(JSON.stringify(saved)) as Run);
 }
 
 
@@ -170,6 +172,19 @@ export function ripple(text: string, time: number, seed: number): RippleLetter[]
 /** What a fruit's card says in this run: its text, but a Pumpkin Seed's says what it grows now and when it grows bigger. */
 export function cardText(run: Run, kind: FruitKind): string {
   return kind === "pumpkinseed" ? pumpkinSeedText(run.pumpkinSprouts) : FRUITS[kind].text;
+}
+
+/** A glazed fruit's card: its kind's, then its glaze's keyword, so its tooltip says what the glaze does too. */
+export function glazedText(run: Run, kind: FruitKind, glaze: Glaze | null | undefined): string {
+  return glaze === null || glaze === undefined ? cardText(run, kind) : `${cardText(run, kind)} ${GLAZES[glaze].name}.`;
+}
+
+/** The glazes on a kind's fruit in the pool, in the pool's order: one badge each on the pool board. */
+export function glazesOf(run: Run, kind: FruitKind): Glaze[] {
+  return run.pool.flatMap((k, at) => {
+    const glaze = run.poolGlazes[at] ?? null;
+    return k === kind && glaze !== null ? [glaze] : [];
+  });
 }
 
 export function grownOf(run: Run, kind: FruitKind): number {

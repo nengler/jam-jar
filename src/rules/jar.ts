@@ -12,6 +12,7 @@
  * a kick (a blast), which the fruit's component applies.
  */
 import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
+import { FIZZY_LINKS, GLAZE_KINDS, GLAZE_PRICE, GLAZES, glazeFits, ripened, SPICY, type Glaze } from "./glazes.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
 
@@ -197,12 +198,13 @@ export const REMOVAL_PRICE = 4;
 export const REROLL_PRICE = 1;
 /** How much more each removal costs than the last: thinning the pool is the strongest buy, so it climbs faster than a new shelf. */
 export const REMOVAL_STEP = 2;
-/** The shop's shelf: three fruit and an item, then its three actions. `Shop.cursor` counts across all of them. */
+/** The shop's shelf: three fruit, an item and a glaze, then its three actions. `Shop.cursor` counts across all of them. */
 export const SHOP_FRUITS = 3;
 export const SHOP_ITEM = SHOP_FRUITS;
-export const SHOP_REMOVE = SHOP_ITEM + 1;
-export const SHOP_REROLL = SHOP_ITEM + 2;
-export const SHOP_LEAVE = SHOP_ITEM + 3;
+export const SHOP_GLAZE = SHOP_ITEM + 1;
+export const SHOP_REMOVE = SHOP_GLAZE + 1;
+export const SHOP_REROLL = SHOP_GLAZE + 2;
+export const SHOP_LEAVE = SHOP_GLAZE + 3;
 
 /** The shop between two cycles. */
 export interface Shop {
@@ -210,6 +212,10 @@ export interface Shop {
   fruits: (FruitKind | null)[];
   /** The item for sale: null once bought, or when every item is owned. */
   item: ItemKind | null;
+  /** The glaze for sale: null once bought. */
+  glaze: Glaze | null;
+  /** Choosing which fruit the glaze bought goes on: `removeCursor` is a row of `glazeKinds`. */
+  glazing: boolean;
   cursor: number;
   /** Choosing which fruit to take out of the pool: `removeCursor` is a row of `poolKinds`. */
   removing: boolean;
@@ -252,6 +258,10 @@ export interface Fruit {
   fuse: number;
   /** Lit by another blast (a chain of Blasts). */
   setOff?: boolean;
+  /** Its glaze (glazes.ts), dealt with it from the pool. */
+  glaze?: Glaze;
+  /** A fruit a Spicy one's Merge made, lit: its blast spares it, and then it is a plain fruit again. */
+  flare?: boolean;
   /** Made this turn by a Merge of pieces (two Slices): it cannot Merge again until the turn is scored, so merge up, smash down
    * cannot chain for ever in one settle (the design doc's loop cap). */
   remerged?: boolean;
@@ -281,8 +291,8 @@ export interface Popup {
   points: number;
   /** Drawn at twice the size: a Plunge's burst. */
   big?: boolean;
-  /** A tally score that added a link to the chain: the chain on screen counts it once it shows (`shownLinks`). */
-  link?: boolean;
+  /** A tally score's links of the chain (its own, and a Fizzy fruit's): the chain on screen counts them once it shows (`shownLinks`). */
+  links?: number;
   /** Shows without a sound: the chain's line at the end of a turn. */
   quiet?: boolean;
 }
@@ -321,6 +331,15 @@ export interface Run {
   boss: Boss;
   /** Every fruit you own. */
   pool: FruitKind[];
+  /**
+   * The glaze on each fruit of the pool (`pool`'s order), and on each still to be dealt, dealt, in the hand and dropping: the
+   * same order as `draw`, `discard`, `hand` and `queue`. null for a plain fruit.
+   */
+  poolGlazes: (Glaze | null)[];
+  drawGlazes: (Glaze | null)[];
+  discardGlazes: (Glaze | null)[];
+  handGlazes: (Glaze | null)[];
+  queueGlazes: (Glaze | null)[];
   /** Still to be dealt this shuffle, top first. */
   draw: FruitKind[];
   /** Dealt this shuffle. */
@@ -387,6 +406,8 @@ export interface Run {
   chainLinks: number;
   bestChain: number;
   chains: number[];
+  /** Seeded fruit destroyed this turn: a plain one of each grows back where it was at the end of the turn (`regrowSeeded`). */
+  regrowing: { kind: FruitKind; x: number; y: number }[];
   sinceBlast: number;
   blasted: number;
   /** While the tally plays: the seconds left of it, the phase that follows, and the sound that goes with that. */
@@ -493,6 +514,11 @@ export function newRun(seed: number): Run {
     draw: rng.shuffle(pool),
     discard: [],
     hand: [],
+    poolGlazes: pool.map(() => null),
+    drawGlazes: pool.map(() => null),
+    discardGlazes: [],
+    handGlazes: [],
+    queueGlazes: [],
     cursor: 0,
     holding: false,
     queue: [],
@@ -532,6 +558,7 @@ export function newRun(seed: number): Run {
     chainLinks: 0,
     bestChain: 0,
     chains: [],
+    regrowing: [],
     sinceBlast: 0,
     blasted: 0,
     tallyTime: 0,
@@ -562,6 +589,11 @@ function copy(run: Run): Run {
     discard: run.discard.slice(),
     hand: run.hand.slice(),
     queue: run.queue.slice(),
+    poolGlazes: run.poolGlazes.slice(),
+    drawGlazes: run.drawGlazes.slice(),
+    discardGlazes: run.discardGlazes.slice(),
+    handGlazes: run.handGlazes.slice(),
+    queueGlazes: run.queueGlazes.slice(),
     fruits: run.fruits.map((f) => ({ ...f })),
     items: run.items.slice(),
     kept: run.kept.slice(),
@@ -571,25 +603,69 @@ function copy(run: Run): Run {
     links: run.links.map((l) => ({ ...l })),
     effects: run.effects.map((e) => ({ ...e })),
     chains: run.chains.slice(),
+    regrowing: run.regrowing.map((r) => ({ ...r })),
     sounds: [],
   };
+}
+
+/** Shuffle fruit and their glazes together: the glazes in the same order as the fruit. */
+function shuffleGlazed(rng: Rng, kinds: readonly FruitKind[], glazes: readonly (Glaze | null)[]): { kinds: FruitKind[]; glazes: (Glaze | null)[] } {
+  const cards = rng.shuffle(kinds.map((kind, at) => ({ kind, glaze: glazes[at] ?? null })));
+  return { kinds: cards.map((c) => c.kind), glazes: cards.map((c) => c.glaze) };
+}
+
+/**
+ * A run saved before glazes had none: every fruit of it is plain. (A run is kept between launches as it was, so one from before
+ * a rule was added lacks its fields.)
+ */
+export function withGlazes(run: Run): Run {
+  const plain = (kinds: readonly FruitKind[], glazes: readonly (Glaze | null)[] | undefined) => (glazes !== undefined && glazes.length === kinds.length ? glazes.slice() : kinds.map(() => null));
+  return {
+    ...run,
+    poolGlazes: plain(run.pool, run.poolGlazes),
+    drawGlazes: plain(run.draw, run.drawGlazes),
+    discardGlazes: plain(run.discard, run.discardGlazes),
+    handGlazes: plain(run.hand, run.handGlazes),
+    queueGlazes: plain(run.queue, run.queueGlazes),
+    regrowing: run.regrowing ?? [],
+    shop: run.shop === null ? null : { ...run.shop, glaze: run.shop.glaze ?? null, glazing: run.shop.glazing ?? false },
+  };
+}
+
+/**
+ * The hand in another order (the balance bots arrange it so): each fruit keeps its glaze, a glazed one of a kind going where the
+ * first of that kind goes.
+ */
+export function arrangeHand(run: Run, hand: readonly FruitKind[]): void {
+  const left = run.hand.map((kind, at) => ({ kind, glaze: run.handGlazes[at] ?? null }));
+  run.handGlazes = hand.map((kind) => {
+    const at = left.findIndex((c) => c.kind === kind);
+    return at < 0 ? null : (left.splice(at, 1)[0] as { glaze: Glaze | null }).glaze;
+  });
+  run.hand = hand.slice();
 }
 
 function deal(run: Run): void {
   const rng = new Rng(run.seed);
   run.hand = [];
+  run.handGlazes = [];
   // The hand fills the shelf's places: a Wide fruit takes two. One that would not fit in the places left stays on top for the
   // next hand, and the first fruit under it that does fit is dealt instead, so the hand is short only when none left would fit.
   let used = 0;
   while (used < HAND_SIZE) {
     if (run.draw.length === 0) {
-      run.draw = rng.shuffle(run.discard);
+      const shuffled = shuffleGlazed(rng, run.discard, run.discardGlazes);
+      run.draw = shuffled.kinds;
+      run.drawGlazes = shuffled.glazes;
       run.discard = [];
+      run.discardGlazes = [];
     }
     const at = run.draw.findIndex((kind) => used + slotsOf(kind) <= HAND_SIZE);
     if (at < 0) break;
     const [next] = run.draw.splice(at, 1) as [FruitKind];
+    const [glaze] = run.drawGlazes.splice(at, 1);
     run.hand.push(next);
+    run.handGlazes.push(glaze ?? null);
     used += slotsOf(next);
   }
   run.seed = rng.seed;
@@ -685,7 +761,7 @@ function addLink(run: Run): void {
 
 /** The chain as the screen shows it: without the links of the tally's popups still to come. */
 export function shownLinks(run: Run): number {
-  return run.chainLinks - run.popups.filter((p) => p.delay > 0 && p.link === true).length;
+  return run.chainLinks - run.popups.reduce((sum, p) => sum + (p.delay > 0 ? (p.links ?? 0) : 0), 0);
 }
 
 /** Draw a line from one fruit to another for a moment. Returns it, so the tally can time it. */
@@ -808,8 +884,12 @@ function earn(run: Run, links: readonly number[][], i: number, points: number, l
   if (f === undefined) return null;
   // Doubled by a Lemon it touches, or by Coconut milk it sits in (once, not twice over).
   const doubled = boosted(run.fruits, links, i) || (run.milk && soaked(run, f));
-  const popup = score(run, points * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled, earner: FRUITS[f.kind].name, chained });
+  // A Fizzy fruit's score adds links of its own first, so it can lift itself to the next tier.
+  const fizzy = f.glaze === "fizzy" && points > 0;
+  if (fizzy) for (let k = 0; k < FIZZY_LINKS; k++) addLink(run);
+  const popup = score(run, points * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled, earner: FRUITS[f.kind].name, chained: chained || fizzy });
   if (popup === null) return null;
+  if (fizzy) popup.links = (popup.links ?? 0) + FIZZY_LINKS;
   const boosters = doubled ? neighbours(run.fruits, links, i).filter((o) => o.kind === "lemon") : [];
   const fruits = [f, ...boosters];
   for (const o of fruits) pulse(o);
@@ -919,6 +999,8 @@ function order(run: Run, keys: Keys): void {
     if (run.holding) {
       const held = run.hand.splice(run.cursor, 1)[0] as FruitKind;
       run.hand.splice(to, 0, held);
+      const heldGlaze = run.handGlazes.splice(run.cursor, 1)[0] ?? null;
+      run.handGlazes.splice(to, 0, heldGlaze);
       sound(run, "move");
     } else sound(run, "tick");
     run.cursor = to;
@@ -929,7 +1011,9 @@ function order(run: Run, keys: Keys): void {
   }
   if (keys.drop && run.hand.length > 0) {
     run.queue = run.hand;
+    run.queueGlazes = run.handGlazes;
     run.hand = [];
+    run.handGlazes = [];
     run.holding = false;
     run.chainLinks = 0;
     run.dropTimer = 0;
@@ -987,26 +1071,36 @@ function flipDue(run: Run): boolean {
 function trayRelease(run: Run, flip: boolean): void {
   if (bossNow(run) === "blind") {
     const shuffler = new Rng(run.seed);
-    run.queue = shuffler.shuffle(run.queue);
+    const shuffled = shuffleGlazed(shuffler, run.queue, run.queueGlazes);
+    run.queue = shuffled.kinds;
+    run.queueGlazes = shuffled.glazes;
     run.seed = shuffler.seed;
   }
   const lanes = Math.max(HAND_SIZE, handSlots(run.queue));
   const width = (JAR.right - JAR.left) / lanes;
   const places = shelfPlaces(run.queue);
   const rng = new Rng(run.seed);
-  run.queue.forEach((kind, at) => {
-    const r = FRUITS[kind].radius;
+  run.queue.forEach((dealt, at) => {
+    const glaze = run.queueGlazes[at] ?? null;
+    // A Ripe fruit lands one size bigger, as a plain fruit of that size: it has changed, so the glaze stays in the pool.
+    const kind = glaze === "ripe" ? (ripened(dealt) ?? dealt) : dealt;
+    const r = dealt === "gourd" && glaze === "ripe" ? (GOURD_SIZES[1] as number) : FRUITS[kind].radius;
     // A Wide fruit drops down the middle of its two lanes.
     const place = places[at] as { start: number; span: number };
     const middle = JAR.left + width * (place.start + place.span / 2);
     const x = Math.max(JAR.left + r, Math.min(JAR.right - r, middle + spot(rng, -TRAY.wobble, TRAY.wobble)));
     const y = !flip ? DROP_Y : run.flipped ? JAR.floor - r - 2 : RIM + r + 2;
-    run.fruits.push(makeFruit(run, kind, x, y));
+    const made = makeFruit(run, kind, x, y);
+    if (kind === "gourd") made.r = r;
+    if (glaze !== null && glaze !== "ripe") made.glaze = glaze;
+    run.fruits.push(made);
     run.drops += 1;
-    run.discard.push(kind);
+    run.discard.push(dealt);
+    run.discardGlazes.push(glaze);
   });
   run.seed = rng.seed;
   run.queue = [];
+  run.queueGlazes = [];
   run.dropTimer = DROP_GAP;
   run.dropWait = 0;
   run.calmTime = 0;
@@ -1124,7 +1218,8 @@ function plungeStep(run: Run, dt: number): void {
         p.plunging = 0;
         continue;
       }
-      if (o.kind === "giantpumpkin" || o.kind === "pumpkin") continue;
+      // An Anchored fruit is neither Smashed nor thrown: the Plunge goes on past it.
+      if (o.kind === "giantpumpkin" || o.kind === "pumpkin" || o.glaze === "anchored") continue;
       const side = o.x === p.x ? (o.id % 2 === 0 ? 1 : -1) : Math.sign(o.x - p.x);
       if (smashable(o)) {
         p.burst = (p.burst ?? 0) + Math.round(smashWorth(o) * PLUNGE_PAY);
@@ -1151,7 +1246,7 @@ function plungeStep(run: Run, dt: number): void {
       // Down: what is round it is shoved away.
       p.plunging = 0;
       for (const o of run.fruits) {
-        if (o === p || o.frozen) continue;
+        if (o === p || o.frozen || o.glaze === "anchored") continue;
         const dx = o.x - p.x;
         const dy = o.y - p.y;
         const d = Math.max(1, Math.hypot(dx, dy));
@@ -1198,6 +1293,27 @@ const SMASH_INTO: Readonly<Partial<Record<FruitKind, FruitKind>>> = { melon: "or
 /** Whether a Smash breaks this fruit into pieces: a Grape, Orange, Melon or Watermelon. */
 function smashable(f: Fruit): boolean {
   return f.kind === "watermelon" || SMASH_INTO[f.kind] !== undefined;
+}
+
+/**
+ * A Seeded fruit destroyed: a plain one of its kind grows back where it was at the end of the turn (`regrowSeeded`). Growing
+ * back at once let a Seeded Chili go off again in the same settle, which made Boom a third stronger with the bots.
+ */
+function regrow(run: Run, f: Fruit): void {
+  run.regrowing.push({ kind: f.kind, x: f.x, y: f.y });
+}
+
+/** The end of the turn: each Seeded fruit destroyed in it grows back, plain and landed. Each is a Sprout, so a link of the chain. */
+function regrowSeeded(run: Run, tally: Tally): void {
+  for (const r of run.regrowing) {
+    const grown = makeFruit(run, r.kind, inside(r.x, FRUITS[r.kind].radius), r.y);
+    grown.landed = true;
+    addLink(run);
+    stage(tally, null, [grown], []);
+    run.fruits.push(grown);
+  }
+  if (run.regrowing.length > 0) run.message = `Seeded: ${run.regrowing.length === 1 ? "a fruit grows" : `${run.regrowing.length} fruit grow`} back`;
+  run.regrowing = [];
 }
 
 /** A Seed's Sprout: a Cherry, Grape or Orange where it was, already landed. */
@@ -1265,12 +1381,15 @@ function copyKiwis(run: Run): void {
     if (f.kind !== "kiwi") return f;
     const on = neighbours(run.fruits, near, i).find((o) => o.landed && o.kind !== "kiwi" && o.kind !== "giantpumpkin");
     if (on === undefined) return f;
-    return makeFruit(run, on.kind, f.x, f.y);
+    // It copies the glaze too; its own, if it had one, goes with what it was.
+    const copied = makeFruit(run, on.kind, f.x, f.y);
+    if (on.glaze !== undefined) copied.glaze = on.glaze;
+    return copied;
   });
 }
 
 function canMerge(f: Fruit): boolean {
-  return f.landed && f.remerged !== true && (FRUITS[f.kind].mergesInto !== undefined || f.kind === "pomegranate");
+  return f.landed && f.remerged !== true && !f.lit && (FRUITS[f.kind].mergesInto !== undefined || f.kind === "pomegranate");
 }
 
 function merge(run: Run): void {
@@ -1317,6 +1436,12 @@ function merge(run: Run): void {
         f.rotten = f.rotten || a.rotten || b.rotten;
         // Made from pieces of a Smashed Watermelon: it has re-merged once, and waits for the next turn to Merge again.
         f.remerged = a.piece === true || b.piece === true;
+        // A Spicy fruit's Merge goes off: what it made is lit, and its blast spares it.
+        if (a.glaze === "spicy" || b.glaze === "spicy") {
+          f.lit = true;
+          f.fuse = SPICY.fuse;
+          f.flare = true;
+        }
         pulse(f);
         born.push(f);
         score(run, FRUITS[into].points, mx, my - f.r, { label: "Merge", chained: true });
@@ -1339,13 +1464,13 @@ const SHOCK_PUSH = 520;
 /** A Giant Pumpkin's Shockwave: every fruit near it is thrown away from it (frozen ones hold), and each Watermelon caught is Smashed. */
 function shockwave(run: Run, giant: Fruit): void {
   const caught = run.fruits.filter((f) => f !== giant && Math.hypot(f.x - giant.x, f.y - giant.y) < SHOCK_RADIUS + f.r);
-  const smashed = caught.filter((f) => smashable(f) && !f.frozen);
+  const smashed = caught.filter((f) => smashable(f) && !f.frozen && f.glaze !== "anchored");
   // The Shockwave is a trigger of its own, set off by the Merge, when it Smashes something.
   if (smashed.length > 0) addLink(run);
   const born = smashed.flatMap((w) => smash(run, w));
   run.fruits = [...run.fruits.filter((f) => !smashed.includes(f)), ...born];
   for (const f of run.fruits) {
-    if (f === giant || f.frozen) continue;
+    if (f === giant || f.frozen || f.glaze === "anchored") continue;
     const dx = f.x - giant.x;
     const dy = f.y - giant.y;
     const d = Math.max(1, Math.hypot(dx, dy));
@@ -1465,7 +1590,9 @@ export const BLAST_RADIUS: Readonly<Partial<Record<FruitKind, number>>> = { chil
 export const BLAST_BONUS: Readonly<Partial<Record<FruitKind, number>>> = { chili: 10, durian: 14 };
 
 function explode(run: Run, bomb: Fruit): void {
-  const radius = BLAST_RADIUS[bomb.kind] ?? 48;
+  const spicy = bomb.flare === true;
+  const radius = spicy ? SPICY.radius : (BLAST_RADIUS[bomb.kind] ?? 48);
+  const bonus = spicy ? SPICY.bonus : (BLAST_BONUS[bomb.kind] ?? 0);
   // One link for the blast, however many fruit it destroys; what it sets off (a Sprout, another blast) adds its own.
   // A blast another set off counts double.
   for (let k = 0; k < (bomb.setOff === true ? SET_OFF_LINKS : 1); k++) addLink(run);
@@ -1510,7 +1637,8 @@ function explode(run: Run, bomb: Fruit): void {
     const smashing = f.kind === "watermelon";
     const value = FRUITS[f.kind].scoring === "booster" || f.rotten || smashing ? 0 : FRUITS[f.kind].points;
     if (smashing) born.push(...smash(run, f));
-    points += (value + (BLAST_BONUS[bomb.kind] ?? 0)) * (doubled.has(f.id) ? 2 : 1);
+    points += (value + bonus) * (doubled.has(f.id) ? 2 : 1);
+    if (f.glaze === "seeded") regrow(run, f);
     if (f.kind === "pomegranate") born.push(...burst(run, f.x, f.y));
     if (f.kind === "fig" && f.rotten) figs += 1;
     if (f.kind === "lime") limes += 1;
@@ -1528,6 +1656,12 @@ function explode(run: Run, bomb: Fruit): void {
     const push = 320 * (1 - d / (radius * 2));
     kick(f, (dx / d) * push, (dy / d) * push - 80);
   }
+  if (spicy) {
+    // A Spicy Merge's blast: the fruit it made stays, a plain fruit now.
+    bomb.lit = false;
+    bomb.flare = false;
+    kept.push(bomb);
+  } else if (bomb.glaze === "seeded") regrow(run, bomb);
   run.fruits = [...kept, ...born];
   score(run, points, bomb.x, bomb.y - radius / 2, { label: "Explode", chained: true });
   run.chain += 1;
@@ -1535,7 +1669,7 @@ function explode(run: Run, bomb: Fruit): void {
   run.blasted = victims.length;
   effect(run, "boom", bomb.x, bomb.y, radius * 2);
   sound(run, "boom");
-  run.message = `${FRUITS[bomb.kind].name} Exploded: ${victims.length} fruit destroyed`;
+  run.message = spicy ? `A Spicy Merge Exploded: ${victims.length} fruit destroyed` : `${FRUITS[bomb.kind].name} Exploded: ${victims.length} fruit destroyed`;
   if (limes > 0) {
     pour(run, "lime", limes * LIME_JUICE);
     run.message = `${FRUITS[bomb.kind].name} Exploded ${limes === 1 ? "a Lime" : `${limes} Limes`}: lime juice rises`;
@@ -1583,6 +1717,7 @@ function juicerCrush(run: Run): void {
     payGolden(run, f);
   }
   if (crushed.length === 0) return;
+  for (const f of crushed) if (f.glaze === "seeded") regrow(run, f);
   run.fruits = run.fruits.filter((f) => !crushed.includes(f));
   run.message = `Juicer: ${crushed.length} fruit Crushed`;
   const limes = crushed.filter((f) => f.kind === "lime").length;
@@ -1615,7 +1750,7 @@ function simmer(run: Run, tally: Tally): void {
     if (points > 0) addLink(run);
     const earned = earn(run, near, i, points, undefined, true);
     if (earned === null) return;
-    earned.popup.link = true;
+    earned.popup.links = (earned.popup.links ?? 0) + 1;
     // A Prune's score is for the rot round it: a line from each rotten neighbour.
     const rot = f.kind === "prune" ? touched.filter((o) => o.rotten).map((o) => link(run, "rot", o, f)) : [];
     stage(tally, earned.popup, earned.fruits, [...earned.links, ...rot]);
@@ -1634,7 +1769,7 @@ function fruitFliesEat(run: Run, tally: Tally): void {
     eaten.add(meal.id);
     addLink(run);
     const earned = earn(run, near, i, FRUITS.fruitfly.points, "Eat", true);
-    if (earned !== null) earned.popup.link = true;
+    if (earned !== null) earned.popup.links = (earned.popup.links ?? 0) + 1;
     stage(tally, earned?.popup ?? null, earned?.fruits ?? [f], [link(run, "eat", f, meal), ...(earned?.links ?? [])]);
     const fly = makeFruit(run, "fruitfly", meal.x, meal.y);
     fly.landed = true;
@@ -1722,6 +1857,7 @@ function uncap(run: Run): void {
 const END_OF_TURN: readonly ((run: Run, tally: Tally) => void)[] = [
   spillOver,
   juicerCrush,
+  regrowSeeded,
   simmer,
   fruitFliesEat,
   pitayasEat,
@@ -1846,9 +1982,12 @@ function pickStep(run: Run, keys: Keys): void {
   if (keys.confirm && !pointed && run.offerCursor >= 0) {
     const kind = run.offers[run.offerCursor] as FruitKind;
     run.pool.push(kind);
+    run.poolGlazes.push(null);
     // Shuffled into what is still to be dealt, so a new fruit shows up soon.
     const rng = new Rng(run.seed);
-    run.draw.splice(rng.int(0, run.draw.length), 0, kind);
+    const at = rng.int(0, run.draw.length);
+    run.draw.splice(at, 0, kind);
+    run.drawGlazes.splice(at, 0, null);
     run.seed = rng.seed;
     run.message = `${FRUITS[kind].name} added to your pool`;
     sound(run, "pick");
@@ -1888,7 +2027,7 @@ function leaveRent(run: Run): void {
     run.message = "You paid every rent. The jar is yours!";
     return;
   }
-  run.shop = { fruits: [], item: null, cursor: -1, removing: false, removeCursor: -1 };
+  run.shop = { fruits: [], item: null, glaze: null, cursor: -1, removing: false, glazing: false, removeCursor: -1 };
   stock(run, run.shop);
   run.phase = "shop";
   const next = bossNow(run, run.cycle + 1);
@@ -1903,6 +2042,21 @@ function stock(run: Run, shop: Shop): void {
   const choices = offerable(run.items);
   shop.item = choices.length === 0 ? null : rng.pick(choices);
   run.seed = rng.seed;
+  // The glaze comes from a draw of its own, so adding it changed nothing else the run's seed decides.
+  shop.glaze = new Rng(run.seed * 31 + run.cycle).pick(GLAZE_KINDS);
+}
+
+/** The kinds in the pool a glaze can go on, in the pool board's order: those it fits (`glazeFits`) with a plain fruit left. */
+export function glazeKinds(run: Run, glaze: Glaze): FruitKind[] {
+  return poolKinds(run.pool).filter((kind) => glazeFits(glaze, kind) && run.pool.some((k, at) => k === kind && run.poolGlazes[at] === null));
+}
+
+/** Put a glaze on a plain fruit of this kind in the pool (the first). Returns false if there is none. */
+export function glazeOne(run: Run, kind: FruitKind, glaze: Glaze): boolean {
+  const at = run.pool.findIndex((k, i) => k === kind && run.poolGlazes[i] === null);
+  if (at < 0) return false;
+  run.poolGlazes[at] = glaze;
+  return true;
 }
 
 /** Pay `price` coins if the run has them; says so and returns false if not. */
@@ -1921,6 +2075,28 @@ function shopStep(run: Run, keys: Keys): void {
   if (shop === null) return;
   const across = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
   const down = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+  if (shop.glazing && shop.glaze !== null) {
+    // As taking a fruit out: a tap or an arrow chooses a kind, and Enter (or the dialog's button) puts the glaze on it.
+    const glaze = shop.glaze;
+    const kinds = glazeKinds(run, glaze);
+    const pointed = keys.point >= 0 && keys.point < kinds.length;
+    const step = across + down;
+    const to = pointed ? keys.point : shop.removeCursor < 0 ? (step !== 0 ? 0 : -1) : Math.max(0, Math.min(kinds.length - 1, shop.removeCursor + step));
+    if (to !== shop.removeCursor) sound(run, "tick");
+    shop.removeCursor = to;
+    if (keys.confirm && !pointed && shop.removeCursor >= 0) {
+      const kind = kinds[shop.removeCursor] as FruitKind;
+      if (pay(run, GLAZE_PRICE) && glazeOne(run, kind, glaze)) {
+        run.message = `A ${GLAZES[glaze].name} ${FRUITS[kind].name} is in your pool`;
+        sound(run, "pick");
+        shop.glaze = null;
+        shop.glazing = false;
+      }
+    } else if (keys.drop) {
+      shop.glazing = false;
+    }
+    return;
+  }
   if (shop.removing) {
     const kinds = poolKinds(run.pool);
     // Nothing is chosen at first (-1). A tap on a kind only chooses it, so the player sees which it is before it goes; what takes
@@ -1934,7 +2110,11 @@ function shopStep(run: Run, keys: Keys): void {
       const kind = kinds[shop.removeCursor] as FruitKind;
       if (pay(run, removalPrice(run))) {
         run.removals += 1;
-        run.pool.splice(run.pool.indexOf(kind), 1);
+        // A plain one goes, if there is one: a glaze was bought for the fruit it is on.
+        const plain = run.pool.findIndex((k, at) => k === kind && run.poolGlazes[at] === null);
+        const at = plain >= 0 ? plain : run.pool.indexOf(kind);
+        run.pool.splice(at, 1);
+        run.poolGlazes.splice(at, 1);
         run.message = `${FRUITS[kind].name} taken out of your pool`;
         sound(run, "pick");
         shop.removing = false;
@@ -1950,14 +2130,14 @@ function shopStep(run: Run, keys: Keys): void {
   // As in the pick: nothing is chosen at first (-1), an arrow goes to the first card, and a tap on a card only chooses it, so it
   // can be read before it is bought; Enter or the "Buy" button buys it. The three actions say all they do, and act on one tap.
   const pointed = keys.point >= 0 && keys.point <= SHOP_LEAVE;
-  const onCard = pointed && keys.point <= SHOP_ITEM;
+  const onCard = pointed && keys.point <= SHOP_GLAZE;
   // As in the pick, a tap anywhere else leaves nothing chosen, and so does a tap on the card already chosen.
   const again = onCard && keys.confirm && keys.point === shop.cursor;
   if (keys.away === true || again) shop.cursor = -1;
   let to = again ? -1 : pointed ? keys.point : shop.cursor < 0 ? (across !== 0 || down !== 0 ? 0 : -1) : Math.max(0, Math.min(SHOP_LEAVE, shop.cursor + across));
   if (shop.cursor >= 0 && !pointed) {
-    if (down > 0 && to <= SHOP_ITEM) to = SHOP_REMOVE + Math.min(2, Math.floor((to * 3) / (SHOP_ITEM + 1)));
-    else if (down < 0 && to > SHOP_ITEM) to = Math.round(((to - SHOP_REMOVE) * SHOP_ITEM) / 2);
+    if (down > 0 && to <= SHOP_GLAZE) to = SHOP_REMOVE + Math.min(2, Math.floor((to * 3) / (SHOP_GLAZE + 1)));
+    else if (down < 0 && to > SHOP_GLAZE) to = Math.round(((to - SHOP_REMOVE) * SHOP_GLAZE) / 2);
   }
   if (to !== shop.cursor) sound(run, "tick");
   shop.cursor = to;
@@ -1971,6 +2151,7 @@ function shopStep(run: Run, keys: Keys): void {
     const kind = shop.fruits[shop.cursor];
     if (kind == null || !pay(run, FRUIT_PRICE)) return;
     run.pool.push(kind);
+    run.poolGlazes.push(null);
     shop.fruits[shop.cursor] = null;
     run.message = `${FRUITS[kind].name} added to your pool`;
     sound(run, "pick");
@@ -1983,6 +2164,19 @@ function shopStep(run: Run, keys: Keys): void {
     run.message = `You own the ${ITEMS[shop.item].name}`;
     shop.item = null;
     sound(run, "pick");
+  } else if (shop.cursor === SHOP_GLAZE) {
+    // The glaze is paid for once it is on a fruit, so backing out of choosing one costs nothing.
+    if (shop.glaze === null) return;
+    if (run.coins < GLAZE_PRICE) {
+      pay(run, GLAZE_PRICE);
+    } else if (glazeKinds(run, shop.glaze).length === 0) {
+      run.message = `Nothing in your pool can take a ${GLAZES[shop.glaze].name} glaze`;
+      sound(run, "lose");
+    } else {
+      shop.glazing = true;
+      shop.removeCursor = -1;
+      run.message = `Put the ${GLAZES[shop.glaze].name} glaze on which fruit?`;
+    }
   } else if (shop.cursor === SHOP_REMOVE) {
     if (run.pool.length <= HAND_SIZE) {
       run.message = `Your pool needs at least ${HAND_SIZE} fruit`;
@@ -2090,8 +2284,11 @@ function nextCycle(run: Run): void {
   if (run.items.includes("pickling")) for (const f of run.fruits) Object.assign(f, { pickled: true, rotten: f.kind === "prune" });
   run.kept = [];
   const rng = new Rng(run.seed);
-  run.draw = rng.shuffle(run.pool);
+  const shuffled = shuffleGlazed(rng, run.pool, run.poolGlazes);
+  run.draw = shuffled.kinds;
+  run.drawGlazes = shuffled.glazes;
   run.discard = [];
+  run.discardGlazes = [];
   run.seed = rng.seed;
   const boss = bossNow(run);
   run.message = boss === null ? `Cycle ${run.cycle}: rent is ${rentFor(run.cycle)}` : `The ${BOSS_NAME[boss]}! ${BOSS_RULE[boss]} Rent is ${rentFor(run.cycle)}`;
