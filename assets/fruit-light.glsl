@@ -1,8 +1,13 @@
-// The fruit's light: from the top right of the screen, wherever a fruit has rolled to. A fruit drawn flat (FLAT_FRUIT in
+// The fruit's light: from the top left of the screen (as the fruit are painted), wherever a fruit has rolled to. A fruit drawn flat (FLAT_FRUIT in
 // src/theme.ts) is shaded here, by steps of the light table (`lookup`, assets/light.png from art/palette/light.aseprite): a row
 // per palette colour, two steps of shadow on the left, the colour itself in the middle, a step of light and then the shine on
 // the right. A colour is only ever swapped for another from its row, so the fruit stays in the palette, colder in shadow and
 // warmer in the light.
+//
+// A fruit with a painted shading layer (art/fruit/README.md) is shaded from that painting: the step map beside its picture says
+// how many steps lighter or darker each painted pixel is, and it is laid over the turned fruit unturned, each part's about its own
+// middle, so the painted highlights and lowlights stay put on the screen. Where the painting has nothing (a long fruit turned past
+// what was painted), and at the turned edge, the rules below shade it from its shape instead.
 //
 // It is shaded as the placeholder fruit were painted (the old Apple most of all). Each art pixel (2 x 2 of the picture's) is one
 // step, so the light falls in whole pixels.
@@ -26,7 +31,8 @@
 // params[2]: how much shine (0.12; 0 for none); params[3]: the clear margin round the fruit in its picture, in pixels each side
 // (FRUIT_PAD), so the ball and how far it looks for edges go by the fruit and not by its picture.
 
-const vec2 SCREEN_LIGHT = vec2(1.0, -1.0);
+// The light comes from the top left of the screen, as the fruit's shading is painted.
+const vec2 SCREEN_LIGHT = vec2(-1.0, -1.0);
 // The colours the flat fruit keep for their outline and their stems.
 const vec3 OUTLINE = vec3(36.0, 21.0, 39.0) / 255.0;
 const vec3 STEM = vec3(77.0, 43.0, 50.0) / 255.0;
@@ -144,6 +150,30 @@ bool solidBlock(vec2 o) {
   return blockAt(o).a > 0.5;
 }
 
+// The step map beside the picture, at `m` (the picture's pixels from the region's corner): clear outside it.
+vec4 mapAt(vec2 m) {
+  if (any(lessThan(m, vec2(0.0))) || any(greaterThanEqual(m, region.zw))) return vec4(0.0);
+  return texture(image, (region.xy + vec2(region.z, 0.0) + m) / size);
+}
+
+// The middle of the part the map's pixel `p` (read at `m`) is in: it stores the way there, 4 to an art pixel from 128.
+vec2 partMiddle(vec4 p, vec2 m) {
+  return m + (p.gb * 255.0 - 128.0) / 4.0 * 2.0;
+}
+
+// The painted step at the art pixel `at` (in the picture's pixels from the region's corner): the step map read where `at` would
+// be with its part turned back about its own middle, so each part's painted light stays put on the screen as the fruit turns
+// under it, a cherry's or a berry's on that cherry or berry. Below -2 where the turned part reaches past what was painted of it.
+int paintedStep(vec2 at) {
+  vec4 own = mapAt(at);
+  if (own.a < 0.5) return -9;
+  vec2 middle_ = partMiddle(own, at);
+  vec2 m = floor((middle_ + turn * (at - middle_)) / 2.0) * 2.0 + 1.0;
+  vec4 p = mapAt(m);
+  if (p.a < 0.5 || length(partMiddle(p, m) - middle_) > 3.0) return -9;
+  return int(floor((p.r * 255.0 - 128.0) / 32.0 + 0.5));
+}
+
 vec4 effect(vec2 uv) {
   // Drawn in whole art pixels on the screen's grid, turned or not: each 2 x 2 block of the screen takes the fruit's colour at
   // its middle, as if the game were drawn at 320 x 180. A fruit turned part way otherwise breaks its edge into half-pixel teeth,
@@ -199,19 +229,21 @@ vec4 effect(vec2 uv) {
   // The middle of this art pixel, in the picture's pixels from the region's corner.
   vec2 at = inRegion;
   at = floor(at / 2.0) * 2.0 + 1.0;
-  // The light, in the picture: the screen's top right, turned back by how the fruit is turned; as it falls from the front.
+  // The light, in the picture: the screen's top left, turned back by how the fruit is turned; as it falls from the front.
   vec2 toward = normalize(transpose(turn) * SCREEN_LIGHT);
   vec3 light = normalize(vec3(toward, 0.9));
 
   // A stem: a dark stalk.
-  if (same(c.rgb, STEM)) return vec4(stepOf(rowOf(STEM), -1), c.a);
+  if (same(c.rgb, STEM)) return vec4(stepOf(rowOf(STEM), -2), c.a);
 
   vec3 normal = normalAt(at);
   float facing = dot(normal, light) * params[0];
 
   // The edge on the screen: the outline, a dark step of the fruit's colour, the first (crimson on a red fruit) where it faces the
   // light and the darkest (violet) along the side away from it, as the old Apple's outline is.
-  if (asEdge) return vec4(stepOf(row, facing > OUTLINE_TURN ? -1 : -2), c.a);
+  int painted = paintedStep(at);
+  // The painted outline where the painting has one there; else by how the edge faces the light.
+  if (asEdge) return vec4(stepOf(row, painted >= -2 && painted <= -1 ? painted : facing > OUTLINE_TURN ? -1 : -2), c.a);
 
   // The outline: a dark step of the colour beside it, the first where it faces the light, the darkest where it does not.
   if (same(c.rgb, OUTLINE)) {
@@ -264,6 +296,8 @@ vec4 effect(vec2 uv) {
   // and wide where it faces away from the light, thin where it faces it. So the shadows hug the fruit's shape.
   float level = inside * BAND_IN + facing * BAND_FACING + BAND_FROM;
   int step = level > 0.6 ? 1 : level > -0.2 ? 0 : level > DARKEST ? -1 : -2;
+  // The painting, where there is one: its highlights and lowlights, as painted, shine and all.
+  if (painted >= -2) return vec4(stepOf(row, painted), c.a);
   // The shine, placed so it always lands, as the old Apple has it: on each part, two pixels in from its edge going toward the
   // light, across the middle of the part (as far from its edge one way as the other, at right angles to the light). On a part
   // wide enough, it runs a pixel or two either way along the curve: a short streak, one speck on a small part. Only on the side

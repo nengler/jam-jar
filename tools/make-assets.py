@@ -187,6 +187,96 @@ def light_table() -> Image.Image:
     return table
 
 
+# The colours flat fruit keep for their outline and their stems.
+OUTLINE_COLOUR = (0x24, 0x15, 0x27)
+STEM_COLOUR = (0x4d, 0x2b, 0x32)
+# A step of the light table as the step map stores it: in the red channel, the middle step at 128, each step 32 from it.
+STEP_MIDDLE, STEP_SIZE = 128, 32
+
+
+def fruit_parts(flat: Image.Image) -> dict[tuple[int, int], tuple[float, float]]:
+    """
+    Each pixel of a flat fruit, by the middle of the part it is in: the parts are what its outline and inner lines divide it into
+    (two cherries, three berries, two bananas), not counting stems or lines one pixel across (a cherry's stalk), which go with
+    the part nearest them.
+    """
+    w, h = flat.size
+    solid = lambda x, y: 0 <= x < w and 0 <= y < h and flat.getpixel((x, y))[3] > 0 and flat.getpixel((x, y))[:3] not in (OUTLINE_COLOUR, STEM_COLOUR)
+    thin = lambda x, y: (not solid(x - 1, y) and not solid(x + 1, y)) or (not solid(x, y - 1) and not solid(x, y + 1))
+    part: dict[tuple[int, int], int] = {}
+    members: list[list[tuple[int, int]]] = []
+    for y in range(h):
+        for x in range(w):
+            if (x, y) in part or not solid(x, y) or thin(x, y):
+                continue
+            todo, here = [(x, y)], []
+            part[(x, y)] = len(members)
+            while todo:
+                px, py = todo.pop()
+                here.append((px, py))
+                for nx, ny in ((px + 1, py), (px - 1, py), (px, py + 1), (px, py - 1)):
+                    if (nx, ny) not in part and solid(nx, ny) and not thin(nx, ny):
+                        part[(nx, ny)] = len(members)
+                        todo.append((nx, ny))
+            members.append(here)
+    middles = [(sum(x for x, _ in m) / len(m), sum(y for _, y in m) / len(m)) for m in members]
+    out = {}
+    for y in range(h):
+        for x in range(w):
+            if flat.getpixel((x, y))[3] == 0:
+                continue
+            if (x, y) in part:
+                out[(x, y)] = middles[part[(x, y)]]
+            elif middles:
+                near = min(part, key=lambda p: (p[0] - x) ** 2 + (p[1] - y) ** 2)
+                out[(x, y)] = middles[part[near]]
+    return out
+
+
+def step_map(flat: Image.Image, shading: Image.Image, table: Image.Image, where: Path) -> Image.Image:
+    """
+    Where a fruit's painted shading (its "shading" layer) is lit and in shadow, as steps of the light table: for each pixel, in the
+    red channel, the step of its flat colour's row that the painting has there (an outline pixel is measured against the fruit
+    beside it); in green and blue, how far it is to the middle of its part (`fruit_parts`), 4 to an art pixel from 128. The shader
+    turns each part's painting back about that middle, so the painted light stays put on the screen however the fruit turns. The
+    painted dip round a stem is filled from the shading round it: the stem turns with the fruit, and its dip would stay behind.
+    """
+    rows = {table.getpixel((LIGHT_STEPS // 2, r))[:3]: [table.getpixel((x, r))[:3] for x in range(LIGHT_STEPS)] for r in range(table.height)}
+    w, h = flat.size
+    steps: dict[tuple[int, int], int] = {}
+    for y in range(h):
+        for x in range(w):
+            f, o = flat.getpixel((x, y)), shading.getpixel((x, y))
+            if f[3] == 0 or o[3] == 0:
+                continue
+            base = f[:3]
+            if base == OUTLINE_COLOUR:
+                near = [flat.getpixel((x + dx, y + dy))[:3] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1))
+                        if 0 <= x + dx < w and 0 <= y + dy < h and flat.getpixel((x + dx, y + dy))[3] and flat.getpixel((x + dx, y + dy))[:3] not in (OUTLINE_COLOUR, STEM_COLOUR)]
+                if not near:
+                    continue
+                base = near[0]
+            row = rows.get(base)
+            if row is None:
+                raise SystemExit(f"{where}: #{bytes(base).hex()} has no row in the light table")
+            painted = o[:3]
+            steps[(x, y)] = min(range(LIGHT_STEPS), key=lambda i: 0 if row[i] == painted else 1 + sum((a - b) ** 2 for a, b in zip(oklab(row[i]), oklab(painted)))) - LIGHT_STEPS // 2
+    # The stem's dip: a stem pixel and what is within a pixel of one, filled from the nearest painted step outside it.
+    stem = {(x, y) for y in range(h) for x in range(w) if flat.getpixel((x, y))[3] and flat.getpixel((x, y))[:3] == STEM_COLOUR}
+    dip = {(x + dx, y + dy) for x, y in stem for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
+    outside = [p for p in steps if p not in dip]
+    for p in dip:
+        if p in steps and outside and flat.getpixel(p)[:3] != OUTLINE_COLOUR:
+            steps[p] = steps[min(outside, key=lambda q: (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2)]
+    middles = fruit_parts(flat)
+    out = Image.new("RGBA", flat.size, (0, 0, 0, 0))
+    for (x, y), step in steps.items():
+        mx, my = middles.get((x, y), (x, y))
+        dx, dy = max(-31, min(31, round((mx - x) * 4) / 4)), max(-31, min(31, round((my - y) * 4) / 4))
+        out.putpixel((x, y), (STEP_MIDDLE + step * STEP_SIZE, round(128 + dx * 4), round(128 + dy * 4), 255))
+    return out
+
+
 def check_light_table(picture: Image.Image, where: Path) -> None:
     """The table must be LIGHT_STEPS wide, a row per palette colour, each row's middle that row's colour."""
     if picture.size != (LIGHT_STEPS, len(PALETTE_ORDER)):
@@ -214,6 +304,7 @@ def write_pictures() -> int:
     """Check every picture in art/ and write it to assets/, doubled (or as it is, from screen/); write the fruit's ball sizes."""
     names: dict[str, Path] = {}
     fruit = []
+    shaded = set()
     if not LIGHT_TABLE.exists():
         LIGHT_TABLE.parent.mkdir(parents=True, exist_ok=True)
         write_aseprite(LIGHT_TABLE, [light_table()], PALETTE_ORDER)
@@ -244,13 +335,23 @@ def write_pictures() -> int:
         if source.parent.name == "fruit":
             padded = Image.new("RGBA", (picture.width + 2 * FRUIT_PAD, picture.height + 2 * FRUIT_PAD), (0, 0, 0, 0))
             padded.paste(picture, (FRUIT_PAD, FRUIT_PAD))
+            # A fruit with a painted "shading" layer is drawn flat and lit by the shader from that painting: its picture is two side
+            # by side, the flat fruit and then its step map (`step_map`).
+            painting = read_aseprite(source, "shading") if is_aseprite(source) else []
+            if painting:
+                steps = step_map(picture, painting[0], read_aseprite(LIGHT_TABLE)[0], where)
+                both = Image.new("RGBA", (padded.width * 2, padded.height), (0, 0, 0, 0))
+                both.paste(padded, (0, 0))
+                both.paste(steps, (padded.width + FRUIT_PAD, FRUIT_PAD))
+                padded = both
+                shaded.add(source.stem)
             picture = padded
         out = picture if source.parent.name == SCREEN_SIZE else picture.resize((picture.width * PX, picture.height * PX), Image.NEAREST)
         out.save(ASSETS / (f"fruit-{name}.png" if source.parent.name == "fruit" else f"{name}.png"))
     missing = [kind for kind in FRUIT_SIZES if kind not in fruit]
     if missing:
         raise SystemExit(f"no picture in art/fruit for {', '.join(missing)}")
-    lines = [f"  {kind}: {{ size: {art * PX}, radius: {round(art * PX * SHARES.get(kind, BALL_SHARE))} }}," for kind, art in FRUIT_SIZES.items()]
+    lines = [f"  {kind}: {{ size: {art * PX}, radius: {round(art * PX * SHARES.get(kind, BALL_SHARE))}, shaded: {'true' if kind in shaded else 'false'} }}," for kind, art in FRUIT_SIZES.items()]
     SIZES_FILE.write_text(
         "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
         "export const FRUIT_ART = {\n" + "\n".join(lines) + "\n} as const;\n"

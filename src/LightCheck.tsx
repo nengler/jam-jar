@@ -6,7 +6,7 @@ import { FLAT_FRUIT, LIGHT } from "./theme.ts";
 
 /**
  * Not a screen a player reaches: every flat fruit (FLAT_FRUIT) at each of eight turns, so the light can be checked by eye. It
- * should stay on the top right of each one however it is turned. `test/light.test.ts` checks that each is drawn through the
+ * should stay on the top left of each one, as painted, however it is turned. `test/light.test.ts` checks that each is drawn through the
  * light, and `npm run check:light` draws this on the GPU and compares it with test/light/step-2.png.
  */
 export function LightCheck() {

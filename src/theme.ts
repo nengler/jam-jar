@@ -114,12 +114,12 @@ export function fruitImage(kind: FruitKind): string {
 }
 
 /**
- * The fruit drawn flat, in their base colours with an outline and no light drawn in: the game lights them as they are drawn, from
- * the top right of the screen however they have rolled (assets/fruit-light.glsl, shading by the steps of the light table,
- * art/palette/light.aseprite). A fruit is added here once its picture in art/fruit is redrawn flat; the others still have their
- * light drawn in, and are drawn as they are.
+ * The fruit drawn flat, in their base colours with an outline, with their light painted on a hidden "shading" layer: the game
+ * lights them as they are drawn, the painted light staying put on the screen (from the top left, as painted) however they have
+ * rolled (assets/fruit-light.glsl, by the steps of the light table, art/palette/light.aseprite). tools/make-assets.py finds them
+ * by that layer and marks them `shaded` in src/rules/sizes.ts; the others have their light drawn in, and are drawn as they are.
  */
-export const FLAT_FRUIT: ReadonlySet<FruitKind> = new Set<FruitKind>(["apple", "cherry", "lemon", "orange", "blueberry", "banana", "chili", "watermelon"]);
+export const FLAT_FRUIT: ReadonlySet<FruitKind> = new Set<FruitKind>((Object.keys(FRUIT_ART) as FruitKind[]).filter((kind) => FRUIT_ART[kind].shaded));
 
 /** The fruit's light: the shader, its table, and its params (how strongly the ball is lit, how much the edge away from the light darkens, how much shine, the clear margin round the picture): see the shader. */
 export const FRUIT_LIGHT = "fruit-light.glsl";

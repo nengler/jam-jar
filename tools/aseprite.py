@@ -81,8 +81,12 @@ def _to_rgba(depth: int, raw: bytes, size: tuple[int, int], palette: list[tuple[
     return Image.frombytes("RGBA", size, bytes(out))
 
 
-def read(path: str | Path) -> list[Image.Image]:
-    """Each frame of an Aseprite file, its visible layers flattened, as an RGBA picture the size of the sprite."""
+def read(path: str | Path, layer: str | None = None) -> list[Image.Image]:
+    """
+    Each frame of an Aseprite file, its visible layers flattened, as an RGBA picture the size of the sprite. With `layer`, only the
+    layer of that name, shown or hidden (an empty list when there is none).
+    """
+    only = layer
     data = Path(path).read_bytes()
     if len(data) < 128:
         raise AsepriteError("too short to be an Aseprite file")
@@ -172,6 +176,8 @@ def read(path: str | Path) -> list[Image.Image]:
             if layers[parent]["level"] < layer["level"]:
                 visible = visible and shown[parent]
                 break
+        if only is not None:
+            visible = layer["name"] == only and layer["type"] == LAYER_NORMAL
         shown.append(visible)
         if not visible:
             continue
@@ -185,6 +191,8 @@ def read(path: str | Path) -> list[Image.Image]:
         if is_group and flags & HEADER_GROUP_OPACITY and layer["opacity"] != 255:
             raise AsepriteError(f"{what} is a group at {layer['opacity']} opacity: only groups at full opacity are read here")
 
+    if only is not None and not any(shown):
+        return []
     pictures: list[Image.Image] = []
     for frame, cels in enumerate(cels_by_frame):
         canvas = Image.new("RGBA", (width, height))
