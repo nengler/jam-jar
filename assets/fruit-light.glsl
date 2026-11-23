@@ -16,7 +16,7 @@
 //   (how far in comes from looking eight ways out), wide where the fruit faces away from the light and thin where it faces it.
 //   So the shadows hug the fruit's shape, and the lit side has only a pixel of the plain colour before its outline. The same
 //   bands all round would be pillow shading: how the fruit faces the light is what makes them wide on one side only;
-// - the shine, one speck on each part, where it faces halfway between the light and the eye;
+// - the shine on each part, two pixels in from its edge toward the light, across its middle: a short streak, or one speck;
 // - a line one pixel across (a stalk) in two tones, and an inner line between two parts as the deepest shadow;
 // - a stem is a dark stalk;
 // - the outline is not black: a dark step of what it is beside, the first toward the light and the darkest away from it.
@@ -96,29 +96,30 @@ vec3 normalAt(vec2 at) {
   return normalize(shape * 0.5 + ball * 0.5);
 }
 
-// Whether the pixel at `at` is where its part shines: it faces halfway between the light and the eye closely enough, and better
-// than any pixel of the fruit around it (ties going to the one nearer the light, so a flat patch shines in one place).
-bool shinesAt(vec2 at, vec2 toward) {
-  if (edgeAt(at)) return false;
-  // Not beside a stem: the fruit dips toward it, which would make a second, false shine there.
-  for (int i = 0; i < 8; i++) {
-    vec2 by = i < 4 ? (i == 0 ? vec2(2.0, 0.0) : i == 1 ? vec2(-2.0, 0.0) : i == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0))
-                    : vec2(i == 4 || i == 5 ? 2.0 : -2.0, i == 4 || i == 6 ? 2.0 : -2.0);
-    vec4 p = pixelAt(at + by);
-    if (p.a > 0.5 && same(p.rgb, STEM)) return false;
+// A direction as the nearest of the eight steps to a neighbouring pixel (a diagonal one is a step on each axis).
+vec2 gridStep(vec2 dir) {
+  return vec2(abs(dir.x) > 0.38 ? sign(dir.x) : 0.0, abs(dir.y) > 0.38 ? sign(dir.y) : 0.0);
+}
+
+// How many pixels it is from `at` to the first edge of the part going `dir`, pixel by pixel (`dir` one of the eight steps), up
+// to 9: the clear or the outline. A stem does not split a part here, so the fruit either side of it is one part with one shine.
+float reachTo(vec2 at, vec2 dir) {
+  for (int n = 1; n <= 8; n++) {
+    vec4 p = pixelAt(at + dir * 2.0 * float(n));
+    if (p.a < 0.5 || same(p.rgb, OUTLINE)) return float(n);
   }
-  vec3 light = normalize(vec3(toward, 0.9));
-  vec3 halfway = normalize(light + vec3(0.0, 0.0, 1.0));
-  float gleam = dot(normalAt(at), halfway);
-  if (gleam < 1.0 - params[2] * 1.2) return false;
-  for (int i = 0; i < 8; i++) {
-    vec2 by = i < 4 ? (i == 0 ? vec2(2.0, 0.0) : i == 1 ? vec2(-2.0, 0.0) : i == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0))
-                    : vec2(i == 4 || i == 5 ? 2.0 : -2.0, i == 4 || i == 6 ? 2.0 : -2.0);
-    if (edgeAt(at + by)) continue;
-    float other = dot(normalAt(at + by), halfway);
-    if (other > gleam || (other == gleam && dot(by, toward) > 0.0)) return false;
+  return 9.0;
+}
+
+// Whether a stem is within two pixels of `at`: the fruit dips toward it, which is no place for the shine.
+bool byStem(vec2 at) {
+  for (int y = -2; y <= 2; y++) {
+    for (int x = -2; x <= 2; x++) {
+      vec4 p = pixelAt(at + vec2(float(x), float(y)) * 2.0);
+      if (p.a > 0.5 && same(p.rgb, STEM)) return true;
+    }
   }
-  return true;
+  return false;
 }
 
 vec4 effect(vec2 uv) {
@@ -194,11 +195,23 @@ vec4 effect(vec2 uv) {
   // and wide where it faces away from the light, thin where it faces it. So the shadows hug the fruit's shape.
   float level = inside * BAND_IN + facing * BAND_FACING + BAND_FROM;
   int step = level > 0.6 ? 1 : level > -0.2 ? 0 : level > DARKEST ? -1 : -2;
-  // The shine: on each part, the pixel that faces halfway between the light and the eye best of those around it, and on a part
-  // wide enough for it, one pixel either way along the curve from that one, a short streak as the old Apple has.
-  vec2 along = vec2(toward.y, -toward.x);
-  along = vec2(abs(along.x) > 0.38 ? sign(along.x) : 0.0, abs(along.y) > 0.38 ? sign(along.y) : 0.0) * 2.0;
-  if (params[2] > 0.0 && !shadowEdge &&
-      (shinesAt(at, toward) || (inside >= 3.0 && (shinesAt(at + along, toward) || shinesAt(at - along, toward))))) step = 2;
+  // The shine, placed so it always lands, as the old Apple has it: on each part, two pixels in from its edge going toward the
+  // light, across the middle of the part (as far from its edge one way as the other, at right angles to the light). On a part
+  // wide enough, it runs a pixel or two either way along the curve: a short streak, one speck on a small part. Only on the side
+  // that faces the light, on the half of the fruit toward it, and away from the stem, so the fruit shines in one place.
+  vec2 lightStep = gridStep(toward);
+  vec2 fromMiddle = at - region.zw * 0.5;
+  if (params[2] > 0.0 && facing > 0.3 && dot(fromMiddle, toward) > 0.0 && reachTo(at, lightStep) == 2.0 && !byStem(at)) {
+    vec2 across = gridStep(vec2(toward.y, -toward.x));
+    float one = reachTo(at, across), other = reachTo(at, -across);
+    float wide = one + other - 1.0;
+    // How many pixels this one is from the middle of the part, along the curve, and where that middle is.
+    float off = abs(one - other) * 0.5;
+    vec2 middle = at + across * (one - other);
+    float reach = (wide >= 9.0 ? 1.0 : wide >= 6.0 ? 0.5 : 0.0) * params[2] / 0.12;
+    // Where the stem takes the middle (the light falls on the top of an apple), the streak is moved to beside the stem.
+    bool moved = wide >= 6.0 && byStem(middle) && off >= 2.0 && off <= 3.0 && one > other; // to one side of the stem only
+    if (wide >= 3.0 && (off <= reach || moved)) step = 2;
+  }
   return vec4(stepOf(row, step), c.a);
 }
