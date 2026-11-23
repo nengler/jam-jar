@@ -113,6 +113,19 @@ export function fruitImage(kind: FruitKind): string {
   return `fruit-${kind}.png`;
 }
 
+/**
+ * The fruit drawn flat, in their base colours with an outline and no light drawn in: the game lights them as they are drawn, from
+ * the top right of the screen however they have rolled (assets/fruit-light.glsl, shading by the steps of the light table,
+ * art/palette/light.aseprite). A fruit is added here once its picture in art/fruit is redrawn flat; the others still have their
+ * light drawn in, and are drawn as they are.
+ */
+export const FLAT_FRUIT: ReadonlySet<FruitKind> = new Set<FruitKind>(["apple", "cherry", "lemon", "orange", "blueberry", "banana", "chili", "watermelon"]);
+
+/** The fruit's light: the shader, its table, and its two strengths (how far the ball's light spans, how much the edges catch). */
+export const FRUIT_LIGHT = "fruit-light.glsl";
+export const LIGHT_TABLE = "light.png";
+export const FRUIT_LIGHT_PARAMS: readonly number[] = [1.4, 0.6];
+
 export function fruitImageSize(kind: FruitKind): number {
   return FRUIT_ART[kind].size;
 }

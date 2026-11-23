@@ -29,7 +29,8 @@
     "check": "tse check",
     "package": "tse package",
     "install-engine": "node tools/install-engine.ts",
-    "test": "tse check"
+    "test": "tse check",
+    "check:light": "tse screenshot . --setup tools/shots/light.ts --script \"_*3\" --at last --gpu --compare test/light --tolerance 8 --out shots/light"
   },
   "overrides": {
     "@tsengine/runtime": "https://github.com/nengler/tse/releases/download/v0.21.0/tsengine-runtime-0.21.0.tgz",

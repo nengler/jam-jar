@@ -4,7 +4,8 @@ import type { Run } from "./rules/jar.ts";
 import { effectsLevel, fastPlay, learn, learnedMoments, musicLevel, settings, setTutorialStep, stepVolume, toggleFast, tutorialStep } from "./settings.ts";
 import { LESSONS } from "./rules/tutorial.ts";
 
-type Screen = "title" | "settings" | "play";
+/** `light` is not one a player reaches: it shows the flat fruit lit at many turns, for a test and a screenshot (src/LightCheck.tsx). */
+type Screen = "title" | "settings" | "play" | "light";
 
 /**
  * The game's state, in one place: which screen shows and whether play is paused. A component reads one value with
@@ -51,6 +52,11 @@ export const useGame = createGameState(
     /** A run was kept, or the kept one thrown away. */
     saveChanged(s) {
       s.hasSave = save.exists();
+    },
+    /** Show the light check (src/LightCheck.tsx): for tests and screenshots, not from any menu. */
+    showLightCheck(s) {
+      s.screen = "light";
+      s.paused = false;
     },
     /** Go on with a run read from the player's files. */
     continueRun(s, run: Run) {

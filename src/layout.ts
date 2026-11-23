@@ -1,6 +1,7 @@
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { BOSS_NAME, bossNow, newRun, RENT, type Run } from "./rules/jar.ts";
 import { KEYWORDS, keywordsIn } from "./rules/terms.ts";
+import { FRUIT_ART } from "./rules/sizes.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
 export interface PoolRow {
@@ -403,4 +404,29 @@ export function keywordResults(run: Run): { label: string; points: number }[] {
     .filter(([label, points]) => earnerKind(label) === null && points !== 0)
     .map(([label, points]) => ({ label, points }))
     .sort((a, b) => b.points - a.points || a.label.localeCompare(b.label));
+}
+
+/** The turns the light check (src/LightCheck.tsx) shows each fruit at, in degrees: all the way round, in eighths. */
+export const LIGHT_CHECK_TURNS: readonly number[] = [0, 45, 90, 135, 180, 225, 270, 315];
+
+/** One row of the light check (src/LightCheck.tsx): a flat fruit, where its middle is down the screen, and its middle across at each turn. */
+export interface LightCheckRow {
+  readonly kind: FruitKind;
+  readonly y: number;
+  /** Each turn in degrees, and as `FruitBall` takes it: its `turn` goes to the sprite's rotation as it is, which is in radians. */
+  readonly turns: readonly { readonly turn: number; readonly radians: number; readonly x: number }[];
+}
+
+/** The light check's rows: a row per flat fruit, as tall as it is, and a column per turn, as wide as it is; the names on the left. */
+export function lightCheckRows(kinds: readonly FruitKind[], turns: readonly number[]): LightCheckRow[] {
+  const LEFT = 96;
+  const GAP = 4;
+  let top = GAP;
+  return [...kinds].sort().map((kind) => {
+    const size = FRUIT_ART[kind].size;
+    const across = Math.min(size + GAP * 2, (640 - LEFT) / turns.length);
+    const row = { kind, y: top + size / 2, turns: turns.map((turn, column) => ({ turn, radians: (turn * Math.PI) / 180, x: LEFT + column * across + size / 2 })) };
+    top += size + GAP;
+    return row;
+  });
 }

@@ -24,6 +24,23 @@ A fruit's ball is a little smaller than its square (45% of the side as a radius,
 mostly clear. The Gourd is drawn at its smallest size and grows in the jar by being scaled up. On the shelf a Pumpkin's top is
 cut off by the top of the screen, and a Melon's by 2 pixels.
 
+## Flat fruit and their light
+
+A fruit can be drawn **flat**: its base colours, its markings (stripes, seeds, a stem, a leaf), and an outline in `#241527`
+(kept for outlines only), with no light drawn in. The game lights a flat fruit itself as it is drawn, from the top right of the
+screen however the fruit has rolled (`assets/fruit-light.glsl`), shading each colour by the steps of the light table
+(`art/palette/light.aseprite`). A fruit is flat once it is in `FLAT_FRUIT` (`src/theme.ts`); the rest are drawn as they are,
+their light drawn in.
+
+Flat now: Apple, Banana, Blueberry, Cherry, Chili, Lemon, Orange and Watermelon. They were flattened from the placeholders: each
+shade of the body made one colour, the stems and leaves one each, and the body's edge the outline. Each file keeps the old
+picture as a hidden layer, "old shading", which the game leaves out.
+
+Draw a flat fruit in colours that look like the fruit in plain, even light; the light table decides what each becomes lit and
+in shadow. To see the light at every turn, `npm run check:light` draws the light check (`src/LightCheck.tsx`) on the GPU into
+`shots/light/` and compares it with `test/light/`; after changing a flat fruit or the table, look at the new picture and take it
+with `npm run check:light -- --update`.
+
 ## Where the pictures came from
 
 The pictures here now are placeholders, cut from the fruit sheet in `tools/fruit/` (its README says what is known of where it

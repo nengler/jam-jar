@@ -65,6 +65,17 @@ The six items, each 24 x 20, standing on its bottom edge: `item-lid`, `item-juic
 | `pointer` | 9 x 7 | The arrow over the fruit the Preserves Jar's cursor is on. |
 | `coin` | 12 x 12 | A coin, beside a price. |
 
+## palette/
+
+| File | Size | What it is |
+| --- | --- | --- |
+| `light` | 5 x 46 | The light table the fruit are shaded with (`assets/fruit-light.glsl`). A row per Apollo colour, in the order of `tools/palette/apollo.hex`: the colour itself in the middle, two steps of shadow to its left (darker and cooler), two of light to its right (lighter and warmer). The shader only ever swaps a colour for another from its row. Copied as it is, not doubled, to `assets/light.png`. |
+
+`tools/make-assets.py` worked out the first table (`light_table`: each step snapped to the nearest palette colour that keeps
+the colour's strength and never turns back) and wrote it because the file was missing. It is yours to repaint: change any
+step but the middle column, which must stay each row's own colour. Delete the file to have a fresh one worked out. The row
+of the outline colour, `#241527`, is that colour all along, so outlines are not lit.
+
 ## screen/
 
 Pictures with detail finer than an art pixel, so they cannot be halved: they are copied **at screen size, as they are**. When
@@ -79,6 +90,7 @@ one is redrawn at art size, move it to another folder (`ui/` for the frames, a n
 
 ## Where they came from
 
-The fruit are placeholders cut from a pixel fruit sheet (`tools/fruit/`). The frames, the wallpaper's trellis, the coin and the
+The fruit are placeholders cut from a pixel fruit sheet (`tools/fruit/`); eight of them were flattened from those (see
+`fruit/README.md`). The frames, the wallpaper's trellis, the coin and the
 explosion are [Kenney](https://kenney.nl)'s (CC0), recoloured onto Apollo once (`tools/kenney/` has the originals). The rest
 was drawn for the game.

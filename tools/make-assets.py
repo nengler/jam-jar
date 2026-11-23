@@ -9,6 +9,10 @@ Lays out the game's assets/ from art/ and tools/kenney/:
   - fruit/: one picture per fruit, at the size FRUIT_SIZES gives it (each ball's radius is written to src/rules/sizes.ts from
     it, so the physics matches the picture);
   - kitchen/, shop/, items/ and ui/: the rest;
+  - palette/light: the light ramp table the fruit's shader (assets/fruit-light.glsl) shades with, copied as it is to
+    assets/light.png, not doubled. One row per Apollo colour, in the order of tools/palette/apollo.hex, and LIGHT_STEPS columns:
+    that colour in shadow (darker and cooler) on the left, lit (lighter and warmer) on the right, and the colour itself in the
+    middle. When the file is missing a first one is worked out (light_table below) and written, to be repainted by hand.
   - screen/: pictures with detail finer than the art's pixel (the Kenney frames and explosion), copied at screen size as they
     are until they are redrawn at art size and moved to another folder.
 - tools/kenney/: the sounds (Kenney, CC0), copied as they are; the tally's notes and the entrance sounds are made here.
@@ -29,7 +33,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from aseprite import AsepriteError, is_aseprite, read as read_aseprite
+from aseprite import AsepriteError, is_aseprite, read as read_aseprite, write as write_aseprite
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
@@ -100,6 +104,76 @@ def off_palette(image: Image.Image) -> str | None:
     return f"{count} off the palette, the first at ({x}, {y}), {what}"
 
 
+# The light ramp table (art/palette/light.aseprite): a column per step of light, from LIGHT_STEPS // 2 steps of shadow to as many
+# of light, the colour itself in the middle; a row per palette colour, in the file's order.
+LIGHT_TABLE = ART / "palette" / "light.aseprite"
+LIGHT_STEPS = 5
+PALETTE_ORDER = [tuple(int(line[i : i + 2], 16) for i in (0, 2, 4)) for line in (ROOT / "tools" / "palette" / "apollo.hex").read_text().split()]
+# Colours the light leaves as they are: the fruit's outline.
+UNLIT = {(0x24, 0x15, 0x27)}
+
+
+def oklab(rgb: tuple[int, int, int]) -> tuple[float, float, float]:
+    """An sRGB colour in Oklab (Bjorn Ottosson's): lightness, then green-red and blue-yellow, so distances look like differences."""
+    lin = [(c / 255) / 12.92 if c / 255 <= 0.04045 else (((c / 255) + 0.055) / 1.055) ** 2.4 for c in rgb]
+    l = 0.4122214708 * lin[0] + 0.5363325363 * lin[1] + 0.0514459929 * lin[2]
+    m = 0.2119034982 * lin[0] + 0.6806995451 * lin[1] + 0.1073969566 * lin[2]
+    s = 0.0883024619 * lin[0] + 0.2817188376 * lin[1] + 0.6299787005 * lin[2]
+    l, m, s = (v ** (1 / 3) for v in (l, m, s))
+    return (
+        0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+        1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+        0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+    )
+
+
+def light_table() -> Image.Image:
+    """
+    A first light ramp table, worked out: each step of shadow a little darker and pulled toward blue-violet, each step of light a
+    little lighter and pulled toward yellow-orange (hue shifting, as a painter shades), then snapped to the nearest palette colour
+    that is darker (or lighter) than the step before, so a ramp never turns back. Where there is none, the step repeats.
+    """
+    LIGHTER, WARM, COOL = 0.08, (0.035, 0.07), (0.0, -0.06)
+    lab = {colour: oklab(colour) for colour in PALETTE_ORDER}
+    table = Image.new("RGBA", (LIGHT_STEPS, len(PALETTE_ORDER)))
+    middle = LIGHT_STEPS // 2
+    for row, colour in enumerate(PALETTE_ORDER):
+        table.putpixel((middle, row), colour + (255,))
+        for side in (-1, 1):
+            previous = colour
+            for step in range(1, middle + 1):
+                if colour in UNLIT:
+                    table.putpixel((middle + side * step, row), colour + (255,))
+                    continue
+                L, a, b = lab[colour]
+                pull = WARM if side > 0 else COOL
+                target = (L + side * step * LIGHTER, a + (pull[0] - a) * 0.12 * step, b + (pull[1] - b) * 0.12 * step)
+                darker_or_lighter = [c for c in PALETTE_ORDER if (lab[c][0] - lab[previous][0]) * side > 0.02]
+                if darker_or_lighter:
+                    # Nearest in colour, and as strong a colour as the one it shades: a step that keeps its colour reads better than a
+                    # grey exactly as light.
+                    strength = math.hypot(a, b)
+                    previous = min(
+                        darker_or_lighter,
+                        key=lambda c: 0.5 * (lab[c][0] - target[0]) ** 2
+                        + (lab[c][1] - target[1]) ** 2
+                        + (lab[c][2] - target[2]) ** 2
+                        + 1.5 * (math.hypot(lab[c][1], lab[c][2]) - strength) ** 2,
+                    )
+                table.putpixel((middle + side * step, row), previous + (255,))
+    return table
+
+
+def check_light_table(picture: Image.Image, where: Path) -> None:
+    """The table must be LIGHT_STEPS wide, a row per palette colour, each row's middle that row's colour."""
+    if picture.size != (LIGHT_STEPS, len(PALETTE_ORDER)):
+        raise SystemExit(f"{where} is {picture.width} x {picture.height}: the light table is {LIGHT_STEPS} x {len(PALETTE_ORDER)}, a row per palette colour")
+    middle = LIGHT_STEPS // 2
+    for row, colour in enumerate(PALETTE_ORDER):
+        if picture.getpixel((middle, row))[:3] != colour or any(picture.getpixel((x, row))[3] != 255 for x in range(LIGHT_STEPS)):
+            raise SystemExit(f"{where}, row {row}: every pixel solid, its middle the palette's colour {row} (#{bytes(colour).hex()}), in the order of tools/palette/apollo.hex")
+
+
 def read_frames(source: Path) -> list[tuple[str, Image.Image]]:
     """A file's pictures, each with its name: one for a PNG or a one-frame Aseprite file, one a frame (<name>-<i>) for more."""
     if not is_aseprite(source):
@@ -117,6 +191,10 @@ def write_pictures() -> int:
     """Check every picture in art/ and write it to assets/, doubled (or as it is, from screen/); write the fruit's ball sizes."""
     names: dict[str, Path] = {}
     fruit = []
+    if not LIGHT_TABLE.exists():
+        LIGHT_TABLE.parent.mkdir(parents=True, exist_ok=True)
+        write_aseprite(LIGHT_TABLE, [light_table()], PALETTE_ORDER)
+        print(f"wrote a first {LIGHT_TABLE.relative_to(ROOT)}: repaint it as you like")
     sources = sorted(path for path in ART.rglob("*") if path.is_file() and (path.suffix.lower() == ".png" or is_aseprite(path)))
     for source, name, picture in ((source, name, picture) for source in sources for name, picture in read_frames(source)):
         where = source.relative_to(ROOT)
@@ -136,6 +214,10 @@ def write_pictures() -> int:
             if picture.size != (art, art):
                 raise SystemExit(f"{where} is {picture.width} x {picture.height}: a {source.stem} is drawn at {art} x {art}")
             fruit.append(source.stem)
+        if source.parent.name == "palette":
+            check_light_table(picture, where)
+            picture.save(ASSETS / f"{name}.png")
+            continue
         out = picture if source.parent.name == SCREEN_SIZE else picture.resize((picture.width * PX, picture.height * PX), Image.NEAREST)
         out.save(ASSETS / (f"fruit-{name}.png" if source.parent.name == "fruit" else f"{name}.png"))
     missing = [kind for kind in FRUIT_SIZES if kind not in fruit]
