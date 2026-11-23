@@ -29,6 +29,11 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      # npm runs tools/make-assets.py (Python with Pillow) before the check, to turn art/ into assets/.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow
       - run: npm ci
       # A main that fails its checks is not published; the page stays at the last good build.
       - run: npm run check
