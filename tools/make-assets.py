@@ -261,14 +261,52 @@ def step_map(flat: Image.Image, shading: Image.Image, table: Image.Image, where:
                 raise SystemExit(f"{where}: #{bytes(base).hex()} has no row in the light table")
             painted = o[:3]
             steps[(x, y)] = min(range(LIGHT_STEPS), key=lambda i: 0 if row[i] == painted else 1 + sum((a - b) ** 2 for a, b in zip(oklab(row[i]), oklab(painted)))) - LIGHT_STEPS // 2
-    # The stem's dip: a stem pixel and what is within a pixel of one, filled from the nearest painted step outside it.
-    stem = {(x, y) for y in range(h) for x in range(w) if flat.getpixel((x, y))[3] and flat.getpixel((x, y))[:3] == STEM_COLOUR}
-    dip = {(x + dx, y + dy) for x, y in stem for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
-    outside = [p for p in steps if p not in dip]
-    for p in dip:
-        if p in steps and outside and flat.getpixel(p)[:3] != OUTLINE_COLOUR:
-            steps[p] = steps[min(outside, key=lambda q: (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2)]
     middles = fruit_parts(flat)
+    # Only the broad light is kept: what the painting does round the fruit's markings stays behind when they turn away from it
+    # (the shading round the Orange's leaf, the light along the Watermelon's stripes, the dip round a stem), and the painted
+    # outline would land inside a turned fruit that is not quite round. So the outline, a stem, every pixel not of its part's
+    # main colour, and what is within a pixel of a stem or such a marking (its painted shadow) take the steps of the part's
+    # main colour round them: the commonest within three pixels, nearer ones counting more.
+    colour = lambda p: flat.getpixel(p)[:3]
+    by_part: dict[tuple[float, float], list[tuple[int, int]]] = {}
+    for p in steps:
+        by_part.setdefault(middles.get(p, p), []).append(p)
+    stem = {(x, y) for y in range(h) for x in range(w) if flat.getpixel((x, y))[3] and colour((x, y)) == STEM_COLOUR}
+    dip = {(x + dx, y + dy) for x, y in stem for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
+    for part in by_part.values():
+        counts: dict[tuple[int, int, int], int] = {}
+        for p in part:
+            if colour(p) not in (OUTLINE_COLOUR, STEM_COLOUR):
+                counts[colour(p)] = counts.get(colour(p), 0) + 1
+        if not counts:
+            continue
+        main = max(counts, key=counts.get)
+        marks = {p for p in part if colour(p) not in (main, OUTLINE_COLOUR)}
+        near_marks = {(x + dx, y + dy) for x, y in marks for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
+        good = [p for p in part if colour(p) == main and p not in dip and p not in near_marks]
+        if not good:
+            continue
+        filled = {}
+        for p in part:
+            if p in good:
+                continue
+            votes: dict[int, float] = {}
+            for q in good:
+                d2 = (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2
+                if d2 <= 9:
+                    votes[steps[q]] = votes.get(steps[q], 0.0) + 1.0 / (1.0 + d2)
+            filled[p] = max(votes, key=votes.get) if votes else steps[min(good, key=lambda q: (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2)]
+        steps.update(filled)
+    # Specks smoothed away: a step unlike all four round it (of its own part) takes their commonest. A band a pixel wide stays,
+    # and so does the shine as painted.
+    smooth = dict(steps)
+    for (x, y), step in steps.items():
+        if step == LIGHT_STEPS // 2:
+            continue
+        near = [steps[q] for q in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)) if q in steps and middles.get(q) == middles.get((x, y))]
+        if len(near) >= 3 and step not in near:
+            smooth[(x, y)] = max(set(near), key=near.count)
+    steps = smooth
     out = Image.new("RGBA", flat.size, (0, 0, 0, 0))
     for (x, y), step in steps.items():
         mx, my = middles.get((x, y), (x, y))

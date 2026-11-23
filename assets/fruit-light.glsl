@@ -222,7 +222,39 @@ vec4 effect(vec2 uv) {
     }
   }
   bool asEdge = screenEdge && !thin && !same(c.rgb, STEM);
-  if (same(c.rgb, OUTLINE) && !screenEdge && nearClear) c.rgb = body;
+  // Not an inner line, though (between two berries or cherries): that has no clear round it in the picture, however it lies.
+  vec2 here = floor(inRegion / 2.0) * 2.0 + 1.0;
+  bool innerLine = true;
+  for (int i = 0; i < 8; i++) {
+    vec2 o = i < 4 ? (i == 0 ? vec2(2.0, 0.0) : i == 1 ? vec2(-2.0, 0.0) : i == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0))
+                   : vec2(i == 4 || i == 5 ? 2.0 : -2.0, i == 4 || i == 6 ? 2.0 : -2.0);
+    if (pixelAt(here + o).a < 0.5) innerLine = false;
+  }
+  if (same(c.rgb, OUTLINE) && !screenEdge && nearClear && !innerLine) c.rgb = body;
+  // An inner line a pixel wide breaks into gaps when turned (at 45 degrees most), letting two berries or cherries run together:
+  // a block of the fruit with an inner line half a block down and right of its middle is drawn as that line, so it stays whole.
+  if (!same(c.rgb, OUTLINE) && !same(c.rgb, STEM) && !screenEdge) {
+    // One point only, half a block down and right: enough to close the gaps a turned line leaves, without making it two thick.
+    for (int i = 0; i < 1; i++) {
+      vec2 q = vec2(0.5, 0.5);
+      vec2 u = blockUv + blockRight * q.x + blockDown * q.y;
+      vec2 r = u * size - region.xy;
+      if (any(lessThan(r, vec2(0.0))) || any(greaterThanEqual(r, region.zw))) continue;
+      vec4 p = texture(image, u);
+      if (p.a < 0.5 || !same(p.rgb, OUTLINE)) continue;
+      vec2 pAt = floor(r / 2.0) * 2.0 + 1.0;
+      bool inner = true;
+      for (int j = 0; j < 8; j++) {
+        vec2 o = j < 4 ? (j == 0 ? vec2(2.0, 0.0) : j == 1 ? vec2(-2.0, 0.0) : j == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0))
+                       : vec2(j == 4 || j == 5 ? 2.0 : -2.0, j == 4 || j == 6 ? 2.0 : -2.0);
+        if (pixelAt(pAt + o).a < 0.5) inner = false;
+      }
+      if (inner) {
+        c.rgb = OUTLINE;
+        break;
+      }
+    }
+  }
   int row = rowOf(asEdge ? body : c.rgb);
   if (row < 0) return c;
 

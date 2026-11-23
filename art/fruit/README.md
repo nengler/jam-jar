@@ -37,8 +37,10 @@ is a step lighter or darker than its flat colour (an outline pixel than the frui
 as two frames side by side, the flat fruit and that step map, and marks the fruit `shaded` in `src/rules/sizes.ts`; that is
 what makes the game light it (`FLAT_FRUIT`). The shader (`assets/fruit-light.glsl`) turns each part's painting back about
 the part's own middle, so a cherry's or a berry's light stays on it as a bunch turns. Two things are not taken from the
-painting: the shading painted round a stem (the stem turns away from it; the map fills it from the shading round it), and
-the outline at the turned fruit's edge, which is made again on the screen in a dark step of the fruit beside it.
+painting, because they belong to the fruit's markings and would stay behind when the markings turn: the painted outline, the
+shading round a stem and round each marking (a leaf, the other colour of a stripe), and single specks. The map fills those from
+the part's broad light round them; so paint the light in the shading layer, and the detail in the fruit itself. The outline at
+the turned fruit's edge is made again on the screen in a dark step of the fruit beside it, and an inner line kept whole.
 
 Shaded now: Apple, Banana, Blueberry, Cherry, Chili, Lemon, Orange and Watermelon, flattened from the placeholders, their old
 pictures as the shading layers. To change how a fruit is lit, repaint its shading layer (in the palette, the same shape as the
