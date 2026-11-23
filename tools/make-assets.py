@@ -83,6 +83,10 @@ FRUIT_SIZES = {
     "fruitfly": 16,
 }
 
+# Clear art pixels round each fruit's picture in assets/ (not in art/): a picture is drawn only inside its rectangle, so a fruit
+# drawn to the edge of its square has its edge cut by that rectangle as it turns. The fruit's size and ball are as before.
+FRUIT_PAD = 2
+
 # A fruit's ball is a little smaller than its picture's square: the art does not fill the corners. The Fruit Fly's is smaller
 # still: it is tiny in its square.
 BALL_SHARE = 0.45
@@ -237,6 +241,10 @@ def write_pictures() -> int:
             check_light_table(picture, where)
             picture.save(ASSETS / f"{name}.png")
             continue
+        if source.parent.name == "fruit":
+            padded = Image.new("RGBA", (picture.width + 2 * FRUIT_PAD, picture.height + 2 * FRUIT_PAD), (0, 0, 0, 0))
+            padded.paste(picture, (FRUIT_PAD, FRUIT_PAD))
+            picture = padded
         out = picture if source.parent.name == SCREEN_SIZE else picture.resize((picture.width * PX, picture.height * PX), Image.NEAREST)
         out.save(ASSETS / (f"fruit-{name}.png" if source.parent.name == "fruit" else f"{name}.png"))
     missing = [kind for kind in FRUIT_SIZES if kind not in fruit]
@@ -246,6 +254,7 @@ def write_pictures() -> int:
     SIZES_FILE.write_text(
         "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
         "export const FRUIT_ART = {\n" + "\n".join(lines) + "\n} as const;\n"
+        f"/** The clear margin round each fruit's picture, in pixels each side, so it can turn without its edge being cut. */\nexport const FRUIT_PAD = {FRUIT_PAD * PX};\n"
     )
     return len(names)
 

@@ -19,10 +19,12 @@
 // - the shine on each part, two pixels in from its edge toward the light, across its middle: a short streak, or one speck;
 // - a line one pixel across (a stalk) in two tones, and an inner line between two parts as the deepest shadow;
 // - a stem is a dark stalk;
-// - the outline is not black: a dark step of what it is beside, the first toward the light and the darkest away from it.
+// - the outline is not black: a dark step of what it is beside, the darkest only where it faces right away from the light;
+// - turned, it is drawn in whole art pixels on the screen's grid, its outline made again round the turned shape.
 //
 // params[0]: how strongly it is lit (1: as painted); params[1]: how much the edge away from the light darkens (0.8);
-// params[2]: how much shine (0.12; 0 for none).
+// params[2]: how much shine (0.12; 0 for none); params[3]: the clear margin round the fruit in its picture, in pixels each side
+// (FRUIT_PAD), so the ball and how far it looks for edges go by the fruit and not by its picture.
 
 const vec2 SCREEN_LIGHT = vec2(1.0, -1.0);
 // The colours the flat fruit keep for their outline and their stems.
@@ -73,7 +75,7 @@ bool edgeAt(vec2 at) {
 // Which way the surface faces at `at`: from the edges in rings around it (sixteen ways out, three distances), the nearer
 // counting more, mixed with a ball over the whole picture. x and y as the picture's (y down), z toward the eye.
 vec3 normalAt(vec2 at) {
-  float reach = clamp(region.z * 0.12, 4.0, 10.0); // in the picture's pixels: about a fifth of the fruit across, at most 5 art pixels
+  float reach = clamp((region.z - 2.0 * params[3]) * 0.12, 4.0, 10.0); // in the picture's pixels: about a fifth of the fruit across, at most 5 art pixels
   vec2 out_ = vec2(0.0);
   float total = 0.0;
   for (int ring = 1; ring <= 3; ring++) {
@@ -90,7 +92,7 @@ vec3 normalAt(vec2 at) {
   vec2 side = out_ / total * 2.2;
   if (length(side) > 0.95) side = normalize(side) * 0.95;
   vec3 shape = vec3(side, sqrt(1.0 - dot(side, side)));
-  vec2 d = (at - region.zw * 0.5) / (region.zw * 0.45);
+  vec2 d = (at - region.zw * 0.5) / ((region.zw - 2.0 * params[3]) * 0.45);
   if (length(d) > 1.0) d = normalize(d);
   vec3 ball = vec3(d, sqrt(max(0.0, 1.0 - dot(d, d))));
   return normalize(shape * 0.5 + ball * 0.5);
@@ -122,27 +124,92 @@ bool byStem(vec2 at) {
   return false;
 }
 
+// The screen's art-pixel blocks: where this one samples the picture, and how far the next one right and the next one down move
+// that, so the blocks around it can be read as the fruit lies on the screen, turned.
+vec2 blockUv;
+vec2 blockRight;
+vec2 blockDown;
+
+// The picture under the block `o` blocks from this one (x right, y down on the screen), clear outside the region.
+vec4 blockAt(vec2 o) {
+  vec2 u = blockUv + blockRight * o.x + blockDown * o.y;
+  vec2 r = u * size - region.xy;
+  if (any(lessThan(r, vec2(0.0))) || any(greaterThanEqual(r, region.zw))) return vec4(0.0);
+  return texture(image, u);
+}
+
+bool solidBlock(vec2 o) {
+  return blockAt(o).a > 0.5;
+}
+
 vec4 effect(vec2 uv) {
-  vec4 c = texture(image, uv);
-  if (c.a < 0.5) return c;
+  // Drawn in whole art pixels on the screen's grid, turned or not: each 2 x 2 block of the screen takes the fruit's colour at
+  // its middle, as if the game were drawn at 320 x 180. A fruit turned part way otherwise breaks its edge into half-pixel teeth,
+  // and its dark outline into a fringe of specks.
+  vec2 snapped = floor(pixel / 2.0) * 2.0 + 1.0 - pixel;
+  // `pixel` counts down from the top, the derivatives up from the bottom.
+  vec2 right = dFdx(uv), down = -dFdy(uv);
+  uv += right * snapped.x + down * snapped.y;
+  size = vec2(textureSize(image, 0));
+  blockUv = uv;
+  blockRight = right * 2.0;
+  blockDown = down * 2.0;
+  vec2 inRegion = uv * size - region.xy;
+  vec4 c = blockAt(vec2(0.0));
+  if (c.a < 0.5) return vec4(0.0);
   ivec2 table = textureSize(lookup, 0);
   middle = table.x / 2;
   rows = table.y;
-  size = vec2(textureSize(image, 0));
-  int row = rowOf(c.rgb);
+
+  // The edge is made again on the screen's blocks, so it is one block all round at any turn: turning a picture breaks its
+  // outline, two blocks thick in places and gone in others, and leaves single blocks sticking out. A block with at most one
+  // solid block beside it is such a spur, and is left out; one with any clear beside it is the edge, drawn as the outline.
+  int solidBeside = (solidBlock(vec2(1.0, 0.0)) ? 1 : 0) + (solidBlock(vec2(-1.0, 0.0)) ? 1 : 0) +
+                    (solidBlock(vec2(0.0, 1.0)) ? 1 : 0) + (solidBlock(vec2(0.0, -1.0)) ? 1 : 0);
+  bool thin = (!solidBlock(vec2(1.0, 0.0)) && !solidBlock(vec2(-1.0, 0.0))) || (!solidBlock(vec2(0.0, 1.0)) && !solidBlock(vec2(0.0, -1.0)));
+  if (solidBeside <= 1 && !same(c.rgb, STEM) && !thin) return vec4(0.0);
+  bool screenEdge = solidBeside < 4;
+  // An outline block inside the edge (the outline came out two thick there) is the fruit: it takes the colour beside it.
+  bool nearClear = false;
+  for (int i = 0; i < 8; i++) {
+    vec2 o = i < 4 ? (i == 0 ? vec2(1.0, 0.0) : i == 1 ? vec2(-1.0, 0.0) : i == 2 ? vec2(0.0, 1.0) : vec2(0.0, -1.0))
+                   : vec2(i == 4 || i == 5 ? 1.0 : -1.0, i == 4 || i == 6 ? 1.0 : -1.0);
+    if (!solidBlock(o)) nearClear = true;
+  }
+  // The fruit's colour at or beside this block (not the outline or a stem), for an edge or a doubled outline to be shaded from.
+  vec3 body = c.rgb;
+  if (same(body, OUTLINE) || (screenEdge && same(body, STEM))) {
+    for (int i = 0; i < 8; i++) {
+      vec2 o = i < 4 ? (i == 0 ? vec2(1.0, 0.0) : i == 1 ? vec2(-1.0, 0.0) : i == 2 ? vec2(0.0, 1.0) : vec2(0.0, -1.0))
+                     : vec2(i == 4 || i == 5 ? 1.0 : -1.0, i == 4 || i == 6 ? 1.0 : -1.0);
+      vec4 b = blockAt(o);
+      if (b.a > 0.5 && !same(b.rgb, OUTLINE) && !same(b.rgb, STEM)) {
+        body = b.rgb;
+        break;
+      }
+    }
+  }
+  bool asEdge = screenEdge && !thin && !same(c.rgb, STEM);
+  if (same(c.rgb, OUTLINE) && !screenEdge && nearClear) c.rgb = body;
+  int row = rowOf(asEdge ? body : c.rgb);
   if (row < 0) return c;
 
   // The middle of this art pixel, in the picture's pixels from the region's corner.
-  vec2 at = floor((uv * size - region.xy) / 2.0) * 2.0 + 1.0;
+  vec2 at = inRegion;
+  at = floor(at / 2.0) * 2.0 + 1.0;
   // The light, in the picture: the screen's top right, turned back by how the fruit is turned; as it falls from the front.
   vec2 toward = normalize(transpose(turn) * SCREEN_LIGHT);
   vec3 light = normalize(vec3(toward, 0.9));
 
   // A stem: a dark stalk.
-  if (same(c.rgb, STEM)) return vec4(stepOf(row, -1), c.a);
+  if (same(c.rgb, STEM)) return vec4(stepOf(rowOf(STEM), -1), c.a);
 
   vec3 normal = normalAt(at);
   float facing = dot(normal, light) * params[0];
+
+  // The edge on the screen: the outline, a dark step of the fruit's colour, the darkest only where it faces right away from the
+  // light, so the violet is a short run at the far side, not a ring round half the fruit.
+  if (asEdge) return vec4(stepOf(row, facing > -0.35 ? -1 : -2), c.a);
 
   // The outline: a dark step of the colour beside it, the first where it faces the light, the darkest where it does not.
   if (same(c.rgb, OUTLINE)) {
@@ -162,15 +229,16 @@ vec4 effect(vec2 uv) {
                           : vec2(j == 4 || j == 5 ? 2.0 : -2.0, j == 4 || j == 6 ? 2.0 : -2.0);
         if (pixelAt(at + near).a < 0.5) outer = true;
       }
-      // The outer outline: the first dark step where it faces the light, the darkest where it faces away from it.
-      return vec4(stepOf(besideRow, outer && facing > 0.0 ? -1 : -2), c.a);
+      // The outer outline: the first dark step, and the darkest only where it faces right away from the light, so the violet is a
+      // short run at the far side, not a ring round half the fruit.
+      return vec4(stepOf(besideRow, outer && facing > -0.35 ? -1 : -2), c.a);
     }
     return c;
   }
 
   // A thin line of colour, one pixel across (a cherry's stalk, a leaf's tip): two tones, its side toward the light and the rest,
   // not shaded as a round.
-  if ((edgeAt(at + vec2(2.0, 0.0)) && edgeAt(at - vec2(2.0, 0.0))) || (edgeAt(at + vec2(0.0, 2.0)) && edgeAt(at - vec2(0.0, 2.0)))) {
+  if (thin || (edgeAt(at + vec2(2.0, 0.0)) && edgeAt(at - vec2(2.0, 0.0))) || (edgeAt(at + vec2(0.0, 2.0)) && edgeAt(at - vec2(0.0, 2.0)))) {
     return vec4(stepOf(row, edgeAt(at + toward * 2.0) ? 0 : -1), c.a);
   }
 

@@ -1,5 +1,5 @@
 import type { FruitKind } from "./rules/fruits.ts";
-import { FRUIT_ART } from "./rules/sizes.ts";
+import { FRUIT_ART, FRUIT_PAD } from "./rules/sizes.ts";
 
 /**
  * Jam Jar's look, in one place. Every colour is from the Apollo palette (tools/palette/apollo.hex), which every picture is
@@ -121,10 +121,15 @@ export function fruitImage(kind: FruitKind): string {
  */
 export const FLAT_FRUIT: ReadonlySet<FruitKind> = new Set<FruitKind>(["apple", "cherry", "lemon", "orange", "blueberry", "banana", "chili", "watermelon"]);
 
-/** The fruit's light: the shader, its table, and its params (how strongly the ball is lit, how much the edge away from the light darkens, how much shine): see the shader. */
+/** The fruit's light: the shader, its table, and its params (how strongly the ball is lit, how much the edge away from the light darkens, how much shine, the clear margin round the picture): see the shader. */
 export const FRUIT_LIGHT = "fruit-light.glsl";
 export const LIGHT_TABLE = "light.png";
-export const FRUIT_LIGHT_PARAMS: readonly number[] = [1, 0.8, 0.12];
+export const FRUIT_LIGHT_PARAMS: readonly number[] = [1, 0.8, 0.12, FRUIT_PAD];
+
+/** Where a fruit's middle is in its picture, in pixels each way: its picture has a clear margin round it (FRUIT_PAD). */
+export function fruitImageMiddle(kind: FruitKind): number {
+  return FRUIT_ART[kind].size / 2 + FRUIT_PAD;
+}
 
 export function fruitImageSize(kind: FruitKind): number {
   return FRUIT_ART[kind].size;

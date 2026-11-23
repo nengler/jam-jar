@@ -1,7 +1,7 @@
 import { Sprite } from "@tsengine/runtime/jsx";
 
 import type { FruitKind } from "./rules/fruits.ts";
-import { FLAT_FRUIT, FRUIT_LIGHT, FRUIT_LIGHT_PARAMS, fruitImage, fruitImageSize, FROZEN, HONEYED, LIGHT, LIGHT_TABLE, PICKLED, ROTTEN } from "./theme.ts";
+import { FLAT_FRUIT, FRUIT_LIGHT, FRUIT_LIGHT_PARAMS, fruitImage, fruitImageMiddle, FROZEN, HONEYED, LIGHT, LIGHT_TABLE, PICKLED, ROTTEN } from "./theme.ts";
 
 interface FruitBallProps {
   kind: FruitKind;
@@ -29,7 +29,7 @@ interface FruitBallProps {
  * screen as it is drawn, whichever way it has turned.
  */
 export function FruitBall({ kind, x, y, rotten = false, honeyed = false, pickled = false, frozen = false, lit = false, glow = 0, turn = 0 }: FruitBallProps) {
-  const half = fruitImageSize(kind) / 2;
+  const half = fruitImageMiddle(kind);
   return (
     <Sprite
       image={fruitImage(kind)}

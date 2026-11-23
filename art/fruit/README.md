@@ -58,6 +58,12 @@ with the outline in `#241527`; the light table decides what each colour becomes 
 `shots/light/` and compares it with `test/light/`; after changing a flat fruit or the table, look at the new picture and take it
 with `npm run check:light -- --update`.
 
+A turned fruit is drawn in whole art pixels on the screen's grid, as if the game were drawn at 320 x 180, and its outline is
+made again round the turned shape (one pixel all round, with no single pixels sticking out), so a fruit part way round has
+clean steps at its edge, not half-pixel teeth. For that, `tools/make-assets.py` writes each fruit's picture with a clear margin
+of 2 art pixels round it (`FRUIT_PAD`): a picture is drawn only inside its rectangle, and without the margin the rectangle's
+turned edge cut through the fruit's outline. The fruit's size and ball are the art's, as before.
+
 ## Where the pictures came from
 
 The pictures here now are placeholders, cut from the fruit sheet in `tools/fruit/` (its README says what is known of where it

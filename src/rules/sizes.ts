@@ -29,3 +29,5 @@ export const FRUIT_ART = {
   giantpumpkin: { size: 96, radius: 43 },
   fruitfly: { size: 32, radius: 10 },
 } as const;
+/** The clear margin round each fruit's picture, in pixels each side, so it can turn without its edge being cut. */
+export const FRUIT_PAD = 4;
