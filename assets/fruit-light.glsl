@@ -175,20 +175,45 @@ int paintedStep(vec2 at) {
 }
 
 vec4 effect(vec2 uv) {
-  // Drawn in whole art pixels on the screen's grid, turned or not: each 2 x 2 block of the screen takes the fruit's colour at
-  // its middle, as if the game were drawn at 320 x 180. A fruit turned part way otherwise breaks its edge into half-pixel teeth,
+  // Drawn in whole art pixels, turned or not: each 2 x 2 block of the screen takes the fruit's colour at its middle, as if the
+  // game were drawn at 320 x 180. A fruit turned part way otherwise breaks its edge into half-pixel teeth,
   // and its dark outline into a fringe of specks.
-  vec2 snapped = floor(pixel / 2.0) * 2.0 + 1.0 - pixel;
   // `pixel` counts down from the top, the derivatives up from the bottom.
   vec2 right = dFdx(uv), down = -dFdy(uv);
-  uv += right * snapped.x + down * snapped.y;
   size = vec2(textureSize(image, 0));
+  // The blocks are lined up with the fruit, not the screen: from where the fruit's middle lands on the screen (found by taking
+  // the picture's middle back through how it is laid on the screen), whole pixels to the nearest. So a fruit at an odd pixel,
+  // turned or not, has each block take the middle of an art pixel, not the edge between two, where rounding dropped or doubled
+  // a row of them (a stem came away from a banana).
+  vec2 middleUv = (region.xy + region.zw * 0.5) / size;
+  vec2 middleOnScreen = floor(pixel + inverse(mat2(right, down)) * (middleUv - uv) + 0.5);
+  vec2 snapped = middleOnScreen + floor((pixel - middleOnScreen) / 2.0) * 2.0 + 1.0 - pixel;
+  uv += right * snapped.x + down * snapped.y;
   blockUv = uv;
   blockRight = right * 2.0;
   blockDown = down * 2.0;
   vec2 inRegion = uv * size - region.xy;
   vec4 c = blockAt(vec2(0.0));
-  if (c.a < 0.5) return vec4(0.0);
+  // A stalk or a stem a pixel across breaks into specks when turned: a clear block with one a quarter of a block from its middle
+  // is drawn as it, which joins the specks back into a line.
+  if (c.a < 0.5) {
+    for (int i = 0; i < 4; i++) {
+      vec2 q = vec2(i == 0 || i == 1 ? 0.25 : -0.25, i == 0 || i == 2 ? 0.25 : -0.25);
+      vec2 u = blockUv + blockRight * q.x + blockDown * q.y;
+      vec2 r = u * size - region.xy;
+      if (any(lessThan(r, vec2(0.0))) || any(greaterThanEqual(r, region.zw))) continue;
+      vec4 p = texture(image, u);
+      if (p.a < 0.5 || same(p.rgb, OUTLINE)) continue;
+      vec2 pAt = floor(r / 2.0) * 2.0 + 1.0;
+      bool stalk = same(p.rgb, STEM) || (pixelAt(pAt + vec2(2.0, 0.0)).a < 0.5 && pixelAt(pAt - vec2(2.0, 0.0)).a < 0.5) ||
+                   (pixelAt(pAt + vec2(0.0, 2.0)).a < 0.5 && pixelAt(pAt - vec2(0.0, 2.0)).a < 0.5);
+      if (stalk) {
+        c = p;
+        break;
+      }
+    }
+    if (c.a < 0.5) return vec4(0.0);
+  }
   ivec2 table = textureSize(lookup, 0);
   middle = table.x / 2;
   rows = table.y;
@@ -199,7 +224,23 @@ vec4 effect(vec2 uv) {
   int solidBeside = (solidBlock(vec2(1.0, 0.0)) ? 1 : 0) + (solidBlock(vec2(-1.0, 0.0)) ? 1 : 0) +
                     (solidBlock(vec2(0.0, 1.0)) ? 1 : 0) + (solidBlock(vec2(0.0, -1.0)) ? 1 : 0);
   bool thin = (!solidBlock(vec2(1.0, 0.0)) && !solidBlock(vec2(-1.0, 0.0))) || (!solidBlock(vec2(0.0, 1.0)) && !solidBlock(vec2(0.0, -1.0)));
-  if (solidBeside <= 1 && !same(c.rgb, STEM) && !thin) return vec4(0.0);
+  // Not one that joins a stem to the fruit, though: that left a turned stem floating.
+  bool byStemBlock = false;
+  for (int i = 0; i < 8; i++) {
+    vec2 o = i < 4 ? (i == 0 ? vec2(1.0, 0.0) : i == 1 ? vec2(-1.0, 0.0) : i == 2 ? vec2(0.0, 1.0) : vec2(0.0, -1.0))
+                   : vec2(i == 4 || i == 5 ? 1.0 : -1.0, i == 4 || i == 6 ? 1.0 : -1.0);
+    vec4 b = blockAt(o);
+    if (b.a > 0.5 && same(b.rgb, STEM)) byStemBlock = true;
+  }
+  if (solidBeside <= 1 && !same(c.rgb, STEM) && !thin && !byStemBlock) return vec4(0.0);
+  // A block with nothing solid in the eight round it floats free of the fruit (a speck of a turned stalk): left out, stem or not.
+  bool alone = true;
+  for (int i = 0; i < 8; i++) {
+    vec2 o = i < 4 ? (i == 0 ? vec2(1.0, 0.0) : i == 1 ? vec2(-1.0, 0.0) : i == 2 ? vec2(0.0, 1.0) : vec2(0.0, -1.0))
+                   : vec2(i == 4 || i == 5 ? 1.0 : -1.0, i == 4 || i == 6 ? 1.0 : -1.0);
+    if (solidBlock(o)) alone = false;
+  }
+  if (alone) return vec4(0.0);
   bool screenEdge = solidBeside < 4;
   // An outline block inside the edge (the outline came out two thick there) is the fruit: it takes the colour beside it.
   bool nearClear = false;
