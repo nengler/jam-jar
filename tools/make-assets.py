@@ -109,8 +109,22 @@ def off_palette(image: Image.Image) -> str | None:
 LIGHT_TABLE = ART / "palette" / "light.aseprite"
 LIGHT_STEPS = 5
 PALETTE_ORDER = [tuple(int(line[i : i + 2], 16) for i in (0, 2, 4)) for line in (ROOT / "tools" / "palette" / "apollo.hex").read_text().split()]
-# Colours the light leaves as they are: the fruit's outline.
+# Colours the light leaves as they are: the fruit's outline (the shader draws an outline in the dark steps of what it is beside).
 UNLIT = {(0x24, 0x15, 0x27)}
+# The rows painted by hand, for the colours the flat fruit are drawn in, after the placeholders' own shading: shadows go cold
+# (red to crimson to violet, yellow to a dusky brown, green to blue-green), lights go warm, and the last step is the shine, a
+# touch of near white where the light hits squarely. Every other row is worked out (light_table).
+PAINTED = {
+    "a53030": ["402751", "752438", "a53030", "cf573c", "ebede9"],  # apple, cherry, chili
+    "da863e": ["a53030", "cf573c", "da863e", "de9e41", "e8c170"],  # orange
+    "e8c170": ["ad7757", "de9e41", "e8c170", "e7d5b3", "ebede9"],  # lemon
+    "de9e41": ["7a4841", "be772b", "de9e41", "e8c170", "e7d5b3"],  # banana
+    "3c5e8b": ["1e1d39", "253a5e", "3c5e8b", "4f8fba", "a4dddb"],  # blueberry
+    "253a5e": ["10141f", "172038", "253a5e", "3c5e8b", "73bed3"],  # blueberry's crown
+    "468232": ["19332d", "25562e", "468232", "75a743", "a8ca58"],  # leaves, stems, the watermelon's dark stripes
+    "75a743": ["25562e", "468232", "75a743", "a8ca58", "d0da91"],  # the watermelon's light stripes
+    "4d2b32": ["241527", "341c27", "4d2b32", "7a4841", "ad7757"],  # stems
+}
 
 
 def oklab(rgb: tuple[int, int, int]) -> tuple[float, float, float]:
@@ -129,7 +143,7 @@ def oklab(rgb: tuple[int, int, int]) -> tuple[float, float, float]:
 
 def light_table() -> Image.Image:
     """
-    A first light ramp table, worked out: each step of shadow a little darker and pulled toward blue-violet, each step of light a
+    A first light ramp table: the PAINTED rows as they are, and the rest worked out: each step of shadow a little darker and pulled toward blue-violet, each step of light a
     little lighter and pulled toward yellow-orange (hue shifting, as a painter shades), then snapped to the nearest palette colour
     that is darker (or lighter) than the step before, so a ramp never turns back. Where there is none, the step repeats.
     """
@@ -139,6 +153,11 @@ def light_table() -> Image.Image:
     middle = LIGHT_STEPS // 2
     for row, colour in enumerate(PALETTE_ORDER):
         table.putpixel((middle, row), colour + (255,))
+        painted = PAINTED.get(bytes(colour).hex())
+        if painted is not None and len(painted) == LIGHT_STEPS:
+            for step, hex_colour in enumerate(painted):
+                table.putpixel((step, row), tuple(bytes.fromhex(hex_colour)) + (255,))
+            continue
         for side in (-1, 1):
             previous = colour
             for step in range(1, middle + 1):

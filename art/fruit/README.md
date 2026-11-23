@@ -34,10 +34,12 @@ their light drawn in.
 
 Flat now: Apple, Banana, Blueberry, Cherry, Chili, Lemon, Orange and Watermelon. They were flattened from the placeholders: each
 shade of the body made one colour, the stems and leaves one each, and the body's edge the outline. Each file keeps the old
-picture as a hidden layer, "old shading", which the game leaves out.
+picture as a hidden layer, "old shading", which the game leaves out. The light is shaded after the old pictures: most of the
+side toward the light a step up, a band just inside the edge and the far side darker, a speck of shine, and the outline in
+the dark steps of the colour beside it rather than black.
 
-Draw a flat fruit in colours that look like the fruit in plain, even light; the light table decides what each becomes lit and
-in shadow. To see the light at every turn, `npm run check:light` draws the light check (`src/LightCheck.tsx`) on the GPU into
+Draw a flat fruit in a colour a step below how most of it should look lit (the Lemon in `#de9e41`, which lights to `#e8c170`),
+with the outline in `#241527`; the light table decides what each colour becomes lit and in shadow. To see the light at every turn, `npm run check:light` draws the light check (`src/LightCheck.tsx`) on the GPU into
 `shots/light/` and compares it with `test/light/`; after changing a flat fruit or the table, look at the new picture and take it
 with `npm run check:light -- --update`.
 

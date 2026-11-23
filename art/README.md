@@ -69,12 +69,15 @@ The six items, each 24 x 20, standing on its bottom edge: `item-lid`, `item-juic
 
 | File | Size | What it is |
 | --- | --- | --- |
-| `light` | 5 x 46 | The light table the fruit are shaded with (`assets/fruit-light.glsl`). A row per Apollo colour, in the order of `tools/palette/apollo.hex`: the colour itself in the middle, two steps of shadow to its left (darker and cooler), two of light to its right (lighter and warmer). The shader only ever swaps a colour for another from its row. Copied as it is, not doubled, to `assets/light.png`. |
+| `light` | 5 x 46 | The light table the fruit are shaded with (`assets/fruit-light.glsl`). A row per Apollo colour, in the order of `tools/palette/apollo.hex`: the colour itself in the middle, two steps of shadow to its left (darker and colder), then a step of light (lighter and warmer) and the shine, a touch of near white where the light hits squarely. The shader only ever swaps a colour for another from its row. Copied as it is, not doubled, to `assets/light.png`. |
 
-`tools/make-assets.py` worked out the first table (`light_table`: each step snapped to the nearest palette colour that keeps
-the colour's strength and never turns back) and wrote it because the file was missing. It is yours to repaint: change any
-step but the middle column, which must stay each row's own colour. Delete the file to have a fresh one worked out. The row
-of the outline colour, `#241527`, is that colour all along, so outlines are not lit.
+`tools/make-assets.py` wrote the first table because the file was missing. The rows of the colours the flat fruit use are
+painted (`PAINTED`) after the placeholders' own shading: red goes to crimson then violet in shadow and to orange-red then
+white in the light, as the old Apple's did. The rest are worked out (`light_table`: each step snapped to the nearest palette
+colour that keeps the colour's strength and never turns back). It is yours to repaint: change any step but the middle
+column, which must stay each row's own colour. Delete the file to have a fresh one written. The row of the outline colour,
+`#241527`, is that colour all along: that marks the outline, which the shader draws in the dark steps of the colour beside
+it (the first toward the light, the darkest away from it), so the edge is crimson and violet, not black.
 
 ## screen/
 
