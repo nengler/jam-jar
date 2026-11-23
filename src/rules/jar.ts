@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
 import { FIZZY_LINKS, GLAZE_KINDS, GLAZE_PRICE, GLAZES, glazeFits, ripened, SPICY, type Glaze } from "./glazes.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
@@ -1727,6 +1727,14 @@ function juicerCrush(run: Run): void {
   }
 }
 
+/** The merge ladder's sizes, smallest first: how big a fruit is, as the Quince counts it. */
+const LADDER: readonly FruitKind[] = ["cherry", "grape", "orange", "melon", "watermelon"];
+
+/** A fruit's size on the merge ladder, 1 (Cherry) to 5 (Watermelon): the biggest ladder fruit it is at least as big as, 0 if smaller than a Cherry. */
+export function sizeStep(f: Fruit): number {
+  return LADDER.filter((kind) => f.r + 0.5 >= FRUITS[kind].radius).length;
+}
+
 /** Simmer fruit, Prunes and honeyed fruit score. */
 function simmer(run: Run, tally: Tally): void {
   const near = links(run.fruits);
@@ -1744,6 +1752,9 @@ function simmer(run: Run, tally: Tally): void {
       points = BANANA.base + f.age * BANANA.ripen + run.bananaBonus;
     } else if (f.kind === "pitaya") {
       points = FRUITS.pitaya.points + run.pitayaBonus;
+    } else if (f.kind === "quince") {
+      // By the size of the biggest fruit it touches: a Cherry 1, up to a Watermelon (or bigger) 5.
+      points = QUINCE.perSize * Math.max(0, ...touched.map((o) => sizeStep(o)));
     }
     if (f.honeyed) points += HONEY_POINTS;
     // Each Simmer score is a link of the chain, so a garden reaches the tiers at its tally.

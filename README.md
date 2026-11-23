@@ -138,6 +138,9 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     the turn.
   - Anchored: a Plunge or a Shockwave neither Smashes nor throws it.
 
+- The Quince, a bridge fruit (Garden to Ladder): Simmer, 2 at each Resolve for each size of the biggest fruit touching it, a
+  Cherry's 1 to a Watermelon's 5 (any fruit counts by its size). A garden wants big fruit built beside it.
+
   The shop's stall has five labels (three fruit, the item and the glaze); its glaze is drawn from a seed of its own, so the
   rest of what a seed decides is as it was. The badges are stand-ins until the fruit are redrawn with an overlay for each
   glaze. A run kept from before glazes loads with every fruit plain (`withGlazes`). The chain starts again with each hand dropped, and carries from the settle into the tally, so a garden
@@ -439,6 +442,26 @@ the Gourd. Fizzy added 2 links (+21%, Garden at x2 in 67% of turns), now 1. Seed
 off again in the same settle (Boom +28%); now it grows back at the end of the turn. Spicy's blast scored +6 a fruit and cost
 its build points (it destroys starters that would have merged), now +12. Ripe is still the strongest, and the one to watch
 in playtests. Anchored does nothing for these bots: it is for a garden sharing a jar with Pumpkins, which none of them plays.
+
+### Bridge fruit, measured (23 November)
+
+24 seeds each, chains on, rent ignored; each against the same player without it, on the same code (adding fruit to the offers
+moves every seed's luck, so these are not set against the tables above):
+
+| Fruit | Player | A run, without / with | What it scored itself |
+| --- | --- | --- | --- |
+| Quince | alone (against never picking) | 1321 / 1319 | 108 |
+| Quince | Garden | 1218 / 1216 | 60 |
+| Quince | Pumpkin + Melon | 1410 / 1422 | 138 |
+| Quince | Melon | 1488 / 1394 | 134 |
+| Medlar | alone (against never picking) | 1321 / 1138 | 17 |
+| Medlar | Rot (Banana, Prune, Fruit Fly, Fig) | 1162 / 1101 | 13 |
+
+The Quince is about neutral: a pick that costs nothing, with a placement to read (beside the biggest fruit). The Medlar was
+built as the design doc has it (two Rotten fruit merging beside it come out fresh, +3), then tried as any Merge with a Rotten
+fruit in it, then as freshening a Rotten neighbour each turn. Each scored the same 13 to 19 points a run, all of it its own
+landing: in a five-turn cycle rot comes late, and seldom sits beside the Medlar. It is held back from the game until it is
+redesigned; its picture is in `art/fruit/medlar.aseprite`.
 
 ## Looking at it without playing
 
