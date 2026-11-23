@@ -368,7 +368,7 @@ export function Play() {
         <Shelf run={run} roll={s.roll} dragging={s.drag && ordering && run.holding} dragX={s.dragX} framed={keys || s.tip} listening={ordering && !s.whole} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} onPressOutside={untip} />
       </Raise>
       <Raise id="pool">
-        <PoolBasket run={run} drop={shelfDrop} keys={keys} onOpen={openPool} />
+        <PoolBasket run={run} drop={shelfDrop} onOpen={openPool} />
       </Raise>
       {/* What a fruit does, for the one tapped or the mouse is over; not under the Blind jar's cloth. */}
       {bossNow(run) !== "blind" && (

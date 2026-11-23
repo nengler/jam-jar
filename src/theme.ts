@@ -130,7 +130,7 @@ export const COUNTER_SHADOW = "#090a1480";
 /** The motes of dust in the kitchen's air: two blues a little lighter than the wall. */
 export const MOTE: readonly [string, string] = ["#253a5e", "#3c5e8b"];
 
-/** A card's tooltip: one box for each keyword on it, this wide, beside the card. */
+/** A card's tooltip: one box of what its keywords mean, this wide, beside the card. */
 export const TERM_W = 216;
 
 /** The liquid in the jar, by what is in it: its body, behind the fruit, and the line along its surface. */

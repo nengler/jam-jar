@@ -1,10 +1,9 @@
-import { Entity, Flex, Sprite, Text, Tooltip } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Sprite, Text } from "@tsengine/runtime/jsx";
 
-import { Panel } from "./Board.tsx";
 import { Frame } from "./Coach.tsx";
-import { BASKET_H, BASKET_W, BOARD_W, COINS_X, LEDGE_W, ROLL_FROM, SHELF_Y } from "./places.ts";
+import { BASKET_H, BASKET_W, COINS_X, LEDGE_W, ROLL_FROM, SHELF_Y } from "./places.ts";
 import type { Run } from "./rules/jar.ts";
-import { COIN_JAR, DISPLAY, DISPLAY_SIZE, INK, LIGHT, PLAQUE } from "./theme.ts";
+import { COIN_JAR, DISPLAY, DISPLAY_SIZE, INK, LIGHT } from "./theme.ts";
 
 /** The basket's ledge and the inside of its rim: drawn behind a fruit rolling out of it. `drop` is how far above its place it still is, as it arrives. */
 export function PoolBasketBack({ drop }: { drop: number }) {
@@ -18,10 +17,10 @@ export function PoolBasketBack({ drop }: { drop: number }) {
 
 /**
  * The pool's basket: what is still to be dealt this shuffle waits in it, and a dealt hand rolls out of it (drawn over the fruit,
- * so they come out from behind its front). Beside it, how many are left; the mouse over it says of how many, and a tap on it (or
- * D) opens the whole pool. At 0 it is refilled with every fruit before the next deal. Then the coins.
+ * so they come out from behind its front). Beside it, how many are left, and a tap on it (or D) opens the
+ * whole pool. At 0 it is refilled with every fruit before the next deal. Then the coins.
  */
-export function PoolBasket({ run, drop, keys, onOpen }: { run: Run; drop: number; keys: boolean; onOpen: () => void }) {
+export function PoolBasket({ run, drop, onOpen }: { run: Run; drop: number; onOpen: () => void }) {
   return (
     <Entity y={-drop}>
       <Sprite image="basket.png" x={ROLL_FROM - BASKET_W / 2} y={SHELF_Y - BASKET_H} />
@@ -37,15 +36,6 @@ export function PoolBasket({ run, drop, keys, onOpen }: { run: Run; drop: number
       </Flex>
       <Flex x={ROLL_FROM - BASKET_W / 2} y={SHELF_Y - BASKET_H} width={BASKET_W + 40} height={BASKET_H} focusable={false} onPress={onOpen}>
         <Frame id="pool" pad={8} padBottom={4} />
-        <Tooltip anchor="top-left" to="bottom-left" offsetX={0} offsetY={8} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-          <Flex width={BOARD_W} direction="column" alignItems="stretch">
-            <Panel image={PLAQUE}>
-              <Text width={BOARD_W - 32} maxWidth={BOARD_W - 32} color={LIGHT}>
-                {`${run.draw.length} of your ${run.pool.length} fruit left to deal. ${keys ? "D" : "Tap"} to see them all.`}
-              </Text>
-            </Panel>
-          </Flex>
-        </Tooltip>
       </Flex>
     </Entity>
   );
