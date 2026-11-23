@@ -25,9 +25,8 @@ interface FruitBallProps {
 
 /**
  * A fruit, centred on (x, y): its pixel sprite (art/fruit), doubled with no smoothing by tools/make-assets.py. A rotten
- * fruit is tinted brown, a honeyed one gold; a lit one flashes. A fruit drawn flat (FLAT_FRUIT) is lit as it is drawn, its painted
- * shading staying put on the screen whichever way it has turned: its picture is two frames, the fruit and its step map, and only
- * the first is drawn.
+ * fruit is tinted brown, a honeyed one gold; a lit one flashes. A fruit drawn flat (FLAT_FRUIT) is lit as it is drawn, from the top
+ * left whichever way it has turned: its picture is two frames, the fruit and its normal map, and only the first is drawn.
  */
 export function FruitBall({ kind, x, y, rotten = false, honeyed = false, pickled = false, frozen = false, lit = false, glow = 0, turn = 0 }: FruitBallProps) {
   const half = fruitImageMiddle(kind);

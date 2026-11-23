@@ -114,10 +114,11 @@ export function fruitImage(kind: FruitKind): string {
 }
 
 /**
- * The fruit drawn flat, in their base colours with an outline, with their light painted on a hidden "shading" layer: the game
- * lights them as they are drawn, the painted light staying put on the screen (from the top left, as painted) however they have
- * rolled (assets/fruit-light.glsl, by the steps of the light table, art/palette/light.aseprite). tools/make-assets.py finds them
- * by that layer and marks them `shaded` in src/rules/sizes.ts; the others have their light drawn in, and are drawn as they are.
+ * The fruit drawn flat, in their base colours with an outline (their old lit picture kept on a hidden "shading" layer): the game
+ * lights them as they are drawn, from the top left of the screen however they have rolled, by which way each pixel faces (their
+ * normal maps, which tools/make-assets.py works out, or paints from a "normals" layer) and the steps of the light table
+ * (assets/fruit-light.glsl, art/palette/light.aseprite). make-assets.py marks them `shaded` in src/rules/sizes.ts; the others have
+ * their light drawn in, and are drawn as they are.
  */
 export const FLAT_FRUIT: ReadonlySet<FruitKind> = new Set<FruitKind>((Object.keys(FRUIT_ART) as FruitKind[]).filter((kind) => FRUIT_ART[kind].shaded));
 

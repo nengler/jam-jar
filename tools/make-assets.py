@@ -190,8 +190,6 @@ def light_table() -> Image.Image:
 # The colours flat fruit keep for their outline and their stems.
 OUTLINE_COLOUR = (0x24, 0x15, 0x27)
 STEM_COLOUR = (0x4d, 0x2b, 0x32)
-# A step of the light table as the step map stores it: in the red channel, the middle step at 128, each step 32 from it.
-STEP_MIDDLE, STEP_SIZE = 128, 32
 
 
 def fruit_parts(flat: Image.Image) -> dict[tuple[int, int], tuple[float, float]]:
@@ -233,85 +231,64 @@ def fruit_parts(flat: Image.Image) -> dict[tuple[int, int], tuple[float, float]]
     return out
 
 
-def step_map(flat: Image.Image, shading: Image.Image, table: Image.Image, where: Path) -> Image.Image:
+def normal_map(flat: Image.Image, where: Path) -> Image.Image:
     """
-    Where a fruit's painted shading (its "shading" layer) is lit and in shadow, as steps of the light table: for each pixel, in the
-    red channel, the step of its flat colour's row that the painting has there (an outline pixel is measured against the fruit
-    beside it); in green and blue, how far it is to the middle of its part (`fruit_parts`), 4 to an art pixel from 128. The shader
-    turns each part's painting back about that middle, so the painted light stays put on the screen however the fruit turns. The
-    painted dip round a stem is filled from the shading round it: the stem turns with the fruit, and its dip would stay behind.
+    Which way each pixel of a flat fruit faces, worked out from its shape: each part (`fruit_parts`: two cherries, three berries,
+    two bananas) rises from its edge like a dome, by how far in from the edge a pixel is, so a round part is a ball and a long one
+    a tube, each turning toward its own outline. As RGB: x and y (y down) from 0 to 255, 128 facing the eye; z, toward the eye,
+    from 0 to 255. An outline pixel faces out, away from the fruit beside it. The shader turns these with the fruit, so the light
+    falls right at every turn, on any shape.
     """
-    rows = {table.getpixel((LIGHT_STEPS // 2, r))[:3]: [table.getpixel((x, r))[:3] for x in range(LIGHT_STEPS)] for r in range(table.height)}
     w, h = flat.size
-    steps: dict[tuple[int, int], int] = {}
+    colour = lambda x, y: flat.getpixel((x, y))[:3] if 0 <= x < w and 0 <= y < h and flat.getpixel((x, y))[3] else None
+    middles = fruit_parts(flat)
+    body = lambda x, y: colour(x, y) not in (None, OUTLINE_COLOUR, STEM_COLOUR)
+    part_of = lambda x, y: middles.get((x, y)) if body(x, y) else None
+    parts = set(middles.values())
+    # How far in each pixel is from its part's edge: the distance to the nearest pixel not of its part.
+    outside = {part: [(x, y) for y in range(-1, h + 1) for x in range(-1, w + 1) if part_of(x, y) != part] for part in parts}
+    depth: dict[tuple[int, int], float] = {}
     for y in range(h):
         for x in range(w):
-            f, o = flat.getpixel((x, y)), shading.getpixel((x, y))
-            if f[3] == 0 or o[3] == 0:
-                continue
-            base = f[:3]
-            if base == OUTLINE_COLOUR:
-                near = [flat.getpixel((x + dx, y + dy))[:3] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1))
-                        if 0 <= x + dx < w and 0 <= y + dy < h and flat.getpixel((x + dx, y + dy))[3] and flat.getpixel((x + dx, y + dy))[:3] not in (OUTLINE_COLOUR, STEM_COLOUR)]
-                if not near:
-                    continue
-                base = near[0]
-            row = rows.get(base)
-            if row is None:
-                raise SystemExit(f"{where}: #{bytes(base).hex()} has no row in the light table")
-            painted = o[:3]
-            steps[(x, y)] = min(range(LIGHT_STEPS), key=lambda i: 0 if row[i] == painted else 1 + sum((a - b) ** 2 for a, b in zip(oklab(row[i]), oklab(painted)))) - LIGHT_STEPS // 2
-    middles = fruit_parts(flat)
-    # Only the broad light is kept: what the painting does round the fruit's markings stays behind when they turn away from it
-    # (the shading round the Orange's leaf, the light along the Watermelon's stripes, the dip round a stem), and the painted
-    # outline would land inside a turned fruit that is not quite round. So the outline, a stem, every pixel not of its part's
-    # main colour, and what is within a pixel of a stem or such a marking (its painted shadow) take the steps of the part's
-    # main colour round them: the commonest within three pixels, nearer ones counting more.
-    colour = lambda p: flat.getpixel(p)[:3]
-    by_part: dict[tuple[float, float], list[tuple[int, int]]] = {}
-    for p in steps:
-        by_part.setdefault(middles.get(p, p), []).append(p)
-    stem = {(x, y) for y in range(h) for x in range(w) if flat.getpixel((x, y))[3] and colour((x, y)) == STEM_COLOUR}
-    dip = {(x + dx, y + dy) for x, y in stem for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
-    for part in by_part.values():
-        counts: dict[tuple[int, int, int], int] = {}
-        for p in part:
-            if colour(p) not in (OUTLINE_COLOUR, STEM_COLOUR):
-                counts[colour(p)] = counts.get(colour(p), 0) + 1
-        if not counts:
-            continue
-        main = max(counts, key=counts.get)
-        marks = {p for p in part if colour(p) not in (main, OUTLINE_COLOUR)}
-        near_marks = {(x + dx, y + dy) for x, y in marks for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
-        good = [p for p in part if colour(p) == main and p not in dip and p not in near_marks]
-        if not good:
-            continue
-        filled = {}
-        for p in part:
-            if p in good:
-                continue
-            votes: dict[int, float] = {}
-            for q in good:
-                d2 = (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2
-                if d2 <= 9:
-                    votes[steps[q]] = votes.get(steps[q], 0.0) + 1.0 / (1.0 + d2)
-            filled[p] = max(votes, key=votes.get) if votes else steps[min(good, key=lambda q: (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2)]
-        steps.update(filled)
-    # Specks smoothed away: a step unlike all four round it (of its own part) takes their commonest. A band a pixel wide stays,
-    # and so does the shine as painted.
-    smooth = dict(steps)
-    for (x, y), step in steps.items():
-        if step == LIGHT_STEPS // 2:
-            continue
-        near = [steps[q] for q in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)) if q in steps and middles.get(q) == middles.get((x, y))]
-        if len(near) >= 3 and step not in near:
-            smooth[(x, y)] = max(set(near), key=near.count)
-    steps = smooth
+            part = part_of(x, y)
+            if part is not None:
+                depth[(x, y)] = min(((ox - x) ** 2 + (oy - y) ** 2) ** 0.5 for ox, oy in outside[part])
+    deepest: dict = {}
+    for p, d in depth.items():
+        deepest[middles[p]] = max(deepest.get(middles[p], 0.0), d)
+
+    # A dome on each part: its height rises as a circle's does, from its edge to its middle.
+    def height(x: int, y: int, part) -> float:
+        if part_of(x, y) != part:
+            return 0.0
+        top = deepest[part]
+        k = min(1.0, (depth[(x, y)] - 0.5) / max(top - 0.5, 0.5))
+        return top * (1.0 - (1.0 - k) ** 2) ** 0.5
+
     out = Image.new("RGBA", flat.size, (0, 0, 0, 0))
-    for (x, y), step in steps.items():
-        mx, my = middles.get((x, y), (x, y))
-        dx, dy = max(-31, min(31, round((mx - x) * 4) / 4)), max(-31, min(31, round((my - y) * 4) / 4))
-        out.putpixel((x, y), (STEP_MIDDLE + step * STEP_SIZE, round(128 + dx * 4), round(128 + dy * 4), 255))
+    for y in range(h):
+        for x in range(w):
+            if colour(x, y) is None:
+                continue
+            part = part_of(x, y)
+            if part is not None:
+                # The slope, from the heights round it (Sobel), of its own part only.
+                hs = {(dx, dy): height(x + dx, y + dy, part) for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
+                gx = (hs[(1, -1)] + 2 * hs[(1, 0)] + hs[(1, 1)] - hs[(-1, -1)] - 2 * hs[(-1, 0)] - hs[(-1, 1)]) / 8
+                gy = (hs[(-1, 1)] + 2 * hs[(0, 1)] + hs[(1, 1)] - hs[(-1, -1)] - 2 * hs[(0, -1)] - hs[(1, -1)]) / 8
+                nx, ny, nz = -gx, -gy, 1.0
+            else:
+                # The outline, a stem, a stalk: facing out from the fruit beside it.
+                ax = ay = 0.0
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        if body(x + dx, y + dy):
+                            ax -= dx
+                            ay -= dy
+                nx, ny, nz = ax, ay, (0.35 if (ax or ay) else 1.0)
+            length = (nx * nx + ny * ny + nz * nz) ** 0.5
+            nx, ny, nz = nx / length, ny / length, nz / length
+            out.putpixel((x, y), (round(128 + 127 * nx), round(128 + 127 * ny), round(255 * max(0.0, nz)), 255))
     return out
 
 
@@ -373,14 +350,16 @@ def write_pictures() -> int:
         if source.parent.name == "fruit":
             padded = Image.new("RGBA", (picture.width + 2 * FRUIT_PAD, picture.height + 2 * FRUIT_PAD), (0, 0, 0, 0))
             padded.paste(picture, (FRUIT_PAD, FRUIT_PAD))
-            # A fruit with a painted "shading" layer is drawn flat and lit by the shader from that painting: its picture is two side
-            # by side, the flat fruit and then its step map (`step_map`).
-            painting = read_aseprite(source, "shading") if is_aseprite(source) else []
-            if painting:
-                steps = step_map(picture, painting[0], read_aseprite(LIGHT_TABLE)[0], where)
+            # A flat fruit (one that keeps its old, lit picture as a "shading" layer for reference) is lit by the shader from which way
+            # each pixel faces: its picture is two side by side, the flat fruit and its normal map, painted on a "normals" layer if it
+            # has one, else worked out from its shape (`normal_map`).
+            reference = read_aseprite(source, "shading") if is_aseprite(source) else []
+            if reference:
+                painted = read_aseprite(source, "normals")
+                normals = painted[0] if painted else normal_map(picture, where)
                 both = Image.new("RGBA", (padded.width * 2, padded.height), (0, 0, 0, 0))
                 both.paste(padded, (0, 0))
-                both.paste(steps, (padded.width + FRUIT_PAD, FRUIT_PAD))
+                both.paste(normals, (padded.width + FRUIT_PAD, FRUIT_PAD))
                 padded = both
                 shaded.add(source.stem)
             picture = padded
