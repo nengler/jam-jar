@@ -12,9 +12,10 @@
 // between two cherries or three berries) or a stem (#4d2b32). So a banana rounds along its bend, each berry of a bunch and each
 // cherry of a pair is its own round, and the fruit dips toward its stem. As much again of a ball over the whole fruit is mixed
 // in, so the whole fruit turns from light to dark across it, not only at its edges.
-// - the side facing the light is lit, a step up, over most of it, stopping a pixel short of the outline on the sunny side;
-// - the edge away from the light is a step darker, and what faces away falls to the darkest step: thin on one side and wide on
-//   the other, so it is lit from one side (the same edge all round would be pillow shading);
+// - the steps go in bands that follow the outline, as the old Apple is painted: each band a step lighter going in from the edge
+//   (how far in comes from looking eight ways out), wide where the fruit faces away from the light and thin where it faces it.
+//   So the shadows hug the fruit's shape, and the lit side has only a pixel of the plain colour before its outline. The same
+//   bands all round would be pillow shading: how the fruit faces the light is what makes them wide on one side only;
 // - the shine, one speck on each part, where it faces halfway between the light and the eye;
 // - a line one pixel across (a stalk) in two tones, and an inner line between two parts as the deepest shadow;
 // - a stem is a dark stalk;
@@ -27,6 +28,13 @@ const vec2 SCREEN_LIGHT = vec2(1.0, -1.0);
 // The colours the flat fruit keep for their outline and their stems.
 const vec3 OUTLINE = vec3(36.0, 21.0, 39.0) / 255.0;
 const vec3 STEM = vec3(77.0, 43.0, 50.0) / 255.0;
+
+// The bands: how much lighter each art pixel in from the edge is, how much facing the light counts, where they start, and below
+// what the darkest step begins.
+const float BAND_IN = 0.6;
+const float BAND_FACING = 1.5;
+const float BAND_FROM = -1.6;
+const float DARKEST = -1.9;
 
 int middle;
 int rows;
@@ -88,6 +96,31 @@ vec3 normalAt(vec2 at) {
   return normalize(shape * 0.5 + ball * 0.5);
 }
 
+// Whether the pixel at `at` is where its part shines: it faces halfway between the light and the eye closely enough, and better
+// than any pixel of the fruit around it (ties going to the one nearer the light, so a flat patch shines in one place).
+bool shinesAt(vec2 at, vec2 toward) {
+  if (edgeAt(at)) return false;
+  // Not beside a stem: the fruit dips toward it, which would make a second, false shine there.
+  for (int i = 0; i < 8; i++) {
+    vec2 by = i < 4 ? (i == 0 ? vec2(2.0, 0.0) : i == 1 ? vec2(-2.0, 0.0) : i == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0))
+                    : vec2(i == 4 || i == 5 ? 2.0 : -2.0, i == 4 || i == 6 ? 2.0 : -2.0);
+    vec4 p = pixelAt(at + by);
+    if (p.a > 0.5 && same(p.rgb, STEM)) return false;
+  }
+  vec3 light = normalize(vec3(toward, 0.9));
+  vec3 halfway = normalize(light + vec3(0.0, 0.0, 1.0));
+  float gleam = dot(normalAt(at), halfway);
+  if (gleam < 1.0 - params[2] * 1.2) return false;
+  for (int i = 0; i < 8; i++) {
+    vec2 by = i < 4 ? (i == 0 ? vec2(2.0, 0.0) : i == 1 ? vec2(-2.0, 0.0) : i == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0))
+                    : vec2(i == 4 || i == 5 ? 2.0 : -2.0, i == 4 || i == 6 ? 2.0 : -2.0);
+    if (edgeAt(at + by)) continue;
+    float other = dot(normalAt(at + by), halfway);
+    if (other > gleam || (other == gleam && dot(by, toward) > 0.0)) return false;
+  }
+  return true;
+}
+
 vec4 effect(vec2 uv) {
   vec4 c = texture(image, uv);
   if (c.a < 0.5) return c;
@@ -128,7 +161,8 @@ vec4 effect(vec2 uv) {
                           : vec2(j == 4 || j == 5 ? 2.0 : -2.0, j == 4 || j == 6 ? 2.0 : -2.0);
         if (pixelAt(at + near).a < 0.5) outer = true;
       }
-      return vec4(stepOf(besideRow, outer && facing > -0.1 ? -1 : -2), c.a);
+      // The outer outline: the first dark step where it faces the light, the darkest where it faces away from it.
+      return vec4(stepOf(besideRow, outer && facing > 0.0 ? -1 : -2), c.a);
     }
     return c;
   }
@@ -139,27 +173,32 @@ vec4 effect(vec2 uv) {
     return vec4(stepOf(row, edgeAt(at + toward * 2.0) ? 0 : -1), c.a);
   }
 
-  // The edges right beside it, toward the light and away from it.
-  bool litEdge = edgeAt(at + toward * 2.0);
+  // Whether the edge is right beside it on the side away from the light (no shine there).
   bool shadowEdge = edgeAt(at - toward * 2.0);
 
-  float level = facing * 2.8 - 1.0 - (shadowEdge ? params[1] : 0.0);
-  int step = level > 0.6 ? 1 : level > -0.2 ? 0 : level > -1.7 ? -1 : -2;
-  if (litEdge) step = min(step, 0);
-  // The shine: one speck on each part, the pixel that faces halfway between the light and the eye best of those around it.
-  vec3 halfway = normalize(light + vec3(0.0, 0.0, 1.0));
-  float gleam = dot(normal, halfway);
-  if (params[2] > 0.0 && !litEdge && !shadowEdge && gleam > 1.0 - params[2] * 0.6) {
-    bool best = true;
-    for (int i = 0; i < 8; i++) {
-      vec2 by = i < 4 ? (i == 0 ? vec2(2.0, 0.0) : i == 1 ? vec2(-2.0, 0.0) : i == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0))
-                      : vec2(i == 4 || i == 5 ? 2.0 : -2.0, i == 4 || i == 6 ? 2.0 : -2.0);
-      if (edgeAt(at + by)) continue;
-      // Ties go to the pixel nearer the light, so a flat patch still shines in one place.
-      float other = dot(normalAt(at + by), halfway);
-      if (other > gleam || (other == gleam && dot(by, toward) > 0.0)) best = false;
+  // How far in from the nearest edge it is, in art pixels (1 beside the outline), looking eight ways out to six pixels.
+  float inside = 6.0;
+  for (int i = 0; i < 8; i++) {
+    vec2 dir = i < 4 ? (i == 0 ? vec2(1.0, 0.0) : i == 1 ? vec2(-1.0, 0.0) : i == 2 ? vec2(0.0, 1.0) : vec2(0.0, -1.0))
+                     : vec2(i == 4 || i == 5 ? 1.0 : -1.0, i == 4 || i == 6 ? 1.0 : -1.0);
+    for (int n = 1; n <= 6; n++) {
+      if (float(n) >= inside) break;
+      if (edgeAt(at + dir * 2.0 * float(n))) {
+        inside = float(n);
+        break;
+      }
     }
-    if (best) step = 2;
   }
+
+  // The steps go in bands following the outline, as the old Apple is painted: each band a step lighter going in from the edge,
+  // and wide where it faces away from the light, thin where it faces it. So the shadows hug the fruit's shape.
+  float level = inside * BAND_IN + facing * BAND_FACING + BAND_FROM;
+  int step = level > 0.6 ? 1 : level > -0.2 ? 0 : level > DARKEST ? -1 : -2;
+  // The shine: on each part, the pixel that faces halfway between the light and the eye best of those around it, and on a part
+  // wide enough for it, one pixel either way along the curve from that one, a short streak as the old Apple has.
+  vec2 along = vec2(toward.y, -toward.x);
+  along = vec2(abs(along.x) > 0.38 ? sign(along.x) : 0.0, abs(along.y) > 0.38 ? sign(along.y) : 0.0) * 2.0;
+  if (params[2] > 0.0 && !shadowEdge &&
+      (shinesAt(at, toward) || (inside >= 3.0 && (shinesAt(at + along, toward) || shinesAt(at - along, toward))))) step = 2;
   return vec4(stepOf(row, step), c.a);
 }
