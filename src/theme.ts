@@ -121,7 +121,7 @@ export function fruitImage(kind: FruitKind): string {
  */
 export const FLAT_FRUIT: ReadonlySet<FruitKind> = new Set<FruitKind>(["apple", "cherry", "lemon", "orange", "blueberry", "banana", "chili", "watermelon"]);
 
-/** The fruit's light: the shader, its table, and its params (how strongly the ball is lit, how much the edge away from the light darkens, the shine's size): see the shader. */
+/** The fruit's light: the shader, its table, and its params (how strongly the ball is lit, how much the edge away from the light darkens, how much shine): see the shader. */
 export const FRUIT_LIGHT = "fruit-light.glsl";
 export const LIGHT_TABLE = "light.png";
 export const FRUIT_LIGHT_PARAMS: readonly number[] = [1, 0.8, 0.12];

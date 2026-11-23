@@ -32,15 +32,20 @@ screen however the fruit has rolled (`assets/fruit-light.glsl`), shading each co
 (`art/palette/light.aseprite`). A fruit is flat once it is in `FLAT_FRUIT` (`src/theme.ts`); the rest are drawn as they are,
 their light drawn in.
 
-Flat now: Apple, Banana, Blueberry, Cherry, Chili, Lemon, Orange and Watermelon. They were flattened from the placeholders: each
-shade of the body made one colour, the stems and leaves one each, and the body's edge the outline. Each file keeps the old
-picture as a hidden layer, "old shading", which the game leaves out. The light is shaded after the old pictures, the Apple
-most of all: most of the side toward the light a step up, stopping a pixel short of the outline (a thin falloff on the sunny
-side); the edge away from it and the far side darker (a wide one on the shadow side); a short streak of shine near the lit
-edge; and the outline in a dark step of the colour beside it, crimson toward the light and violet away from it on a red fruit.
-The falloff is thin on one side and wide on the other, never the same all round (pillow shading), so a fruit always reads as
-lit from one side. Stems are drawn in `#4d2b32`, kept for stems: the light draws them as dark stalks with a lit tip, in a
-hollow a step or two darker than the fruit round them.
+Flat now: Apple, Banana, Blueberry, Cherry, Chili, Lemon, Orange and Watermelon. They were flattened from the placeholders: the
+body one colour, the stems and leaves one each, the edge the outline. What the placeholders drew that is not light was kept:
+the lines between the Blueberry's three berries and the seam where one Cherry overlaps the other (in the outline colour), and
+the Lemon's and Orange's peel dots (a lighter colour on the body). Each file keeps the old picture as a hidden layer, "old
+shading", which the game leaves out.
+
+The light follows each fruit's own shape: which way a pixel faces comes from the edges near it (the clear, the outline, inner
+lines included, and stems), mixed with a ball over the whole fruit. So an inner line in the outline colour makes each part its
+own round, lit and shining on its own: draw one wherever one part of a fruit stands in front of another. The shading is after
+the old pictures, the Apple most of all: the side toward the light a step up, stopping a pixel short of the outline (a thin
+falloff on the sunny side); the edge away from it and the far side darker (a wide one on the shadow side); a speck of shine on
+each part; and the outline in a dark step of the colour beside it, crimson toward the light and violet away from it on a red
+fruit. The falloff is thin on one side and wide on the other, never the same all round (pillow shading). Stems are drawn in
+`#4d2b32`, kept for stems: the light draws them as dark stalks, and the fruit dips toward them.
 
 Draw a flat fruit in a colour a step below how most of it should look lit (the Lemon in `#de9e41`, which lights to `#e8c170`),
 with the outline in `#241527`; the light table decides what each colour becomes lit and in shadow. To see the light at every turn, `npm run check:light` draws the light check (`src/LightCheck.tsx`) on the GPU into

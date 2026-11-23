@@ -5,56 +5,86 @@
 // warmer in the light.
 //
 // It is shaded as the placeholder fruit were painted (the old Apple most of all). Each art pixel (2 x 2 of the picture's) is one
-// step, so the light falls in whole pixels. Taking the fruit as a ball:
-// - the side facing the light is lit, one step up, over most of the fruit, stopping a pixel short of the outline there: a thin
-//   falloff of the colour itself on the sunny side;
-// - the edge away from the light is a step darker, and the far side falls to the darkest step: a wide, dark falloff. Thin on
-//   one side and wide on the other, so it is lit from one side; the same edge all round would be pillow shading;
-// - a short streak of shine along the curve near the lit edge;
-// - a stem (#4d2b32) is a dark stalk with its tip catching the light, in a hollow a step or two darker than the fruit round it;
-// - the outline is not black: it takes a dark step of what it is beside, the first toward the light and the darkest away from
-//   it (a row that is one colour all along, as the outline's is, marks the outline).
+// step, so the light falls in whole pixels.
 //
-// params[0]: how strongly the ball is lit (1: as painted); params[1]: how much the edge away from the light darkens (0.8);
-// params[2]: the shine streak's width, as a share of the fruit's radius (0.12; 0 for none).
+// Which way each pixel faces comes from the fruit's own shape, not from a ball the size of its picture: the edges near it, in
+// rings around it, say which way the surface turns there. An edge is the clear, the outline (#241527, the inner lines too, as
+// between two cherries or three berries) or a stem (#4d2b32). So a banana rounds along its bend, each berry of a bunch and each
+// cherry of a pair is its own round, and the fruit dips toward its stem. As much again of a ball over the whole fruit is mixed
+// in, so the whole fruit turns from light to dark across it, not only at its edges.
+// - the side facing the light is lit, a step up, over most of it, stopping a pixel short of the outline on the sunny side;
+// - the edge away from the light is a step darker, and what faces away falls to the darkest step: thin on one side and wide on
+//   the other, so it is lit from one side (the same edge all round would be pillow shading);
+// - the shine, a pixel or two, where a part faces halfway between the light and the eye;
+// - a stem is a dark stalk;
+// - the outline is not black: a dark step of what it is beside, the first toward the light and the darkest away from it.
+//
+// params[0]: how strongly it is lit (1: as painted); params[1]: how much the edge away from the light darkens (0.8);
+// params[2]: how much shine (0.12; 0 for none).
 
 const vec2 SCREEN_LIGHT = vec2(1.0, -1.0);
-// The stems' colour, #4d2b32, which the flat fruit keep for stems: a stem is shaded as a stalk, not as part of the ball.
+// The colours the flat fruit keep for their outline and their stems.
+const vec3 OUTLINE = vec3(36.0, 21.0, 39.0) / 255.0;
 const vec3 STEM = vec3(77.0, 43.0, 50.0) / 255.0;
-
-bool isStem(vec4 colour) {
-  return colour.a > 0.5 && all(lessThan(abs(colour.rgb - STEM), vec3(0.01)));
-}
 
 int middle;
 int rows;
+vec2 size;
+
+bool same(vec3 a, vec3 b) {
+  return all(lessThan(abs(a - b), vec3(0.01)));
+}
 
 // The row of the table whose middle is this colour, or -1.
 int rowOf(vec3 colour) {
   for (int i = 0; i < 64; i++) {
     if (i >= rows) break;
-    vec3 base = texelFetch(lookup, ivec2(middle, i), 0).rgb;
-    if (all(lessThan(abs(base - colour), vec3(0.01)))) return i;
+    if (same(texelFetch(lookup, ivec2(middle, i), 0).rgb, colour)) return i;
   }
   return -1;
-}
-
-// Whether a row is the same colour all along: the light leaves it alone (the outline).
-bool unlit(int row) {
-  vec3 base = texelFetch(lookup, ivec2(middle, row), 0).rgb;
-  return all(lessThan(abs(texelFetch(lookup, ivec2(0, row), 0).rgb - base), vec3(0.01))) &&
-         all(lessThan(abs(texelFetch(lookup, ivec2(middle + 1, row), 0).rgb - base), vec3(0.01)));
-}
-
-// The picture's pixel at `at` (in its pixels, from the region's corner), clear outside the region.
-vec4 pixelAt(vec2 at, vec2 size) {
-  if (any(lessThan(at, vec2(0.0))) || any(greaterThanEqual(at, region.zw))) return vec4(0.0);
-  return texture(image, (region.xy + at) / size);
 }
 
 // The colour a step of a row is, the step clamped to the row.
 vec3 stepOf(int row, int step) {
   return texelFetch(lookup, ivec2(middle + clamp(step, -middle, middle), row), 0).rgb;
+}
+
+// The picture's pixel at `at` (in its pixels, from the region's corner), clear outside the region.
+vec4 pixelAt(vec2 at) {
+  if (any(lessThan(at, vec2(0.0))) || any(greaterThanEqual(at, region.zw))) return vec4(0.0);
+  return texture(image, (region.xy + at) / size);
+}
+
+// Whether the pixel at `at` is an edge of the fruit's surface: the clear, the outline or a stem.
+bool edgeAt(vec2 at) {
+  vec4 p = pixelAt(at);
+  return p.a < 0.5 || same(p.rgb, OUTLINE) || same(p.rgb, STEM);
+}
+
+// Which way the surface faces at `at`: from the edges in rings around it (sixteen ways out, three distances), the nearer
+// counting more, mixed with a ball over the whole picture. x and y as the picture's (y down), z toward the eye.
+vec3 normalAt(vec2 at) {
+  float reach = clamp(region.z * 0.12, 4.0, 10.0); // in the picture's pixels: about a fifth of the fruit across, at most 5 art pixels
+  vec2 out_ = vec2(0.0);
+  float total = 0.0;
+  for (int ring = 1; ring <= 3; ring++) {
+    float r = reach * float(ring) / 3.0;
+    float weight = 1.0 / float(ring);
+    for (int i = 0; i < 16; i++) {
+      float a = float(i) * 0.39269908; // 2 pi / 16
+      vec2 dir = vec2(cos(a), sin(a));
+      if (edgeAt(at + dir * r)) out_ += dir * weight;
+      total += weight;
+    }
+  }
+  // Half the rings in the clear is right at an edge: facing out sideways there.
+  vec2 side = out_ / total * 2.2;
+  if (length(side) > 0.95) side = normalize(side) * 0.95;
+  vec3 shape = vec3(side, sqrt(1.0 - dot(side, side)));
+  vec2 d = (at - region.zw * 0.5) / (region.zw * 0.45);
+  if (length(d) > 1.0) d = normalize(d);
+  vec3 ball = vec3(d, sqrt(max(0.0, 1.0 - dot(d, d))));
+  return normalize(shape * 0.5 + ball * 0.5);
 }
 
 vec4 effect(vec2 uv) {
@@ -63,72 +93,46 @@ vec4 effect(vec2 uv) {
   ivec2 table = textureSize(lookup, 0);
   middle = table.x / 2;
   rows = table.y;
+  size = vec2(textureSize(image, 0));
   int row = rowOf(c.rgb);
   if (row < 0) return c;
 
-  vec2 size = vec2(textureSize(image, 0));
   // The middle of this art pixel, in the picture's pixels from the region's corner.
   vec2 at = floor((uv * size - region.xy) / 2.0) * 2.0 + 1.0;
-  // The light, in the picture: the screen's top right, turned back by how the fruit is turned; and as it falls on a ball.
+  // The light, in the picture: the screen's top right, turned back by how the fruit is turned; as it falls from the front.
   vec2 toward = normalize(transpose(turn) * SCREEN_LIGHT);
   vec3 light = normalize(vec3(toward, 0.9));
 
-  // Where this pixel is on the ball, from its middle, as a share of its radius; and how squarely it faces the light.
-  vec2 d = (at - region.zw * 0.5) / (region.zw * 0.45);
-  float out2 = min(dot(d, d), 1.0);
-  vec3 normal = normalize(vec3(d, sqrt(1.0 - out2)));
+  // A stem: a dark stalk.
+  if (same(c.rgb, STEM)) return vec4(stepOf(row, -1), c.a);
+
+  vec3 normal = normalAt(at);
   float facing = dot(normal, light) * params[0];
 
-  // The outline: a step of the colour beside it, by how squarely it faces the light.
-  if (unlit(row)) {
+  // The outline: a dark step of the colour beside it, the first where it faces the light, the darkest where it does not.
+  if (same(c.rgb, OUTLINE)) {
     // The four pixels beside it first, then the four corners (an outline's corner pixel can touch the fruit only there).
     for (int i = 0; i < 8; i++) {
       vec2 by = i < 4 ? (i == 0 ? vec2(2.0, 0.0) : i == 1 ? vec2(-2.0, 0.0) : i == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0))
                       : vec2(i == 4 || i == 5 ? 2.0 : -2.0, i == 4 || i == 6 ? 2.0 : -2.0);
-      vec4 beside = pixelAt(at + by, size);
-      if (beside.a < 0.5) continue;
+      vec4 beside = pixelAt(at + by);
+      if (beside.a < 0.5 || same(beside.rgb, OUTLINE) || same(beside.rgb, STEM)) continue;
       int besideRow = rowOf(beside.rgb);
-      if (besideRow < 0 || unlit(besideRow)) continue;
+      if (besideRow < 0) continue;
       return vec4(stepOf(besideRow, facing > -0.1 ? -1 : -2), c.a);
     }
     return c;
   }
 
-  // A stem: dark, as a stalk in the shade of the fruit, and a step lighter where its tip catches the light.
-  if (isStem(c)) {
-    vec4 tip = pixelAt(at + toward * 2.0, size);
-    bool open = tip.a < 0.5 || unlit(rowOf(tip.rgb));
-    return vec4(stepOf(row, open && facing > 0.2 ? 1 : -1), c.a);
-  }
+  // The edges right beside it, toward the light and away from it.
+  bool litEdge = edgeAt(at + toward * 2.0);
+  bool shadowEdge = edgeAt(at - toward * 2.0);
 
-  // The edges. The one away from the light: a pixel with the outline or the clear beside it on that side turns darker, so the
-  // shadow side rounds off along the fruit's own shape. The one toward the light: the lit colour stops a pixel short of the
-  // outline, a thin falloff of the colour itself. Thin on the lit side and wide and dark on the far one, so the fruit is lit
-  // from one side: an edge darkened the same all round, whatever the light, would be pillow shading.
-  vec4 away = pixelAt(at - toward * 2.0, size);
-  int awayRow = away.a < 0.5 ? -1 : rowOf(away.rgb);
-  float shadowEdge = away.a < 0.5 || (awayRow >= 0 && unlit(awayRow)) ? 1.0 : 0.0;
-  vec4 near = pixelAt(at + toward * 2.0, size);
-  int nearRow = near.a < 0.5 ? -1 : rowOf(near.rgb);
-  bool litEdge = near.a < 0.5 || (nearRow >= 0 && unlit(nearRow));
-
-  // The steps: lit over most of the side toward the light, the colour itself across the middle, then down to the darkest.
-  float level = facing * 2.2 + 0.3 - shadowEdge * params[1];
+  float level = facing * 2.8 - 0.25 - (shadowEdge ? params[1] : 0.0);
   int step = level > 0.5 ? 1 : level > -0.5 ? 0 : level > -1.5 ? -1 : -2;
   if (litEdge) step = min(step, 0);
-
-  // The hollow the stem grows from: the fruit beside a stem is a step darker, two where the stem stands between it and the light.
-  bool byStem = false;
-  for (int i = 0; i < 8; i++) {
-    vec2 by = i < 4 ? (i == 0 ? vec2(2.0, 0.0) : i == 1 ? vec2(-2.0, 0.0) : i == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0))
-                    : vec2(i == 4 || i == 5 ? 2.0 : -2.0, i == 4 || i == 6 ? 2.0 : -2.0);
-    if (isStem(pixelAt(at + by, size))) byStem = true;
-  }
-  if (byStem) step = max(-2, min(step, 0) - (isStem(pixelAt(at + toward * 2.0, size)) ? 2 : 1));
-
-  // The shine: a short streak along the curve near the lit edge, where a window's light would be caught, as the old Apple has it.
-  float along = length(d);
-  if (params[2] > 0.0 && !litEdge && shadowEdge == 0.0 && !byStem && along > 0.0 &&
-      abs(along - 0.62) < params[2] && dot(d / along, toward) > 0.94) step = 2;
+  // The shine: where a part faces halfway between the light and the eye, off its edges.
+  vec3 halfway = normalize(light + vec3(0.0, 0.0, 1.0));
+  if (params[2] > 0.0 && !litEdge && !shadowEdge && dot(normal, halfway) > 1.0 - params[2] * 0.08) step = 2;
   return vec4(stepOf(row, step), c.a);
 }
