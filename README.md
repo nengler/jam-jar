@@ -124,7 +124,8 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   it affects (a merge, a blast, a Plunge's burst, a Shockwave that Smashes, a Sprout, a Gourd's Absorb, the Juicer's crush),
   and so does each score at the tally. What a trigger scores is multiplied by the tier the chain has reached when it happens:
   x2 from the 5th link, x3 from the 10th, x4 from the 15th (`CHAIN_TIERS`). A landing adds no link and is never multiplied,
-  nor is a spill. The chain starts again with each hand dropped, and carries from the settle into the tally, so a garden
+  nor is a spill. A Merge with a piece of a Smash adds no link (it is part of the Smash) but still scores at the tier, and a
+  blast that another blast set off adds 2 (`SET_OFF_LINKS`). The chain starts again with each hand dropped, and carries from the settle into the tally, so a garden
   reaches the tiers with its Simmer scores alone. It stacks with a Booster: a Lemon's x2 at x4 is x8.
 - The Boom group: Chili (explodes touching 4+ fruit), Durian (big blast once 3 fruit sit on it), Pomegranate (bursts into 5
   Cherries when hit; two that merge burst into 5 between them), Blueberry (counts as 3 fruit for touch checks) and Seed (sprouts a starter when blown up; the Pumpkin Seed is under the Ladder set). Blasts
@@ -358,22 +359,24 @@ each, rent ignored; points a run, the last rent (400) made, and how long the cha
 
 | Player | A run, off / on | Last rent made, off / on | Links a turn | Turns at x2 / x3 / x4 | Longest |
 | --- | --- | --- | --- | --- | --- |
-| Never picks | 1162 / 1373 (+18%) | 0 / 0 | 3.5 | 31% / 1% / 0% | 11 |
-| Picks at random | 1048 / 1212 (+16%) | 1 / 2 | 3.3 | 27% / 3% / 0% | 15 |
-| Picks at random, hand ordered | 1083 / 1273 (+18%) | 0 / 1 | 3.4 | 27% / 3% / 0% | 22 |
-| Boom (Chili, Durian, Blueberry, Seed) | 1237 / 1367 (+11%) | 4 / 4 | 2.7 | 18% / 0% / 0% | 10 |
-| Durian | 1302 / 1465 (+13%) | 1 / 3 | 3.2 | 25% / 0% / 0% | 10 |
-| Lemon, Chili, Blueberry | 1058 / 1174 (+11%) | 0 / 0 | 2.7 | 15% / 1% / 0% | 11 |
-| Melon | 1328 / 1592 (+20%) | 5 / 5 | 3.5 | 30% / 2% / 0% | 16 |
-| Pumpkin + Melon (Ladder) | 1323 / 1728 (+31%) | 4 / 9 | 3.8 | 32% / 3% / 1% | 26 |
+| Never picks | 1162 / 1372 (+18%) | 0 / 0 | 3.5 | 31% / 0% / 0% | 11 |
+| Picks at random | 1048 / 1183 (+13%) | 1 / 2 | 3.1 | 24% / 2% / 0% | 13 |
+| Boom (Chili, Durian, Blueberry, Seed) | 1237 / 1394 (+13%) | 4 / 4 | 2.8 | 19% / 1% / 0% | 11 |
+| Durian | 1302 / 1480 (+14%) | 1 / 4 | 3.2 | 26% / 0% / 0% | 10 |
+| Melon | 1328 / 1581 (+19%) | 5 / 5 | 3.5 | 30% / 1% / 0% | 11 |
+| Pumpkin + Melon (Ladder) | 1323 / 1473 (+11%) | 4 / 5 | 3.2 | 23% / 0% / 0% | 11 |
 | Garden (Apple, Honeydew, Banana, Pitaya, Snow Pear) | 1060 / 1288 (+22%) | 0 / 1 | 4.4 | 44% / 5% / 1% | 17 |
 
-Every build scores more, by 11% to 31%. Boom chains least, not most: a blast is one link however many fruit it destroys,
-and what it destroys will never merge. Ladder gains most, since a Plunge throws its pieces into new merges, and
-is the one build near running away (the last rent made in 9 runs of 24, the longest chain 26). Gardens reach x2 most often
-(44% of turns), a steady boost from their tally, as the design doc expected. x3 and x4 are rare (5% of turns at most), so
-they are the "whoa" moments rather than the usual turn. The rent curve has not been changed: medians rose by about 30 to 50 a
-cycle, which no build but Ladder turns into many more last rents.
+Two changes came from the first measurement. With every Merge a link, Pumpkin + Melon scored 1728 a run (+31%), made the
+last rent in 9 runs of 24 and ran a chain to 26 links: a Plunge throws its pieces into new merges, each a link. A Merge with
+a piece of a Smash now adds none, which brings it to +11% and 5 runs, and changes no other build by more than 3%. And a blast
+another set off now adds 2 links, for true chain reactions: Boom +27 a run, Durian +18, nothing else.
+
+Every build scores 11% to 22% more. Gardens gain most and reach x2 most often (44% of turns), a steady boost from their
+tally, as the design doc expected. Boom chains least: a blast is one link however many fruit it destroys, and the bots seldom
+set one blast off with another. x3 and x4 are rare (5% of turns at most), so they are the "whoa" moments rather than the
+usual turn. The rent curve has not been changed: medians rose by about 30 to 50 a cycle, and no build makes the last rent
+in more than 5 runs of 24.
 
 ## Looking at it without playing
 

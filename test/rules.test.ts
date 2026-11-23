@@ -11,6 +11,7 @@ import {
   CHAIN_LINE_LIFE,
   CHAIN_TIERS,
   chainTier,
+  SET_OFF_LINKS,
   shownLinks,
   BOSS_NAME,
   bossCycle,
@@ -1597,4 +1598,25 @@ test("the chain's lesson waits for a chain of 5, shows while the jar plays, and 
   assert.equal(lessonShows(chain, at("order", 5)), false, "the chain is not on the jar while ordering");
   assert.equal(lessonDone(chain, at("order", 5), { looked: true, moved: true, acted: true }), false, "it comes back with the next hand");
   assert.equal(chain.told, true);
+});
+
+test("a chain: a Merge with a piece of a Smash adds no link, though it scores at the tier", () => {
+  const y = JAR.floor - FRUITS.grape.radius;
+  const run = jarWith([{ ...fruit(1, "grape", 300, y, [2]), piece: true }, { ...fruit(2, "grape", 316, y, [1]), piece: true }]);
+  run.chainLinks = 5;
+  simulate(run, DT);
+  assert.ok(run.fruits.some((f) => f.kind === "orange"), "they merged");
+  assert.equal(run.chainLinks, 5);
+  assert.ok(run.popups.some((p) => p.text === `Merge +${FRUITS.orange.points * 2}`));
+});
+
+test("a chain: a blast set off by another blast adds two links", () => {
+  const y = JAR.floor - 8;
+  let run = jarWith([fruit(1, "cherry", 300, y)]);
+  run.fruits.push({ ...fruit(2, "chili", 290, y), lit: true, fuse: 0 }, fruit(3, "chili", 316, y));
+  run = press(run, {});
+  assert.equal(run.chainLinks, 1, "the first blast");
+  assert.equal(run.fruits.find((f) => f.id === 3)?.setOff, true, "it lit the other Chili");
+  for (let i = 0; i < 30; i++) run = press(run, {});
+  assert.equal(run.chainLinks, 1 + SET_OFF_LINKS);
 });

@@ -145,9 +145,13 @@ export const BIG_BLAST = 5;
  * affects (a merge, a blast, a Plunge's burst, a Shockwave, a sprout, a Gourd's Absorb, the Juicer's crush), and so does each
  * Simmer score at the tally. What a trigger scores is multiplied by the tier the chain has reached when it happens: x1 for links
  * 1 to 4, x2 from the 5th, x3 from the 10th, x4 from the 15th. Landings add no link: every turn has four, so they would reach x2
- * on their own. A spill is never multiplied. The chain starts again with each hand.
+ * on their own. A Merge with a piece of a Smash adds none either (it still scores at the tier): a Plunge throws its pieces into
+ * new merges, and counting them made Ladder run away. A blast that another set off adds `SET_OFF_LINKS`. A spill is never
+ * multiplied. The chain starts again with each hand.
  */
 export const CHAIN_TIERS: readonly number[] = [5, 10, 15];
+/** How many links a blast that another blast set off adds: a true chain reaction (Chili into Durian into Chili) counts double. */
+export const SET_OFF_LINKS = 2;
 
 /** What a chain of this many links multiplies by: 1, then one more at each of `CHAIN_TIERS`. */
 export function chainTier(links: number): number {
@@ -246,6 +250,8 @@ export interface Fruit {
   /** A Chili or Durian about to go off, and the seconds left. */
   lit: boolean;
   fuse: number;
+  /** Lit by another blast (a chain of Blasts). */
+  setOff?: boolean;
   /** Made this turn by a Merge of pieces (two Slices): it cannot Merge again until the turn is scored, so merge up, smash down
    * cannot chain for ever in one settle (the design doc's loop cap). */
   remerged?: boolean;
@@ -1279,7 +1285,8 @@ function merge(run: Run): void {
       if (b === undefined || j <= i || gone.has(b.id) || b.kind !== a.kind || !canMerge(b) || nearLemon(run.fruits, near, j)) continue;
       gone.add(a.id);
       gone.add(b.id);
-      addLink(run);
+      // A Smash's pieces merging are part of the Smash: no link of their own.
+      if (a.piece !== true && b.piece !== true) addLink(run);
       const mx = (a.x + b.x) / 2;
       const my = (a.y + b.y) / 2;
       if (a.kind === "watermelon") {
@@ -1460,7 +1467,8 @@ export const BLAST_BONUS: Readonly<Partial<Record<FruitKind, number>>> = { chili
 function explode(run: Run, bomb: Fruit): void {
   const radius = BLAST_RADIUS[bomb.kind] ?? 48;
   // One link for the blast, however many fruit it destroys; what it sets off (a Sprout, another blast) adds its own.
-  addLink(run);
+  // A blast another set off counts double.
+  for (let k = 0; k < (bomb.setOff === true ? SET_OFF_LINKS : 1); k++) addLink(run);
   const near = links(run.fruits);
   const doubled = new Set(run.fruits.filter((_, i) => boosted(run.fruits, near, i)).map((f) => f.id));
   const victims: Fruit[] = [];
@@ -1489,7 +1497,10 @@ function explode(run: Run, bomb: Fruit): void {
     }
     if (f.kind === "chili" || f.kind === "durian") {
       // Caught in the blast: it goes off a moment later (a chain).
-      if (!f.lit) ignite(f, 0.15);
+      if (!f.lit) {
+        ignite(f, 0.15);
+        f.setOff = true;
+      }
       kept.push(f);
       continue;
     }
