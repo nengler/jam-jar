@@ -1,4 +1,5 @@
 import type { FruitKind } from "./rules/fruits.ts";
+import type { Glaze } from "./rules/glazes.ts";
 import { handSlots, JAR, slotsOf, type Run } from "./rules/jar.ts";
 
 /** Where things stand on the play screen, for Play.tsx and the parts of it in their own files. */
@@ -32,11 +33,14 @@ export const COINS_X = ROLL_FROM + 56 / 2 + 50;
 /** What is on the shelf (the hand while ordering, then what is left of it while dropping), the places each takes, and the shelf's left end. */
 export interface ShelfRow {
   cards: readonly FruitKind[];
+  /** The glaze on each, or null. */
+  glazes: readonly (Glaze | null)[];
   spans: number[];
   left: number;
 }
 
 export function shelfOf(run: Run): ShelfRow {
   const cards = run.phase === "order" ? run.hand : run.queue;
-  return { cards, spans: cards.map((kind) => slotsOf(kind)), left: JAR_MID - (handSlots(cards) * SLOT) / 2 };
+  const glazes = run.phase === "order" ? run.handGlazes : run.queueGlazes;
+  return { cards, glazes, spans: cards.map((kind) => slotsOf(kind)), left: JAR_MID - (handSlots(cards) * SLOT) / 2 };
 }

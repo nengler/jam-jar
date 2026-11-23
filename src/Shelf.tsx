@@ -3,7 +3,8 @@ import { Entity, Flex, Sprite, Tooltip } from "@tsengine/runtime/jsx";
 import { Frame } from "./Coach.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
-import { grownOf, placed, cardText, rollIn, rollStarted, shelfX } from "./layout.ts";
+import { GlazeMark } from "./GlazeMark.tsx";
+import { grownOf, glazedText, placed, rollIn, rollStarted, shelfX } from "./layout.ts";
 import { HOLD_LIFT, ROLL_FROM, SHELF_FOOT, SHELF_Y, shelfOf, SLOT } from "./places.ts";
 import type { FruitKind } from "./rules/fruits.ts";
 import { bossNow, handSlots, type Run } from "./rules/jar.ts";
@@ -64,6 +65,8 @@ export function Shelf({ run, roll, dragging, dragX, framed, listening, onDragSta
         <Entity key={`${slot.card}${slot.at}`} x={shelfX(slot.at, shelf.left, SLOT, shelf.spans, dragging && slot.at === run.cursor, dragX) + (ordering ? rollIn(roll, slot.at, ROLL_FROM - shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0)) : 0)} y={SHELF_Y - SHELF_FOOT}>
           {ordering && !blind && slot.at === run.cursor && framed && <Flex x={-slot.frameW / 2} y={-slot.lift - (slot.size + slot.frameH) / 2} width={slot.frameW} height={slot.frameH} backgroundImage={SELECT} slice={CARD_SLICE} />}
           {!blind && (!ordering || rollStarted(roll, slot.at)) && <FruitBall kind={slot.card} x={0} y={-slot.lift - slot.size / 2} turn={ordering ? rollIn(roll, slot.at, ROLL_FROM - shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0)) / 16 : 0} />}
+          {/* Its glaze's badge at its lower right (a big fruit's top is off the screen), rolling in with it. */}
+          {!blind && (!ordering || rollStarted(roll, slot.at)) && shelf.glazes[slot.at] != null && <GlazeMark glaze={shelf.glazes[slot.at]!} x={slot.size * 0.35} y={-slot.lift - slot.size * 0.2} />}
           {blind && (!ordering || rollStarted(roll, slot.at)) && <Sprite image="covered.png" x={-16} y={-32} />}
         </Entity>
       ))}
@@ -87,7 +90,7 @@ export function ShelfTips({ run, shown, coached }: { run: Run; shown: boolean; c
       {placed(shelf.cards).map((slot) => (
         <Flex key={`tip${slot.card}${slot.at}`} x={shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0) - 20} y={SHELF_Y - 38} width={40} height={40}>
           <Tooltip show={shown && slot.at === run.cursor ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X - (shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0) - 20)} offsetY={TIP_TOP - (SHELF_Y - 38)} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-            <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} text={cardText(run, slot.card)} apart={coached ? undefined : 640 - TIP_X * 2} />
+            <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} text={glazedText(run, slot.card, shelf.glazes[slot.at])} apart={coached ? undefined : 640 - TIP_X * 2} />
           </Tooltip>
         </Flex>
       ))}

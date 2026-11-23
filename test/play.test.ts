@@ -546,7 +546,7 @@ test("in the shop, scrolling a chosen label's text keeps it chosen: the scroll i
   const text = snowpear.text;
   snowpear.text = `${text} ${text}`;
   try {
-    play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["snowpear", "cherry", "grape"], item: null, cursor: -1, removing: false, removeCursor: -1 } };
+    play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["snowpear", "cherry", "grape"], item: null, glaze: null, cursor: -1, removing: false, glazing: false, removeCursor: -1 } };
     game.input("_*60");
     const box = findScroller(game.player.world.root);
     assert.ok(box !== null, "the Snow Pear's text overflows its label");
@@ -568,7 +568,7 @@ test("in the shop, scrolling a chosen label's text keeps it chosen: the scroll i
 test("the shop by taps: a tap on a label only chooses it, a second puts it back, and the Buy button buys it", () => {
   const game = startRun();
   const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
-  play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["apple", "cherry", "grape"], item: null, cursor: -1, removing: false, removeCursor: -1 } };
+  play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["apple", "cherry", "grape"], item: null, glaze: null, cursor: -1, removing: false, glazing: false, removeCursor: -1 } };
   game.input("_*60");
   // The four labels stand across the stall, 148 wide with 6 between: the second's middle is at 243.
   game.input("click@243,150, _*2, click@243,150, _*2");
@@ -585,7 +585,7 @@ test("the shop by taps: a tap on a label only chooses it, a second puts it back,
 test("the shop shows the pool's basket: a tap on it opens the board of the whole pool over the shop", () => {
   const game = startRun();
   const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run; whole: boolean } };
-  play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["apple", "cherry", "grape"], item: null, cursor: -1, removing: false, removeCursor: -1 } };
+  play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["apple", "cherry", "grape"], item: null, glaze: null, cursor: -1, removing: false, glazing: false, removeCursor: -1 } };
   game.input("_*60");
   assert.equal(play.s.whole, false);
   // The basket is at the left of the bar along the foot.
