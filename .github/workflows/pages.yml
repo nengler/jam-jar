@@ -31,6 +31,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tse package . --engine web
+      # The fruit book, written from the game's tables, beside the game: <Pages address>/fruits.html.
+      - run: node tools/fruit-book.ts dist/jam-jar-web/fruits.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

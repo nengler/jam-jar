@@ -49,6 +49,7 @@ import {
   type Run,
 } from "../src/rules/jar.ts";
 import { ITEMS, offerable } from "../src/rules/items.ts";
+import { BOOK, FAMILIES, MEASURED, ROLES } from "../tools/fruit-book/book.ts";
 import { Rng } from "../src/rules/rng.ts";
 import { keywordOf, KEYWORDS, keywordsIn, ruleWords } from "../src/rules/terms.ts";
 
@@ -1463,4 +1464,14 @@ test("two Watermelons make a Giant Pumpkin: it scores, its Shockwave throws the 
   assert.equal(run.cycleScore, FRUITS.giantpumpkin.points + SLICES * FRUITS.slice.points);
   for (let t = 0; t <= GIANT_LIFE + DT; t += DT) simulate(run, DT);
   assert.ok(!run.fruits.some((f) => f.kind === "giantpumpkin"), "it is gone");
+});
+
+test("the fruit book has every fruit in the game, each in a family and with roles it knows", () => {
+  for (const kind of Object.keys(FRUITS) as FruitKind[]) {
+    const entry = BOOK[kind];
+    assert.ok(entry !== undefined, `${kind} is in tools/fruit-book/book.ts`);
+    assert.ok(FAMILIES[entry.family] !== undefined, kind);
+    assert.ok(entry.roles.length > 0 && entry.roles.every((r) => ROLES[r] !== undefined), kind);
+  }
+  for (const m of MEASURED) assert.ok(FRUITS[m.kind] !== undefined, m.kind);
 });

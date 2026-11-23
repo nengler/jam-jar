@@ -36,9 +36,15 @@ shop), frames what it is about, and moves on when the player has done it (a less
 so the card is away in between. "No tips" ends it, and the settings' Tips row turns it off or starts it again.
 
 `npx tse package . --engine web` builds the game as a web page in `dist/jam-jar-web`, and `.github/workflows/pages.yml`
-publishes it to GitHub Pages on every push to `main` (once Settings -> Pages -> Source is set to "GitHub Actions"). The
+publishes it to GitHub Pages on every push to `main`, with the fruit book beside it as `fruits.html` (once Settings -> Pages -> Source is set to "GitHub Actions"). The
 screen fills the window at any size, a phone's included. The game is laid out on its side: while the window is taller than it is wide (a phone held upright), a card asks
 for it to be turned and the game waits under it (`src/Rotate.tsx`, from the engine's `useWindowSize`).
+
+The fruit book (`node tools/fruit-book.ts [out file]`, `dist/fruit-book.html` by default) is one page of every fruit, written
+from the game's own tables: each card as the game words it, what its keywords mean, how it scores, its sprite. What the code
+doesn't know, each fruit's build family and roles, what it works with and what the balance bots measured, is in
+`tools/fruit-book/book.ts`; a test fails if a fruit in the game has no entry there. Update the bot numbers there when a run
+changes them.
 
 | Phase | Keys |
 | --- | --- |
