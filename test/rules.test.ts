@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { blastBits, blastFlash, blastJolt, cardText, fruitResults, keywordResults, motes, poolRows, termsOf, TILT_TIME, tilted } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
-import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
+import { APPLE, BANANA, FRUITS, QUINCE, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
@@ -16,6 +16,7 @@ import {
   glazeKinds,
   glazeOne,
   withGlazes,
+  sizeStep,
   shownLinks,
   BOSS_NAME,
   bossCycle,
@@ -1770,3 +1771,19 @@ test("taking a fruit out takes a plain one of its kind before a glazed one", () 
   assert.deepEqual(run.pool, ["cherry", "grape", "grape", "apple"]);
   assert.deepEqual(run.poolGlazes, ["spicy", null, null, null]);
 });
+
+test("the Quince scores at each Resolve by the size of the biggest fruit touching it", () => {
+  const y = JAR.floor - FRUITS.melon.radius;
+  const run = jarWith([fruit(1, "quince", 280, JAR.floor - FRUITS.quince.radius, [2, 3]), fruit(2, "melon", 330, y, [1]), fruit(3, "cherry", 250, JAR.floor - FRUITS.cherry.radius, [1])]);
+  assert.equal(sizeStep(run.fruits[1]!), 4, "a Melon is the 4th size");
+  assert.equal(sizeStep(run.fruits[2]!), 1);
+  run.turn = 2;
+  resolve(run);
+  assert.equal(run.cycleScore, QUINCE.perSize * 4, "the Melon, not the Cherry");
+
+  const alone = jarWith([fruit(1, "quince", 280, JAR.floor - FRUITS.quince.radius)]);
+  alone.turn = 2;
+  resolve(alone);
+  assert.equal(alone.cycleScore, 0, "touching nothing, it scores nothing");
+});
+

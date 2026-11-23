@@ -328,7 +328,17 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
       ["Chili", "a blast pays its coins at once"],
       ["Juicer", "a Crush pays its coins"],
     ],
-    gap: "The bots buy nothing in the shop, so they can't value coins yet.",
+    gap: "Bots that shop find its coins buy little: Durian scores 1521 alone, 1293 with it.",
+  },
+  quince: {
+    family: "Juice and grow",
+    roles: ["Build-around"],
+    works: [
+      ["Melon", "the biggest neighbour it can easily get: 8 a turn"],
+      ["Honeydew", "honey keeps the big fruit beside it"],
+      ["Snow Pear", "frozen beside a big fruit, it scores every turn"],
+    ],
+    clashes: [["Pumpkin", "its Plunge throws the big fruit away"]],
   },
 };
 

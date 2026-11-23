@@ -38,7 +38,8 @@ export type FruitKind =
   | "gourd"
   | "giantpumpkin"
   | "pumpkinseed"
-  | "goldenapple";
+  | "goldenapple"
+  | "quince";
 
 export type Scoring = "fresh" | "simmer" | "booster";
 
@@ -111,6 +112,13 @@ export function pumpkinSeedText(grown: number): string {
  * or when an explosion or a Crush destroys it (nothing while it is rotten), so the shop matters sooner; coins count for less late in a run.
  */
 export const GOLDEN = 2;
+/**
+ * A bridge fruit (design doc, "Chains, glazes and bridge fruit"), linking two build families. The Quince (Garden to Ladder)
+ * scores `perSize` at each Resolve for each size of the biggest fruit touching it, from a Cherry's 1 to a Watermelon's 5 (any
+ * fruit counts by its size), so a garden wants big fruit built beside it. The Medlar (Rot to Ladder) was built and measured, and
+ * held back: rot comes late in a five-turn cycle, so it almost never worked (see the README).
+ */
+export const QUINCE = { perSize: 2 };
 export const GOURD_BURST = 4;
 export const GOURD_SIZES: readonly number[] = [FRUIT_ART.cherry.radius, FRUIT_ART.grape.radius, FRUIT_ART.orange.radius];
 
@@ -153,6 +161,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   gourd: { name: "Gourd", radius: FRUIT_ART.gourd.radius, points: 4, scoring: "fresh", touchWeight: 1, text: "Fresh 4. Absorb. At Melon size, Burst 4." },
   pumpkinseed: { name: "Pumpkin Seed", radius: FRUIT_ART.pumpkinseed.radius, points: 0, scoring: "fresh", touchWeight: 1, text: pumpkinSeedText(0) },
   goldenapple: { name: "Golden Apple", radius: FRUIT_ART.goldenapple.radius, points: 2, scoring: "fresh", touchWeight: 1, text: `Fresh 2. Golden ${GOLDEN}.` },
+  quince: { name: "Quince", radius: FRUIT_ART.quince.radius, points: QUINCE.perSize, scoring: "simmer", touchWeight: 1, text: `Simmer ${QUINCE.perSize} per size of its biggest neighbour.` },
   giantpumpkin: { name: "Giant Pumpkin", radius: FRUIT_ART.giantpumpkin.radius, points: 75, scoring: "fresh", heavy: 4, touchWeight: 1, text: "Fresh 75. Shockwave, then it vanishes." },
 };
 
@@ -180,6 +189,7 @@ export const OFFERABLE: readonly FruitKind[] = [
   "gourd",
   "pumpkinseed",
   "goldenapple",
+  "quince",
 ];
 
 /** What a Seed can sprout. */
