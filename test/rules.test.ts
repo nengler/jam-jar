@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { blastBits, blastFlash, blastJolt, fruitResults, keywordResults, motes, poolRows, termsOf, cardText } from "../src/layout.ts";
+import { blastBits, blastFlash, blastJolt, cardText, fruitResults, keywordResults, motes, poolRows, termsOf, TILT_TIME, tilted } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
 import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
@@ -17,6 +17,7 @@ import {
   dramatic,
   GIANT_LIFE,
   handSlots,
+  jarHeld,
   PLUNGE_PAY,
   FRUIT_PRICE,
   JAR,
@@ -297,7 +298,7 @@ test("a Golden Apple pays its coins when a blast destroys it, but not while rott
 });
 
 test("a Golden Apple pays its coins when the Juicer Crushes it", () => {
-  const run = jarWith([fruit(1, "goldenapple", 300, JAR.floor - 18)]);
+  const run = jarWith([fruit(1, "goldenapple", 300, JAR.floor - FRUITS.goldenapple.radius)]);
   run.items = ["juicer"];
   run.turn = 2;
   resolve(run);
@@ -342,7 +343,7 @@ test("a blast kicks what it does not destroy away from it", () => {
 });
 
 test("Resolve: fruit over the rim spill and cost points; an Apple touching the jar's floor scores more", () => {
-  const run = jarWith([fruit(1, "apple", 250, JAR.floor - 18), fruit(2, "apple", 300, RIM + 20), fruit(3, "cherry", 350, RIM - 2)]);
+  const run = jarWith([fruit(1, "apple", 250, JAR.floor - FRUITS.apple.radius), fruit(2, "apple", 300, RIM + 20), fruit(3, "cherry", 350, RIM - 2)]);
   run.cycleScore = 10;
   resolve(run);
   assert.equal(run.fruits.length, 2, "the cherry spilled");
@@ -648,7 +649,7 @@ test("the Shaker throws every fruit once the hand has dropped", () => {
 test("the Preserves Jar: after the shop, the fruit kept stay in the jar for the next cycle", () => {
   let run = inShop(0);
   run.items = ["preserves"];
-  run.fruits = [fruit(1, "apple", 380, JAR.floor - 18), fruit(2, "cherry", 250, JAR.floor - 14), fruit(3, "grape", 300, JAR.floor - 18), fruit(4, "lemon", 340, JAR.floor - 14)];
+  run.fruits = [fruit(1, "apple", 380, JAR.floor - FRUITS.apple.radius), fruit(2, "cherry", 250, JAR.floor - 14), fruit(3, "grape", 300, JAR.floor - 18), fruit(4, "lemon", 340, JAR.floor - 14)];
   run = press(run, { drop: true });
   assert.equal(run.phase, "preserve");
   // Left to right: cherry, grape, lemon, apple. Keep the cherry and the apple; a third is refused.
@@ -725,7 +726,7 @@ test("a Pitaya eats a Cherry it touches each turn, and every Pitaya scores 1 mor
 
 test("a Coconut cracks at its third Resolve and is gone, leaving milk; fruit that sit in the milk score double", () => {
   const y = JAR.floor - 22;
-  const run = jarWith([fruit(1, "coconut", 300, y), fruit(2, "apple", 360, JAR.floor - 18), fruit(3, "apple", 400, JAR.floor - 150)]);
+  const run = jarWith([fruit(1, "coconut", 300, y), fruit(2, "apple", 360, JAR.floor - FRUITS.apple.radius), fruit(3, "apple", JAR.right - FRUITS.apple.radius, JAR.floor - 150)]);
   const scores: number[] = [];
   for (let turn = 0; turn < 4; turn++) {
     const before = run.cycleScore;
@@ -929,7 +930,7 @@ test("readability: what sets a Chili off lights up", () => {
 
 test("the tally: Simmer fruit score one after another, the score on screen catching up, before the pick comes up", () => {
   let run = newRun(7);
-  run.fruits = [fruit(1, "apple", 250, JAR.floor - 18), fruit(2, "apple", 300, JAR.floor - 18), fruit(3, "apple", 350, JAR.floor - 18)];
+  run.fruits = [fruit(1, "apple", 250, JAR.floor - FRUITS.apple.radius), fruit(2, "apple", 300, JAR.floor - FRUITS.apple.radius), fruit(3, "apple", 350, JAR.floor - FRUITS.apple.radius)];
   run.turn = 2;
   run.phase = "settle";
   run.calmTime = 10;
@@ -963,7 +964,7 @@ test("the tally: a jar with nothing to tally goes straight on, and a long one is
   run = press(run, {});
   assert.equal(run.phase, "pick");
 
-  const many = jarWith(Array.from({ length: 30 }, (_, i) => fruit(i + 1, "apple", 230 + i * 6, JAR.floor - 18)));
+  const many = jarWith(Array.from({ length: 30 }, (_, i) => fruit(i + 1, "apple", 230 + i * 6, JAR.floor - FRUITS.apple.radius)));
   many.turn = 2;
   resolve(many);
   assert.ok(many.tallyTime > 2 && many.tallyTime < 3, `${many.tallyTime}`);
@@ -971,7 +972,7 @@ test("the tally: a jar with nothing to tally goes straight on, and a long one is
 
 test("the tally: the rent's sound waits for it to end", () => {
   let run = newRun(7);
-  run.fruits = [fruit(1, "apple", 250, JAR.floor - 18)];
+  run.fruits = [fruit(1, "apple", 250, JAR.floor - FRUITS.apple.radius)];
   run.turn = 5;
   run.cycleScore = RENT[0]!;
   run.phase = "settle";
@@ -1130,7 +1131,7 @@ test("the Pickling Jar keeps one fruit, Pickled: it does not age, rot it had is 
 
 test("leaving the shop clears the jar: its fruit pop one by one, left to right, then the next cycle's first hand is dealt", () => {
   let run = inShop(0);
-  run.fruits = [fruit(1, "cherry", 380, JAR.floor - 14), fruit(2, "grape", 260, JAR.floor - 16), fruit(3, "apple", 320, JAR.floor - 18)];
+  run.fruits = [fruit(1, "cherry", 380, JAR.floor - 14), fruit(2, "grape", 260, JAR.floor - 16), fruit(3, "apple", 320, JAR.floor - FRUITS.apple.radius)];
   const cycle = run.cycle;
   run = press(run, { drop: true });
   assert.equal(run.phase, "clear");
@@ -1150,7 +1151,7 @@ test("leaving the shop clears the jar: its fruit pop one by one, left to right, 
 test("a Preserves Jar's fruit stay through the clear-out; the rest pop", () => {
   let run = inShop(0);
   run.items = ["preserves"];
-  run.fruits = [fruit(1, "cherry", 260, JAR.floor - 14), fruit(2, "grape", 320, JAR.floor - 16), fruit(3, "apple", 380, JAR.floor - 18)];
+  run.fruits = [fruit(1, "cherry", 260, JAR.floor - 14), fruit(2, "grape", 320, JAR.floor - 16), fruit(3, "apple", 380, JAR.floor - FRUITS.apple.radius)];
   run = press(run, { drop: true });
   run = press(run, { right: true });
   run = press(run, { confirm: true });
@@ -1234,7 +1235,7 @@ test("a pick comes after every second turn of a cycle, and the next hand is deal
 });
 
 test("the run keeps what its end board shows: its best turn, and what earned its points, the most first", () => {
-  const y = JAR.floor - 18;
+  const y = JAR.floor - FRUITS.apple.radius;
   const run = jarWith([fruit(1, "apple", 250, y), fruit(2, "apple", 300, y), fruit(3, "apple", 350, y)]);
   run.turn = 1;
   resolve(run);
@@ -1356,6 +1357,18 @@ test("a Wide Pumpkin takes two places on the shelf: a hand fills four places, an
   assert.deepEqual(next.hand, ["pumpkin", "apple", "cherry"]);
 });
 
+test("a Wide fruit that would not fit in the last place waits on top, and the next fruit that fits fills the hand", () => {
+  const run = newRun(3);
+  run.draw = ["cherry", "grape", "cherry", "pumpkin", "apple", "cherry", "grape"];
+  run.hand = [];
+  run.phase = "rent";
+  const dealt = advance({ ...run, phase: "pick", offers: ["apple", "apple", "apple"], offerCursor: -1 }, DT, { ...NO_KEYS, drop: true });
+  assert.deepEqual(dealt.hand, ["cherry", "grape", "cherry", "apple"], "the Apple under the Pumpkin takes the last place");
+  // The Pumpkin is still first in line, so the next hand opens with it.
+  const next = advance({ ...dealt, phase: "pick", offers: ["apple", "apple", "apple"], offerCursor: -1 }, DT, { ...NO_KEYS, drop: true });
+  assert.deepEqual(next.hand, ["pumpkin", "cherry", "grape"]);
+});
+
 test("the tray drops a Wide Pumpkin down the middle of its two lanes", () => {
   let run = newRun(3);
   run.hand = ["cherry", "pumpkin", "grape"];
@@ -1464,6 +1477,35 @@ test("two Watermelons make a Giant Pumpkin: it scores, its Shockwave throws the 
   assert.equal(run.cycleScore, FRUITS.giantpumpkin.points + SLICES * FRUITS.slice.points);
   for (let t = 0; t <= GIANT_LIFE + DT; t += DT) simulate(run, DT);
   assert.ok(!run.fruits.some((f) => f.kind === "giantpumpkin"), "it is gone");
+});
+
+test("the jar's fruit are held still from the end of the settle until the next drop, the settle's time limit included", () => {
+  const run = newRun(7);
+  assert.equal(run.phase, "order");
+  assert.equal(jarHeld(run), true, "held while the hand is ordered");
+  // Space drops the hand: the pile is let go.
+  let next = advance(run, 1 / 60, { ...NO_KEYS, drop: true });
+  assert.equal(next.phase, "drop");
+  assert.equal(jarHeld(next), false);
+  // A pile that never comes to rest (every fruit reported moving) is scored when SETTLE_LIMIT runs out, and held from then on.
+  for (let i = 0; i < 60 * 20 && (next.phase === "drop" || next.phase === "settle"); i++) {
+    assert.equal(jarHeld(next), false, `let go while it plays (${next.phase})`);
+    next = advance(next, 1 / 60, NO_KEYS, next.fruits.map((f) => ({ id: f.id, x: f.x, y: f.y, speed: 100, touching: [] })));
+  }
+  assert.notEqual(next.phase, "settle", "the settle gave up");
+  assert.equal(jarHeld(next), true, `held once it is scored (${next.phase})`);
+  for (const phase of ["tally", "pick", "rent", "shop", "preserve", "clear", "over", "won"] as const) assert.equal(jarHeld({ ...next, phase }), true, phase);
+});
+
+test("the Tilted jar leans over gradually, rocks a little past its lean, and settles on it", () => {
+  const to = 0.1;
+  assert.ok(Math.abs(tilted(0, to, 0)) < 1e-9, "upright as it sets off");
+  assert.ok(tilted(0, to, TILT_TIME * 0.25) > 0 && tilted(0, to, TILT_TIME * 0.25) < to, "partway over a quarter of the way in");
+  let most = 0;
+  for (let t = 0; t <= TILT_TIME; t += TILT_TIME / 50) most = Math.max(most, tilted(0, to, t));
+  assert.ok(most > to, "it rocks past its lean");
+  assert.ok(Math.abs(tilted(0, to, TILT_TIME) - to) < 1e-9, "and rests on it");
+  assert.ok(Math.abs(tilted(to, 0, TILT_TIME * 2)) < 1e-9, "standing up again ends upright");
 });
 
 test("the fruit book has every fruit in the game, each in a family and with roles it knows", () => {

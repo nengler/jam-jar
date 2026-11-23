@@ -1,9 +1,11 @@
 """
 Lays out the game's assets/ from art/ and tools/kenney/:
 
-- art/: every picture, drawn at its art size (half its size on the 640 x 360 screen) in the Apollo palette
-  (tools/palette/apollo.hex), every pixel solid or clear. Each is used as it is: checked, then doubled with no smoothing to
-  assets/<name>.png (a fruit's to assets/fruit-<kind>.png). Nothing recolours or redraws it, so what is in art/ is what the game shows. The folders only sort them:
+- art/: every picture, an Aseprite file (.aseprite or .ase; a .png is read too), drawn at its art size (half its size on the
+  640 x 360 screen) in the Apollo palette (tools/palette/apollo.hex), every pixel solid or clear. Its visible layers are
+  flattened (tools/aseprite.py, so Aseprite need not be installed), checked, then doubled with no smoothing to
+  assets/<name>.png (a fruit's to assets/fruit-<kind>.png); a file with more than one frame gives one picture a frame,
+  assets/<name>-0.png, <name>-1.png and on. Nothing recolours or redraws it, so what is in art/ is what the game shows. The folders only sort them:
   - fruit/: one picture per fruit, at the size FRUIT_SIZES gives it (each ball's radius is written to src/rules/sizes.ts from
     it, so the physics matches the picture);
   - kitchen/, shop/, items/ and ui/: the rest;
@@ -14,14 +16,20 @@ Lays out the game's assets/ from art/ and tools/kenney/:
 The text is the engine's built-in fonts (m5x7 and Jersey 10), so there is no font file.
 
     python3 tools/make-assets.py
+
+npm runs it before `npm run dev`, `build`, `check`, `test` and `package` (the "pre" scripts in package.json), so a saved
+picture is in the game the next time it is started.
 """
 import math
 import shutil
 import struct
 import wave
+import zlib
 from pathlib import Path
 
 from PIL import Image
+
+from aseprite import AsepriteError, is_aseprite, read as read_aseprite
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
@@ -43,7 +51,7 @@ FRUIT_SIZES = {
     "orange": 24,
     "melon": 28,
     "watermelon": 32,
-    "apple": 20,
+    "apple": 16,
     "banana": 20,
     "chili": 16,
     "durian": 24,
@@ -70,7 +78,7 @@ FRUIT_SIZES = {
     "giantpumpkin": 48,
     "fruitfly": 16,
     "pumpkinseed": 16,
-    "goldenapple": 20,
+    "goldenapple": 16,
 }
 
 # A fruit's ball is a little smaller than its picture's square: the art does not fill the corners. The Fruit Fly's is smaller
@@ -94,20 +102,36 @@ def off_palette(image: Image.Image) -> str | None:
     return f"{count} off the palette, the first at ({x}, {y}), {what}"
 
 
+def read_frames(source: Path) -> list[tuple[str, Image.Image]]:
+    """A file's pictures, each with its name: one for a PNG or a one-frame Aseprite file, one a frame (<name>-<i>) for more."""
+    if not is_aseprite(source):
+        return [(source.stem, Image.open(source).convert("RGBA"))]
+    try:
+        frames = read_aseprite(source)
+    except (AsepriteError, ValueError, struct.error, zlib.error) as error:
+        raise SystemExit(f"{source.relative_to(ROOT)}: {error}")
+    if len(frames) == 1:
+        return [(source.stem, frames[0])]
+    return [(f"{source.stem}-{index}", frame) for index, frame in enumerate(frames)]
+
+
 def write_pictures() -> int:
     """Check every picture in art/ and write it to assets/, doubled (or as it is, from screen/); write the fruit's ball sizes."""
     names: dict[str, Path] = {}
     fruit = []
-    for source in sorted(ART.rglob("*.png")):
+    sources = sorted(path for path in ART.rglob("*") if path.is_file() and (path.suffix.lower() == ".png" or is_aseprite(path)))
+    for source, name, picture in ((source, name, picture) for source in sources for name, picture in read_frames(source)):
         where = source.relative_to(ROOT)
-        if source.stem in names:
-            raise SystemExit(f"{where} and {names[source.stem].relative_to(ROOT)}: two pictures with one name")
-        names[source.stem] = source
-        picture = Image.open(source).convert("RGBA")
+        frame = f" (frame {name.rsplit('-', 1)[1]})" if name != source.stem else ""
+        if name in names:
+            raise SystemExit(f"{where}{frame} and {names[name].relative_to(ROOT)}: two pictures named {name}")
+        names[name] = source
         wrong = off_palette(picture)
         if wrong is not None:
-            raise SystemExit(f"{where}: {wrong}. Pictures are drawn in the Apollo palette (tools/palette/apollo.hex), each pixel solid or clear")
+            raise SystemExit(f"{where}{frame}: {wrong}. Pictures are drawn in the Apollo palette (tools/palette/apollo.hex), each pixel solid or clear")
         if source.parent.name == "fruit":
+            if name != source.stem:
+                raise SystemExit(f"{where} has more than one frame: a fruit is one picture")
             art = FRUIT_SIZES.get(source.stem)
             if art is None:
                 raise SystemExit(f"{where}: no fruit is called {source.stem} (FRUIT_SIZES)")
@@ -115,7 +139,7 @@ def write_pictures() -> int:
                 raise SystemExit(f"{where} is {picture.width} x {picture.height}: a {source.stem} is drawn at {art} x {art}")
             fruit.append(source.stem)
         out = picture if source.parent.name == SCREEN_SIZE else picture.resize((picture.width * PX, picture.height * PX), Image.NEAREST)
-        out.save(ASSETS / (f"fruit-{source.stem}.png" if source.parent.name == "fruit" else f"{source.stem}.png"))
+        out.save(ASSETS / (f"fruit-{name}.png" if source.parent.name == "fruit" else f"{name}.png"))
     missing = [kind for kind in FRUIT_SIZES if kind not in fruit]
     if missing:
         raise SystemExit(f"no picture in art/fruit for {', '.join(missing)}")

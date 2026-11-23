@@ -5,7 +5,7 @@ export const FRUIT_ART = {
   orange: { size: 48, radius: 22 },
   melon: { size: 56, radius: 25 },
   watermelon: { size: 64, radius: 29 },
-  apple: { size: 40, radius: 18 },
+  apple: { size: 32, radius: 14 },
   banana: { size: 40, radius: 18 },
   chili: { size: 32, radius: 14 },
   durian: { size: 48, radius: 22 },
@@ -29,5 +29,5 @@ export const FRUIT_ART = {
   giantpumpkin: { size: 96, radius: 43 },
   fruitfly: { size: 32, radius: 10 },
   pumpkinseed: { size: 32, radius: 14 },
-  goldenapple: { size: 40, radius: 18 },
+  goldenapple: { size: 32, radius: 14 },
 } as const;

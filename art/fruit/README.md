@@ -1,10 +1,10 @@
 # Pixel fruit
 
-One picture per fruit, `<kind>.png`, drawn at its **art size**: half its size on the screen, like all the game's art.
+One picture per fruit, `<kind>.aseprite` (one frame), drawn at its **art size**: half its size on the screen, like all the game's art.
 `tools/make-assets.py` doubles each one with no smoothing to `assets/fruit-<kind>.png`, the only picture of it the game has:
 the jar, the shelf, the pick cards, the shop and the boards all show it at that size.
 
-To replace a fruit, draw over its file at the same size and run `python3 tools/make-assets.py`. The size is fixed by the fruit
+To replace a fruit, draw over its file at the same size and start the game (`tools/make-assets.py` runs first). The size is fixed by the fruit
 (`FRUIT_SIZES` in the script), because the merge ladder and each ball's radius depend on it: a file of another size stops the
 script with an error. Draw in the Apollo palette (`tools/palette/apollo.hex`, also on
 [Lospec](https://lospec.com/palette-list/apollo)), every pixel fully solid or fully clear: the file is used exactly as it is,
@@ -12,8 +12,8 @@ and a pixel of any other colour, or half see-through, stops the script with wher
 
 | Size | Fruit |
 | --- | --- |
-| 16 x 16 | cherry, blueberry, chili, lemon, prune, seed, gourd, fruitfly, pumpkinseed |
-| 20 x 20 | grape, apple, banana, fig, kiwi, lime, peach, pitaya, pomegranate, slice, snowpear, goldenapple |
+| 16 x 16 | cherry, apple, blueberry, chili, lemon, prune, seed, gourd, fruitfly, pumpkinseed, goldenapple |
+| 20 x 20 | grape, banana, fig, kiwi, lime, peach, pitaya, pomegranate, slice, snowpear |
 | 24 x 24 | orange, coconut, dragonfruit, durian, honeydew |
 | 28 x 28 | melon |
 | 32 x 32 | watermelon |

@@ -18,7 +18,7 @@ const SPARK = [LIGHT, GOLD, BAR_FILL, BAD];
  * does something to another. While the Preserves Jar's fruit are chosen, each one it can keep hears the mouse and a tap
  * (`onPoint`, `onChoose`, by its place in `preservable`).
  */
-export function JarMarks({ run, onPoint, onChoose }: { run: Run; onPoint: (at: number) => void; onChoose: (at: number) => void }) {
+export function JarMarks({ run, angle: drawn, onPoint, onChoose }: { run: Run; angle?: number; onPoint: (at: number) => void; onChoose: (at: number) => void }) {
   const preserving = run.phase === "preserve";
   const chosen = preserving ? preservable(run)[run.preserveCursor] : undefined;
   const keptFruit = preserving ? run.fruits.filter((f) => run.kept.includes(f.id)) : [];
@@ -28,7 +28,7 @@ export function JarMarks({ run, onPoint, onChoose }: { run: Run; onPoint: (at: n
   const flash = blastFlash(booms);
   const links = run.links.filter((l) => l.delay <= 0);
   return (
-    <Entity x={JAR.right} y={JAR.floor} rotation={lean(run)}>
+    <Entity x={JAR.right} y={JAR.floor} rotation={drawn ?? lean(run)}>
       <Entity x={-JAR.right} y={-JAR.floor}>
         {/* The Preserves Jar: an amber frame round each fruit kept, and an arrow over the one the cursor is on. */}
         {keptFruit.map((f) => (

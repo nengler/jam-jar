@@ -9,8 +9,8 @@ import type { FruitKind } from "./rules/fruits.ts";
 import { bossNow, handSlots, type Run } from "./rules/jar.ts";
 import { biggestFruit, CARD_SLICE, fruitImageSize, SELECT } from "./theme.ts";
 
-/** Where the card of a fruit on the shelf stands: in the top left corner, over the rent board for as long as it is up, so it
- * never lies over the jar, which is what the player is deciding about. */
+/** Where the card of a fruit on the shelf stands: in the top left corner, over the rent board for as long as it is up, and what
+ * its keywords mean in the top right corner, so neither lies over the jar, which is what the player is deciding about. */
 const TIP_X = 4;
 const TIP_TOP = 4;
 
@@ -73,18 +73,21 @@ export function Shelf({ run, roll, dragging, dragX, framed, listening, onDragSta
 
 /**
  * What a fruit on the shelf does: shown for the one that was tapped (or the cursor is on, at a keyboard) while `shown`, and for
- * one the mouse is over, in the top left corner whichever fruit it is for, so it never lies over the jar. Its box stays at the
+ * one the mouse is over, in the top corners whichever fruit it is for (its card left, its keywords right), so it never lies over the jar. Its box stays at the
  * fruit's place on the shelf, not under a fruit being dragged: one that followed the pointer and was moved back by as much shook
  * as it was dragged.
+ *
+ * While a tutorial lesson is up (`coached`), its card stands on the right, where the keywords would go, so they go under the
+ * fruit's card on the left instead.
  */
-export function ShelfTips({ run, shown }: { run: Run; shown: boolean }) {
+export function ShelfTips({ run, shown, coached }: { run: Run; shown: boolean; coached: boolean }) {
   const shelf = shelfOf(run);
   return (
     <Entity>
       {placed(shelf.cards).map((slot) => (
         <Flex key={`tip${slot.card}${slot.at}`} x={shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0) - 20} y={SHELF_Y - 38} width={40} height={40}>
           <Tooltip show={shown && slot.at === run.cursor ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X - (shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0) - 20)} offsetY={TIP_TOP - (SHELF_Y - 38)} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-            <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} text={cardText(run, slot.card)} />
+            <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} text={cardText(run, slot.card)} apart={coached ? undefined : 640 - TIP_X * 2} />
           </Tooltip>
         </Flex>
       ))}

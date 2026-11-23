@@ -10,7 +10,7 @@ Built on the [tse engine](https://github.com/nengler/tse). The design doc is the
 
 ## Running it
 
-The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.21.0), with
+The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.22.0), with
 `overrides` so the packs' own dependencies on each other resolve to the same release:
 
 ```sh
@@ -20,6 +20,8 @@ npm run install-engine   # optional: try an unreleased engine from ../tse (or TS
 npm run dev              # play in a window, with hot reload (needs tse's native build with a window: npm run native:build in tse)
 npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out shots   # a screenshot without a window
 ```
+
+`.github/workflows/ci.yml` runs `npm run check` on every pull request and every push to `main`.
 
 ## Controls
 
@@ -150,7 +152,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     scored, so merge up, smash down cannot chain for ever in one settle.
   - Pumpkin: Heavy and Wide: it takes 2 of the shelf's 4 places, so a hand with one is 3 fruit, and it drops down the
     middle of its two lanes. A Wide fruit that would not fit in what is left of the shelf waits on top of the pool for the
-    next hand. It scores nothing for landing. It Plunges: once it lands, its ball is driven straight down through the pile
+    next hand, and the next fruit that fits takes its place, so the hand is still full. It scores nothing for landing. It Plunges: once it lands, its ball is driven straight down through the pile
     to the floor (the lid, in the Flip jar turned over), many times heavier than its size. Each Grape, Orange, Melon or
     Watermelon it hits is Smashed and its pieces thrown out; anything else is thrown aside and up; a frozen fruit stops it.
     Its Smashes pay 75% of what their pieces are worth, all at once when it reaches the floor, in one popup twice the size
@@ -282,7 +284,7 @@ What a fruit does can be read in play as well: its card shows under the fruit th
 and beside any fruit on the shelf that the mouse is over.
 
 The fruit still to be dealt this shuffle wait in a basket on a ledge past the shelf's right end, and each hand rolls out of
-it onto the shelf. Beside it is how many are left; the mouse over it says of how many the pool holds. The hand is on the
+it onto the shelf. Beside it is how many are left. The hand is on the
 shelf, and the rest has been played. At 0 the basket refills with the whole pool before the next deal. By the end of a run a
 pool holds a dozen kinds, one or two of each, so what they are is on the whole-pool board (a tap on the basket, or D): under
 each kind, how many are left to deal of how many there are, and a kind with none left is faded.
@@ -371,9 +373,12 @@ saved data and reads none.
   names the colours, the fonts and the Kenney frames every screen is made of. `settings.ts` is the player's settings, which the
   engine keeps between launches (the game has an id, `<Game id="jam-jar">`, which is what turns that on).
 - `tools/install-engine.ts` packs `../tse` and installs it without saving. `tools/balance.ts` is the balance run above.
-- `art/` holds every picture as it is drawn: at its art size (half its size on the screen), in the Apollo palette
-  (`art/README.md`). `tools/make-assets.py` (Python with Pillow) checks each and doubles it into `assets/`, writes each fruit's
-  ball size to `src/rules/sizes.ts`, copies the sounds and makes the tally's notes. Rerun it after changing a picture.
+- `art/` holds every picture as it is drawn, as an Aseprite file: at its art size (half its size on the screen), in the Apollo
+  palette (`art/README.md`). `tools/make-assets.py` (Python with Pillow) flattens each (`tools/aseprite.py` reads the files, so
+  Aseprite need not be installed), checks it and doubles it into `assets/` as a PNG, writes each fruit's ball size to
+  `src/rules/sizes.ts`, copies the sounds and makes the tally's notes. npm runs it before `dev`, `build`, `check`, `test` and
+  `package`, so a saved picture is in the game the next time it starts. `assets/` stays in git: the Pages build packages it
+  as it is, without Python.
 
 ## Credits
 

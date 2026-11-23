@@ -1,0 +1,34 @@
+name: CI
+
+# Runs `npm run check` (compile, type-check, the tests and parity with the Rust host) on every pull request and every push to
+# main. The parity check uses the prebuilt native host from the engine release, so no Rust toolchain is needed.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      # npm runs tools/make-assets.py (Python with Pillow) before the check, to turn art/ into assets/.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow
+      - run: npm ci
+      - run: npm run check

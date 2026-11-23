@@ -3,7 +3,7 @@ import { Collider, Entity, Flex, Shape, Sprite } from "@tsengine/runtime/jsx";
 import { Frame } from "./Coach.tsx";
 import { Fruit } from "./Fruit.tsx";
 import { Peg } from "./Peg.tsx";
-import { JAR, PULSE, RIM, TILT_PULL, bossNow, lean, surface, type FruitReport, type Run } from "./rules/jar.ts";
+import { JAR, PULSE, RIM, TILT_PULL, bossNow, jarHeld, lean, surface, type FruitReport, type Run } from "./rules/jar.ts";
 import { JUICE } from "./theme.ts";
 
 /** The jar's pictures reach this far outside its walls and above its glass, which starts this far above the rim. */
@@ -16,6 +16,8 @@ interface JarProps {
   onReport: (report: FruitReport) => void;
   /** How far above its place the jar's pictures are drawn, as it falls into place when a run begins. Its walls and floor do not move. */
   lift?: number;
+  /** How far the jar is drawn leaning, in radians, while it tilts over or back (the play screen eases it); the run's lean otherwise. */
+  angle?: number;
 }
 
 /**
@@ -23,13 +25,15 @@ interface JarProps {
  * the fruit, its front (shine and fill line) over them, and the solid walls and floor the fruit's balls are stopped by. The
  * play screen draws a run in it, and the title a run that plays itself.
  */
-export function Jar({ run, onReport, lift = 0 }: JarProps) {
+export function Jar({ run, onReport, lift = 0, angle: drawn }: JarProps) {
+  const angle = drawn ?? lean(run);
   const x = JAR.left - JAR_MARGIN;
   const y = RIM - JAR_NECK - JAR_MARGIN;
   const width = JAR.right - JAR.left;
   const top = surface(run);
-  const angle = lean(run);
   const pull = bossNow(run) === "tilt" ? TILT_PULL : 0;
+  // Between turns the whole pile is held still (`jarHeld`): from the end of the settle until the next drop.
+  const held = jarHeld(run);
   const liquid = run.lime && run.milk ? "both" : run.milk ? "milk" : "lime";
   return (
     <Entity>
@@ -67,6 +71,7 @@ export function Jar({ run, onReport, lift = 0 }: JarProps) {
           honeyed={f.honeyed}
           pickled={f.pickled}
           frozen={f.frozen}
+          held={held}
           plunging={(f.plunging ?? 0) > 0}
           surface={run.lime ? top : JAR.floor + 100}
           pull={pull}
