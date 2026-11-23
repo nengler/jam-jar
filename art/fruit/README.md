@@ -38,7 +38,7 @@ right, green: facing down, blue: facing the eye, 128 128 255 facing straight out
 way to give a fruit a shape of its own (a pumpkin's ridges, a dent). The picture in `assets/` is the flat fruit and its normal
 map side by side, and the fruit is marked `shaded` in `src/rules/sizes.ts`, which is what the game lights (`FLAT_FRUIT`).
 
-The shader (`assets/fruit-light.glsl`) turns the normals with the fruit and lights them from the top left of the screen, so the
+The shader (`assets/fruit-light.glsl`) turns the normals with the fruit and lights them from the top right of the screen, so the
 light falls right at every turn, on any shape: the side toward the light a step up, the far side down to the darkest step,
 each colour by the steps of its row in the light table (`art/palette/light.aseprite`), and a speck of shine where a part faces
 halfway between the light and the eye. How much falls in each step was matched to the old Apple (about a quarter lit, a quarter

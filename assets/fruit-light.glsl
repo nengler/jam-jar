@@ -1,4 +1,4 @@
-// The fruit's light: from the top left of the screen, wherever a fruit has rolled to. A flat fruit (FLAT_FRUIT in src/theme.ts) is
+// The fruit's light: from the top right of the screen, wherever a fruit has rolled to. A flat fruit (FLAT_FRUIT in src/theme.ts) is
 // lit here by which way each of its pixels faces, from the normal map beside its picture (tools/make-assets.py works it out from
 // the fruit's shape, each part a dome; a "normals" layer painted in its Aseprite file is used instead where there is one). The
 // normals turn with the fruit, so the light falls right at every turn, on any shape: the side toward the light lit, the far
@@ -16,8 +16,9 @@
 // params[0]: how strongly it is lit (1); params[1]: unused; params[2]: how much shine (0.12; 0 for none); params[3]: the clear
 // margin round the fruit in its picture, in pixels each side (FRUIT_PAD).
 
-// The light comes from the top left of the screen, and from in front of it by LIGHT_HEIGHT.
-const vec2 SCREEN_LIGHT = vec2(-1.0, -1.0);
+// The light comes from the top right of the screen, as the god rays do (assets/god-rays.glsl), and from in front of it by
+// LIGHT_HEIGHT.
+const vec2 SCREEN_LIGHT = vec2(1.0, -1.0);
 const float LIGHT_HEIGHT = 0.9;
 // The colours the flat fruit keep for their outline and their stems.
 const vec3 OUTLINE = vec3(36.0, 21.0, 39.0) / 255.0;
@@ -218,7 +219,7 @@ vec4 effect(vec2 uv) {
 
   // The middle of this art pixel, in the picture's pixels from the region's corner.
   vec2 at = floor(inRegion / 2.0) * 2.0 + 1.0;
-  // The light, in the picture (for the stalks' two tones): the screen's top left, turned back by how the fruit is turned.
+  // The light, in the picture (for the stalks' two tones): the screen's top right, turned back by how the fruit is turned.
   vec2 toward = normalize(transpose(turn) * SCREEN_LIGHT);
 
   // A stem: a dark stalk.

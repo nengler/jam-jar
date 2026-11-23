@@ -358,7 +358,7 @@ export function Play() {
         <Sprite key={item} image={`item-${item}.png`} x={16 + i * 50} y={COUNTER_Y - 38} />
       ))}
 
-      {/* Shafts of light from the top left, over the jar and the counter, under the shelf and the boards. */}
+      {/* Shafts of light from the top right, over the jar and the counter, under the shelf and the boards. */}
       <GodRays />
 
       {/* The shelf, the basket behind the fruit rolling out of it, the hand, the basket's front over them, and what the fruit do. */}

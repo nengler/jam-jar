@@ -67,13 +67,13 @@ test("the light table has a row for every palette colour, the fruit's outline am
   assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [5, 46]);
 });
 
-test("the god rays' light, as the motes of dust catch it, comes in four steps, bright where a shaft comes in and gone at the far side", async () => {
+test("the god rays' light, as the motes of dust catch it, comes in four steps, bright where a shaft comes in and gone by the floor", async () => {
   const { rayLight, motes } = await import("../src/layout.ts");
   const seen = new Set<number>();
   for (let x = 0; x < 640; x += 8) for (let y = 0; y < 360; y += 8) seen.add(rayLight(x, y, 3));
   for (const v of seen) assert.ok([0, 0.25, 0.5, 0.75, 1].includes(v), `a step: ${v}`);
   assert.ok([...seen].some((v) => v >= 0.5), "some of the room is in a shaft");
-  assert.equal(rayLight(636, 356, 3), 0, "none reaches the bottom right corner");
+  assert.equal(rayLight(2, 356, 3), 0, "none reaches the bottom left corner, the far side from where they come in");
   // The motes in the brighter part of a shaft are drawn lit.
   for (const m of motes(3)) assert.equal(m.lit, rayLight(m.x, m.y, 3) >= 0.5);
 });

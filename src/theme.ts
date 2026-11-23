@@ -115,7 +115,7 @@ export function fruitImage(kind: FruitKind): string {
 
 /**
  * The fruit drawn flat, in their base colours with an outline (their old lit picture kept on a hidden "shading" layer): the game
- * lights them as they are drawn, from the top left of the screen however they have rolled, by which way each pixel faces (their
+ * lights them as they are drawn, from the top right of the screen however they have rolled, by which way each pixel faces (their
  * normal maps, which tools/make-assets.py works out, or paints from a "normals" layer) and the steps of the light table
  * (assets/fruit-light.glsl, art/palette/light.aseprite). make-assets.py marks them `shaded` in src/rules/sizes.ts; the others have
  * their light drawn in, and are drawn as they are.

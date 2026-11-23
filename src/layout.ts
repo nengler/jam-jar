@@ -62,14 +62,14 @@ export function startingRun(saved: unknown, seed: number): Run {
  * assets/god-rays.glsl worked out the same way (change both together), so a mote of dust drifting through one catches the light.
  */
 export function rayLight(x: number, y: number, time: number): number {
-  const AT = [-250, -165, -70, 25, 110];
-  const WIDE = [22, 34, 16, 40, 20];
-  const PACE = [0.21, 0.13, 0.29, 0.17, 0.24];
-  const PHASE = [0, 1.9, 3.7, 0.8, 2.6];
+  const AT = [-300, -408, -512];
+  const WIDE = [26, 36, 20];
+  const PACE = [0.21, 0.13, 0.27];
+  const PHASE = [0, 1.9, 3.7];
   const px = Math.floor(x / 2) * 2 + 1;
   const py = Math.floor(y / 2) * 2 + 1;
-  const across = -0.8 * px + 0.6 * py;
-  const along = 0.6 * px + 0.8 * py;
+  // Falling down and to the left, 25 degrees from straight down: across the light is at right angles to that.
+  const across = -0.9063 * px - 0.4226 * py;
   const smooth = (a: number, b: number, v: number): number => {
     const t = Math.max(0, Math.min(1, (v - a) / (b - a)));
     return t * t * (3 - 2 * t);
@@ -81,7 +81,7 @@ export function rayLight(x: number, y: number, time: number): number {
     const edge = Math.abs(across - (AT[i] as number) - drift) / (WIDE[i] as number);
     light += breath * (1 - smooth(0.55, 1, edge));
   }
-  light *= 1 - smooth(60, 640, along);
+  light *= 1 - smooth(40, 380, py);
   return Math.floor(Math.min(light, 1) * 4) / 4;
 }
 
