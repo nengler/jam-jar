@@ -146,7 +146,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     scored, so merge up, smash down cannot chain for ever in one settle.
   - Pumpkin: Heavy and Wide: it takes 2 of the shelf's 4 places, so a hand with one is 3 fruit, and it drops down the
     middle of its two lanes. A Wide fruit that would not fit in what is left of the shelf waits on top of the pool for the
-    next hand. It scores nothing for landing. It Plunges: once it lands, its ball is driven straight down through the pile
+    next hand, and the next fruit that fits takes its place, so the hand is still full. It scores nothing for landing. It Plunges: once it lands, its ball is driven straight down through the pile
     to the floor (the lid, in the Flip jar turned over), many times heavier than its size. Each Grape, Orange, Melon or
     Watermelon it hits is Smashed and its pieces thrown out; anything else is thrown aside and up; a frozen fruit stops it.
     Its Smashes pay 75% of what their pieces are worth, all at once when it reaches the floor, in one popup twice the size
@@ -269,7 +269,7 @@ What a fruit does can be read in play as well: its card shows under the fruit th
 and beside any fruit on the shelf that the mouse is over.
 
 The fruit still to be dealt this shuffle wait in a basket on a ledge past the shelf's right end, and each hand rolls out of
-it onto the shelf. Beside it is how many are left; the mouse over it says of how many the pool holds. The hand is on the
+it onto the shelf. Beside it is how many are left. The hand is on the
 shelf, and the rest has been played. At 0 the basket refills with the whole pool before the next deal. By the end of a run a
 pool holds a dozen kinds, one or two of each, so what they are is on the whole-pool board (a tap on the basket, or D): under
 each kind, how many are left to deal of how many there are, and a kind with none left is faded.

@@ -6,8 +6,8 @@ import { Terms } from "./Terms.tsx";
 import { KEYWORD_LIGHT, LIGHT, PLAQUE, TERM_W } from "./theme.ts";
 
 /**
- * A fruit's card, small: its name over what it does, on a dark box, and under it a box for each keyword in that text saying
- * what the keyword means, as a pick's card shows. It goes inside a `<Tooltip>` in the box of a fruit drawn in play (on the
+ * A fruit's card, small: its name over what it does, on a dark box, and under it a box saying what each keyword in that
+ * text means, as a pick's card shows. It goes inside a `<Tooltip>` in the box of a fruit drawn in play (on the
  * shelf, in the Pool), so what a fruit does can be read in full without waiting for the pick. `grown` is what every fruit of
  * the kind has gained this run.
  *

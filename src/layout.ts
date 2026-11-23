@@ -231,6 +231,14 @@ export function popIn(time: number, at: number, seconds: number): number {
   return 1 + (back + 1) * (t - 1) ** 3 + back * (t - 1) ** 2;
 }
 
+/** Seconds the jar takes to lean over as a Tilted jar's cycle begins, or to stand up again after it. */
+export const TILT_TIME = 0.8;
+
+/** How far the jar is drawn leaning, in radians, `time` after it set off from `from` towards `to`: it rocks a little past and settles back, as a board pops in. */
+export function tilted(from: number, to: number, time: number): number {
+  return from + (to - from) * popIn(time, 0, TILT_TIME);
+}
+
 /** How far above its place the jar is, in pixels, `time` into its fall from `from` above: it lands and bounces twice, less each time. */
 export function jarDrop(time: number, from: number): number {
   const t = Math.max(0, Math.min(1, time / INTRO.fall));
