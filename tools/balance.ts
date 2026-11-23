@@ -22,6 +22,10 @@
  *     node tools/balance.ts [runs per player, default 20] [players, e.g. skip,random,chili] [full] [first seed, default 1]
  *     BALANCE_BOSS=flip node tools/balance.ts 18 skip     (every run meets that boss jar)
  *     BALANCE_JSON=out.json node tools/balance.ts ...      (also writes every run's cycle scores, for tools/compare.ts)
+ *     BALANCE_CHAINS=off node tools/balance.ts ...         (the chain multiplies nothing, to compare with the rule before it)
+ *
+ * Each player's second line also says how long its chains ran (`CHAIN_TIERS` in jar.ts): links a turn on average, the share of
+ * turns that reached each tier, and the longest.
  */
 import { writeFileSync } from "node:fs";
 
@@ -33,7 +37,7 @@ import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
 import { FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
-import { bossNow, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
+import { bossNow, CHAIN_TIERS, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
 
 type Strategy = string;
@@ -44,6 +48,10 @@ const ENTER = frame("Enter");
 const SPACE = frame("Space");
 const RIGHT = frame("right");
 const DOWN = frame("down");
+
+/** BALANCE_CHAINS=off: no tiers, so the chain still counts its links but multiplies nothing. */
+const tiers = CHAIN_TIERS.slice();
+if (process.env["BALANCE_CHAINS"] === "off") (CHAIN_TIERS as number[]).length = 0;
 
 /** BALANCE_BOSS=flip plays every run's boss cycle in that jar, to compare the boss jars with each other. */
 const forcedBoss = process.env["BALANCE_BOSS"] as Boss | undefined;
@@ -202,6 +210,8 @@ interface Events {
   giants: number;
   /** Smashes: counted from the pieces they leave (4 Slices, or 2 of the next size down); "/best" and "/fair" undercount them. */
   smashes: number;
+  /** Each turn's chain, in links (the run's own `chains`). */
+  chains: number[];
 }
 
 function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[]; mismatches: number; events: Events } {
@@ -219,6 +229,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   const slices = new Set<number>();
   const pieces = new Set<number>();
   let earned: Record<string, number> = {};
+  let chains: number[] = [];
   let wait = 0;
   let coins = 0;
   const [plan = "", owned = ""] = strategy.split("@");
@@ -243,6 +254,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
         if (f.piece === true) (f.kind === "slice" ? slices : pieces).add(f.id);
       }
       earned = found.s.run.earned;
+      chains = found.s.run.chains;
     }
     if (found !== null && found.s.run.phase === "settle") settling = found.s.run.settleTime;
     else if (settling >= 0) {
@@ -301,7 +313,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   }
   player.close();
   return { scores, pool, settles, mismatches, // Giant Pumpkins by the points they scored: "/best" and "/fair" play their turns out of this loop's sight, so ids miss them.
-    events: { earned: { ...earned }, giants: Math.max(giants.size, Math.round((earned["Giant Pumpkin"] ?? 0) / FRUITS.giantpumpkin.points)), smashes: slices.size / 4 + pieces.size / 2 } };
+    events: { earned: { ...earned }, giants: Math.max(giants.size, Math.round((earned["Giant Pumpkin"] ?? 0) / FRUITS.giantpumpkin.points)), smashes: slices.size / 4 + pieces.size / 2, chains: chains.slice() } };
 }
 
 const runs = Number(process.argv[2] ?? 20);
@@ -344,6 +356,12 @@ for (const strategy of players) {
     `${"".padEnd(34)} a run: ${total.toFixed(0)} points; Giant Pumpkins ${(events.reduce((a, e) => a + e.giants, 0) / runs).toFixed(2)} (in ${giantRuns}/${runs} runs), ` +
       `Smashes ${(events.reduce((a, e) => a + e.smashes, 0) / runs).toFixed(2)} (+${(per("Slice") + per("Smash") + per("Plunge")).toFixed(0)}), Ladder events ${(events.reduce((a, e) => a + e.smashes + e.giants, 0) / runs).toFixed(2)}, Plunge bursts +${per("Plunge").toFixed(0)}, Gourd +${per("Gourd").toFixed(0)}, ` +
       `Ladder share ${((100 * ladder) / Math.max(1, total)).toFixed(0)}%, spills ${(-per("Spill") / 5).toFixed(1)} (${(-per("Spill") / 5 / rent.length).toFixed(1)} a cycle)`
+  );
+  const turns = events.flatMap((e) => e.chains);
+  const reached = (at: number) => `${((100 * turns.filter((links) => links >= at).length) / Math.max(1, turns.length)).toFixed(0)}%`;
+  console.log(
+    `${"".padEnd(34)} chains: ${(turns.reduce((a, b) => a + b, 0) / Math.max(1, turns.length)).toFixed(1)} links a turn, ` +
+      `${tiers.map((at, k) => `x${k + 2} in ${reached(at)}`).join(", ")} of turns, longest ${Math.max(0, ...turns)}`
   );
   if (process.argv[4] !== "full") continue;
   // What earned the points, a run on average, the most first.

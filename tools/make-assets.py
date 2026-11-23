@@ -211,6 +211,23 @@ def write_last_turn() -> None:
         out.writeframes(struct.pack(f"<{len(samples)}h", *samples))
 
 
+def write_chain_tier() -> None:
+    """A chain reaching a tier (x2, x3, x4): the tally's bell struck as a quick rising arpeggio, C6, E6, G6 and C7, 45 ms apart,
+    each ringing on under the next, so it reads as the notes it climbs out of, only brighter and all at once."""
+    import math
+
+    frames = int(SCORE_RATE * 0.6)
+    samples = [0.0] * frames
+    for k, pitch in enumerate([1046.5, 1318.51, 1567.98, 2093.0]):
+        start = int(SCORE_RATE * 0.045 * k)
+        for n in range(start, frames):
+            t = (n - start) / SCORE_RATE
+            attack = min(1.0, t / 0.003)
+            tone = math.sin(2 * math.pi * pitch * t) * math.exp(-t * 7.0) + 0.3 * math.sin(2 * math.pi * pitch * 2 * t) * math.exp(-t * 12.0)
+            samples[n] += 0.28 * attack * tone
+    write_wave("tier.wav", samples)
+
+
 def write_wave(name: str, samples: list[float]) -> None:
     import struct
     import wave
@@ -285,7 +302,8 @@ def main() -> None:
     write_score_notes()
     write_last_turn()
     write_entrance_sounds()
-    print(f"wrote {pictures} pictures and {len(SOUNDS)} sounds (the music among them), and made the tally's notes and the entrance sounds")
+    write_chain_tier()
+    print(f"wrote {pictures} pictures and {len(SOUNDS)} sounds (the music among them), and made the tally's notes, the chain's tier and the entrance sounds")
 
 
 if __name__ == "__main__":

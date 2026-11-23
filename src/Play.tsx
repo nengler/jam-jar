@@ -22,7 +22,7 @@ import { Lit } from "./lit.ts";
 import { learn } from "./settings.ts";
 import { Shelf, ShelfTips } from "./Shelf.tsx";
 import { Shop } from "./Shop.tsx";
-import { advance, bossNow, newRun, dramatic, lean, shownScore, JAR, rentFor, RIM, TURNS_PER_CYCLE, type FruitReport } from "./rules/jar.ts";
+import { advance, bossNow, chainTier, newRun, dramatic, lean, shownLinks, shownScore, JAR, rentFor, RIM, TURNS_PER_CYCLE, type FruitReport } from "./rules/jar.ts";
 import { BAD, COUNTER_Y, DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT, PLAQUE, POP_VOLUME, THUD_VOLUME, TOCK_VOLUME } from "./theme.ts";
 
 /** The pause button stands on the counter in the bottom right corner, its foot where the jar's is. */
@@ -36,6 +36,11 @@ const MOVE_QUIET = 0.12;
 /** Slow motion: how fast the game runs in it, and how long it lasts after the Blast that set it off, in the game's slowed seconds. */
 const SLOW_SPEED = 0.35;
 const SLOW_TIME = 0.4;
+/** How loud the chain's tier sound is, of the sounds' volume. */
+const TIER_VOLUME = 0.6;
+/** The chain on the jar: where its words stand (their middle, just over the rim), and how much bigger they are at each tier past the first. */
+const CHAIN_Y = RIM - 24;
+const CHAIN_GROW = 0.1;
 /** Fast-forward: how fast the jar plays with the Speed setting on Fast, and while F is held. */
 const FAST_SPEED = 2;
 const HURRY_SPEED = 3;
@@ -62,7 +67,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonMessage: "", drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -86,6 +91,7 @@ export function Play() {
   const playScore5 = useSound("score-5.wav");
   const playScore6 = useSound("score-6.wav");
   const playScore7 = useSound("score-7.wav");
+  const playTier = useSound("tier.wav");
 
   useInput((input) => {
     const over = s.run.phase === "over" || s.run.phase === "won";
@@ -207,9 +213,14 @@ export function Play() {
     if (heard.includes("boom")) playBoom();
     if (heard.includes("pick")) playPick();
     if (heard.includes("rent")) playRent();
-    // A score of the tally: the next note up, and the top one again for any past the eighth.
-    if (heard.includes("score")) {
-      const note = Math.min(7, s.run.scoreNote - 1);
+    // The chain: each link heard rings the tally's bell a note higher than the last (the top one again past the eighth), and each
+    // tier it reaches rings its own chord. The tally's scores are links too: each rings as it shows.
+    const linked = shownLinks(s.run);
+    const rang = linked > s.heardLinks || heard.includes("score");
+    if (linked > s.heardLinks && chainTier(linked) > chainTier(s.heardLinks)) playTier(TIER_VOLUME);
+    s.heardLinks = linked;
+    if (rang) {
+      const note = Math.min(7, Math.max(linked, s.run.scoreNote) - 1);
       if (note <= 0) playScore0(SCORE_VOLUME);
       else if (note === 1) playScore1(SCORE_VOLUME);
       else if (note === 2) playScore2(SCORE_VOLUME);
@@ -335,6 +346,9 @@ export function Play() {
   /** How far the jar is drawn leaning now: it eases over as a Tilted jar's cycle begins, and back after. */
   const angle = tilted(s.tiltFrom, s.tiltTo, s.tiltT);
   const popups = leaned(run.popups.filter((p) => p.delay <= 0), angle, JAR.right, JAR.floor);
+  /** The chain, while the jar plays: how many links it has on screen and what they multiply by. */
+  const linked = run.phase === "drop" || run.phase === "settle" || run.phase === "tally" ? shownLinks(run) : 0;
+  const tier = chainTier(linked);
   const ordering = run.phase === "order";
   const picking = run.phase === "pick";
   /** Whether this moment's keys are shown: to a player at a keyboard, and only until they have been through it once. */
@@ -359,6 +373,12 @@ export function Play() {
       <Raise id="jar">
       <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(run.effects.filter((e) => e.kind === "boom"))} angle={angle} />
       <JarMarks run={run} angle={angle} onPoint={point} onChoose={click} />
+      {/* The chain, over the rim: it counts up with each link, and grows and turns gold at each tier. */}
+      {linked > 0 && (
+        <Text x={JAR_MID} y={CHAIN_Y} align="center" font={DISPLAY} size={Math.round(DISPLAY_SIZE * (1 + CHAIN_GROW * (tier - 1)))} color={tier > 1 ? GOLD : LIGHT} shadow={INK} shadowX={2} shadowY={2}>
+          {tier > 1 ? `Chain ${linked} x${tier}` : `Chain ${linked}`}
+        </Text>
+      )}
       {/* The points stay upright over a leaning jar. */}
       {popups.map((p) => (
         <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={p.big === true ? DISPLAY_SIZE * 2 : DISPLAY_SIZE} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={p.big === true ? 4 : 2} shadowY={p.big === true ? 4 : 2}>

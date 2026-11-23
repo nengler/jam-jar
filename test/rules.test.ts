@@ -8,6 +8,11 @@ import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERAB
 import {
   advance,
   BLAST_BONUS,
+  CHAIN_LINE_LIFE,
+  CHAIN_TIERS,
+  chainTier,
+  SET_OFF_LINKS,
+  shownLinks,
   BOSS_NAME,
   bossCycle,
   bossFor,
@@ -732,6 +737,8 @@ test("a Coconut cracks at its third Resolve and is gone, leaving milk; fruit tha
     const before = run.cycleScore;
     run.turn = 2;
     run.phase = "settle";
+    // A new chain each turn, as dropping a hand starts one.
+    run.chainLinks = 0;
     resolve(run);
     scores.push(run.cycleScore - before);
   }
@@ -967,7 +974,10 @@ test("the tally: a jar with nothing to tally goes straight on, and a long one is
   const many = jarWith(Array.from({ length: 30 }, (_, i) => fruit(i + 1, "apple", 230 + i * 6, JAR.floor - FRUITS.apple.radius)));
   many.turn = 2;
   resolve(many);
-  assert.ok(many.tallyTime > 2 && many.tallyTime < 3, `${many.tallyTime}`);
+  // 30 Simmer scores are 30 links, so the chain's line follows the last of them, and the tally waits for it.
+  const line = many.popups.find((p) => p.text.endsWith(" points"))!;
+  assert.ok(line.delay > 1.5 && line.delay < 2.5, `the last score shows by about two seconds: ${line.delay}`);
+  assert.ok(Math.abs(many.tallyTime - (line.delay + CHAIN_LINE_LIFE)) < 1e-9, `${many.tallyTime}`);
 });
 
 test("the tally: the rent's sound waits for it to end", () => {
@@ -1008,7 +1018,7 @@ test("readability: two popups in one place are stacked, not drawn on each other,
   assert.ok(merge.x > JAR.left + r + 20, `${merge.x}`);
 });
 
-test("a second Blast soon after the first is a chain: it says so, and both a chain and a big Blast are worth slowing down for", () => {
+test("a second Blast soon after the first is a chain of Blasts, and both a chain and a big Blast are worth slowing down for", () => {
   const y = JAR.floor - 8;
   let run = jarWith([fruit(1, "cherry", 300, y)]);
   run.fruits.push({ ...fruit(2, "chili", 280, y), lit: true, fuse: 0 }, { ...fruit(3, "chili", 400, y), lit: true, fuse: 0.2 });
@@ -1022,7 +1032,7 @@ test("a second Blast soon after the first is a chain: it says so, and both a cha
   }
   assert.equal(run.chain, 2);
   assert.ok(slowed, "the second was");
-  assert.ok(run.popups.some((p) => p.text === "Chain x2"));
+  assert.ok(!run.popups.some((p) => p.text.startsWith("Chain")), "the chain on the jar says it: no popup of its own");
   for (let i = 0; i < 120; i++) run = press(run, {});
   assert.equal(run.chain, 0, "the chain ends when no Blast follows");
 
@@ -1284,7 +1294,7 @@ test("the tutorial's lessons: each waits for its moment, and is done when the pl
   assert.equal(lessonDone(lesson("order"), at("order"), { ...none, looked: true }), false, "looking is not reordering");
   assert.equal(lessonDone(lesson("order"), at("order"), { ...none, moved: true }), true);
   assert.equal(lessonDone(lesson("drop"), at("order"), { looked: true, moved: true, acted: true }), false, "only dropping ends it");
-  assert.deepEqual(LESSONS.filter((l) => l.told === true).map((l) => l.id), ["rent", "pool"], "the two that only tell have a Got it");
+  assert.deepEqual(LESSONS.filter((l) => l.told === true).map((l) => l.id), ["rent", "pool", "chain"], "the three that only tell have a Got it");
 
   // The pick's and the shop's wait for the first pick and the first shop.
   assert.equal(lessonShows(lesson("pick"), at("order")), false);
@@ -1516,4 +1526,97 @@ test("the fruit book has every fruit in the game, each in a family and with role
     assert.ok(entry.roles.length > 0 && entry.roles.every((r) => ROLES[r] !== undefined), kind);
   }
   for (const m of MEASURED) assert.ok(FRUITS[m.kind] !== undefined, m.kind);
+});
+
+test("the chain's tiers: x1 for links 1 to 4, then one more at each of 5, 10 and 15", () => {
+  assert.deepEqual(CHAIN_TIERS, [5, 10, 15]);
+  assert.deepEqual(
+    Array.from({ length: 17 }, (_, links) => chainTier(links)),
+    [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4]
+  );
+});
+
+test("a chain: each merge is a link and the 5th link scores double; a landing is no link and is never multiplied", () => {
+  const y = JAR.floor - FRUITS.cherry.radius;
+  const run = jarWith([fruit(1, "cherry", 300, y, [2]), fruit(2, "cherry", 312, y, [1]), { ...fruit(3, "orange", 380, JAR.floor - FRUITS.orange.radius), landed: false }]);
+  run.chainLinks = 4;
+  simulate(run, DT);
+  assert.equal(run.chainLinks, 5, "the merge added one link; the Orange's landing added none");
+  assert.ok(run.popups.some((p) => p.text === `Merge +${FRUITS.grape.points * 2}`), "the 5th link: x2, and the popup says what it is worth");
+  assert.ok(run.popups.some((p) => p.text === `+${FRUITS.orange.points}`), "the landing is not multiplied");
+  assert.equal(run.bestChain, 5);
+});
+
+test("a chain: a Blast is one link however many fruit it destroys, and a Sprout it sets off is one more", () => {
+  const y = JAR.floor - 8;
+  const run = jarWith([1, 2, 3, 4].map((id) => fruit(id, "cherry", 286 + id * 6, y)));
+  run.fruits.push({ ...fruit(9, "chili", 300, y), lit: true, fuse: 0 });
+  simulate(run, DT);
+  assert.ok(!run.fruits.some((f) => f.kind === "cherry"), "all four destroyed");
+  assert.equal(run.chainLinks, 1);
+
+  const seeded = jarWith([fruit(1, "seed", 300, y), fruit(2, "cherry", 310, y)]);
+  seeded.fruits.push({ ...fruit(9, "chili", 290, y), lit: true, fuse: 0 });
+  simulate(seeded, DT);
+  assert.equal(seeded.chainLinks, 2, "the Blast and the Sprout");
+});
+
+test("a chain: each Simmer score at the tally is a link, shown as it shows, and a chain that reached a tier ends with its line", () => {
+  const apples = (count: number) => jarWith(Array.from({ length: count }, (_, i) => fruit(i + 1, "apple", 240 + i * 26, JAR.floor - FRUITS.apple.radius)));
+  const edge = APPLE.base + APPLE.edge;
+  let run = apples(6);
+  run.turn = 2;
+  resolve(run);
+  assert.equal(run.chainLinks, 6);
+  assert.equal(run.cycleScore, 4 * edge + 2 * edge * 2, "links 5 and 6 score double");
+  assert.equal(shownLinks(run), 0, "none shown yet: the tally shows them one after another");
+  const line = run.popups.find((p) => p.text === `6 links, ${run.cycleScore} points`);
+  assert.ok(line !== undefined && line.points === 0 && line.quiet === true, "the line ends the turn, and is not points of its own");
+  assert.deepEqual(run.chains, [6]);
+  for (let i = 0; i < 400 && run.popups.some((p) => p.delay > 0); i++) run = press(run, {});
+  assert.equal(shownLinks(run), 6);
+
+  // The next hand dropped starts a new chain.
+  run.phase = "order";
+  run.hand = ["cherry"];
+  run = press(run, { drop: true });
+  assert.equal(run.chainLinks, 0);
+  assert.equal(run.bestChain, 6);
+
+  const short = apples(4);
+  short.turn = 2;
+  resolve(short);
+  assert.ok(!short.popups.some((p) => p.text.endsWith(" points")), "4 links reach no tier: no line");
+});
+
+test("the chain's lesson waits for a chain of 5, shows while the jar plays, and stays until its Got it", () => {
+  const chain = LESSONS.find((l) => l.id === "chain")!;
+  const at = (phase: Run["phase"], best: number): Run => ({ ...newRun(7), phase, bestChain: best });
+  assert.equal(lessonShows(chain, at("settle", 4)), false);
+  assert.equal(lessonShows(chain, at("settle", 5)), true);
+  assert.equal(lessonShows(chain, at("tally", 5)), true);
+  assert.equal(lessonShows(chain, at("order", 5)), false, "the chain is not on the jar while ordering");
+  assert.equal(lessonDone(chain, at("order", 5), { looked: true, moved: true, acted: true }), false, "it comes back with the next hand");
+  assert.equal(chain.told, true);
+});
+
+test("a chain: a Merge with a piece of a Smash adds no link, though it scores at the tier", () => {
+  const y = JAR.floor - FRUITS.grape.radius;
+  const run = jarWith([{ ...fruit(1, "grape", 300, y, [2]), piece: true }, { ...fruit(2, "grape", 316, y, [1]), piece: true }]);
+  run.chainLinks = 5;
+  simulate(run, DT);
+  assert.ok(run.fruits.some((f) => f.kind === "orange"), "they merged");
+  assert.equal(run.chainLinks, 5);
+  assert.ok(run.popups.some((p) => p.text === `Merge +${FRUITS.orange.points * 2}`));
+});
+
+test("a chain: a blast set off by another blast adds two links", () => {
+  const y = JAR.floor - 8;
+  let run = jarWith([fruit(1, "cherry", 300, y)]);
+  run.fruits.push({ ...fruit(2, "chili", 290, y), lit: true, fuse: 0 }, fruit(3, "chili", 316, y));
+  run = press(run, {});
+  assert.equal(run.chainLinks, 1, "the first blast");
+  assert.equal(run.fruits.find((f) => f.id === 3)?.setOff, true, "it lit the other Chili");
+  for (let i = 0; i < 30; i++) run = press(run, {});
+  assert.equal(run.chainLinks, 1 + SET_OFF_LINKS);
 });

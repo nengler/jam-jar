@@ -10,6 +10,7 @@ import { useGame } from "../src/GameState.ts";
 import { settings } from "../src/settings.ts";
 import { FRUIT_PRICE, JAR, RIM, type Fruit, type Run } from "../src/rules/jar.ts";
 import { FRUITS } from "../src/rules/fruits.ts";
+import { LESSONS } from "../src/rules/tutorial.ts";
 
 /** Which screen shows, whether play is paused, and the run's phase and jar when a run is on. */
 function seen(player: Player): { screen: string; paused: boolean; phase?: string; fruits?: number; hand?: number; dealt?: number } {
@@ -645,7 +646,7 @@ test("the first game's tutorial: a card says one thing at a time and moves on as
   (coach() as unknown as { props: { onSkip: () => void } }).props.onSkip();
   game.input("_*3");
   assert.equal(coach(), null);
-  assert.equal(settings.get().tutorial, 8, "over, and kept that way between launches");
+  assert.equal(settings.get().tutorial, LESSONS.length, "over, and kept that way between launches");
   game.close();
 });
 
