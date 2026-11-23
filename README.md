@@ -120,6 +120,12 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 - The merge ladder: Cherry → Grape → Orange → Melon → Watermelon → Giant Pumpkin.
 - Fresh fruit score when they land or are made by a merge. Simmer fruit (Apple, Banana) score at every Resolve. Lemon is a
   Booster: fruit touching it score double, and it blocks merges next to it.
+- Chains (design doc, "Proposed: chains, glazes and bridge fruit"): each trigger in a turn adds one link, however many fruit
+  it affects (a merge, a blast, a Plunge's burst, a Shockwave that Smashes, a Sprout, a Gourd's Absorb, the Juicer's crush),
+  and so does each score at the tally. What a trigger scores is multiplied by the tier the chain has reached when it happens:
+  x2 from the 5th link, x3 from the 10th, x4 from the 15th (`CHAIN_TIERS`). A landing adds no link and is never multiplied,
+  nor is a spill. The chain starts again with each hand dropped, and carries from the settle into the tally, so a garden
+  reaches the tiers with its Simmer scores alone. It stacks with a Booster: a Lemon's x2 at x4 is x8.
 - The Boom group: Chili (explodes touching 4+ fruit), Durian (big blast once 3 fruit sit on it), Pomegranate (bursts into 5
   Cherries when hit; two that merge burst into 5 between them), Blueberry (counts as 3 fruit for touch checks) and Seed (sprouts a starter when blown up; the Pumpkin Seed is under the Ladder set). Blasts
   chain into other Chilis and Durians, and score a bonus for each fruit destroyed (10 for a Chili's, 14 for a Durian's).
@@ -303,9 +309,15 @@ The design doc's biggest risk is that a pile of fruit is harder to read than a g
 - A line joins two fruit while one does something to the other: a Booster to the fruit it doubled, rot or honey to the fruit
   it spread to, a Fruit Fly or a Pitaya to what it ate, rot to the Prune that scores for it.
 - Two popups never sit on each other (a later one is a line higher) and none is cut by the jar's wall.
-- A Blast within 1.2 seconds of the last is a chain, and says so ("Chain x2"). A chain, or one Blast that destroys 5 fruit or
-  more, plays in slow motion (the game at 0.35 of its speed for a moment), so you can see what it threw and set off.
-- The end of a turn is a tally: each Simmer fruit lights up and scores in turn, with a tick, and the score counts up with them.
+- The chain is counted over the jar's rim while the jar plays ("Chain 7 x2"): it goes up with each link, and turns gold and
+  grows a little at each tier. Each link rings the tally's bell a note higher (the top note again past the eighth), and each
+  tier rings a chord of its own (`tier.wav`). A popup shows the points after the chain's multiplier, so what it says is what
+  the score went up by. A turn whose chain reached x2 ends with one line over the jar once the tally is done: "14 links,
+  412 points". The first such chain brings the tutorial's last lesson, which stays until its "Got it".
+- A Blast within 1.2 seconds of the last is a chain of Blasts. That, or one Blast that destroys 5 fruit or more, plays in
+  slow motion (the game at 0.35 of its speed for a moment), so you can see what it threw and set off.
+- The end of a turn is a tally: each Simmer fruit lights up and scores in turn, its link of the chain ringing a note higher than
+  the last, and the score and the chain count up with them.
   A long tally is squeezed into about two seconds. The rules have already scored it all (`resolve`); the "tally" phase only
   shows it, then hands over to the pick or the rent.
 
@@ -338,6 +350,30 @@ still cost points alone, on purpose. The Rot group used to lose badly taken toge
 five-turn cycle a Banana's rot barely got started, so Prunes and Fruit Flies had nothing to work with. Now a Prune spreads
 its rot from the turn it lands and rotten fruit still merge, which makes the Prune a pick that stands alone and brings the
 whole group to about level with never picking. The Fruit Fly and the Fig are still combo pieces. Nothing here measures an ordered hand. Rerun it after changing a fruit.
+
+### Chains, measured (23 November)
+
+`BALANCE_CHAINS=off` plays the same runs with a chain that multiplies nothing, so the two can be set side by side. 24 seeds
+each, rent ignored; points a run, the last rent (400) made, and how long the chains ran with them on:
+
+| Player | A run, off / on | Last rent made, off / on | Links a turn | Turns at x2 / x3 / x4 | Longest |
+| --- | --- | --- | --- | --- | --- |
+| Never picks | 1162 / 1373 (+18%) | 0 / 0 | 3.5 | 31% / 1% / 0% | 11 |
+| Picks at random | 1048 / 1212 (+16%) | 1 / 2 | 3.3 | 27% / 3% / 0% | 15 |
+| Picks at random, hand ordered | 1083 / 1273 (+18%) | 0 / 1 | 3.4 | 27% / 3% / 0% | 22 |
+| Boom (Chili, Durian, Blueberry, Seed) | 1237 / 1367 (+11%) | 4 / 4 | 2.7 | 18% / 0% / 0% | 10 |
+| Durian | 1302 / 1465 (+13%) | 1 / 3 | 3.2 | 25% / 0% / 0% | 10 |
+| Lemon, Chili, Blueberry | 1058 / 1174 (+11%) | 0 / 0 | 2.7 | 15% / 1% / 0% | 11 |
+| Melon | 1328 / 1592 (+20%) | 5 / 5 | 3.5 | 30% / 2% / 0% | 16 |
+| Pumpkin + Melon (Ladder) | 1323 / 1728 (+31%) | 4 / 9 | 3.8 | 32% / 3% / 1% | 26 |
+| Garden (Apple, Honeydew, Banana, Pitaya, Snow Pear) | 1060 / 1288 (+22%) | 0 / 1 | 4.4 | 44% / 5% / 1% | 17 |
+
+Every build scores more, by 11% to 31%. Boom chains least, not most: a blast is one link however many fruit it destroys,
+and what it destroys will never merge. Ladder gains most, since a Plunge throws its pieces into new merges, and
+is the one build near running away (the last rent made in 9 runs of 24, the longest chain 26). Gardens reach x2 most often
+(44% of turns), a steady boost from their tally, as the design doc expected. x3 and x4 are rare (5% of turns at most), so
+they are the "whoa" moments rather than the usual turn. The rent curve has not been changed: medians rose by about 30 to 50 a
+cycle, which no build but Ladder turns into many more last rents.
 
 ## Looking at it without playing
 

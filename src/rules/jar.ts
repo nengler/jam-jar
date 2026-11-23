@@ -140,6 +140,19 @@ const POPUP_RISE = 36;
 /** A chain: a Blast within this many seconds of the last one. And a big Blast: one that destroys at least this many fruit. */
 const CHAIN_WINDOW = 1.2;
 export const BIG_BLAST = 5;
+/**
+ * The chain (design doc, "Proposed: chains, glazes and bridge fruit"): each trigger in a turn adds one link, however many fruit it
+ * affects (a merge, a blast, a Plunge's burst, a Shockwave, a sprout, a Gourd's Absorb, the Juicer's crush), and so does each
+ * Simmer score at the tally. What a trigger scores is multiplied by the tier the chain has reached when it happens: x1 for links
+ * 1 to 4, x2 from the 5th, x3 from the 10th, x4 from the 15th. Landings add no link: every turn has four, so they would reach x2
+ * on their own. A spill is never multiplied. The chain starts again with each hand.
+ */
+export const CHAIN_TIERS: readonly number[] = [5, 10, 15];
+
+/** What a chain of this many links multiplies by: 1, then one more at each of `CHAIN_TIERS`. */
+export function chainTier(links: number): number {
+  return 1 + CHAIN_TIERS.filter((at) => links >= at).length;
+}
 /** How long a fruit stays lit up after something happens to it, in seconds. */
 export const PULSE = 0.35;
 /** The tally: seconds between one fruit's score and the next, the most the whole of it takes, and the pause after its last. */
@@ -262,6 +275,10 @@ export interface Popup {
   points: number;
   /** Drawn at twice the size: a Plunge's burst. */
   big?: boolean;
+  /** A tally score that added a link to the chain: the chain on screen counts it once it shows (`shownLinks`). */
+  link?: boolean;
+  /** Shows without a sound: the chain's line at the end of a turn. */
+  quiet?: boolean;
 }
 
 /** A line drawn for a moment between two fruit, from the one that did something to the one it did it to. */
@@ -360,6 +377,10 @@ export interface Run {
   calmTime: number;
   /** Blasts so far in the chain going on (0 when none is), the seconds since the last, and how many fruit the last destroyed. */
   chain: number;
+  /** This turn's chain (`CHAIN_TIERS`): how many links it has, the most any turn's chain has had this run, and each turn's, in order. */
+  chainLinks: number;
+  bestChain: number;
+  chains: number[];
   sinceBlast: number;
   blasted: number;
   /** While the tally plays: the seconds left of it, the phase that follows, and the sound that goes with that. */
@@ -502,6 +523,9 @@ export function newRun(seed: number): Run {
     clearGap: 0,
     calmTime: 0,
     chain: 0,
+    chainLinks: 0,
+    bestChain: 0,
+    chains: [],
     sinceBlast: 0,
     blasted: 0,
     tallyTime: 0,
@@ -540,6 +564,7 @@ function copy(run: Run): Run {
     popups: run.popups.map((p) => ({ ...p })),
     links: run.links.map((l) => ({ ...l })),
     effects: run.effects.map((e) => ({ ...e })),
+    chains: run.chains.slice(),
     sounds: [],
   };
 }
@@ -582,11 +607,15 @@ interface Why {
   earner?: string;
   /** Its popup is drawn big (a Plunge's burst). */
   big?: boolean;
+  /** Scored by a trigger of the chain: multiplied by the tier the chain is at (`chainTier`). The trigger adds its link first (`addLink`). */
+  chained?: boolean;
 }
 
 /** Add points to the cycle, with a popup where it happened. Returns the popup (null for no points), so the tally can time it. */
-function score(run: Run, points: number, x: number, y: number, why: Why = {}): Popup | null {
-  if (points === 0) return null;
+function score(run: Run, scored: number, x: number, y: number, why: Why = {}): Popup | null {
+  if (scored === 0) return null;
+  // The popup shows the multiplied points: what it says is what the score went up by.
+  const points = why.chained === true && scored > 0 ? scored * chainTier(run.chainLinks) : scored;
   run.cycleScore += points;
   run.total += points;
   run.turnScore += points;
@@ -640,6 +669,17 @@ export function dramatic(run: Run): boolean {
 /** The cycle's score as the screen shows it: without the points of the tally's popups still to come. */
 export function shownScore(run: Run): number {
   return run.cycleScore - run.popups.reduce((sum, p) => sum + (p.delay > 0 ? p.points : 0), 0);
+}
+
+/** A trigger of the chain: one more link this turn. */
+function addLink(run: Run): void {
+  run.chainLinks += 1;
+  run.bestChain = Math.max(run.bestChain, run.chainLinks);
+}
+
+/** The chain as the screen shows it: without the links of the tally's popups still to come. */
+export function shownLinks(run: Run): number {
+  return run.chainLinks - run.popups.filter((p) => p.delay > 0 && p.link === true).length;
 }
 
 /** Draw a line from one fruit to another for a moment. Returns it, so the tally can time it. */
@@ -753,13 +793,16 @@ interface Earned {
   links: Link[];
 }
 
-/** Score what a fruit (by index) earns, doubled if it touches a Booster: the popup then says "x2" and the Boosters light up too. */
-function earn(run: Run, links: readonly number[][], i: number, points: number, label?: string): Earned | null {
+/**
+ * Score what a fruit (by index) earns, doubled if it touches a Booster: the popup then says "x2" and the Boosters light up too.
+ * `chained`: a trigger of the chain scored it (its link added already), so the chain's tier multiplies it as well.
+ */
+function earn(run: Run, links: readonly number[][], i: number, points: number, label?: string, chained = false): Earned | null {
   const f = run.fruits[i];
   if (f === undefined) return null;
   // Doubled by a Lemon it touches, or by Coconut milk it sits in (once, not twice over).
   const doubled = boosted(run.fruits, links, i) || (run.milk && soaked(run, f));
-  const popup = score(run, points * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled, earner: FRUITS[f.kind].name });
+  const popup = score(run, points * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled, earner: FRUITS[f.kind].name, chained });
   if (popup === null) return null;
   const boosters = doubled ? neighbours(run.fruits, links, i).filter((o) => o.kind === "lemon") : [];
   const fruits = [f, ...boosters];
@@ -790,7 +833,7 @@ export function advance(previous: Run, dt: number, keys: Keys, reports: readonly
       p.delay -= dt;
       // The tally's next score shows: a note for each, one step up the scale from the last (`scoreNote`), so a long tally
       // climbs. Points lost (a spill) only tick.
-      if (p.delay <= 0) {
+      if (p.delay <= 0 && p.quiet !== true) {
         if (p.points > 0) {
           run.scoreNote += 1;
           sound(run, "score");
@@ -882,6 +925,7 @@ function order(run: Run, keys: Keys): void {
     run.queue = run.hand;
     run.hand = [];
     run.holding = false;
+    run.chainLinks = 0;
     run.dropTimer = 0;
     run.dropWait = 0;
     run.calmTime = 0;
@@ -1112,7 +1156,8 @@ function plungeStep(run: Run, dt: number): void {
       sound(run, "land");
       if ((p.burst ?? 0) > 0) {
         // The burst: all its Smashes' points at once, where it came down, big and with no name (it would not fit the jar).
-        score(run, p.burst ?? 0, p.x, p.y - p.r, { earner: "Plunge", big: true });
+        addLink(run);
+        score(run, p.burst ?? 0, p.x, p.y - p.r, { earner: "Plunge", big: true, chained: true });
         p.burst = 0;
         effect(run, "boom", p.x, p.y, p.r * 3);
         sound(run, "boom");
@@ -1127,7 +1172,9 @@ function pumpkinGrow(run: Run, seed: Fruit): Fruit {
   run.pumpkinSprouts += 1;
   const grown = makeFruit(run, kind, inside(seed.x, FRUITS[kind].radius), seed.y);
   grown.landed = true;
-  if (!seed.rotten) score(run, FRUITS[kind].points, seed.x, seed.y - seed.r, { label: "Sprout", earner: FRUITS.pumpkinseed.name });
+  // A Sprout is a trigger of its own, set off by the blast.
+  addLink(run);
+  if (!seed.rotten) score(run, FRUITS[kind].points, seed.x, seed.y - seed.r, { label: "Sprout", earner: FRUITS.pumpkinseed.name, chained: true });
   return grown;
 }
 
@@ -1153,6 +1200,8 @@ function sprout(run: Run, seed: Fruit): Fruit {
   const grown = makeFruit(run, rng.pick(SPROUTS), seed.x, seed.y);
   run.seed = rng.seed;
   grown.landed = true;
+  // A Sprout is a trigger of its own, set off by the blast.
+  addLink(run);
   return grown;
 }
 
@@ -1167,7 +1216,8 @@ function smashWorth(w: Fruit): number {
 /**
  * A fruit Smashed (by a Pumpkin's Plunge or a Giant Pumpkin's Shockwave; a Watermelon by an explosion too): a Grape, Orange or
  * Melon breaks into 2 of the next size down, a Watermelon into `SLICES` Slices, where it was and already landed. They score as
- * they are made (`scores`; a Plunge keeps their worth for its burst instead). The caller takes the fruit out.
+ * they are made (`scores`; a Plunge keeps their worth for its burst instead), multiplied by the chain: a Smash is part of the
+ * trigger that made it (a Shockwave, a blast), which has added its link. The caller takes the fruit out.
  */
 function smash(run: Run, w: Fruit, scores = true): Fruit[] {
   const into = SMASH_INTO[w.kind];
@@ -1179,7 +1229,7 @@ function smash(run: Run, w: Fruit, scores = true): Fruit[] {
       pulse(f);
       return f;
     });
-    if (!w.rotten && scores) score(run, 2 * FRUITS[into].points, w.x, w.y - w.r, { label: "Smash" });
+    if (!w.rotten && scores) score(run, 2 * FRUITS[into].points, w.x, w.y - w.r, { label: "Smash", chained: true });
     return pieces;
   }
   const out: Fruit[] = [];
@@ -1192,7 +1242,7 @@ function smash(run: Run, w: Fruit, scores = true): Fruit[] {
     pulse(f);
     out.push(f);
   }
-  if (!w.rotten && scores) score(run, SLICES * FRUITS.slice.points, w.x, w.y - w.r, { label: "Slice", earner: FRUITS.slice.name });
+  if (!w.rotten && scores) score(run, SLICES * FRUITS.slice.points, w.x, w.y - w.r, { label: "Slice", earner: FRUITS.slice.name, chained: true });
   return out;
 }
 
@@ -1229,6 +1279,7 @@ function merge(run: Run): void {
       if (b === undefined || j <= i || gone.has(b.id) || b.kind !== a.kind || !canMerge(b) || nearLemon(run.fruits, near, j)) continue;
       gone.add(a.id);
       gone.add(b.id);
+      addLink(run);
       const mx = (a.x + b.x) / 2;
       const my = (a.y + b.y) / 2;
       if (a.kind === "watermelon") {
@@ -1240,7 +1291,7 @@ function merge(run: Run): void {
         pulse(giant);
         born.push(giant);
         giants.push(giant);
-        score(run, FRUITS.giantpumpkin.points, mx, my - giant.r, { label: "Merge", earner: FRUITS.giantpumpkin.name });
+        score(run, FRUITS.giantpumpkin.points, mx, my - giant.r, { label: "Merge", earner: FRUITS.giantpumpkin.name, chained: true });
         run.message = `Two Watermelons: a Giant Pumpkin! +${FRUITS.giantpumpkin.points}`;
       } else if (a.kind === "pomegranate") {
         born.push(...burst(run, mx, my));
@@ -1261,7 +1312,7 @@ function merge(run: Run): void {
         f.remerged = a.piece === true || b.piece === true;
         pulse(f);
         born.push(f);
-        score(run, FRUITS[into].points, mx, my - f.r, { label: "Merge" });
+        score(run, FRUITS[into].points, mx, my - f.r, { label: "Merge", chained: true });
       }
       break;
     }
@@ -1282,6 +1333,8 @@ const SHOCK_PUSH = 520;
 function shockwave(run: Run, giant: Fruit): void {
   const caught = run.fruits.filter((f) => f !== giant && Math.hypot(f.x - giant.x, f.y - giant.y) < SHOCK_RADIUS + f.r);
   const smashed = caught.filter((f) => smashable(f) && !f.frozen);
+  // The Shockwave is a trigger of its own, set off by the Merge, when it Smashes something.
+  if (smashed.length > 0) addLink(run);
   const born = smashed.flatMap((w) => smash(run, w));
   run.fruits = [...run.fruits.filter((f) => !smashed.includes(f)), ...born];
   for (const f of run.fruits) {
@@ -1323,7 +1376,8 @@ function absorb(run: Run, dt: number): void {
     gone.add(meal.id);
     gone.add(f.id);
     const value = meal.rotten || FRUITS[meal.kind].scoring === "booster" ? 0 : FRUITS[meal.kind].points;
-    earn(run, near, i, value, "Absorb");
+    addLink(run);
+    earn(run, near, i, value, "Absorb", true);
     link(run, "eat", f, meal);
     const tainted = f.tainted === true || meal.rotten;
     const next = GOURD_SIZES.find((size) => size > f.r + 0.5);
@@ -1405,6 +1459,8 @@ export const BLAST_BONUS: Readonly<Partial<Record<FruitKind, number>>> = { chili
 
 function explode(run: Run, bomb: Fruit): void {
   const radius = BLAST_RADIUS[bomb.kind] ?? 48;
+  // One link for the blast, however many fruit it destroys; what it sets off (a Sprout, another blast) adds its own.
+  addLink(run);
   const near = links(run.fruits);
   const doubled = new Set(run.fruits.filter((_, i) => boosted(run.fruits, near, i)).map((f) => f.id));
   const victims: Fruit[] = [];
@@ -1462,11 +1518,10 @@ function explode(run: Run, bomb: Fruit): void {
     kick(f, (dx / d) * push, (dy / d) * push - 80);
   }
   run.fruits = [...kept, ...born];
-  score(run, points, bomb.x, bomb.y - radius / 2, { label: "Explode" });
+  score(run, points, bomb.x, bomb.y - radius / 2, { label: "Explode", chained: true });
   run.chain += 1;
   run.sinceBlast = 0;
   run.blasted = victims.length;
-  if (run.chain >= 2) say(run, bomb.x, bomb.y - radius / 2 - POPUP_LINE, `Chain x${run.chain}`);
   effect(run, "boom", bomb.x, bomb.y, radius * 2);
   sound(run, "boom");
   run.message = `${FRUITS[bomb.kind].name} Exploded: ${victims.length} fruit destroyed`;
@@ -1510,8 +1565,10 @@ function spillOver(run: Run): void {
 function juicerCrush(run: Run): void {
   if (!run.items.includes("juicer")) return;
   const crushed = run.fruits.filter((f) => f.landed && onFloor(f));
+  // One link for the Juicer's crush, however many fruit it takes.
+  if (crushed.length > 0) addLink(run);
   for (const f of crushed) {
-    score(run, (f.rotten ? 0 : FRUITS[f.kind].points) + JUICER_BONUS, f.x, f.y - f.r, { label: "Crush" });
+    score(run, (f.rotten ? 0 : FRUITS[f.kind].points) + JUICER_BONUS, f.x, f.y - f.r, { label: "Crush", chained: true });
     payGolden(run, f);
   }
   if (crushed.length === 0) return;
@@ -1543,8 +1600,11 @@ function simmer(run: Run, tally: Tally): void {
       points = FRUITS.pitaya.points + run.pitayaBonus;
     }
     if (f.honeyed) points += HONEY_POINTS;
-    const earned = earn(run, near, i, points);
+    // Each Simmer score is a link of the chain, so a garden reaches the tiers at its tally.
+    if (points > 0) addLink(run);
+    const earned = earn(run, near, i, points, undefined, true);
     if (earned === null) return;
+    earned.popup.link = true;
     // A Prune's score is for the rot round it: a line from each rotten neighbour.
     const rot = f.kind === "prune" ? touched.filter((o) => o.rotten).map((o) => link(run, "rot", o, f)) : [];
     stage(tally, earned.popup, earned.fruits, [...earned.links, ...rot]);
@@ -1561,7 +1621,9 @@ function fruitFliesEat(run: Run, tally: Tally): void {
     const meal = neighbours(run.fruits, near, i).find((o) => o.rotten && o.kind !== "prune" && !eaten.has(o.id));
     if (meal === undefined) return;
     eaten.add(meal.id);
-    const earned = earn(run, near, i, FRUITS.fruitfly.points, "Eat");
+    addLink(run);
+    const earned = earn(run, near, i, FRUITS.fruitfly.points, "Eat", true);
+    if (earned !== null) earned.popup.link = true;
     stage(tally, earned?.popup ?? null, earned?.fruits ?? [f], [link(run, "eat", f, meal), ...(earned?.links ?? [])]);
     const fly = makeFruit(run, "fruitfly", meal.x, meal.y);
     fly.landed = true;
@@ -1697,6 +1759,30 @@ function dueRent(run: Run): void {
   }
 }
 
+/** How long the chain's line at the end of a turn stays, in seconds. */
+export const CHAIN_LINE_LIFE = 1.6;
+
+/**
+ * A turn whose chain reached a tier ends with one line over the middle of the jar, once the tally is done: "14 links, 412
+ * points" (the turn's points). It is wider than the jar, so it is not kept inside its walls as the other popups are, and the
+ * tally waits for it.
+ */
+function chainLine(run: Run): void {
+  const delay = Math.max(0, run.tallyTime - TALLY_HOLD);
+  const popup: Popup = {
+    id: run.nextId++,
+    x: (JAR.left + JAR.right) / 2,
+    y: (RIM + JAR.floor) / 2,
+    text: `${run.chainLinks} links, ${run.turnScore} points`,
+    life: CHAIN_LINE_LIFE,
+    delay,
+    points: 0,
+    quiet: true,
+  };
+  run.popups.push(popup);
+  run.tallyTime = delay + CHAIN_LINE_LIFE;
+}
+
 /** The jar has settled: the end of the turn (`END_OF_TURN`), its tally, then the pick, the next hand or the rent. */
 export function resolve(run: Run): void {
   const tally: Tally = { steps: [], slot: 0 };
@@ -1704,6 +1790,8 @@ export function resolve(run: Run): void {
   for (const step of END_OF_TURN) step(run, tally);
   timeTally(run, tally, popupsBefore);
   run.scoreNote = 0;
+  run.chains.push(run.chainLinks);
+  if (run.chainLinks >= (CHAIN_TIERS[0] as number)) chainLine(run);
 
   run.bestTurn = Math.max(run.bestTurn, run.turnScore);
   run.turnScore = 0;

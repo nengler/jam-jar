@@ -1,11 +1,11 @@
-import type { Run } from "./jar.ts";
+import { CHAIN_TIERS, type Run } from "./jar.ts";
 
 /**
  * The first game's lessons. They are not a game of their own: a card beside the jar says one thing at a time about the run the
  * player is really playing, and moves on when they have done it. A lesson that only tells them something (the rent, the pool) has a "Got it" to put it away with. Each lesson waits for its moment (the
  * pick's waits for the first pick), so the card is away while there is nothing to say.
  */
-export type LessonId = "shelf" | "order" | "drop" | "score" | "rent" | "pick" | "pool" | "shop";
+export type LessonId = "shelf" | "order" | "drop" | "score" | "rent" | "pick" | "pool" | "shop" | "chain";
 
 /** What a lesson's frame is drawn around on the play screen, if anything. */
 export type LessonTarget = "shelf" | "jar" | "rent" | "pool" | null;
@@ -80,6 +80,14 @@ export const LESSONS: readonly Lesson[] = [
     keysText: "Coins buy fruit and items. Remove weak fruit to see your best more often.",
     target: null,
   },
+  {
+    id: "chain",
+    title: "Chains",
+    text: "Each merge, blast and score adds a link to the chain. At 5 links points are x2, at 10 x3.",
+    keysText: "Each merge, blast and score adds a link to the chain. At 5 links points are x2, at 10 x3.",
+    target: "jar",
+    told: true,
+  },
 ];
 
 /** The lesson at a step of the tutorial, or null once it is over. */
@@ -96,6 +104,9 @@ export function lessonShows(lesson: Lesson, run: Run): boolean {
       return run.phase === "pick";
     case "shop":
       return run.phase === "shop";
+    case "chain":
+      // Once a chain has reached its first tier, while the jar plays (the chain is shown on it then).
+      return run.bestChain >= (CHAIN_TIERS[0] as number) && (run.phase === "drop" || run.phase === "settle" || run.phase === "tally");
     default:
       return run.phase === "order";
   }
@@ -113,6 +124,8 @@ export interface Did {
 
 /** Whether a lesson that has been showing is done with: the player did what it asked, or its moment has passed. */
 export function lessonDone(lesson: Lesson, run: Run, did: Did): boolean {
+  // The chain's lesson stays until its "Got it": it comes back with the next hand dropped if the turn ends first.
+  if (lesson.id === "chain") return false;
   if (!lessonShows(lesson, run)) return true;
   if (lesson.id === "shelf") return did.looked;
   if (lesson.id === "order") return did.moved;
