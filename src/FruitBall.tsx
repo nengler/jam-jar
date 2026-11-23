@@ -1,7 +1,7 @@
 import { Sprite } from "@tsengine/runtime/jsx";
 
 import type { FruitKind } from "./rules/fruits.ts";
-import { FLAT_FRUIT, FRUIT_LIGHT, FRUIT_LIGHT_PARAMS, fruitImage, fruitImageMiddle, FROZEN, HONEYED, LIGHT, LIGHT_TABLE, PICKLED, ROTTEN } from "./theme.ts";
+import { fruitImage, fruitImageSize, FROZEN, HONEYED, LIGHT, PICKLED, ROTTEN } from "./theme.ts";
 
 interface FruitBallProps {
   kind: FruitKind;
@@ -25,27 +25,21 @@ interface FruitBallProps {
 
 /**
  * A fruit, centred on (x, y): its pixel sprite (art/fruit), doubled with no smoothing by tools/make-assets.py. A rotten
- * fruit is tinted brown, a honeyed one gold; a lit one flashes. A fruit drawn flat (FLAT_FRUIT) is lit as it is drawn, from the top
- * left whichever way it has turned: its picture is two frames, the fruit and its normal map, and only the first is drawn.
+ * fruit is tinted brown, a honeyed one gold; a lit one flashes.
  */
 export function FruitBall({ kind, x, y, rotten = false, honeyed = false, pickled = false, frozen = false, lit = false, glow = 0, turn = 0 }: FruitBallProps) {
-  const half = fruitImageMiddle(kind);
+  const half = fruitImageSize(kind) / 2;
   return (
     <Sprite
       image={fruitImage(kind)}
       x={x}
       y={y}
-      frameWidth={half * 2}
-      frameHeight={half * 2}
       originX={half}
       originY={half}
       rotation={turn}
       tint={frozen ? FROZEN : rotten ? ROTTEN : pickled ? PICKLED : honeyed ? HONEYED : undefined}
       flash={lit ? 0.85 : glow * 0.7}
       flashColor={LIGHT}
-      shader={FLAT_FRUIT.has(kind) ? FRUIT_LIGHT : ""}
-      lookup={LIGHT_TABLE}
-      params={FRUIT_LIGHT_PARAMS}
     />
   );
 }

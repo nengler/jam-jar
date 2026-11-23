@@ -1,5 +1,5 @@
 import type { FruitKind } from "./rules/fruits.ts";
-import { FRUIT_ART, FRUIT_PAD } from "./rules/sizes.ts";
+import { FRUIT_ART } from "./rules/sizes.ts";
 
 /**
  * Jam Jar's look, in one place. Every colour is from the Apollo palette (tools/palette/apollo.hex), which every picture is
@@ -111,25 +111,6 @@ export const KEYWORD_LIGHT = "#e8c170";
  */
 export function fruitImage(kind: FruitKind): string {
   return `fruit-${kind}.png`;
-}
-
-/**
- * The fruit drawn flat, in their base colours with an outline (their old lit picture kept on a hidden "shading" layer): the game
- * lights them as they are drawn, from the top right of the screen however they have rolled, by which way each pixel faces (their
- * normal maps, which tools/make-assets.py works out, or paints from a "normals" layer) and the steps of the light table
- * (assets/fruit-light.glsl, art/palette/light.aseprite). make-assets.py marks them `shaded` in src/rules/sizes.ts; the others have
- * their light drawn in, and are drawn as they are.
- */
-export const FLAT_FRUIT: ReadonlySet<FruitKind> = new Set<FruitKind>((Object.keys(FRUIT_ART) as FruitKind[]).filter((kind) => FRUIT_ART[kind].shaded));
-
-/** The fruit's light: the shader, its table, and its params (how strongly the ball is lit, how much the edge away from the light darkens, how much shine, the clear margin round the picture): see the shader. */
-export const FRUIT_LIGHT = "fruit-light.glsl";
-export const LIGHT_TABLE = "light.png";
-export const FRUIT_LIGHT_PARAMS: readonly number[] = [1, 0.8, 0.12, FRUIT_PAD];
-
-/** Where a fruit's middle is in its picture, in pixels each way: its picture has a clear margin round it (FRUIT_PAD). */
-export function fruitImageMiddle(kind: FruitKind): number {
-  return FRUIT_ART[kind].size / 2 + FRUIT_PAD;
 }
 
 export function fruitImageSize(kind: FruitKind): number {

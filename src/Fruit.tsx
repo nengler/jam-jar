@@ -41,8 +41,8 @@ interface FruitProps {
   onReport: (report: FruitReport) => void;
 }
 
-/** How much of the turning a rolling wheel of its size would do a fruit shows: a full roll made every fruit spin like a tyre. */
-const ROLL = 0.3;
+/** How much of the turning a rolling wheel of its size would do a fruit shows: half. A full roll made every fruit spin like a tyre, and a third looked stiff. */
+const ROLL = 0.5;
 /**
  * The squash a fruit is drawn with when it lands: flat at once, then a little tall, then round, a swing every `SQUASH_SWING`
  * seconds that dies away over `SQUASH_FADE`. How flat goes by how much falling speed (px/s) it lost in a step, past

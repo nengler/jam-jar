@@ -336,11 +336,6 @@ whole group to about level with never picking. The Fruit Fly and the Fig are sti
 `boss.ts` plays in a boss jar, `pool.ts` starts with a chosen pool, and `run.ts` sets any fields of the run. A shot keeps no
 saved data and reads none.
 
-The flat fruit are lit by a shader from their painted shading layers (`assets/fruit-light.glsl`, see `art/fruit/README.md`), which the software renderer
-these shots use does not run: they show those fruit flat. `--gpu` draws with OpenGL, as a player's window does.
-`tools/shots/light.ts` shows the light check, every flat fruit at eight turns, and `npm run check:light` draws it with `--gpu`
-and compares it with `test/light/step-2.png` (`-- --update` takes a new one). It needs X11 and Mesa's OpenGL, or a display.
-
 ## How it is built
 
 - `src/rules/` holds the whole game as plain TypeScript with no engine imports, so it is tested directly with `node:test`:

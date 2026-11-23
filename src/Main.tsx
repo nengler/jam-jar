@@ -1,7 +1,6 @@
 import { Game, Screen, useWindowSize } from "@tsengine/runtime/jsx";
 
 import { useGame } from "./GameState.ts";
-import { LightCheck } from "./LightCheck.tsx";
 import { Play } from "./Play.tsx";
 import { Rotate } from "./Rotate.tsx";
 import { Settings } from "./Settings.tsx";
@@ -29,7 +28,6 @@ export default function Main() {
         {screen === "title" && <Title name="Jam Jar" />}
         {screen === "settings" && <Settings />}
         {screen === "play" && <Play />}
-        {screen === "light" && <LightCheck />}
         {upright && <Rotate />}
       </Screen>
     </Game>

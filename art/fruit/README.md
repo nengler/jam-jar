@@ -24,37 +24,6 @@ A fruit's ball is a little smaller than its square (45% of the side as a radius,
 mostly clear. The Gourd is drawn at its smallest size and grows in the jar by being scaled up. On the shelf a Pumpkin's top is
 cut off by the top of the screen, and a Melon's by 2 pixels.
 
-## Flat fruit and their light
-
-A fruit can be drawn **flat** and lit by the game. Its visible layer is the fruit in its base colours, with its markings (stripes,
-a stem, a leaf) and an outline in `#241527` (kept for outlines; inner lines in it too, wherever one part stands in front of
-another, as between two cherries or two bananas). A flat fruit keeps its old lit picture as a hidden layer named **shading**,
-for reference; that layer is what marks it flat.
-
-The game lights it by **which way each pixel faces**: its normal map. `tools/make-assets.py` works one out from the fruit's
-shape: each part (as the outline and inner lines divide it; a stem's dip and a stalk are not parts) rises from its edge like a
-dome, so a round part is a ball and a long one a tube. A hidden layer named **normals**, painted as a normal map (red: facing
-right, green: facing down, blue: facing the eye, 128 128 255 facing straight out), is used instead where a fruit has one: the
-way to give a fruit a shape of its own (a pumpkin's ridges, a dent). The picture in `assets/` is the flat fruit and its normal
-map side by side, and the fruit is marked `shaded` in `src/rules/sizes.ts`, which is what the game lights (`FLAT_FRUIT`).
-
-The shader (`assets/fruit-light.glsl`) turns the normals with the fruit and lights them from the top right of the screen, so the
-light falls right at every turn, on any shape: the side toward the light a step up, the far side down to the darkest step,
-each colour by the steps of its row in the light table (`art/palette/light.aseprite`), and a speck of shine where a part faces
-halfway between the light and the eye. How much falls in each step was matched to the old Apple (about a quarter lit, a quarter
-plain, the rest in shadow). The outline is a dark step of the colour beside it, crimson toward the light and violet away from it
-on a red fruit; an inner line is the darkest; a stalk is in two tones and a stem dark.
-
-Flat now: Apple, Banana, Blueberry, Cherry, Chili, Lemon, Orange and Watermelon, flattened from the placeholders.
-
-A turned fruit is drawn in whole art pixels on the screen's grid, as if the game were drawn at 320 x 180, so a fruit part way
-round has clean steps at its edge. For that, each fruit's picture has a clear margin of 2 art pixels round it in `assets/`
-(`FRUIT_PAD`): a picture is drawn only inside its rectangle, which would otherwise cut its turned edge.
-
-To see the light at every turn, `npm run check:light` draws the light check (`src/LightCheck.tsx`) on the GPU into
-`shots/light/` and compares it with `test/light/`; after changing a fruit or the table, look at the new picture and take it
-with `npm run check:light -- --update`.
-
 ## Where the pictures came from
 
 The pictures here now are placeholders, cut from the fruit sheet in `tools/fruit/` (its README says what is known of where it

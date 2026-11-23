@@ -2,4 +2,3 @@ generated/
 node_modules
 dist/
 __pycache__/
-shots/

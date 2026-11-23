@@ -81,12 +81,8 @@ def _to_rgba(depth: int, raw: bytes, size: tuple[int, int], palette: list[tuple[
     return Image.frombytes("RGBA", size, bytes(out))
 
 
-def read(path: str | Path, layer: str | None = None) -> list[Image.Image]:
-    """
-    Each frame of an Aseprite file, its visible layers flattened, as an RGBA picture the size of the sprite. With `layer`, only the
-    layer of that name, shown or hidden (an empty list when there is none).
-    """
-    only = layer
+def read(path: str | Path) -> list[Image.Image]:
+    """Each frame of an Aseprite file, its visible layers flattened, as an RGBA picture the size of the sprite."""
     data = Path(path).read_bytes()
     if len(data) < 128:
         raise AsepriteError("too short to be an Aseprite file")
@@ -176,8 +172,6 @@ def read(path: str | Path, layer: str | None = None) -> list[Image.Image]:
             if layers[parent]["level"] < layer["level"]:
                 visible = visible and shown[parent]
                 break
-        if only is not None:
-            visible = layer["name"] == only and layer["type"] == LAYER_NORMAL
         shown.append(visible)
         if not visible:
             continue
@@ -191,8 +185,6 @@ def read(path: str | Path, layer: str | None = None) -> list[Image.Image]:
         if is_group and flags & HEADER_GROUP_OPACITY and layer["opacity"] != 255:
             raise AsepriteError(f"{what} is a group at {layer['opacity']} opacity: only groups at full opacity are read here")
 
-    if only is not None and not any(shown):
-        return []
     pictures: list[Image.Image] = []
     for frame, cels in enumerate(cels_by_frame):
         canvas = Image.new("RGBA", (width, height))
@@ -232,28 +224,13 @@ def _string(text: str) -> bytes:
     return struct.pack("<H", len(encoded)) + encoded
 
 
-def write(
-    path: str | Path,
-    frames: list[Image.Image],
-    palette: list[tuple[int, int, int]] = (),
-    duration: int = 100,
-    hidden: list[tuple[str, list[Image.Image]]] = (),
-) -> None:
-    """
-    Saves the pictures (RGBA, one size) as the frames of an RGBA sprite, each shown for `duration` ms, with the palette. They are
-    its one visible layer, "Layer 1"; `hidden` adds hidden layers under it, each a name and a picture per frame (kept for
-    reference: `read`, and the game, leave them out).
-    """
+def write(path: str | Path, frames: list[Image.Image], palette: list[tuple[int, int, int]] = (), duration: int = 100) -> None:
+    """Saves the pictures (RGBA, one size) as the frames of a one-layer RGBA sprite, each shown for `duration` ms, with the palette."""
     if not frames:
         raise AsepriteError("no frames to write")
     width, height = frames[0].size
     if any(frame.size != (width, height) for frame in frames):
         raise AsepriteError("every frame must be one size")
-    for name, pictures in hidden:
-        if len(pictures) != len(frames) or any(picture.size != (width, height) for picture in pictures):
-            raise AsepriteError(f"the hidden layer {name!r} needs one picture of the sprite's size per frame")
-    # Bottom first, as Aseprite stores them: the hidden layers, then the visible one.
-    layers = [(name, False, pictures) for name, pictures in hidden] + [("Layer 1", True, frames)]
     colours = len(palette) or 1
     body = bytearray()
     for index, frame in enumerate(frames):
@@ -266,13 +243,10 @@ def write(
             # The old palette chunk too, as Aseprite writes it for older readers.
             old = b"".join(struct.pack("<BBB", r, g, b) for r, g, b in (palette or [(0, 0, 0)])[:256])
             chunks.append(_chunk(CHUNK_OLD_PALETTE, struct.pack("<HBB", 1, 0, colours % 256) + old))
-            for name, visible, _pictures in layers:
-                flags = (LAYER_VISIBLE if visible else 0) | 2
-                layer = struct.pack("<HHHHHHB3x", flags, LAYER_NORMAL, 0, 0, 0, 0, 255) + _string(name)
-                chunks.append(_chunk(CHUNK_LAYER, layer))
-        for layer_index, (_name, _visible, pictures) in enumerate(layers):
-            pixels = zlib.compress(pictures[index].convert("RGBA").tobytes(), 9)
-            chunks.append(_chunk(CHUNK_CEL, struct.pack("<HhhBHh5xHH", layer_index, 0, 0, 255, 2, 0, width, height) + pixels))
+            layer = struct.pack("<HHHHHHB3x", LAYER_VISIBLE | 2, LAYER_NORMAL, 0, 0, 0, 0, 255) + _string("Layer 1")
+            chunks.append(_chunk(CHUNK_LAYER, layer))
+        pixels = zlib.compress(frame.convert("RGBA").tobytes(), 9)
+        chunks.append(_chunk(CHUNK_CEL, struct.pack("<HhhBHh5xHH", 0, 0, 0, 255, 2, 0, width, height) + pixels))
         frame_body = b"".join(chunks)
         body += struct.pack("<IHHH2xI", 16 + len(frame_body), FRAME_MAGIC, len(chunks), duration, len(chunks)) + frame_body
     header = struct.pack("<IHHHHHIHII", 128 + len(body), MAGIC, len(frames), width, height, 32, HEADER_LAYER_OPACITY, duration, 0, 0)

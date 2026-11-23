@@ -9,10 +9,6 @@ Lays out the game's assets/ from art/ and tools/kenney/:
   - fruit/: one picture per fruit, at the size FRUIT_SIZES gives it (each ball's radius is written to src/rules/sizes.ts from
     it, so the physics matches the picture);
   - kitchen/, shop/, items/ and ui/: the rest;
-  - palette/light: the light ramp table the fruit's shader (assets/fruit-light.glsl) shades with, copied as it is to
-    assets/light.png, not doubled. One row per Apollo colour, in the order of tools/palette/apollo.hex, and LIGHT_STEPS columns:
-    that colour in shadow (darker and cooler) on the left, lit (lighter and warmer) on the right, and the colour itself in the
-    middle. When the file is missing a first one is worked out (light_table below) and written, to be repainted by hand.
   - screen/: pictures with detail finer than the art's pixel (the Kenney frames and explosion), copied at screen size as they
     are until they are redrawn at art size and moved to another folder.
 - tools/kenney/: the sounds (Kenney, CC0), copied as they are; the tally's notes and the entrance sounds are made here.
@@ -33,7 +29,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from aseprite import AsepriteError, is_aseprite, read as read_aseprite, write as write_aseprite
+from aseprite import AsepriteError, is_aseprite, read as read_aseprite
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
@@ -83,10 +79,6 @@ FRUIT_SIZES = {
     "fruitfly": 16,
 }
 
-# Clear art pixels round each fruit's picture in assets/ (not in art/): a picture is drawn only inside its rectangle, so a fruit
-# drawn to the edge of its square has its edge cut by that rectangle as it turns. The fruit's size and ball are as before.
-FRUIT_PAD = 2
-
 # A fruit's ball is a little smaller than its picture's square: the art does not fill the corners. The Fruit Fly's is smaller
 # still: it is tiny in its square.
 BALL_SHARE = 0.45
@@ -108,200 +100,6 @@ def off_palette(image: Image.Image) -> str | None:
     return f"{count} off the palette, the first at ({x}, {y}), {what}"
 
 
-# The light ramp table (art/palette/light.aseprite): a column per step of light, from LIGHT_STEPS // 2 steps of shadow to as many
-# of light, the colour itself in the middle; a row per palette colour, in the file's order.
-LIGHT_TABLE = ART / "palette" / "light.aseprite"
-LIGHT_STEPS = 5
-PALETTE_ORDER = [tuple(int(line[i : i + 2], 16) for i in (0, 2, 4)) for line in (ROOT / "tools" / "palette" / "apollo.hex").read_text().split()]
-# Colours the light leaves as they are: the fruit's outline (the shader draws an outline in the dark steps of what it is beside).
-UNLIT = {(0x24, 0x15, 0x27)}
-# The rows painted by hand, for the colours the flat fruit are drawn in, after the placeholders' own shading: shadows go cold
-# (red to crimson to violet, yellow to a dusky brown, green to blue-green), lights go warm, and the last step is the shine, a
-# touch of near white where the light hits squarely. Every other row is worked out (light_table).
-PAINTED = {
-    "a53030": ["402751", "752438", "a53030", "cf573c", "ebede9"],  # apple, cherry, chili
-    "da863e": ["a53030", "cf573c", "da863e", "de9e41", "e8c170"],  # orange
-    "e8c170": ["ad7757", "de9e41", "e8c170", "e7d5b3", "ebede9"],  # lemon
-    "de9e41": ["7a4841", "be772b", "de9e41", "e8c170", "e7d5b3"],  # banana
-    "3c5e8b": ["1e1d39", "253a5e", "3c5e8b", "4f8fba", "a4dddb"],  # blueberry
-    "253a5e": ["10141f", "172038", "253a5e", "3c5e8b", "73bed3"],  # blueberry's crown
-    "468232": ["19332d", "25562e", "468232", "75a743", "a8ca58"],  # leaves, stems, the watermelon's dark stripes
-    "75a743": ["25562e", "468232", "75a743", "a8ca58", "d0da91"],  # the watermelon's light stripes
-    "4d2b32": ["241527", "341c27", "4d2b32", "7a4841", "ad7757"],  # stems
-}
-
-
-def oklab(rgb: tuple[int, int, int]) -> tuple[float, float, float]:
-    """An sRGB colour in Oklab (Bjorn Ottosson's): lightness, then green-red and blue-yellow, so distances look like differences."""
-    lin = [(c / 255) / 12.92 if c / 255 <= 0.04045 else (((c / 255) + 0.055) / 1.055) ** 2.4 for c in rgb]
-    l = 0.4122214708 * lin[0] + 0.5363325363 * lin[1] + 0.0514459929 * lin[2]
-    m = 0.2119034982 * lin[0] + 0.6806995451 * lin[1] + 0.1073969566 * lin[2]
-    s = 0.0883024619 * lin[0] + 0.2817188376 * lin[1] + 0.6299787005 * lin[2]
-    l, m, s = (v ** (1 / 3) for v in (l, m, s))
-    return (
-        0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
-        1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
-        0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
-    )
-
-
-def light_table() -> Image.Image:
-    """
-    A first light ramp table: the PAINTED rows as they are, and the rest worked out: each step of shadow a little darker and pulled toward blue-violet, each step of light a
-    little lighter and pulled toward yellow-orange (hue shifting, as a painter shades), then snapped to the nearest palette colour
-    that is darker (or lighter) than the step before, so a ramp never turns back. Where there is none, the step repeats.
-    """
-    LIGHTER, WARM, COOL = 0.08, (0.035, 0.07), (0.0, -0.06)
-    lab = {colour: oklab(colour) for colour in PALETTE_ORDER}
-    table = Image.new("RGBA", (LIGHT_STEPS, len(PALETTE_ORDER)))
-    middle = LIGHT_STEPS // 2
-    for row, colour in enumerate(PALETTE_ORDER):
-        table.putpixel((middle, row), colour + (255,))
-        painted = PAINTED.get(bytes(colour).hex())
-        if painted is not None and len(painted) == LIGHT_STEPS:
-            for step, hex_colour in enumerate(painted):
-                table.putpixel((step, row), tuple(bytes.fromhex(hex_colour)) + (255,))
-            continue
-        for side in (-1, 1):
-            previous = colour
-            for step in range(1, middle + 1):
-                if colour in UNLIT:
-                    table.putpixel((middle + side * step, row), colour + (255,))
-                    continue
-                L, a, b = lab[colour]
-                pull = WARM if side > 0 else COOL
-                target = (L + side * step * LIGHTER, a + (pull[0] - a) * 0.12 * step, b + (pull[1] - b) * 0.12 * step)
-                darker_or_lighter = [c for c in PALETTE_ORDER if (lab[c][0] - lab[previous][0]) * side > 0.02]
-                if darker_or_lighter:
-                    # Nearest in colour, and as strong a colour as the one it shades: a step that keeps its colour reads better than a
-                    # grey exactly as light.
-                    strength = math.hypot(a, b)
-                    previous = min(
-                        darker_or_lighter,
-                        key=lambda c: 0.5 * (lab[c][0] - target[0]) ** 2
-                        + (lab[c][1] - target[1]) ** 2
-                        + (lab[c][2] - target[2]) ** 2
-                        + 1.5 * (math.hypot(lab[c][1], lab[c][2]) - strength) ** 2,
-                    )
-                table.putpixel((middle + side * step, row), previous + (255,))
-    return table
-
-
-# The colours flat fruit keep for their outline and their stems.
-OUTLINE_COLOUR = (0x24, 0x15, 0x27)
-STEM_COLOUR = (0x4d, 0x2b, 0x32)
-
-
-def fruit_parts(flat: Image.Image) -> dict[tuple[int, int], tuple[float, float]]:
-    """
-    Each pixel of a flat fruit, by the middle of the part it is in: the parts are what its outline and inner lines divide it into
-    (two cherries, three berries, two bananas), not counting stems or lines one pixel across (a cherry's stalk), which go with
-    the part nearest them.
-    """
-    w, h = flat.size
-    solid = lambda x, y: 0 <= x < w and 0 <= y < h and flat.getpixel((x, y))[3] > 0 and flat.getpixel((x, y))[:3] not in (OUTLINE_COLOUR, STEM_COLOUR)
-    thin = lambda x, y: (not solid(x - 1, y) and not solid(x + 1, y)) or (not solid(x, y - 1) and not solid(x, y + 1))
-    part: dict[tuple[int, int], int] = {}
-    members: list[list[tuple[int, int]]] = []
-    for y in range(h):
-        for x in range(w):
-            if (x, y) in part or not solid(x, y) or thin(x, y):
-                continue
-            todo, here = [(x, y)], []
-            part[(x, y)] = len(members)
-            while todo:
-                px, py = todo.pop()
-                here.append((px, py))
-                for nx, ny in ((px + 1, py), (px - 1, py), (px, py + 1), (px, py - 1)):
-                    if (nx, ny) not in part and solid(nx, ny) and not thin(nx, ny):
-                        part[(nx, ny)] = len(members)
-                        todo.append((nx, ny))
-            members.append(here)
-    middles = [(sum(x for x, _ in m) / len(m), sum(y for _, y in m) / len(m)) for m in members]
-    out = {}
-    for y in range(h):
-        for x in range(w):
-            if flat.getpixel((x, y))[3] == 0:
-                continue
-            if (x, y) in part:
-                out[(x, y)] = middles[part[(x, y)]]
-            elif middles:
-                near = min(part, key=lambda p: (p[0] - x) ** 2 + (p[1] - y) ** 2)
-                out[(x, y)] = middles[part[near]]
-    return out
-
-
-def normal_map(flat: Image.Image, where: Path) -> Image.Image:
-    """
-    Which way each pixel of a flat fruit faces, worked out from its shape: each part (`fruit_parts`: two cherries, three berries,
-    two bananas) rises from its edge like a dome, by how far in from the edge a pixel is, so a round part is a ball and a long one
-    a tube, each turning toward its own outline. As RGB: x and y (y down) from 0 to 255, 128 facing the eye; z, toward the eye,
-    from 0 to 255. An outline pixel faces out, away from the fruit beside it. The shader turns these with the fruit, so the light
-    falls right at every turn, on any shape.
-    """
-    w, h = flat.size
-    colour = lambda x, y: flat.getpixel((x, y))[:3] if 0 <= x < w and 0 <= y < h and flat.getpixel((x, y))[3] else None
-    middles = fruit_parts(flat)
-    body = lambda x, y: colour(x, y) not in (None, OUTLINE_COLOUR, STEM_COLOUR)
-    part_of = lambda x, y: middles.get((x, y)) if body(x, y) else None
-    parts = set(middles.values())
-    # How far in each pixel is from its part's edge: the distance to the nearest pixel not of its part.
-    outside = {part: [(x, y) for y in range(-1, h + 1) for x in range(-1, w + 1) if part_of(x, y) != part] for part in parts}
-    depth: dict[tuple[int, int], float] = {}
-    for y in range(h):
-        for x in range(w):
-            part = part_of(x, y)
-            if part is not None:
-                depth[(x, y)] = min(((ox - x) ** 2 + (oy - y) ** 2) ** 0.5 for ox, oy in outside[part])
-    deepest: dict = {}
-    for p, d in depth.items():
-        deepest[middles[p]] = max(deepest.get(middles[p], 0.0), d)
-
-    # A dome on each part: its height rises as a circle's does, from its edge to its middle.
-    def height(x: int, y: int, part) -> float:
-        if part_of(x, y) != part:
-            return 0.0
-        top = deepest[part]
-        k = min(1.0, (depth[(x, y)] - 0.5) / max(top - 0.5, 0.5))
-        return top * (1.0 - (1.0 - k) ** 2) ** 0.5
-
-    out = Image.new("RGBA", flat.size, (0, 0, 0, 0))
-    for y in range(h):
-        for x in range(w):
-            if colour(x, y) is None:
-                continue
-            part = part_of(x, y)
-            if part is not None:
-                # The slope, from the heights round it (Sobel), of its own part only.
-                hs = {(dx, dy): height(x + dx, y + dy, part) for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
-                gx = (hs[(1, -1)] + 2 * hs[(1, 0)] + hs[(1, 1)] - hs[(-1, -1)] - 2 * hs[(-1, 0)] - hs[(-1, 1)]) / 8
-                gy = (hs[(-1, 1)] + 2 * hs[(0, 1)] + hs[(1, 1)] - hs[(-1, -1)] - 2 * hs[(0, -1)] - hs[(1, -1)]) / 8
-                nx, ny, nz = -gx, -gy, 1.0
-            else:
-                # The outline, a stem, a stalk: facing out from the fruit beside it.
-                ax = ay = 0.0
-                for dx in (-1, 0, 1):
-                    for dy in (-1, 0, 1):
-                        if body(x + dx, y + dy):
-                            ax -= dx
-                            ay -= dy
-                nx, ny, nz = ax, ay, (0.35 if (ax or ay) else 1.0)
-            length = (nx * nx + ny * ny + nz * nz) ** 0.5
-            nx, ny, nz = nx / length, ny / length, nz / length
-            out.putpixel((x, y), (round(128 + 127 * nx), round(128 + 127 * ny), round(255 * max(0.0, nz)), 255))
-    return out
-
-
-def check_light_table(picture: Image.Image, where: Path) -> None:
-    """The table must be LIGHT_STEPS wide, a row per palette colour, each row's middle that row's colour."""
-    if picture.size != (LIGHT_STEPS, len(PALETTE_ORDER)):
-        raise SystemExit(f"{where} is {picture.width} x {picture.height}: the light table is {LIGHT_STEPS} x {len(PALETTE_ORDER)}, a row per palette colour")
-    middle = LIGHT_STEPS // 2
-    for row, colour in enumerate(PALETTE_ORDER):
-        if picture.getpixel((middle, row))[:3] != colour or any(picture.getpixel((x, row))[3] != 255 for x in range(LIGHT_STEPS)):
-            raise SystemExit(f"{where}, row {row}: every pixel solid, its middle the palette's colour {row} (#{bytes(colour).hex()}), in the order of tools/palette/apollo.hex")
-
-
 def read_frames(source: Path) -> list[tuple[str, Image.Image]]:
     """A file's pictures, each with its name: one for a PNG or a one-frame Aseprite file, one a frame (<name>-<i>) for more."""
     if not is_aseprite(source):
@@ -319,11 +117,6 @@ def write_pictures() -> int:
     """Check every picture in art/ and write it to assets/, doubled (or as it is, from screen/); write the fruit's ball sizes."""
     names: dict[str, Path] = {}
     fruit = []
-    shaded = set()
-    if not LIGHT_TABLE.exists():
-        LIGHT_TABLE.parent.mkdir(parents=True, exist_ok=True)
-        write_aseprite(LIGHT_TABLE, [light_table()], PALETTE_ORDER)
-        print(f"wrote a first {LIGHT_TABLE.relative_to(ROOT)}: repaint it as you like")
     sources = sorted(path for path in ART.rglob("*") if path.is_file() and (path.suffix.lower() == ".png" or is_aseprite(path)))
     for source, name, picture in ((source, name, picture) for source in sources for name, picture in read_frames(source)):
         where = source.relative_to(ROOT)
@@ -343,36 +136,15 @@ def write_pictures() -> int:
             if picture.size != (art, art):
                 raise SystemExit(f"{where} is {picture.width} x {picture.height}: a {source.stem} is drawn at {art} x {art}")
             fruit.append(source.stem)
-        if source.parent.name == "palette":
-            check_light_table(picture, where)
-            picture.save(ASSETS / f"{name}.png")
-            continue
-        if source.parent.name == "fruit":
-            padded = Image.new("RGBA", (picture.width + 2 * FRUIT_PAD, picture.height + 2 * FRUIT_PAD), (0, 0, 0, 0))
-            padded.paste(picture, (FRUIT_PAD, FRUIT_PAD))
-            # A flat fruit (one that keeps its old, lit picture as a "shading" layer for reference) is lit by the shader from which way
-            # each pixel faces: its picture is two side by side, the flat fruit and its normal map, painted on a "normals" layer if it
-            # has one, else worked out from its shape (`normal_map`).
-            reference = read_aseprite(source, "shading") if is_aseprite(source) else []
-            if reference:
-                painted = read_aseprite(source, "normals")
-                normals = painted[0] if painted else normal_map(picture, where)
-                both = Image.new("RGBA", (padded.width * 2, padded.height), (0, 0, 0, 0))
-                both.paste(padded, (0, 0))
-                both.paste(normals, (padded.width + FRUIT_PAD, FRUIT_PAD))
-                padded = both
-                shaded.add(source.stem)
-            picture = padded
         out = picture if source.parent.name == SCREEN_SIZE else picture.resize((picture.width * PX, picture.height * PX), Image.NEAREST)
         out.save(ASSETS / (f"fruit-{name}.png" if source.parent.name == "fruit" else f"{name}.png"))
     missing = [kind for kind in FRUIT_SIZES if kind not in fruit]
     if missing:
         raise SystemExit(f"no picture in art/fruit for {', '.join(missing)}")
-    lines = [f"  {kind}: {{ size: {art * PX}, radius: {round(art * PX * SHARES.get(kind, BALL_SHARE))}, shaded: {'true' if kind in shaded else 'false'} }}," for kind, art in FRUIT_SIZES.items()]
+    lines = [f"  {kind}: {{ size: {art * PX}, radius: {round(art * PX * SHARES.get(kind, BALL_SHARE))} }}," for kind, art in FRUIT_SIZES.items()]
     SIZES_FILE.write_text(
         "/** Written by tools/make-assets.py: each fruit's sprite size and its ball's radius, in pixels. Do not edit. */\n"
         "export const FRUIT_ART = {\n" + "\n".join(lines) + "\n} as const;\n"
-        f"/** The clear margin round each fruit's picture, in pixels each side, so it can turn without its edge being cut. */\nexport const FRUIT_PAD = {FRUIT_PAD * PX};\n"
     )
     return len(names)
 
