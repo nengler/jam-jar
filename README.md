@@ -146,7 +146,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     scored, so merge up, smash down cannot chain for ever in one settle.
   - Pumpkin: Heavy and Wide: it takes 2 of the shelf's 4 places, so a hand with one is 3 fruit, and it drops down the
     middle of its two lanes. A Wide fruit that would not fit in what is left of the shelf waits on top of the pool for the
-    next hand. It scores nothing for landing. It Plunges: once it lands, its ball is driven straight down through the pile
+    next hand, and the next fruit that fits takes its place, so the hand is still full. It scores nothing for landing. It Plunges: once it lands, its ball is driven straight down through the pile
     to the floor (the lid, in the Flip jar turned over), many times heavier than its size. Each Grape, Orange, Melon or
     Watermelon it hits is Smashed and its pieces thrown out; anything else is thrown aside and up; a frozen fruit stops it.
     Its Smashes pay 75% of what their pieces are worth, all at once when it reaches the floor, in one popup twice the size

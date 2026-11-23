@@ -1282,6 +1282,18 @@ test("a Wide Pumpkin takes two places on the shelf: a hand fills four places, an
   assert.deepEqual(next.hand, ["pumpkin", "apple", "cherry"]);
 });
 
+test("a Wide fruit that would not fit in the last place waits on top, and the next fruit that fits fills the hand", () => {
+  const run = newRun(3);
+  run.draw = ["cherry", "grape", "cherry", "pumpkin", "apple", "cherry", "grape"];
+  run.hand = [];
+  run.phase = "rent";
+  const dealt = advance({ ...run, phase: "pick", offers: ["apple", "apple", "apple"], offerCursor: -1 }, DT, { ...NO_KEYS, drop: true });
+  assert.deepEqual(dealt.hand, ["cherry", "grape", "cherry", "apple"], "the Apple under the Pumpkin takes the last place");
+  // The Pumpkin is still first in line, so the next hand opens with it.
+  const next = advance({ ...dealt, phase: "pick", offers: ["apple", "apple", "apple"], offerCursor: -1 }, DT, { ...NO_KEYS, drop: true });
+  assert.deepEqual(next.hand, ["pumpkin", "cherry", "grape"]);
+});
+
 test("the tray drops a Wide Pumpkin down the middle of its two lanes", () => {
   let run = newRun(3);
   run.hand = ["cherry", "pumpkin", "grape"];
