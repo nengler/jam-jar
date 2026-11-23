@@ -4,6 +4,7 @@ import { Backdrop } from "./Backdrop.tsx";
 import { Panel } from "./Board.tsx";
 import { Coach, Dim, Raise } from "./Coach.tsx";
 import { CycleEnd } from "./CycleEnd.tsx";
+import { GodRays } from "./GodRays.tsx";
 import { Jar } from "./Jar.tsx";
 import { JarMarks } from "./JarMarks.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
@@ -356,6 +357,9 @@ export function Play() {
       {run.items.map((item, i) => (
         <Sprite key={item} image={`item-${item}.png`} x={16 + i * 50} y={COUNTER_Y - 38} />
       ))}
+
+      {/* Shafts of light from the top left, over the jar and the counter, under the shelf and the boards. */}
+      <GodRays />
 
       {/* The shelf, the basket behind the fruit rolling out of it, the hand, the basket's front over them, and what the fruit do. */}
       <Raise id="shelf">

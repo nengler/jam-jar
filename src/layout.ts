@@ -57,12 +57,41 @@ export function startingRun(saved: unknown, seed: number): Run {
 }
 
 
-/** A mote of dust in the kitchen's air: where it is, and which of the two shades it is drawn in. */
+/**
+ * How much of a god ray's light falls at (x, y) on the screen at a time, 0 to 1, in four steps: the shafts of
+ * assets/god-rays.glsl worked out the same way (change both together), so a mote of dust drifting through one catches the light.
+ */
+export function rayLight(x: number, y: number, time: number): number {
+  const AT = [-250, -165, -70, 25, 110];
+  const WIDE = [22, 34, 16, 40, 20];
+  const PACE = [0.21, 0.13, 0.29, 0.17, 0.24];
+  const PHASE = [0, 1.9, 3.7, 0.8, 2.6];
+  const px = Math.floor(x / 2) * 2 + 1;
+  const py = Math.floor(y / 2) * 2 + 1;
+  const across = -0.8 * px + 0.6 * py;
+  const along = 0.6 * px + 0.8 * py;
+  const smooth = (a: number, b: number, v: number): number => {
+    const t = Math.max(0, Math.min(1, (v - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  };
+  let light = 0;
+  for (let i = 0; i < AT.length; i++) {
+    const drift = Math.sin(time * 0.05 + (PHASE[i] as number)) * 12;
+    const breath = 0.55 + 0.45 * Math.sin(time * (PACE[i] as number) + (PHASE[i] as number));
+    const edge = Math.abs(across - (AT[i] as number) - drift) / (WIDE[i] as number);
+    light += breath * (1 - smooth(0.55, 1, edge));
+  }
+  light *= 1 - smooth(60, 640, along);
+  return Math.floor(Math.min(light, 1) * 4) / 4;
+}
+
+/** A mote of dust in the kitchen's air: where it is, and which of the two shades it is drawn in, or lit, caught in a god ray. */
 export interface Mote {
   id: number;
   x: number;
   y: number;
   shade: 0 | 1;
+  lit: boolean;
 }
 
 /** How many motes, and the height of the wall they rise through before starting again at the bottom. */
@@ -80,7 +109,9 @@ export function motes(time: number): Mote[] {
     const start = (id * 97) % MOTE_FIELD;
     const sway = Math.sin(time * (0.3 + (id % 5) * 0.07) + id * 1.7) * 6;
     const rise = (start + time * speed) % MOTE_FIELD;
-    out.push({ id, x: Math.round(((id * 151 + 23) % 640) + sway), y: Math.round(MOTE_FIELD - rise), shade: id % 3 === 0 ? 1 : 0 });
+    const x = Math.round(((id * 151 + 23) % 640) + sway);
+    const y = Math.round(MOTE_FIELD - rise);
+    out.push({ id, x, y, shade: id % 3 === 0 ? 1 : 0, lit: rayLight(x, y, time) >= 0.5 });
   }
   return out;
 }

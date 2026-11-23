@@ -146,6 +146,12 @@ export const COUNTER_Y = 350;
 /** The shadow a thing standing on the counter casts on it. */
 export const COUNTER_SHADOW = "#090a1480";
 
+/** How bright the god rays' brightest step is (src/GodRays.tsx): the share of their warm light added. */
+export const GOD_RAYS = 0.24;
+
+/** A mote of dust caught in a god ray: the rays' warm light. */
+export const MOTE_LIT = "#e8c170";
+
 /** The motes of dust in the kitchen's air: two blues a little lighter than the wall. */
 export const MOTE: readonly [string, string] = ["#253a5e", "#3c5e8b"];
 
