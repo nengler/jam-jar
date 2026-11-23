@@ -7,13 +7,15 @@
 // It is shaded as the placeholder fruit were painted. Each art pixel (2 x 2 of the picture's) is one step, so the light falls in
 // whole pixels. Taking the fruit as a ball:
 // - the side facing the light is lit, one step up, over most of the fruit;
-// - a band just inside the edge is a step darker than it would be, all round, so the fruit rounds off;
+// - the edge away from the light is a step darker, following the fruit's shape (never the edge all round: that is pillow
+//   shading, which ignores where the light is);
 // - the far side falls to the darkest step;
 // - a speck where the light hits squarely is the shine;
-// - the outline is not black: it takes the dark steps of what it is beside, the first on the side toward the light and the
-//   darkest away from it (a row that is one colour all along, as the outline's is, marks the outline).
+// - the outline is not black, and not one colour all round: it takes a step of what it is beside, by how squarely it faces the
+//   light, the colour itself where it faces it, a step darker across the middle and the darkest away from it (a row that is one
+//   colour all along, as the outline's is, marks the outline).
 //
-// params[0]: how strongly the ball is lit (1: as painted); params[1]: how much the band inside the edge darkens (0.8);
+// params[0]: how strongly the ball is lit (1: as painted); params[1]: how much the edge away from the light darkens (0.8);
 // params[2]: the shine's size, as a share of the fruit's radius (0.12; 0 for none).
 
 const vec2 SCREEN_LIGHT = vec2(1.0, -1.0);
@@ -71,35 +73,35 @@ vec4 effect(vec2 uv) {
   vec3 normal = normalize(vec3(d, sqrt(1.0 - out2)));
   float facing = dot(normal, light) * params[0];
 
-  // The outline: a dark step of the colour beside it, the first where it faces the light, the darkest where it does not.
+  // The outline: a step of the colour beside it, by how squarely it faces the light.
   if (unlit(row)) {
-    for (int i = 0; i < 4; i++) {
-      vec2 by = i == 0 ? vec2(2.0, 0.0) : i == 1 ? vec2(-2.0, 0.0) : i == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0);
+    // The four pixels beside it first, then the four corners (an outline's corner pixel can touch the fruit only there).
+    for (int i = 0; i < 8; i++) {
+      vec2 by = i < 4 ? (i == 0 ? vec2(2.0, 0.0) : i == 1 ? vec2(-2.0, 0.0) : i == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0))
+                      : vec2(i == 4 || i == 5 ? 2.0 : -2.0, i == 4 || i == 6 ? 2.0 : -2.0);
       vec4 beside = pixelAt(at + by, size);
       if (beside.a < 0.5) continue;
       int besideRow = rowOf(beside.rgb);
       if (besideRow < 0 || unlit(besideRow)) continue;
-      return vec4(stepOf(besideRow, facing > 0.15 ? -1 : -2), c.a);
+      return vec4(stepOf(besideRow, facing > 0.5 ? 0 : facing > -0.1 ? -1 : -2), c.a);
     }
     return c;
   }
 
-  // The band inside the edge: a pixel beside the outline or the clear is a step darker.
-  float band = 0.0;
-  for (int i = 0; i < 4; i++) {
-    vec2 by = i == 0 ? vec2(2.0, 0.0) : i == 1 ? vec2(-2.0, 0.0) : i == 2 ? vec2(0.0, 2.0) : vec2(0.0, -2.0);
-    vec4 beside = pixelAt(at + by, size);
-    if (beside.a < 0.5) band = 1.0;
-    else {
-      int besideRow = rowOf(beside.rgb);
-      if (besideRow >= 0 && unlit(besideRow)) band = 1.0;
-    }
-  }
+  // The edge away from the light: a pixel with the outline or the clear beside it on the side away from the light turns a step
+  // darker, so the shadow side rounds off along the fruit's own shape. Only that side: an edge darkened all round, whatever the
+  // light, is pillow shading, and the side toward the light keeps its light up to the outline.
+  vec4 away = pixelAt(at - toward * 2.0, size);
+  int awayRow = away.a < 0.5 ? -1 : rowOf(away.rgb);
+  float shadowEdge = away.a < 0.5 || (awayRow >= 0 && unlit(awayRow)) ? 1.0 : 0.0;
+  vec4 near = pixelAt(at + toward * 2.0, size);
+  int nearRow = near.a < 0.5 ? -1 : rowOf(near.rgb);
+  bool litEdge = near.a < 0.5 || (nearRow >= 0 && unlit(nearRow));
 
   // The steps: lit over most of the side toward the light, the colour itself across the middle, then down to the darkest.
-  float level = facing * 2.2 + 0.3 - band * params[1];
+  float level = facing * 2.2 + 0.3 - shadowEdge * params[1];
   int step = level > 0.5 ? 1 : level > -0.5 ? 0 : level > -1.5 ? -1 : -2;
-  // The shine: near where the light hits the ball squarely, away from the edge.
-  if (params[2] > 0.0 && band == 0.0 && length(d - light.xy * 0.6) < params[2]) step = 2;
+  // The shine: near where the light hits the ball squarely, not on the edge.
+  if (params[2] > 0.0 && !litEdge && shadowEdge == 0.0 && length(d - light.xy * 0.6) < params[2]) step = 2;
   return vec4(stepOf(row, step), c.a);
 }

@@ -76,8 +76,9 @@ painted (`PAINTED`) after the placeholders' own shading: red goes to crimson the
 white in the light, as the old Apple's did. The rest are worked out (`light_table`: each step snapped to the nearest palette
 colour that keeps the colour's strength and never turns back). It is yours to repaint: change any step but the middle
 column, which must stay each row's own colour. Delete the file to have a fresh one written. The row of the outline colour,
-`#241527`, is that colour all along: that marks the outline, which the shader draws in the dark steps of the colour beside
-it (the first toward the light, the darkest away from it), so the edge is crimson and violet, not black.
+`#241527`, is that colour all along: that marks the outline, which the shader draws in a step of the colour beside it by how
+squarely it faces the light (the colour itself toward the light, crimson across the middle, violet away from it on a red
+fruit), so the edge is never black or one colour all round.
 
 ## screen/
 
