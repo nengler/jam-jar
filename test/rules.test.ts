@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { blastBits, blastFlash, blastJolt, fruitResults, keywordResults, motes, poolRows, termsOf, TILT_TIME, tilted } from "../src/layout.ts";
+import { blastBits, blastFlash, blastJolt, cardText, fruitResults, keywordResults, motes, poolRows, termsOf, TILT_TIME, tilted } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
-import { APPLE, BANANA, FRUITS, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, SLICES, type FruitKind } from "../src/rules/fruits.ts";
+import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
@@ -50,6 +50,7 @@ import {
   type Run,
 } from "../src/rules/jar.ts";
 import { ITEMS, offerable } from "../src/rules/items.ts";
+import { BOOK, FAMILIES, MEASURED, ROLES } from "../tools/fruit-book/book.ts";
 import { Rng } from "../src/rules/rng.ts";
 import { keywordOf, KEYWORDS, keywordsIn, ruleWords } from "../src/rules/terms.ts";
 
@@ -244,6 +245,80 @@ test("a Pomegranate caught in a blast bursts into 5 Cherries", () => {
   run.fruits.push({ ...fruit(2, "chili", 172, y), lit: true, fuse: 0 });
   simulate(run, DT);
   assert.equal(run.fruits.filter((f) => f.kind === "cherry").length, 5);
+});
+
+test("a Pumpkin Seed caught in a blast grows a fruit where it was, which scores, a size bigger every 3 grown, up to a Melon", () => {
+  assert.deepEqual(
+    Array.from({ length: 13 }, (_, n) => pumpkinSprout(n)),
+    ["cherry", "cherry", "cherry", "grape", "grape", "grape", "orange", "orange", "orange", "melon", "melon", "melon", "melon"]
+  );
+  assert.equal(PUMPKIN_SEED.every, 3);
+  const y = JAR.floor - 8;
+  const run = jarWith([fruit(1, "pumpkinseed", 300, y)]);
+  run.pumpkinSprouts = 3;
+  run.fruits.push({ ...fruit(2, "chili", 312, y), lit: true, fuse: 0 });
+  simulate(run, DT);
+  const grown = run.fruits.filter((f) => f.kind === "grape");
+  assert.equal(grown.length, 1, "the fourth grows a Grape");
+  assert.equal(grown[0]!.landed, true);
+  assert.equal(run.pumpkinSprouts, 4, "the count is the run's");
+  assert.equal(run.earned["Pumpkin Seed"], FRUITS.grape.points, "the Grape scores as it is made");
+});
+
+test("a Pumpkin Seed's card says what it grows now and how many more until the next size", () => {
+  assert.equal(pumpkinSeedText(0), "Exploded: grows a Cherry. 3 more: Grape.");
+  assert.equal(pumpkinSeedText(2), "Exploded: grows a Cherry. 1 more: Grape.");
+  assert.equal(pumpkinSeedText(3), "Exploded: grows a Grape. 3 more: Orange.");
+  assert.equal(pumpkinSeedText(8), "Exploded: grows an Orange. 1 more: Melon.");
+  assert.equal(pumpkinSeedText(9), "Exploded: grows a Melon.");
+  assert.equal(FRUITS.pumpkinseed.text, pumpkinSeedText(0));
+  const run = newRun(1);
+  run.pumpkinSprouts = 5;
+  assert.equal(cardText(run, "pumpkinseed"), pumpkinSeedText(5));
+  assert.equal(cardText(run, "chili"), FRUITS.chili.text);
+});
+
+test("a Pumpkin Seed's Melon grows inside the jar's walls", () => {
+  const y = JAR.floor - 8;
+  const run = jarWith([fruit(1, "pumpkinseed", JAR.left + 7, y)]);
+  run.pumpkinSprouts = 99;
+  run.fruits.push({ ...fruit(2, "chili", JAR.left + 20, y), lit: true, fuse: 0 });
+  simulate(run, DT);
+  const melon = run.fruits.find((f) => f.kind === "melon");
+  assert.ok(melon !== undefined && melon.x >= JAR.left + melon.r, "clear of the wall");
+});
+
+test("a Golden Apple pays its coins when a blast destroys it, but not while rotten", () => {
+  const y = JAR.floor - 8;
+  const run = jarWith([fruit(1, "goldenapple", 300, y), { ...fruit(2, "goldenapple", 290, y - 20), rotten: true }]);
+  run.fruits.push({ ...fruit(3, "chili", 312, y), lit: true, fuse: 0 });
+  simulate(run, DT);
+  assert.equal(run.fruits.some((f) => f.kind === "goldenapple"), false, "both destroyed");
+  assert.equal(run.coins, GOLDEN);
+});
+
+test("a Golden Apple pays its coins when the Juicer Crushes it", () => {
+  const run = jarWith([fruit(1, "goldenapple", 300, JAR.floor - FRUITS.goldenapple.radius)]);
+  run.items = ["juicer"];
+  run.turn = 2;
+  resolve(run);
+  assert.equal(run.fruits.length, 0);
+  assert.equal(run.coins, GOLDEN);
+});
+
+test("each Golden Apple in the jar when the rent is paid pays its coins on top of the rent's", () => {
+  const run = jarWith([fruit(1, "goldenapple", 260, JAR.floor - 18), fruit(2, "goldenapple", 340, JAR.floor - 18)]);
+  run.turn = 5;
+  run.cycleScore = RENT[0]! + 3 * POINTS_PER_COIN;
+  resolve(run);
+  assert.equal(run.phase, "rent");
+  assert.equal(run.coins, 3 + 2 * GOLDEN);
+  assert.match(run.message, /from Golden Apples/);
+  const missed = jarWith([fruit(1, "goldenapple", 260, JAR.floor - 18)]);
+  missed.turn = 5;
+  missed.cycleScore = 0;
+  resolve(missed);
+  assert.equal(missed.coins, 0, "a missed rent pays nothing");
 });
 
 test("two Pomegranates that merge burst into 5 Cherries between them", () => {
@@ -1431,4 +1506,14 @@ test("the Tilted jar leans over gradually, rocks a little past its lean, and set
   assert.ok(most > to, "it rocks past its lean");
   assert.ok(Math.abs(tilted(0, to, TILT_TIME) - to) < 1e-9, "and rests on it");
   assert.ok(Math.abs(tilted(to, 0, TILT_TIME * 2)) < 1e-9, "standing up again ends upright");
+});
+
+test("the fruit book has every fruit in the game, each in a family and with roles it knows", () => {
+  for (const kind of Object.keys(FRUITS) as FruitKind[]) {
+    const entry = BOOK[kind];
+    assert.ok(entry !== undefined, `${kind} is in tools/fruit-book/book.ts`);
+    assert.ok(FAMILIES[entry.family] !== undefined, kind);
+    assert.ok(entry.roles.length > 0 && entry.roles.every((r) => ROLES[r] !== undefined), kind);
+  }
+  for (const m of MEASURED) assert.ok(FRUITS[m.kind] !== undefined, m.kind);
 });

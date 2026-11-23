@@ -4,7 +4,7 @@ import { Dialog } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { TapButton } from "./KeyHint.tsx";
-import { chosenName, ENTER, entered, placed, popIn, poolRows } from "./layout.ts";
+import { chosenName, ENTER, entered, placed, popIn, poolRows, cardText } from "./layout.ts";
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { ITEMS, type ItemKind } from "./rules/items.ts";
 import { RuleText } from "./RuleText.tsx";
@@ -268,11 +268,11 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
           <Offer key={slot.at} at={slot.at} chosen={chosen === slot.at} item={false} drop={popIn(time, slot.at * ENTER.gap, ENTER.pop)} opacity={entered(time, slot.at)} onClick={onClick}>
             {slot.card !== null && (
               <Tooltip show={!paused && chosen === slot.at} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                <Terms text={FRUITS[slot.card].text} />
+                <Terms text={cardText(run, slot.card)} />
               </Tooltip>
             )}
             {slot.card !== null && <Basket kind={slot.card} />}
-            {slot.card !== null && <Words name={FRUITS[slot.card].name} text={FRUITS[slot.card].text} />}
+            {slot.card !== null && <Words name={FRUITS[slot.card].name} text={cardText(run, slot.card)} />}
             {slot.card !== null && <OnLabel price={FRUIT_PRICE} afford={run.coins >= FRUIT_PRICE} />}
             {slot.card === null && <Sold><Basket kind={null} /></Sold>}
           </Offer>

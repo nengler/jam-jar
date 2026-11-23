@@ -36,7 +36,9 @@ export type FruitKind =
   | "slice"
   | "pumpkin"
   | "gourd"
-  | "giantpumpkin";
+  | "giantpumpkin"
+  | "pumpkinseed"
+  | "goldenapple";
 
 export type Scoring = "fresh" | "simmer" | "booster";
 
@@ -78,8 +80,48 @@ export const HONEY = 4;
  * Cherries. Two Watermelons make a Giant Pumpkin, which scores, throws the pile aside and is gone.
  */
 export const SLICES = 4;
+/**
+ * The Pumpkin Seed (design doc, "Proposed: fruit roles and changes"): Ladder's late scaler. Exploded, a fruit grows where it was
+ * and scores as it is made: a Cherry at first, and a size bigger after every `every` that have grown in the run (Grape, Orange,
+ * then Melon, the cap). Seed is points for bomb decks; the Pumpkin Seed puts bigger fruit in the jar to merge and to Plunge into.
+ */
+export const PUMPKIN_SEED: { every: number; sizes: readonly FruitKind[] } = { every: 3, sizes: ["cherry", "grape", "orange", "melon"] };
+
+/** What a Pumpkin Seed grows when `grown` have grown from Pumpkin Seeds this run. */
+export function pumpkinSprout(grown: number): FruitKind {
+  const sizes = PUMPKIN_SEED.sizes;
+  return sizes[Math.min(Math.floor(grown / PUMPKIN_SEED.every), sizes.length - 1)] as FruitKind;
+}
+
+/**
+ * A Pumpkin Seed's card, which changes as the run goes: the fruit it grows now, and how many more must grow before it grows the
+ * next size ("Exploded: grows a Cherry. 3 more: Grape.", short enough for a shop label).
+ */
+export function pumpkinSeedText(grown: number): string {
+  const sizes = PUMPKIN_SEED.sizes;
+  const now = pumpkinSprout(grown);
+  const step = Math.floor(grown / PUMPKIN_SEED.every);
+  const here = `Exploded: grows ${aFruit(now)}.`;
+  if (step >= sizes.length - 1) return here;
+  const left = PUMPKIN_SEED.every - (grown % PUMPKIN_SEED.every);
+  return `${here} ${left} more: ${FRUITS_NAMES[sizes[step + 1] as FruitKind]}.`;
+}
+/**
+ * The Golden Apple: an early economy pick that needs no synergy. It pays `GOLDEN` coins when the rent is paid with it in the jar,
+ * or when an explosion or a Crush destroys it (nothing while it is rotten), so the shop matters sooner; coins count for less late in a run.
+ */
+export const GOLDEN = 2;
 export const GOURD_BURST = 4;
 export const GOURD_SIZES: readonly number[] = [FRUIT_ART.cherry.radius, FRUIT_ART.grape.radius, FRUIT_ART.orange.radius];
+
+/** The names of the fruit a Pumpkin Seed can grow, for its card (which is written before the table). */
+const FRUITS_NAMES: Readonly<Partial<Record<FruitKind, string>>> = { cherry: "Cherry", grape: "Grape", orange: "Orange", melon: "Melon" };
+
+/** "a Cherry", "an Orange". */
+function aFruit(kind: FruitKind): string {
+  const name = FRUITS_NAMES[kind] ?? kind;
+  return `${/^[AEIOU]/.test(name) ? "an" : "a"} ${name}`;
+}
 
 export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   cherry: { name: "Cherry", radius: FRUIT_ART.cherry.radius, points: 1, scoring: "fresh", mergesInto: "grape", touchWeight: 1, text: "Fresh 1. Merge: Grape." },
@@ -109,6 +151,8 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   slice: { name: "Slice", radius: FRUIT_ART.slice.radius, points: 15, scoring: "fresh", mergesInto: "melon", touchWeight: 1, text: "Fresh 15. Merge: Melon." },
   pumpkin: { name: "Pumpkin", radius: FRUIT_ART.pumpkin.radius, points: 0, scoring: "fresh", touchWeight: 1, heavy: 48, slots: 2, text: "Wide. Heavy. Plunge: Smashes what it hits." },
   gourd: { name: "Gourd", radius: FRUIT_ART.gourd.radius, points: 4, scoring: "fresh", touchWeight: 1, text: "Fresh 4. Absorb. At Melon size, Burst 4." },
+  pumpkinseed: { name: "Pumpkin Seed", radius: FRUIT_ART.pumpkinseed.radius, points: 0, scoring: "fresh", touchWeight: 1, text: pumpkinSeedText(0) },
+  goldenapple: { name: "Golden Apple", radius: FRUIT_ART.goldenapple.radius, points: 2, scoring: "fresh", touchWeight: 1, text: `Fresh 2. Golden ${GOLDEN}.` },
   giantpumpkin: { name: "Giant Pumpkin", radius: FRUIT_ART.giantpumpkin.radius, points: 75, scoring: "fresh", heavy: 4, touchWeight: 1, text: "Fresh 75. Shockwave, then it vanishes." },
 };
 
@@ -134,6 +178,8 @@ export const OFFERABLE: readonly FruitKind[] = [
   "lime",
   "pumpkin",
   "gourd",
+  "pumpkinseed",
+  "goldenapple",
 ];
 
 /** What a Seed can sprout. */

@@ -3,7 +3,7 @@ import { Entity, Flex, Sprite, Tooltip } from "@tsengine/runtime/jsx";
 import { Frame } from "./Coach.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
-import { grownOf, placed, rollIn, rollStarted, shelfX } from "./layout.ts";
+import { grownOf, placed, cardText, rollIn, rollStarted, shelfX } from "./layout.ts";
 import { HOLD_LIFT, ROLL_FROM, SHELF_FOOT, SHELF_Y, shelfOf, SLOT } from "./places.ts";
 import type { FruitKind } from "./rules/fruits.ts";
 import { bossNow, handSlots, type Run } from "./rules/jar.ts";
@@ -87,7 +87,7 @@ export function ShelfTips({ run, shown, coached }: { run: Run; shown: boolean; c
       {placed(shelf.cards).map((slot) => (
         <Flex key={`tip${slot.card}${slot.at}`} x={shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0) - 20} y={SHELF_Y - 38} width={40} height={40}>
           <Tooltip show={shown && slot.at === run.cursor ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X - (shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0) - 20)} offsetY={TIP_TOP - (SHELF_Y - 38)} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-            <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} apart={coached ? undefined : 640 - TIP_X * 2} />
+            <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} text={cardText(run, slot.card)} apart={coached ? undefined : 640 - TIP_X * 2} />
           </Tooltip>
         </Flex>
       ))}
