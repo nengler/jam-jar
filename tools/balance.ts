@@ -15,7 +15,9 @@
  *   at a random spot, the drop before the tray) was taken out of the rules; its results are in the README.
  *   "/wobble8" sets how far a fruit may wander in its lane (default 4 px; "/wobble0" lands every fruit mid-lane).
  *
- * A player ending "/thin" ("skip/thin") spends its coins in the shop taking Cherries out of its pool; the others buy nothing.
+ * A player ending "/thin" ("skip/thin") spends its coins in the shop taking Cherries out of its pool. One with "/shop" buys the
+ * fruit it would pick from the shop's shelf ("random/shop" buys whatever is there, left to right), as long as its coins last;
+ * with both it thins first. The others buy nothing.
  * The flags combine ("random/tray/best/thin"). A player with "@" owns those items from the start ("skip@juicer",
  * "random@shaker+lid"). The rent is ignored (set to 0), so every run plays all its cycles.
  *
@@ -37,7 +39,7 @@ import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
 import { FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
-import { bossNow, CHAIN_TIERS, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
+import { bossNow, CHAIN_TIERS, FRUIT_PRICE, POINTS_PER_COIN, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
 
 type Strategy = string;
@@ -47,6 +49,7 @@ const NONE = frame("_");
 const ENTER = frame("Enter");
 const SPACE = frame("Space");
 const RIGHT = frame("right");
+const LEFT = frame("left");
 const DOWN = frame("down");
 
 /** BALANCE_CHAINS=off: no tiers, so the chain still counts its links but multiplies nothing. */
@@ -212,6 +215,8 @@ interface Events {
   smashes: number;
   /** Each turn's chain, in links (the run's own `chains`). */
   chains: number[];
+  /** Fruit bought in the shop ("/shop"). */
+  bought: number;
 }
 
 function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[]; mismatches: number; events: Events } {
@@ -230,17 +235,20 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   const pieces = new Set<number>();
   let earned: Record<string, number> = {};
   let chains: number[] = [];
+  let bought = 0;
+  let shopPool = -1;
   let wait = 0;
   let coins = 0;
   const [plan = "", owned = ""] = strategy.split("@");
   const thin = plan.includes("/thin");
+  const shopping = plan.includes("/shop");
   const order = plan.includes("/order");
   const search = plan.includes("/best") ? "best" : plan.includes("/worst") ? "worst" : plan.includes("/fair") ? "fair" : null;
   if (/\/spots(\/|$)/.test(plan)) throw new Error('"/spots" was the drop before the tray, and the rules no longer have it');
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
   // With no luck to average over (a tray with no wobble), one try is the whole story.
   const tries = TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
-  const picks = plan.replace(/\/(thin|order|best|worst|fair|tray|wobble\d+)/g, "");
+  const picks = plan.replace(/\/(thin|shop|order|best|worst|fair|tray|wobble\d+)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
@@ -255,6 +263,10 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
       }
       earned = found.s.run.earned;
       chains = found.s.run.chains;
+      // A fruit bought: the pool grows while the shop is open.
+      const inShop = found.s.run.phase === "shop" ? found.s.run.pool.length : -1;
+      if (inShop > shopPool && shopPool >= 0) bought += inShop - shopPool;
+      shopPool = inShop;
     }
     if (found !== null && found.s.run.phase === "settle") settling = found.s.run.settleTime;
     else if (settling >= 0) {
@@ -300,8 +312,13 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     } else if (run.phase === "shop") {
       const shop = run.shop!;
       const canThin = thin && run.coins >= removalPrice(run) && run.pool.length > 4 && run.pool.includes("cherry");
+      // Buying: the first fruit on the shelf it would pick. The cursor walks the shelf with Left and Right (from nothing chosen,
+      // Right goes to the first), and Enter on a card buys it.
+      const wanted = picks.split("+");
+      const buy = !shopping || canThin || shop.removing || run.coins < FRUIT_PRICE ? -1 : shop.fruits.findIndex((kind) => kind !== null && (picks === "random" || wanted.includes(kind)));
+      if (buy >= 0) queued = shop.cursor === buy ? [ENTER] : shop.cursor < buy ? [RIGHT] : [LEFT];
       // Thinning: down to the actions (Remove is the first), Enter to open it, Right to the first kind (Cherry), Enter to take it out.
-      if (!canThin) queued = [SPACE];
+      else if (!canThin) queued = [SPACE];
       else if (shop.removing) queued = shop.removeCursor < 0 ? [RIGHT] : [ENTER];
       else if (shop.cursor !== SHOP_REMOVE) queued = [DOWN];
       else queued = [ENTER];
@@ -313,7 +330,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   }
   player.close();
   return { scores, pool, settles, mismatches, // Giant Pumpkins by the points they scored: "/best" and "/fair" play their turns out of this loop's sight, so ids miss them.
-    events: { earned: { ...earned }, giants: Math.max(giants.size, Math.round((earned["Giant Pumpkin"] ?? 0) / FRUITS.giantpumpkin.points)), smashes: slices.size / 4 + pieces.size / 2, chains: chains.slice() } };
+    events: { earned: { ...earned }, giants: Math.max(giants.size, Math.round((earned["Giant Pumpkin"] ?? 0) / FRUITS.giantpumpkin.points)), smashes: slices.size / 4 + pieces.size / 2, chains: chains.slice(), bought } };
 }
 
 const runs = Number(process.argv[2] ?? 20);
@@ -361,7 +378,8 @@ for (const strategy of players) {
   const reached = (at: number) => `${((100 * turns.filter((links) => links >= at).length) / Math.max(1, turns.length)).toFixed(0)}%`;
   console.log(
     `${"".padEnd(34)} chains: ${(turns.reduce((a, b) => a + b, 0) / Math.max(1, turns.length)).toFixed(1)} links a turn, ` +
-      `${tiers.map((at, k) => `x${k + 2} in ${reached(at)}`).join(", ")} of turns, longest ${Math.max(0, ...turns)}`
+      `${tiers.map((at, k) => `x${k + 2} in ${reached(at)}`).join(", ")} of turns, longest ${Math.max(0, ...turns)}; ` +
+      `fruit bought a run ${(events.reduce((a, e) => a + e.bought, 0) / runs).toFixed(1)}`
   );
   if (process.argv[4] !== "full") continue;
   // What earned the points, a run on average, the most first.

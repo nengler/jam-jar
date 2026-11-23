@@ -378,6 +378,30 @@ set one blast off with another. x3 and x4 are rare (5% of turns at most), so the
 usual turn. The rent curve has not been changed: medians rose by about 30 to 50 a cycle, and no build makes the last rent
 in more than 5 runs of 24.
 
+### Bots that shop (23 November)
+
+`/shop` makes a bot buy the fruit it would pick from the shop's shelf while its coins last ("random/shop" buys whatever is
+there). 24 seeds each, chains on, rent ignored; against the same player buying nothing:
+
+| Player | A run, no shop / shop | Last rent made, no shop / shop | Fruit bought a run | Pool at the end |
+| --- | --- | --- | --- | --- |
+| Picks at random | 1183 / 1241 | 2 / 3 | 6.6 | 25.6 |
+| Picks at random, shop and thin | 1183 / 1300 | 2 / 4 | 3.3 | 19.6 |
+| Boom (Chili, Durian, Blueberry, Seed) | 1394 / 1473 | 4 / 2 | 2.0 | 15.9 |
+| Durian | 1480 / 1521 | 4 / 2 | 0.6 | 10.6 |
+| Durian, shop and thin | 1480 / 1836 | 4 / 6 | 0.6 | 7.1 |
+| Durian + Golden Apple | — / 1293 | — / 0 | 1.0 | 12.7 |
+| Garden (Apple, Honeydew, Banana, Pitaya, Snow Pear) | 1288 / 1296 | 1 / 1 | 2.7 | 16.4 |
+| Garden + Golden Apple | — / 1233 | — / 2 | 2.9 | 17.3 |
+| Pumpkin + Melon | 1473 / 1456 | 5 / 6 | 0.8 | 11.9 |
+| Melon (never in the shop) | 1581 / 1581 | 5 / 5 | 0 | 10.0 |
+
+Buying adds little: 3% to 6% a run, because a build's few fruit are seldom among the shelf's 3 of some 25. Thinning is what
+the shop is for: Durian that also takes Cherries out scores 1836 and makes the last rent in 6 of 24, the most of any bot. The
+Golden Apple costs a build points (Durian 1521 alone, 1293 with it; Garden 1296 and 1233): its coins buy little more, since
+the shelf seldom has what the build wants. No bot reaches the old count of 10 last rents in 24 even shopping, so that count
+did not come from shopping.
+
 ## Looking at it without playing
 
 `tse screenshot` plays a script of keys with no window and writes frames, or a contact sheet of them to see motion
