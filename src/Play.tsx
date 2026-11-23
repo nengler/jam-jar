@@ -373,7 +373,7 @@ export function Play() {
       {/* What a fruit does, for the one tapped or the mouse is over; not under the Blind jar's cloth. */}
       {bossNow(run) !== "blind" && (
         <Raise id="shelf">
-          <ShelfTips run={run} shown={!paused && !s.whole && ordering && (keys || s.tip)} />
+          <ShelfTips run={run} shown={!paused && !s.whole && ordering && (keys || s.tip)} coached={coached !== null} />
         </Raise>
       )}
 
