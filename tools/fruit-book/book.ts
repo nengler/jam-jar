@@ -40,6 +40,9 @@ export interface BookEntry {
   clashes?: readonly Pair[];
   /** A problem the design has not solved yet. */
   gap?: string;
+  /** A change the design doc adopted that the game does not do yet, and the roles it would add. */
+  planned?: string;
+  plannedRoles?: readonly Role[];
 }
 
 export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
@@ -137,6 +140,8 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
   seed: {
     family: "Boom",
     roles: ["Build-around"],
+    planned: "Still sprouts a random fruit, and also scores 2; every Seed in your pool scores +2 more for the rest of the run. Boom's late scaler.",
+    plannedRoles: ["Late scaler"],
     works: [
       ["Chili", "blast trigger"],
       ["Durian", "blast trigger"],
@@ -156,11 +161,13 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
     family: "Juice and grow",
     roles: ["Situational"],
     works: [["Juicer", "crushes the bottom row each turn"]],
-    gap: "No clear role yet: floating doesn't score. Adopted 23 November, not built: fruit in lime juice count as touching each other.",
+    gap: "No clear role today: floating doesn't score.",
+    planned: "Fruit floating in lime juice also count as touching each other, so juice feeds Chili's touch count and Lemon's doubling. The jar needs to show the link, for example with a glow.",
   },
   coconut: {
     family: "Juice and grow",
     roles: ["Situational"],
+    planned: "A crack countdown shows on it. Not cracking late in a cycle stays, as its Preserves Jar niche.",
     works: [
       ["Apple", "milk doubles a Simmer fruit"],
       ["Honeydew", "same"],
@@ -208,6 +215,7 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
   fig: {
     family: "Rot",
     roles: ["Late scaler", "Build-around"],
+    planned: "Also pays out when a Fruit Fly eats it, so Rot runs on its own: Banana rots the Fig, a Fruit Fly eats it, every Banana grows.",
     works: [
       ["Banana", "rots it, and gains from it"],
       ["Chili", "destroys it"],
@@ -272,6 +280,8 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
   pumpkin: {
     family: "Ladder",
     roles: ["Build-around"],
+    planned: "Each Melon or Watermelon it Smashes gives every Pumpkin in your pool +2 burst for the rest of the run. Ladder's other late scaler.",
+    plannedRoles: ["Late scaler"],
     works: [
       ["Melon", "grow big fruit for the burst"],
       ["Watermelon", "about +45 on its own"],
@@ -330,20 +340,30 @@ export interface Measure {
   kind: FruitKind;
   points: number;
   base: number;
+  /** Which test it is from (`TESTS`): never picking scores differently in each, so the chart groups by test. */
+  test: string;
   note?: string;
 }
 
+/** The tests the measures come from, with what never picking scored in each. */
+export const TESTS: readonly { id: string; name: string; base: string; warn?: boolean }[] = [
+  { id: "A", name: "First Ladder test, 21 November", base: "never picking scored 1,128" },
+  { id: "B", name: "After the 10% Melon pick went in, 21 November", base: "never picking scored 1,171; the Melon changes every run's deal" },
+  { id: "C", name: "Pumpkin Plunge test, 22 November", base: "no never-pick row, so compared with 1,171 from the test above", warn: true },
+  { id: "D", name: "Pumpkin Seed and Golden Apple, 22 November", base: "never picking scored 1,140, with both in the picks" },
+];
+
 export const MEASURED: readonly Measure[] = [
-  { kind: "melon", points: 1318, base: 1171, note: "Last rent 2 in 24" },
-  { kind: "durian", points: 1307, base: 1171, note: "Last rent 1 in 24" },
-  { kind: "pumpkin", points: 1162, base: 1171, note: "About 20 Smashes a run; last rent 2 in 24. Its Plunge test had no never-pick row" },
-  { kind: "apple", points: 1140, base: 1128 },
-  { kind: "chili", points: 1127, base: 1128, note: "Chili and Durian together: 1,262, last rent 1 in 24" },
-  { kind: "gourd", points: 1111, base: 1128 },
-  { kind: "coconut", points: 1101, base: 1128 },
-  { kind: "pumpkinseed", points: 1032, base: 1140, note: "Does nothing without a bomb; Chili + Durian + Pumpkin Seed: 1,132" },
-  { kind: "lime", points: 1031, base: 1128, note: "The weakest pick measured" },
-  { kind: "goldenapple", points: 1000, base: 1140, note: "Coins unspent: the bots don't shop" },
+  { kind: "melon", test: "B", points: 1318, base: 1171, note: "Last rent 2 in 24" },
+  { kind: "durian", test: "B", points: 1307, base: 1171, note: "Last rent 1 in 24" },
+  { kind: "pumpkin", test: "C", points: 1162, base: 1171, note: "About 20 Smashes a run; last rent 2 in 24" },
+  { kind: "apple", test: "A", points: 1140, base: 1128 },
+  { kind: "chili", test: "A", points: 1127, base: 1128, note: "Chili and Durian together: 1,262, last rent 1 in 24" },
+  { kind: "gourd", test: "A", points: 1111, base: 1128 },
+  { kind: "coconut", test: "A", points: 1101, base: 1128 },
+  { kind: "pumpkinseed", test: "D", points: 1032, base: 1140, note: "Does nothing without a bomb; Chili + Durian + Pumpkin Seed: 1,132" },
+  { kind: "lime", test: "A", points: 1031, base: 1128, note: "The weakest pick measured" },
+  { kind: "goldenapple", test: "D", points: 1000, base: 1140, note: "Coins unspent: the bots don't shop" },
 ];
 
 /** Whole decks the bots have played: name, fruit, points a run, last rent made, what it shows. */
