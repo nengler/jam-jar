@@ -1302,7 +1302,7 @@ test("the tutorial's lessons: each waits for its moment, and is done when the pl
   assert.equal(lessonDone(lesson("order"), at("order"), { ...none, looked: true }), false, "looking is not reordering");
   assert.equal(lessonDone(lesson("order"), at("order"), { ...none, moved: true }), true);
   assert.equal(lessonDone(lesson("drop"), at("order"), { looked: true, moved: true, acted: true }), false, "only dropping ends it");
-  assert.deepEqual(LESSONS.filter((l) => l.told === true).map((l) => l.id), ["score", "rent", "pool", "chain"], "the four that only tell have a Got it");
+  assert.deepEqual(LESSONS.filter((l) => l.told === true).map((l) => l.id), ["score", "rent", "pool", "shop", "chain"], "the five that only tell have a Got it");
   // The two that come up while the jar plays hold it still until their Got it: their moment cannot pass under them.
   assert.deepEqual(LESSONS.filter((l) => l.holds === true).map((l) => l.id), ["score", "chain"]);
   assert.ok(LESSONS.every((l) => l.holds !== true || l.told === true), "a lesson that holds the jar can be put away");
@@ -1314,6 +1314,7 @@ test("the tutorial's lessons: each waits for its moment, and is done when the pl
   assert.equal(lessonShows(lesson("pick"), at("pick")), true);
   assert.equal(lessonShows(lesson("score"), at("settle")), true);
   assert.equal(lessonShows(lesson("shop"), at("shop")), true);
+  assert.equal(lessonDone(lesson("shop"), at("order"), none), true, "leaving the shop without buying puts it away");
   assert.equal(lessonDone(lesson("shop"), at("shop"), { ...none, acted: true }), true, "it lies over the shop's words, so it goes when there is something to read");
   const shopping = inShop(10);
   assert.equal(lessonDone(lesson("shop"), shopping, none), false, "nothing chosen yet");
