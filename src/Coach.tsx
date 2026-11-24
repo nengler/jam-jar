@@ -8,9 +8,9 @@ import { CARD_SLICE, DIM, GOLD, LIGHT, PLAQUE, SELECT } from "./theme.ts";
 
 /**
  * The tutorial's card, in the first game: one lesson on a dark slate, its title in gold. It does not count the lessons, and
- * it goes when the player has done what it says: only a lesson that just tells them something (the rent, the pool) has a
- * "Got it". "No tips" ends the tutorial. It is `width` wide. `wide` lays it out along the foot of the screen, the words beside
- * the button, for where there is no room for a tall card.
+ * it goes when the player has done what it says: only a lesson that just tells them something (the rent, the pool, the shop) has a
+ * "Got it". "No tips" ends the tutorial. It is `width` wide. `wide` lays it out in a strip across the screen, the words beside
+ * the buttons, for where there is no room for a tall card (the shop, over its awning).
  */
 export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { lesson: Lesson; keys: boolean; width: number; wide?: boolean; onNext: () => void; onSkip: () => void }) {
   return (
@@ -18,16 +18,16 @@ export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { l
       <Panel image={PLAQUE} gap={2}>
         <Flex direction={wide ? "row" : "column"} alignItems={wide ? "center" : "stretch"} gap={wide ? 12 : 2}>
           <Flex direction="column" gap={0}>
-            {/* Along the foot of the screen there is room for the words only. */}
+            {/* In a strip across the screen there is room for the words only. */}
             {!wide && (
               <Text color={GOLD}>{lesson.title}</Text>
             )}
-            <Text width={wide ? width - 32 - WIDE_BUTTONS : width - 32} maxWidth={wide ? width - 32 - WIDE_BUTTONS : width - 32} color={LIGHT}>
+            <Text width={wide ? width - 32 - wideButtons(lesson) : width - 32} maxWidth={wide ? width - 32 - wideButtons(lesson) : width - 32} color={LIGHT}>
               {keys ? lesson.keysText : lesson.text}
             </Text>
           </Flex>
           {/* "No tips" ends the tutorial. Only a lesson that asks for nothing has a "Got it": the others go when the player does what they say. */}
-          <Flex direction="row" justifyContent={lesson.told === true ? "space-between" : "end"} paddingTop={wide ? 0 : 6}>
+          <Flex direction="row" justifyContent={lesson.told === true ? "space-between" : "end"} gap={wide ? 4 : 0} paddingTop={wide ? 0 : 6}>
             {/* One that holds the jar still is put away with Enter too: the run hears no keys while it stands still. */}
             {lesson.told === true && <TapButton label="Got it" pressKey={lesson.holds === true ? "Enter" : undefined} onPress={onNext} />}
             <TapButton label="No tips" onPress={onSkip} />
@@ -38,8 +38,10 @@ export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { l
   );
 }
 
-/** The room the buttons take beside the words of a `wide` card, with the gap between them. */
-const WIDE_BUTTONS = 92;
+/** The room the buttons take beside the words of a `wide` card, with the gap between them: "No tips", and a "Got it" before it if the lesson has one. */
+function wideButtons(lesson: Lesson): number {
+  return lesson.told === true ? 92 + 86 : 92;
+}
 
 /*
  * What a lesson is about (the shelf, the jar, a board), picked out (`Lit`, provided by the play screen): the rest of the screen is

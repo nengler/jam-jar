@@ -34,7 +34,7 @@ each of its keywords means, as a pick's card does.
 
 The first game has a tutorial (`src/rules/tutorial.ts`, `src/Coach.tsx`). It is not a game of its own: a card beside the jar
 says one thing at a time about the run being played (the shelf, the order, dropping, scoring, the rent, the pick, the pool, the
-shop), frames what it is about, and moves on when the player has done it (a lesson that only tells them something, the rent or the pool, has a "Got it"). The two that come up while the jar plays,
+shop), frames what it is about, and moves on when the player has done it (a lesson that only tells them something, the rent, the pool or the shop, has a "Got it"; nothing in the shop has to be bought to get past it). The two that come up while the jar plays,
 the scoring and the chain, hold the jar still until their "Got it" (or Enter), so the card is not gone before it has been read. The scoring lesson waits until the
 first hand has landed, scored and come to rest, so the first drop is seen through. A lesson waits for its moment,
 so the card is away in between. "No tips" ends it, and the settings' Tips row turns it off or starts it again.
@@ -265,7 +265,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   - Pumpkin Seed (proposed in the design doc on 22 November): it scores nothing itself. Exploded, a fruit grows where it
     was and scores as it is made: a Cherry for the run's first 3, then a Grape, an Orange, and from the tenth on a Melon
     (`PUMPKIN_SEED`). Its card says what it grows now and how many more until the next size ("Exploded: grows a
-    Cherry. 3 more: Grape."; `cardText` in `src/layout.ts`), on the pick, in the shop and in its tooltips. The count is
+    Cherry. After 3 more grow, it grows a Grape."; `cardText` in `src/layout.ts`), on the pick, in the shop and in its tooltips. The count is
     the run's, so it is Ladder's late scaler, and it needs a blast, which ties Boom to Ladder. First bots (24 seeds, rent ignored, nothing bought): never picking 1140 a run, Pumpkin Seed whenever offered
     1032, Chili + Durian + Pumpkin Seed 1132. It does nothing without a bomb, and the bots don't measure late scaling yet.
 - Golden Apple: Fresh 2, and Golden 2: it pays 2 coins when the rent is paid with it in the jar, or when an explosion or
