@@ -60,7 +60,7 @@ export function Play() {
   const device = useInputDevice();
   const keys = device === "keyboard";
   const speed = useGame((g) => g.speed);
-  const { pause, toTitle, setSpeed, start, toLesson } = useGame.actions();
+  const { pause, toTitle, setSpeed, start, toLesson, hold } = useGame.actions();
   // The first game's tutorial: which lesson the player is at (rules/tutorial.ts).
   const tutorial = useGame((g) => g.tutorial);
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
@@ -191,6 +191,9 @@ export function Play() {
         }
       } else if (lessonDone(lesson, s.run, { looked: s.tip || s.run.cursor !== s.lessonCursor, moved: s.run.hand.join() !== s.lessonHand, acted: s.run.message !== s.lessonMessage })) toLesson(tutorial + 1);
     }
+    // A lesson that comes up while the jar plays holds it still (Main.tsx) until its "Got it", so the moment cannot pass, and take
+    // the card with it, before the player has read it. Only once its card is on screen: with nothing over the play screen.
+    if (lesson !== null && lesson.holds === true && lessonShows(lesson, s.run) && !s.whole && s.intro >= INTRO.end) hold(tutorial);
     // Through a moment once (a hand dropped, a pick made, the shop left), its keys are known: they are not shown again.
     if (moment(s.run) !== before) learn(before);
     // Each time the run comes to rest where the player acts, it is kept for "Continue"; once it is over there is nothing to keep.

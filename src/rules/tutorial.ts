@@ -3,7 +3,8 @@ import { CHAIN_TIERS, type Run } from "./jar.ts";
 /**
  * The first game's lessons. They are not a game of their own: a card beside the jar says one thing at a time about the run the
  * player is really playing, and moves on when they have done it. A lesson that only tells them something (the rent, the pool) has a "Got it" to put it away with. Each lesson waits for its moment (the
- * pick's waits for the first pick), so the card is away while there is nothing to say.
+ * pick's waits for the first pick), so the card is away while there is nothing to say. One that comes up while the jar plays (the
+ * scoring, the chain) holds the jar still until its "Got it", so it is not gone before it has been read.
  */
 export type LessonId = "shelf" | "order" | "drop" | "score" | "rent" | "pick" | "pool" | "shop" | "chain";
 
@@ -19,6 +20,11 @@ export interface Lesson {
   target: LessonTarget;
   /** It asks for nothing, only tells: its card has a "Got it" to put it away with. The others go when the player does what they say. */
   told?: boolean;
+  /**
+   * It comes up while the jar plays, and the jar stands still under it until its "Got it" (or Enter): its moment would otherwise
+   * pass, and the card with it, before the player had read it. Only a lesson that is `told` holds the jar.
+   */
+  holds?: boolean;
 }
 
 export const LESSONS: readonly Lesson[] = [
@@ -47,8 +53,10 @@ export const LESSONS: readonly Lesson[] = [
     id: "score",
     title: "Scoring",
     text: "Matching fruit that touch merge. When the jar is still, everything in it scores.",
-    keysText: "Matching fruit that touch merge. When the jar is still, everything in it scores.",
+    keysText: "Matching fruit that touch merge. Once the jar is still, it all scores. Enter goes on.",
     target: "jar",
+    told: true,
+    holds: true,
   },
   {
     id: "rent",
@@ -84,9 +92,10 @@ export const LESSONS: readonly Lesson[] = [
     id: "chain",
     title: "Chains",
     text: "Each merge, blast and score adds a link to the chain. At 5 links points are x2, at 10 x3.",
-    keysText: "Each merge, blast and score adds a link to the chain. At 5 links points are x2, at 10 x3.",
+    keysText: "Each merge, blast and score is a link. At 5 links points are x2, at 10 x3. Enter goes on.",
     target: "jar",
     told: true,
+    holds: true,
   },
 ];
 
@@ -124,8 +133,8 @@ export interface Did {
 
 /** Whether a lesson that has been showing is done with: the player did what it asked, or its moment has passed. */
 export function lessonDone(lesson: Lesson, run: Run, did: Did): boolean {
-  // The chain's lesson stays until its "Got it": it comes back with the next hand dropped if the turn ends first.
-  if (lesson.id === "chain") return false;
+  // A lesson that holds the jar still stays until its "Got it": its moment cannot pass while it is up.
+  if (lesson.holds === true) return false;
   if (!lessonShows(lesson, run)) return true;
   if (lesson.id === "shelf") return did.looked;
   if (lesson.id === "order") return did.moved;

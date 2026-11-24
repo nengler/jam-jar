@@ -34,7 +34,8 @@ each of its keywords means, as a pick's card does.
 
 The first game has a tutorial (`src/rules/tutorial.ts`, `src/Coach.tsx`). It is not a game of its own: a card beside the jar
 says one thing at a time about the run being played (the shelf, the order, dropping, scoring, the rent, the pick, the pool, the
-shop), frames what it is about, and moves on when the player has done it (a lesson that only tells them something, the rent or the pool, has a "Got it"). A lesson waits for its moment,
+shop), frames what it is about, and moves on when the player has done it (a lesson that only tells them something, the rent or the pool, has a "Got it"). The two that come up while the jar plays,
+the scoring and the chain, hold the jar still until their "Got it" (or Enter), so the card is not gone before it has been read. A lesson waits for its moment,
 so the card is away in between. "No tips" ends it, and the settings' Tips row turns it off or starts it again.
 
 `npx tse package . --engine web` builds the game as a web page in `dist/jam-jar-web`, and `.github/workflows/pages.yml`
@@ -332,7 +333,7 @@ The design doc's biggest risk is that a pile of fruit is harder to read than a g
   grows a little at each tier. Each link rings the tally's bell a note higher (the top note again past the eighth), and each
   tier rings a chord of its own (`tier.wav`). A popup shows the points after the chain's multiplier, so what it says is what
   the score went up by. A turn whose chain reached x2 ends with one line over the jar once the tally is done: "14 links,
-  412 points". The first such chain brings the tutorial's last lesson, which stays until its "Got it".
+  412 points". The first such chain brings the tutorial's last lesson, which holds the jar still until its "Got it".
 - A Blast within 1.2 seconds of the last is a chain of Blasts. That, or one Blast that destroys 5 fruit or more, plays in
   slow motion (the game at 0.35 of its speed for a moment), so you can see what it threw and set off.
 - The end of a turn is a tally: each Simmer fruit lights up and scores in turn, its link of the chain ringing a note higher than

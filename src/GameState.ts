@@ -34,6 +34,11 @@ export const useGame = createGameState(
     learned: learnedMoments(),
     /** The step of the first game's tutorial the player is at (rules/tutorial.ts); past the last lesson once it is over. */
     tutorial: tutorialStep(),
+    /**
+     * The step of the tutorial whose lesson holds the jar still (rules/tutorial.ts, `holds`), or -1. The world stands still while
+     * the tutorial is at that step on the play screen, so its "Got it" (any move to another step) lets it go on.
+     */
+    holding: -1,
     /** How fast the game runs: 1, or less for the slow motion a chain of Blasts plays in. */
     speed: 1,
   },
@@ -58,6 +63,7 @@ export const useGame = createGameState(
       s.speed = 1;
       s.screen = "play";
       s.paused = false;
+      s.holding = -1;
     },
     setSpeed(s, speed: number) {
       s.speed = speed;
@@ -68,6 +74,7 @@ export const useGame = createGameState(
       s.savedRun = null;
       s.screen = "play";
       s.paused = false;
+      s.holding = -1;
       s.seed += 1;
     },
     openSettings(s) {
@@ -76,6 +83,7 @@ export const useGame = createGameState(
     },
     toTitle(s) {
       s.speed = 1;
+      s.holding = -1;
       if (s.screen === "settings") learn("settings");
       s.screen = "title";
       s.paused = false;
@@ -95,6 +103,10 @@ export const useGame = createGameState(
     },
     changeSpeed() {
       toggleFast();
+    },
+    /** A lesson that holds the jar is up: the world stands still until the tutorial moves on from this step. */
+    hold(s, step: number) {
+      s.holding = step;
     },
     /** The tutorial moves to a step: the next lesson, or past the last to end it. */
     toLesson(_s, step: number) {

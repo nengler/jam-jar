@@ -1301,7 +1301,12 @@ test("the tutorial's lessons: each waits for its moment, and is done when the pl
   assert.equal(lessonDone(lesson("order"), at("order"), { ...none, looked: true }), false, "looking is not reordering");
   assert.equal(lessonDone(lesson("order"), at("order"), { ...none, moved: true }), true);
   assert.equal(lessonDone(lesson("drop"), at("order"), { looked: true, moved: true, acted: true }), false, "only dropping ends it");
-  assert.deepEqual(LESSONS.filter((l) => l.told === true).map((l) => l.id), ["rent", "pool", "chain"], "the three that only tell have a Got it");
+  assert.deepEqual(LESSONS.filter((l) => l.told === true).map((l) => l.id), ["score", "rent", "pool", "chain"], "the four that only tell have a Got it");
+  // The two that come up while the jar plays hold it still until their Got it: their moment cannot pass under them.
+  assert.deepEqual(LESSONS.filter((l) => l.holds === true).map((l) => l.id), ["score", "chain"]);
+  assert.ok(LESSONS.every((l) => l.holds !== true || l.told === true), "a lesson that holds the jar can be put away");
+  assert.equal(lessonDone(lesson("score"), at("tally"), none), false, "it stays until its Got it");
+  assert.equal(lessonDone(lesson("score"), at("order"), none), false, "even past its moment");
 
   // The pick's and the shop's wait for the first pick and the first shop.
   assert.equal(lessonShows(lesson("pick"), at("order")), false);
