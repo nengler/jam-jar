@@ -633,6 +633,17 @@ test("the first game's tutorial: a card says one thing at a time and moves on as
   assert.equal(step(), 2, "on to dropping the hand");
   game.input("Space, _*3");
   assert.equal(step(), 3, "dropped: how it merges and scores, while it does");
+  // That lesson holds the jar still until its Got it, so its card does not go with the turn before it has been read.
+  game.input("_*3");
+  const held = JSON.stringify(runOf(game));
+  game.input("_*120");
+  assert.equal(runOf(game).phase, "drop");
+  assert.equal(JSON.stringify(runOf(game)), held, "nothing moved while the card was up");
+  assert.equal(step(), 3, "and it is still up");
+  // Enter is its Got it, at a keyboard: the jar plays on.
+  game.input("Enter, _*3");
+  assert.equal(step(), 4, "put away: on to the rent, which waits for the next hand");
+  assert.equal(useGame.getState().holding === useGame.getState().tutorial, false, "the jar is let go");
   playedOut(game);
   game.input("_*3");
   assert.equal(step(), 4, "the next hand: the rent");

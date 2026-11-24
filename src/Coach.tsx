@@ -28,7 +28,8 @@ export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { l
           </Flex>
           {/* "No tips" ends the tutorial. Only a lesson that asks for nothing has a "Got it": the others go when the player does what they say. */}
           <Flex direction="row" justifyContent={lesson.told === true ? "space-between" : "end"} paddingTop={wide ? 0 : 6}>
-            {lesson.told === true && <TapButton label="Got it" onPress={onNext} />}
+            {/* One that holds the jar still is put away with Enter too: the run hears no keys while it stands still. */}
+            {lesson.told === true && <TapButton label="Got it" pressKey={lesson.holds === true ? "Enter" : undefined} onPress={onNext} />}
             <TapButton label="No tips" onPress={onSkip} />
           </Flex>
         </Flex>

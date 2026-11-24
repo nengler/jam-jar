@@ -34,7 +34,7 @@ export function KeyHint({ name, label, color = LIGHT }: KeyHintProps) {
  * learned. The key stands just left of the button, as in a row of `KeyHint`s, not on it: a key cap inside the button looked like
  * a second button laid over the first.
  */
-export function TapButton({ label, keyName = "", onPress }: { label: string; keyName?: string; onPress: () => void }) {
+export function TapButton({ label, keyName = "", pressKey, onPress }: { label: string; keyName?: string; pressKey?: string; onPress: () => void }) {
   return (
     <Flex direction="row" alignItems="center" gap={6}>
       {/* As tall as the button beside it, so a row of them (Enter, Take out, Space, Back) lines up. */}
@@ -43,7 +43,7 @@ export function TapButton({ label, keyName = "", onPress }: { label: string; key
           <Text color={INK}>{keyName}</Text>
         </Flex>
       )}
-      <PushButton label={label} onPress={onPress} />
+      <PushButton label={label} pressKey={pressKey} onPress={onPress} />
     </Flex>
   );
 }
