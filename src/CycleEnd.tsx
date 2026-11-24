@@ -35,6 +35,16 @@ export function CycleEnd({ run, keys, onGoOn, onAgain, onTitle }: CycleEndProps)
                 <Text color={INK_SOFT}>The run so far</Text>
                 <Text color={INK}>{`${run.total}`}</Text>
               </Flex>
+              <Flex direction="row" justifyContent="space-between">
+                <Text color={INK_SOFT}>Coins</Text>
+                <Text color={GOOD}>{`+${run.rentCoins}`}</Text>
+              </Flex>
+              {run.rentGolden > 0 && (
+                <Flex direction="row" justifyContent="space-between">
+                  <Text color={INK_SOFT}>From Golden Apples</Text>
+                  <Text color={INK_SOFT}>{`+${run.rentGolden}`}</Text>
+                </Flex>
+              )}
               <Rule />
               <Flex direction="row" justifyContent="center" paddingTop={4}>
                 <TapButton label={run.cycle >= RENT.length ? "Go on" : "Shop"} onPress={onGoOn} />

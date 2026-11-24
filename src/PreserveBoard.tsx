@@ -5,7 +5,7 @@ import { TapButton } from "./KeyHint.tsx";
 import { BOARD_W, HUD_X } from "./places.ts";
 import { ITEMS, keepingJar } from "./rules/items.ts";
 import { keeps, type Run } from "./rules/jar.ts";
-import { DISPLAY, DISPLAY_SIZE, INK, INK_SOFT } from "./theme.ts";
+import { BAD, DISPLAY, DISPLAY_SIZE, INK, INK_SOFT } from "./theme.ts";
 
 /**
  * The Preserves Jar, after the shop: what it is doing, how many are kept of how many it holds, and the way on. It stands where
@@ -21,6 +21,12 @@ export function PreserveBoard({ run, bottom, onDone }: { run: Run; bottom: numbe
         <Flex direction="row" justifyContent="center">
           <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>{`Kept ${run.kept.length} of ${keeps(run)}`}</Text>
         </Flex>
+        {/* One too many chosen: the slate is away while this board is up, so it says so here. */}
+        {run.message !== "" && (
+          <Text width={BOARD_W - 40} maxWidth={BOARD_W - 40} align="center" color={BAD}>
+            {run.message}
+          </Text>
+        )}
         <Flex direction="row" justifyContent="center" paddingTop={4}>
           <TapButton label={run.kept.length === 0 ? "Keep none" : "Keep these"} onPress={onDone} />
         </Flex>

@@ -419,7 +419,13 @@ export interface Run {
   popups: Popup[];
   links: Link[];
   effects: Effect[];
-  /** One line about what just happened. */
+  /** What the last rent paid out in coins (the points over it, and the Golden Apples), and how many of those the Golden Apples paid. */
+  rentCoins: number;
+  rentGolden: number;
+  /**
+   * One line about what just happened that the screen does not already show: a jar event, a boss's rule, why a tap did
+   * nothing. What the player just did and can see done (a fruit taken, bought or taken out, a new shelf) says nothing.
+   */
   message: string;
   /** Sounds to play this frame (cleared each `advance`). */
   sounds: Sound[];
@@ -569,7 +575,9 @@ export function newRun(seed: number): Run {
     popups: [],
     links: [],
     effects: [],
-    message: "Order your hand, then drop it in the jar",
+    rentCoins: 0,
+    rentGolden: 0,
+    message: "",
     sounds: [],
   };
   deal(run);
@@ -1908,11 +1916,15 @@ function dueRent(run: Run): void {
     run.coins += earned;
     // Each Golden Apple in the jar pays too.
     const golden = run.fruits.reduce((sum, f) => sum + payGolden(run, f), 0);
-    run.message = golden > 0 ? `Rent paid! +${earned + golden} coins (${golden} from Golden Apples)` : `Rent paid! +${earned} coins`;
+    // The rent board says so, and what it paid (CycleEnd.tsx).
+    run.rentCoins = earned + golden;
+    run.rentGolden = golden;
+    run.message = "";
     sound(run, "rent");
   } else {
     run.phase = "over";
-    run.message = `Rent was ${rent}; you scored ${run.cycleScore}. The jar is lost.`;
+    // The end board says what the rent was and what was scored (EndBoard.tsx).
+    run.message = "";
     sound(run, "lose");
   }
 }
@@ -2000,12 +2012,12 @@ function pickStep(run: Run, keys: Keys): void {
     run.draw.splice(at, 0, kind);
     run.drawGlazes.splice(at, 0, null);
     run.seed = rng.seed;
-    run.message = `${FRUITS[kind].name} added to your pool`;
+    run.message = "";
     sound(run, "pick");
     startTurn(run);
   } else if (keys.drop) {
     run.coins += 1;
-    run.message = "Skipped: +1 coin";
+    run.message = "";
     startTurn(run);
   }
 }
@@ -2035,7 +2047,7 @@ export function removalPrice(run: Run): number {
 function leaveRent(run: Run): void {
   if (run.cycle >= RENT.length) {
     run.phase = "won";
-    run.message = "You paid every rent. The jar is yours!";
+    run.message = "";
     return;
   }
   run.shop = { fruits: [], item: null, glaze: null, cursor: -1, removing: false, glazing: false, removeCursor: -1 };
@@ -2098,7 +2110,7 @@ function shopStep(run: Run, keys: Keys): void {
     if (keys.confirm && !pointed && shop.removeCursor >= 0) {
       const kind = kinds[shop.removeCursor] as FruitKind;
       if (pay(run, GLAZE_PRICE) && glazeOne(run, kind, glaze)) {
-        run.message = `A ${GLAZES[glaze].name} ${FRUITS[kind].name} is in your pool`;
+        run.message = "";
         sound(run, "pick");
         shop.glaze = null;
         shop.glazing = false;
@@ -2126,7 +2138,7 @@ function shopStep(run: Run, keys: Keys): void {
         const at = plain >= 0 ? plain : run.pool.indexOf(kind);
         run.pool.splice(at, 1);
         run.poolGlazes.splice(at, 1);
-        run.message = `${FRUITS[kind].name} taken out of your pool`;
+        run.message = "";
         sound(run, "pick");
         shop.removing = false;
       }
@@ -2164,7 +2176,7 @@ function shopStep(run: Run, keys: Keys): void {
     run.pool.push(kind);
     run.poolGlazes.push(null);
     shop.fruits[shop.cursor] = null;
-    run.message = `${FRUITS[kind].name} added to your pool`;
+    run.message = "";
     sound(run, "pick");
   } else if (shop.cursor === SHOP_ITEM) {
     if (shop.item === null || !pay(run, ITEMS[shop.item].price)) return;
@@ -2172,7 +2184,7 @@ function shopStep(run: Run, keys: Keys): void {
     const from = ITEMS[shop.item].upgrades;
     run.items = run.items.filter((item) => item !== from);
     run.items.push(shop.item);
-    run.message = `You own the ${ITEMS[shop.item].name}`;
+    run.message = "";
     shop.item = null;
     sound(run, "pick");
   } else if (shop.cursor === SHOP_GLAZE) {
@@ -2186,7 +2198,8 @@ function shopStep(run: Run, keys: Keys): void {
     } else {
       shop.glazing = true;
       shop.removeCursor = -1;
-      run.message = `Put the ${GLAZES[shop.glaze].name} glaze on which fruit?`;
+      // The board that opens asks which (Shop.tsx).
+      run.message = "";
     }
   } else if (shop.cursor === SHOP_REMOVE) {
     if (run.pool.length <= HAND_SIZE) {
@@ -2197,13 +2210,13 @@ function shopStep(run: Run, keys: Keys): void {
     } else {
       shop.removing = true;
       shop.removeCursor = -1;
-      run.message = "Take which fruit out of your pool?";
+      run.message = "";
     }
   } else if (shop.cursor === SHOP_REROLL) {
     if (!pay(run, rerollPrice(run))) return;
     run.rerolls += 1;
     stock(run, shop);
-    run.message = "A new shelf";
+    run.message = "";
     sound(run, "tick");
   } else {
     leaveShop(run);
@@ -2225,7 +2238,8 @@ function leaveShop(run: Run): void {
   }
   run.preserveCursor = 0;
   run.phase = "preserve";
-  run.message = `${ITEMS[keepingJar(run.items) as ItemKind].name}: choose up to ${keeps(run)} fruit to keep, then Done`;
+  // Its board says what to do (PreserveBoard.tsx), and shows what this says when one too many is chosen.
+  run.message = "";
 }
 
 function preserveStep(run: Run, keys: Keys): void {
@@ -2237,6 +2251,7 @@ function preserveStep(run: Run, keys: Keys): void {
   const chosen = fruits[run.preserveCursor];
   if (keys.confirm && chosen !== undefined) {
     const id = chosen.id;
+    run.message = "";
     if (run.kept.includes(id)) run.kept = run.kept.filter((k) => k !== id);
     else if (run.kept.length < keeps(run)) run.kept.push(id);
     else run.message = `It holds ${keeps(run)}: let one go first`;
@@ -2302,7 +2317,8 @@ function nextCycle(run: Run): void {
   run.discardGlazes = [];
   run.seed = rng.seed;
   const boss = bossNow(run);
-  run.message = boss === null ? `Cycle ${run.cycle}: rent is ${rentFor(run.cycle)}` : `The ${BOSS_NAME[boss]}! ${BOSS_RULE[boss]} Rent is ${rentFor(run.cycle)}`;
+  // The rent board shows the cycle and its rent; only a boss jar's rule needs saying.
+  run.message = boss === null ? "" : `The ${BOSS_NAME[boss]}! ${BOSS_RULE[boss]}`;
   deal(run);
   run.phase = "order";
 }

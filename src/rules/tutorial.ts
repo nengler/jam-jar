@@ -118,8 +118,16 @@ export interface Did {
   looked: boolean;
   /** Changed the order of the hand. */
   moved: boolean;
-  /** Did something the game answered (bought, or tried to): what it says has changed. */
+  /** Did something the game answered (bought, or tried to): the coins, the pool or what it says has changed. */
   acted: boolean;
+}
+
+/**
+ * What changes when the player does something the game answers, to compare with what it was (`Did.acted`): the coins (a buy,
+ * a removal, a new shelf all cost some), the pool, and what the game says (a buy refused). A buy itself says nothing.
+ */
+export function acts(run: Run): string {
+  return `${run.coins}|${run.pool.length}|${run.message}`;
 }
 
 /** Whether a lesson that has been showing is done with: the player did what it asked, or its moment has passed. */
