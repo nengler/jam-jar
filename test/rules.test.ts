@@ -45,7 +45,10 @@ import {
   rerollPrice,
   RENT,
   resolve,
-  rollPool,
+  poolOf,
+  BASKETS,
+  BASKET_CORE,
+  BASKET_IDS,
   RIM,
   SHOP_GLAZE,
   SHOP_ITEM,
@@ -115,15 +118,32 @@ function jarWith(fruits: Fruit[]): Run {
   return run;
 }
 
-test("the starting pool is 9: one Apple and 8 starters within their ranges", () => {
+test("the starting pool is 8: five merging fruit and the three of the run's basket, and the baskets all come up", () => {
+  const seen = new Set<string>();
   for (let seed = 1; seed < 200; seed++) {
-    const pool = rollPool(new Rng(seed));
-    const count = (k: string) => pool.filter((p) => p === k).length;
-    assert.equal(pool.length, 9);
-    assert.equal(count("apple"), 1);
-    assert.ok(count("cherry") >= 3 && count("cherry") <= 5);
-    assert.ok(count("grape") >= 2 && count("grape") <= 4);
-    assert.ok(count("orange") <= 2);
+    const run = newRun(seed);
+    seen.add(run.basket);
+    assert.equal(run.pool.length, 8);
+    assert.deepEqual(run.pool, poolOf(run.basket));
+    assert.deepEqual(run.pool.slice(0, BASKET_CORE.length), BASKET_CORE);
+    assert.deepEqual(run.pool.slice(BASKET_CORE.length), BASKETS[run.basket].fruit);
+  }
+  assert.deepEqual([...seen].sort(), [...BASKET_IDS].sort());
+});
+
+test("a run that opens with a pick deals no hand until a fruit is taken, and that fruit is in the first hand", () => {
+  for (let seed = 1; seed < 40; seed++) {
+    let run = newRun(seed, true);
+    assert.equal(run.phase, "pick");
+    assert.equal(run.hand.length, 0);
+    assert.equal(run.offers.length, 3);
+    run = advance(run, 1 / 60, { ...NO_KEYS, right: true }, []);
+    const taken = run.offers[run.offerCursor] as FruitKind;
+    run = advance(run, 1 / 60, { ...NO_KEYS, confirm: true }, []);
+    assert.equal(run.phase, "order");
+    assert.equal(run.pool.length, 9);
+    assert.equal(run.turn, 1);
+    assert.ok(run.hand.includes(taken), `seed ${seed}: ${taken} not in ${run.hand.join()}`);
   }
 });
 

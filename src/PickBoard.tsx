@@ -4,7 +4,7 @@ import { Letters } from "./Board.tsx";
 import { Coach } from "./Coach.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { TapButton } from "./KeyHint.tsx";
-import { placed, cardText } from "./layout.ts";
+import { placed, cardText, pickHeading } from "./layout.ts";
 import { RuleText } from "./RuleText.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
@@ -70,7 +70,7 @@ export function PickBoard({ run, paused, hints, keys, coached, onChoose, onAway,
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
       <Flex left={0} right={0} top={12} bottom={0} direction="column" alignItems="center" gap={8}>
         <Flex direction="row" justifyContent="center" height={32}>
-          <Letters text="Pick a fruit" seed={5} />
+          <Letters text={pickHeading(run)} seed={5} />
         </Flex>
         <Flex direction="row" alignItems="start" gap={OFFER_GAP} onPressOutside={onAway}>
           {placed(run.offers).map((offer) => (

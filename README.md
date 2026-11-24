@@ -2,7 +2,7 @@
 
 A roguelike where you build a pool of fruit and the jar plays it. Each turn you're dealt 4 fruits from your pool and you arrange
 them on a tray over the jar. They all drop together, each straight down from its slot with a small wobble, physics settles the pile, merges and blasts score, and then Simmer fruit score at
-Resolve. After every second turn you pick 1 of 3 new fruits, or skip for a coin (two picks a cycle, so the pool stays small enough
+Resolve. A run opens with a pick of 1 of 3 new fruits, and after every second turn you pick again, or skip for a coin (two picks a cycle, so the pool stays small enough
 that every fruit in it comes up). Five turns make a rent cycle; miss rent and the run ends.
 Between cycles the shop sells fruit, an item, a removal and rerolls for the coins the rent left over.
 
@@ -117,8 +117,32 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 
 ## What's in this first slice
 
-- Starting pool: 1 Apple and 8 starters rolled from 3–5 Cherries, 2–4 Grapes and 0–2 Oranges. It's dealt like a deck and
-  reshuffles when empty.
+- Starting pool: eight fruit. Five are the same every run (2 Cherries, 2 Grapes, 1 Orange: `BASKET_CORE`), and three come
+  from the run's basket, rolled from four (`BASKETS`): Ladder (Cherry, Orange, Gourd), Blast (Apple, Chili, Durian), Garden
+  (Apple, Apple, Banana) or Rot (Apple, Banana, Prune). Every run used to start from the same nine plain merging fruit (1
+  Apple and 8 rolled from Cherries, Grapes and Oranges), so every first cycle was a merge cycle. The pool is dealt like a
+  deck and reshuffles when empty.
+- The opening pick: a run starts at a pick of 1 of 3, before its first hand, headed with its basket's name. The fruit taken
+  is dealt in the first hand. The first game's tutorial run has none: it teaches the shelf first, and the pick when it comes
+  after turn 2.
+- The opening, measured (96 seeds a bot, rent ignored, nothing bought; `tools/balance.ts`). On the old opening (nine plain
+  fruit, picks after turns 2 and 4, rent 120 then 180) nobody missed the first rent, a bot that picks well scored no more in
+  cycle 1 than one that never picks, and 73% of cycle 1's points came from the starters' ladder. With the baskets and the
+  opening pick:
+
+    | Player | Cycle 1 (10%, median, 90%) | Cycle 2 | Misses rent 240 | Misses rent 260 | A run |
+    | --- | --- | --- | --- | --- | --- |
+    | Never picks (skips the opening pick too) | 224, 300, 384 | 218, 272, 370 | 20% | 41% | 1468 |
+    | Never picks, hand ordered | 236, 304, 402 | 232, 292, 410 | 12% | 28% | 1554 |
+    | Picks at random | 192, 271, 397 | 174, 255, 384 | 36% | 51% | 1367 |
+    | Picks well | 220, 304, 446 | 224, 308, 447 | 21% | 28% | 1744 |
+    | Picks well, hand ordered | 245, 312, 459 | 230, 324, 500 | 9% | 20% | 1799 |
+
+  Rent went from 120, 180, 240, 320, 400 to 240, 260, 300, 350, 400 (`RENT`). The bots buy nothing, and a shop's removals
+  were worth 25 to 45% more points in cycles 2 to 5 in earlier runs, so a player does better than these late on. A cycle
+  that scores 300 now leaves 6 coins where it left 18: the first shop is tighter. By basket, the median first cycle of the
+  player who picks well and orders is Blast 350, Garden 324, Ladder 310, Rot 276 (18 to 30 runs each, so only Rot's gap is
+  more than noise).
 - The merge ladder: Cherry → Grape → Orange → Melon → Watermelon → Giant Pumpkin.
 - Fresh fruit score when they land or are made by a merge. Simmer fruit (Apple, Banana) score at every Resolve. Lemon is a
   Booster: fruit touching it score double, and it blocks merges next to it.
