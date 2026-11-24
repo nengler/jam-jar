@@ -329,6 +329,8 @@ export interface Run {
   nextId: number;
   /** The boss jar this run meets on its boss cycles. */
   boss: Boss;
+  /** The basket its pool started from. */
+  basket: BasketId;
   /** Every fruit you own. */
   pool: FruitKind[];
   /**
@@ -493,29 +495,45 @@ export function handSlots(hand: readonly FruitKind[]): number {
 
 export const NO_KEYS: Keys = { up: false, down: false, left: false, right: false, confirm: false, drop: false, point: -1 };
 
-/** The starting pool: 1 Apple plus 8 starters, 3–5 Cherries, 2–4 Grapes and 0–2 Oranges (see the design doc). */
-export function rollPool(rng: Rng): FruitKind[] {
-  for (;;) {
-    const cherries = rng.int(3, 5);
-    const grapes = rng.int(2, 4);
-    const oranges = 8 - cherries - grapes;
-    if (oranges < 0 || oranges > 2) continue;
-    return [
-      ...Array<FruitKind>(cherries).fill("cherry"),
-      ...Array<FruitKind>(grapes).fill("grape"),
-      ...Array<FruitKind>(oranges).fill("orange"),
-      "apple",
-    ];
-  }
+/**
+ * The baskets a run can start from. Every run used to start from the same nine plain fruit, so the first cycle was always a
+ * merge cycle and every run began alike. Now the pool is `BASKET_CORE`, six of the merging fruit, and the three of one basket,
+ * which lean the run a way of its own from the first hand: bigger merges, blasts, fruit that score while they stay, or rot.
+ */
+export type BasketId = "ladder" | "blast" | "garden" | "rot";
+export const BASKET_CORE: readonly FruitKind[] = ["cherry", "cherry", "cherry", "grape", "grape", "orange"];
+export const BASKETS: Readonly<Record<BasketId, { name: string; fruit: readonly FruitKind[] }>> = {
+  ladder: { name: "Ladder basket", fruit: ["orange", "gourd", "apple"] },
+  blast: { name: "Blast basket", fruit: ["chili", "durian", "apple"] },
+  garden: { name: "Garden basket", fruit: ["apple", "apple", "banana"] },
+  rot: { name: "Rot basket", fruit: ["banana", "prune", "apple"] },
+};
+export const BASKET_IDS = Object.keys(BASKETS) as BasketId[];
+
+/** The basket a run starts from: one of them, by the run's own stream. */
+export function rollBasket(rng: Rng): BasketId {
+  return rng.pick(BASKET_IDS);
 }
 
-export function newRun(seed: number): Run {
+/** The starting pool of a basket: the core and the basket's own three. */
+export function poolOf(basket: BasketId): FruitKind[] {
+  return [...BASKET_CORE, ...BASKETS[basket].fruit];
+}
+
+/**
+ * A new run. With `opening`, it starts at a pick, before the first hand is dealt: one fruit of three to add to the basket, so
+ * the first hand is already partly the player's own. Without it the first hand is dealt at once (the first game's tutorial,
+ * which teaches the shelf first and the pick when it comes; and the tests).
+ */
+export function newRun(seed: number, opening = false): Run {
   const rng = new Rng(seed);
-  const pool = rollPool(rng);
+  const basket = rollBasket(rng);
+  const pool = poolOf(basket);
   const run: Run = {
     seed: rng.seed,
     nextId: 1,
     boss: bossFor(seed),
+    basket,
     pool,
     draw: rng.shuffle(pool),
     discard: [],
@@ -580,7 +598,8 @@ export function newRun(seed: number): Run {
     message: "",
     sounds: [],
   };
-  deal(run);
+  if (opening) offer(run);
+  else deal(run);
   return run;
 }
 
@@ -636,6 +655,7 @@ export function withGlazes(run: Run): Run {
     handGlazes: plain(run.hand, run.handGlazes),
     queueGlazes: plain(run.queue, run.queueGlazes),
     regrowing: run.regrowing ?? [],
+    basket: run.basket ?? "ladder",
     shop: run.shop === null ? null : { ...run.shop, glaze: run.shop.glaze ?? null, glazing: run.shop.glazing ?? false },
   };
 }
@@ -2008,7 +2028,9 @@ function pickStep(run: Run, keys: Keys): void {
     run.poolGlazes.push(null);
     // Shuffled into what is still to be dealt, so a new fruit shows up soon.
     const rng = new Rng(run.seed);
-    const at = rng.int(0, run.draw.length);
+    // The opening pick, taken before the first hand is dealt, is dealt first, so it is in that hand (a Wide one too).
+    const opening = run.cycle === 1 && run.turn === 1;
+    const at = opening ? 0 : rng.int(0, run.draw.length);
     run.draw.splice(at, 0, kind);
     run.drawGlazes.splice(at, 0, null);
     run.seed = rng.seed;

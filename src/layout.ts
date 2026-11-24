@@ -1,6 +1,6 @@
 import { FRUITS, pumpkinSeedText, type FruitKind } from "./rules/fruits.ts";
 import { GLAZES, type Glaze } from "./rules/glazes.ts";
-import { BOSS_NAME, bossNow, newRun, RENT, withGlazes, type Run } from "./rules/jar.ts";
+import { BASKETS, BOSS_NAME, bossNow, newRun, RENT, withGlazes, type Run } from "./rules/jar.ts";
 import { KEYWORDS, keywordsIn } from "./rules/terms.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
@@ -51,10 +51,13 @@ export function moment(run: Run): string {
   return "";
 }
 
-/** The run the play screen starts with: the one read from the player's files (a copy: the game state's is not to be changed), or a new one. */
-export function startingRun(saved: unknown, seed: number): Run {
+/**
+ * The run the play screen starts with: the one read from the player's files (a copy: the game state's is not to be changed), or a
+ * new one, which opens with a pick (`opening`) once the first game's tutorial is over.
+ */
+export function startingRun(saved: unknown, seed: number, opening = false): Run {
   // A run kept before glazes has none: `withGlazes` makes every fruit of it plain.
-  return saved === null || saved === undefined ? newRun(seed) : withGlazes(JSON.parse(JSON.stringify(saved)) as Run);
+  return saved === null || saved === undefined ? newRun(seed, opening) : withGlazes(JSON.parse(JSON.stringify(saved)) as Run);
 }
 
 
@@ -462,4 +465,14 @@ export function dashes(from: number, to: number, dash: number, gap: number): num
   const tops: number[] = [];
   for (let y = from; y + dash <= to; y += dash + gap) tops.push(y);
   return tops;
+}
+
+/** Whether a run is at its opening pick: the one before its first hand. */
+export function opensAt(run: Run): boolean {
+  return run.phase === "pick" && run.cycle === 1 && run.turn === 1;
+}
+
+/** The pick's heading: the opening pick's is the basket the run starts from (short enough to stand between the cycle and the pool). */
+export function pickHeading(run: Run): string {
+  return opensAt(run) ? BASKETS[run.basket].name : "Pick a fruit";
 }

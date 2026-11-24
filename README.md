@@ -2,7 +2,7 @@
 
 A roguelike where you build a pool of fruit and the jar plays it. Each turn you're dealt 4 fruits from your pool and you arrange
 them on a tray over the jar. They all drop together, each straight down from its slot with a small wobble, physics settles the pile, merges and blasts score, and then Simmer fruit score at
-Resolve. After every second turn you pick 1 of 3 new fruits, or skip for a coin (two picks a cycle, so the pool stays small enough
+Resolve. A run opens with a pick of 1 of 3 new fruits, and after every second turn you pick again, or skip for a coin (two picks a cycle, so the pool stays small enough
 that every fruit in it comes up). Five turns make a rent cycle; miss rent and the run ends.
 Between cycles the shop sells fruit, an item, a removal and rerolls for the coins the rent left over.
 
@@ -117,8 +117,14 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 
 ## What's in this first slice
 
-- Starting pool: 1 Apple and 8 starters rolled from 3–5 Cherries, 2–4 Grapes and 0–2 Oranges. It's dealt like a deck and
+- Starting pool: nine fruit. Six are the same every run (3 Cherries, 2 Grapes, 1 Orange: `BASKET_CORE`), and three come from
+  the run's basket, rolled from four (`BASKETS`): Ladder (Orange, Gourd, Apple), Blast (Chili, Durian, Apple), Garden (Apple,
+  Apple, Banana) or Rot (Banana, Prune, Apple). Every run used to start from the same plain merging fruit (1 Apple and 8
+  rolled from Cherries, Grapes and Oranges), so every first cycle was a merge cycle. The pool is dealt like a deck and
   reshuffles when empty.
+- The opening pick: a run starts at a pick of 1 of 3, before its first hand, headed with its basket's name. The fruit taken
+  is dealt in the first hand. The first game's tutorial run has none: it teaches the shelf first, and the pick when it comes
+  after turn 2.
 - The merge ladder: Cherry → Grape → Orange → Melon → Watermelon → Giant Pumpkin.
 - Fresh fruit score when they land or are made by a merge. Simmer fruit (Apple, Banana) score at every Resolve. Lemon is a
   Booster: fruit touching it score double, and it blocks merges next to it.

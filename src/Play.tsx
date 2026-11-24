@@ -10,7 +10,7 @@ import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { PauseButton } from "./KeyHint.tsx";
 import { Lanes } from "./Lanes.tsx";
 import { LastTurn } from "./LastTurn.tsx";
-import { atRest, crossed, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, shelfSlot, startingRun } from "./layout.ts";
+import { atRest, crossed, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, opensAt, shelfSlot, startingRun } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { PickBoard } from "./PickBoard.tsx";
 import { BOARD_W, HUD_X, JAR_MID, SHELF_Y, shelfOf, SLOT } from "./places.ts";
@@ -81,7 +81,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, hit: 0, punch: 99, punchSize: 0, seenPopup: 0, peek: false, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed, tutorial >= LESSONS.length), reports: [] as FruitReport[], slow: 0, hit: 0, punch: 99, punchSize: 0, seenPopup: 0, peek: false, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -117,7 +117,7 @@ export function Play() {
     // The run is over: Enter plays another, from a new seed.
     if (over && input.pressed("Enter")) {
       start();
-      s.run = newRun(seed + 1);
+      s.run = newRun(seed + 1, tutorial >= LESSONS.length);
       s.intro = 0;
     }
   });
@@ -131,7 +131,8 @@ export function Play() {
     if (s.run.phase !== "pick") s.peek = false;
     else if (!s.whole && input.pressed("J")) s.peek = !s.peek;
     else if (s.peek && !s.whole && (input.pressed("Enter") || input.pressed("Space"))) s.peek = false;
-    const looking = s.whole || s.peek || peeking;
+    // Nor while the opening still plays over a run that starts at its pick: the cards come up once the kitchen is laid out.
+    const looking = s.whole || s.peek || peeking || (opensAt(s.run) && s.intro < INTRO.end);
     if (s.whole && (input.pressed("Enter") || input.pressed("Space") || input.pressed("D"))) s.whole = false;
     else if (!looking && input.pressed("D")) s.whole = true;
     if (s.run.phase !== "order" || looking) s.drag = false;
@@ -371,7 +372,7 @@ export function Play() {
   };
   const tapAgain = () => {
     start();
-    s.run = newRun(seed + 1);
+    s.run = newRun(seed + 1, tutorial >= LESSONS.length);
     s.intro = 0;
   };
   const tapTitle = () => {
@@ -499,7 +500,7 @@ export function Play() {
         <PauseButton pressKey={s.whole || s.run.phase === "over" || s.run.phase === "won" ? undefined : "Escape"} onPress={tapPause} />
       </Flex>
 
-      {picking && <PickBoard run={run} paused={paused} hints={hints} keys={keys} coached={coached} onChoose={click} onAway={away} onTake={tapConfirm} onSkip={tapDrop} onLessonNext={lessonNext} onLessonSkip={lessonSkip} peek={s.peek} onPeek={tapPeek} />}
+      {picking && !(opensAt(run) && s.intro < INTRO.end) && <PickBoard run={run} paused={paused} hints={hints} keys={keys} coached={coached} onChoose={click} onAway={away} onTake={tapConfirm} onSkip={tapDrop} onLessonNext={lessonNext} onLessonSkip={lessonSkip} peek={s.peek} onPeek={tapPeek} />}
       {ended && <CycleEnd run={run} keys={keys} onGoOn={tapEnd} onAgain={tapAgain} onTitle={tapTitle} />}
       {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} onPoint={point} onClick={click} onAway={away} onConfirm={tapConfirm} onSpace={tapDrop} onPool={openPool} coached={coached !== null} />}
       {/* After the shop, so the pool board opened from it (its basket, or D) is over it. */}
