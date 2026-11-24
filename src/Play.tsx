@@ -44,6 +44,9 @@ const SLOW_TIME = 0.4;
  */
 const PUNCH_PX = 5;
 const PUNCH_TIME = 0.3;
+/** And the jar's colours are split for the first of it (assets/blast.glsl): this many pixels apart for a full punch, for this long. */
+const SPLIT_PX = 4;
+const SPLIT_TIME = 0.1;
 const HIT_SPEED = 0.12;
 const HIT_STEPS = 1;
 /** The line a turn's chain ends with ("10 links, 174 points") stands on a dark band, as the last turn's banner does: it is wider than the jar, and the last scores are still rising behind it. About how wide a letter of it is, and the band's height. */
@@ -418,7 +421,7 @@ export function Play() {
 
       {/* The jar, what is drawn on it and its points: all raised together when it is picked out. */}
       <Raise id="jar">
-      <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(run.effects.filter((e) => e.kind === "boom")) + (s.punch < PUNCH_TIME ? PUNCH_PX * s.punchSize * (1 - s.punch / PUNCH_TIME) * Math.cos(s.punch * 90) : 0)} angle={angle} />
+      <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(run.effects.filter((e) => e.kind === "boom")) + (s.punch < PUNCH_TIME ? PUNCH_PX * s.punchSize * (1 - s.punch / PUNCH_TIME) * Math.cos(s.punch * 90) : 0)} angle={angle} split={s.punch < SPLIT_TIME ? SPLIT_PX * s.punchSize : 0} />
       <JarMarks run={run} angle={angle} onPoint={point} onChoose={click} />
       {/* The chain, over the rim: it counts up with each link, and grows and turns gold at each tier. */}
       {linked > 0 && (

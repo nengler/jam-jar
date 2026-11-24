@@ -160,3 +160,46 @@ export const GLAZE_COLOR: Readonly<Record<Glaze, string>> = {
   seeded: "#75a743",
   anchored: "#819796",
 };
+
+/** A colour as the three numbers a shader takes, each 0 to 1. */
+function rgbOf(hex: string): [number, number, number] {
+  return [parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255];
+}
+
+/** The shader a special fruit is drawn through (assets/fruit.glsl), and the fruit that shimmer whatever is done to them. */
+export const FRUIT_SHADER = "fruit.glsl";
+const SHIMMERS: Readonly<Partial<Record<FruitKind, string>>> = { goldenapple: GOLD, dragonfruit: "#df84a5" };
+const NO_PARAMS: readonly number[] = [];
+
+/** What can be on a fruit that changes how it is drawn. */
+export interface FruitState {
+  rotten?: boolean;
+  honeyed?: boolean;
+  frozen?: boolean;
+  glaze?: Glaze | null;
+  /** Sets one fruit's shimmer apart in time from another's: its id, or its place. */
+  seed?: number;
+}
+
+/**
+ * Whether a fruit is drawn through the shader: a Frozen, rotten or honeyed one, a glazed one, a Golden Apple, a Legendary. The
+ * rest are plain sprites, which is most of a jar: each shaded sprite is drawn on its own.
+ */
+export function fruitShaded(kind: FruitKind, state: FruitState): boolean {
+  return state.frozen === true || state.rotten === true || state.honeyed === true || (state.glaze ?? null) !== null || SHIMMERS[kind] !== undefined;
+}
+
+/**
+ * The numbers the shader takes for a fruit (see assets/fruit.glsl): its look (frost, rot and honey come before a shimmer, as their
+ * tints do), the shimmer's colour (its glaze's, or its kind's), and where in its cycle it is.
+ */
+export function fruitParams(kind: FruitKind, state: FruitState): readonly number[] {
+  if (!fruitShaded(kind, state)) return NO_PARAMS;
+  const offset = (((state.seed ?? 0) * 0.37) % 1 + 1) % 1;
+  if (state.frozen === true) return [2, 0, 0, 0, offset];
+  if (state.rotten === true) return [4, 0, 0, 0, offset];
+  if (state.honeyed === true) return [3, 0, 0, 0, offset];
+  const glaze = state.glaze ?? null;
+  const [r, g, b] = rgbOf(glaze !== null ? GLAZE_COLOR[glaze] : (SHIMMERS[kind] ?? LIGHT));
+  return [1, r, g, b, offset];
+}

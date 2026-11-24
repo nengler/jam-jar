@@ -504,3 +504,19 @@ export function countdowns(run: Run): Countdown[] {
     return [{ id: f.id, x: Math.round(Math.max(JAR.left + COUNT_INSET, f.x - f.r * 0.7)), y: Math.round(Math.min(JAR.floor - COUNT_INSET, f.y + f.r * 0.7)), turns, what }];
   });
 }
+
+/** How many seconds a blast's ripple takes to run out through the jar (assets/blast.glsl): as long as its picture shows. */
+const RIPPLE_TIME = 0.5;
+
+/**
+ * What the jar's shader is given (assets/blast.glsl): the two newest blasts, each as where it is on screen and how far through
+ * its ripple it is (0 to 1), then how far apart a big score splits the colours, in pixels. `angle` is the jar's lean, which
+ * moves a blast as it moves the fruit.
+ */
+export function blastParams(blasts: readonly { x: number; y: number; age: number }[], angle: number, cx: number, cy: number, split: number): number[] {
+  const newest = leaned(blasts.filter((b) => b.age < RIPPLE_TIME), angle, cx, cy).sort((a, b) => a.age - b.age);
+  const [a, b] = newest;
+  // The first step of a blast is at age 0, which the shader reads as none: it starts a hair in.
+  const through = (blast: { age: number }) => Math.max(0.001, blast.age / RIPPLE_TIME);
+  return [a?.x ?? 0, a?.y ?? 0, a === undefined ? 0 : through(a), b?.x ?? 0, b?.y ?? 0, b === undefined ? 0 : through(b), Math.round(split), 0];
+}
