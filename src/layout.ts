@@ -1,6 +1,6 @@
-import { FRUITS, pumpkinSeedText, type FruitKind } from "./rules/fruits.ts";
+import { BANANA, FRUITS, pumpkinSeedText, type FruitKind } from "./rules/fruits.ts";
 import { GLAZES, type Glaze } from "./rules/glazes.ts";
-import { BOSS_NAME, bossNow, newRun, OPENING_PICKS, RENT, withGlazes, type Run } from "./rules/jar.ts";
+import { BOSS_NAME, bossNow, COCONUT_TURNS, FROZEN_TURNS, JAR, newRun, OPENING_PICKS, RENT, withGlazes, type Run } from "./rules/jar.ts";
 import { KEYWORDS, keywordsIn } from "./rules/terms.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
@@ -476,4 +476,31 @@ export function opensAt(run: Run): boolean {
 export function pickHeading(run: Run): string {
   if (!opensAt(run)) return "Pick a fruit";
   return OPENING_PICKS - run.opening === 0 ? "First fruit" : "Second fruit";
+}
+
+/** How far inside the jar's wall and floor the middle of a count's badge stays, in pixels. */
+const COUNT_INSET = 11;
+
+/** A count of turns shown on a fruit in the jar: what it counts down to, and where its badge goes (the fruit's lower left). */
+export interface Countdown {
+  id: number;
+  x: number;
+  y: number;
+  turns: number;
+  what: "ice" | "crack" | "rot";
+}
+
+/**
+ * The fruit in the jar that are counting down, and how many turns each has left: a frozen one until it thaws, a Coconut until it
+ * cracks, a Banana until it rots. One badge a fruit: ice first, since a frozen fruit's other clock matters less than its ice.
+ */
+export function countdowns(run: Run): Countdown[] {
+  return run.fruits.flatMap((f): Countdown[] => {
+    if (!f.landed) return [];
+    const turns = f.frozen ? (f.ice ?? FROZEN_TURNS) : f.kind === "coconut" ? COCONUT_TURNS - f.age : f.kind === "banana" && !f.rotten ? BANANA.rots - f.age : 0;
+    if (turns <= 0) return [];
+    const what = f.frozen ? "ice" : f.kind === "coconut" ? "crack" : "rot";
+    // Inside the jar: a fruit on the floor or against the left wall has its badge moved in from them.
+    return [{ id: f.id, x: Math.round(Math.max(JAR.left + COUNT_INSET, f.x - f.r * 0.7)), y: Math.round(Math.min(JAR.floor - COUNT_INSET, f.y + f.r * 0.7)), turns, what }];
+  });
 }

@@ -214,12 +214,11 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
   },
   fig: {
     family: "Rot",
-    roles: ["Late scaler", "Build-around"],
-    planned: "Also pays out when a Fruit Fly eats it, so Rot runs on its own: Banana rots the Fig, a Fruit Fly eats it, every Banana grows.",
+    roles: ["Build-around"],
     works: [
-      ["Banana", "rots it, and gains from it"],
-      ["Chili", "destroys it"],
-      ["Durian", "destroys it"],
+      ["Fruit Fly", "spoils it for 40, then eats it for 24"],
+      ["Prune", "rots it for 40, and it is then a rotten neighbour"],
+      ["Banana", "rots it, late in a cycle"],
     ],
   },
   prune: {

@@ -1,7 +1,8 @@
 import { Entity, Flex, Line, Shape, Sprite } from "@tsengine/runtime/jsx";
 
-import { blastBits, blastFlash, placed } from "./layout.ts";
+import { blastBits, blastFlash, countdowns, placed } from "./layout.ts";
 import { BOOM_LIFE, JAR, lean, preservable, RIM, type Run } from "./rules/jar.ts";
+import { TurnsMark } from "./TurnsMark.tsx";
 import { BAD, BAR_FILL, CARD_SLICE, GOLD, INK, LIGHT, LINK, SELECT } from "./theme.ts";
 
 /** The pixel explosion's frames (Kenney Explosion Pack), each centred on a 96-pixel square, drawn at 2x like all the art. */
@@ -30,6 +31,10 @@ export function JarMarks({ run, angle: drawn, onPoint, onChoose }: { run: Run; a
   return (
     <Entity x={JAR.right} y={JAR.floor} rotation={drawn ?? lean(run)}>
       <Entity x={-JAR.right} y={-JAR.floor}>
+        {/* What a fruit is counting down to, in turns: its thaw, a Coconut's crack, a Banana's rot. */}
+        {countdowns(run).map((mark) => (
+          <TurnsMark key={mark.id} mark={mark} />
+        ))}
         {/* The Preserves Jar: an amber frame round each fruit kept, and an arrow over the one the cursor is on. */}
         {keptFruit.map((f) => (
           <Flex key={f.id} x={f.x - f.r - 4} y={f.y - f.r - 4} width={f.r * 2 + 8} height={f.r * 2 + 8} backgroundImage={SELECT} slice={CARD_SLICE} />
