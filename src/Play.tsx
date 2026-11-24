@@ -167,8 +167,8 @@ export function Play() {
         confirm: !looking && (input.pressed("Enter") || s.click),
         drop: !looking && (input.pressed("Space") || s.drop),
         point: looking ? -1 : s.point,
-        // A press on the shop's Buy button is off the shelf, but it must not put back the card it buys: it is the one confirm
-        // with no place pointed at. (The pick's Take button stands among the cards, so it is not off them.)
+        // A press on a Take or Buy button is the one confirm with no place pointed at: it must not put back the card it takes.
+        // (Both stand among the cards, under the chosen one, so neither is off them.)
         away: !looking && s.away && !(s.click && s.point < 0),
       },
       s.reports
