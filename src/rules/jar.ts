@@ -105,7 +105,12 @@ export function bossNow(run: Run, cycle = run.cycle): Boss | null {
   return bossCycle(cycle) ? run.boss : null;
 }
 
-export const RENT: readonly number[] = [120, 180, 240, 320, 400];
+/**
+ * The rent of each cycle. The first two were 120 and 180, which no bot ever missed: a player who never picks and never orders a
+ * hand scores about 300 in a first cycle. At 240 and 260 that player misses the first in 1 run of 5 and the second in 2 of 5,
+ * and one who picks and orders in 1 of 11 and 1 of 5 (the README's bots, "The opening").
+ */
+export const RENT: readonly number[] = [240, 260, 300, 350, 400];
 /** Points over the rent that make one coin. */
 export const POINTS_PER_COIN = 10;
 /** Seconds between releases of the tray, at the least. In the Flip jar a release also waits for the pile to have been calm for
