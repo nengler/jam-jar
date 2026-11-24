@@ -153,7 +153,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   pomegranate: { name: "Pomegranate", radius: FRUIT_ART.pomegranate.radius, points: 6, scoring: "fresh", touchWeight: 1, text: "Fresh 6. Exploded or Merged: Burst 5." },
   blueberry: { name: "Blueberry", radius: FRUIT_ART.blueberry.radius, points: 6, scoring: "fresh", touchWeight: 3, text: "Fresh 6. Dense 3." },
   lemon: { name: "Lemon", radius: FRUIT_ART.lemon.radius, points: 0, scoring: "booster", touchWeight: 1, text: "Booster. Double." },
-  prune: { name: "Prune", radius: FRUIT_ART.prune.radius, points: 8, scoring: "simmer", touchWeight: 1, text: "Rotten. Simmer 8 per Rotten neighbour." },
+  prune: { name: "Prune", radius: FRUIT_ART.prune.radius, points: 8, scoring: "simmer", touchWeight: 1, text: "Simmer 8 per Rotten neighbour." },
   fig: { name: "Fig", radius: FRUIT_ART.fig.radius, points: 8, scoring: "fresh", touchWeight: 1, text: `Fresh 8. Turned Rotten: +${FIG.rot}.` },
   fruitfly: { name: "Fruit Fly", radius: FRUIT_ART.fruitfly.radius, points: 24, scoring: "simmer", touchWeight: 1, text: "Each turn, Eat a Rotten fruit: +24, Hatch; Spoil." },
   kiwi: { name: "Kiwi", radius: FRUIT_ART.kiwi.radius, points: 2, scoring: "fresh", touchWeight: 1, text: "Fresh 2. Copy." },
