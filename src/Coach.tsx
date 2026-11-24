@@ -9,8 +9,8 @@ import { CARD_SLICE, DIM, GOLD, LIGHT, PLAQUE, SELECT } from "./theme.ts";
 /**
  * The tutorial's card, in the first game: one lesson on a dark slate, its title in gold. It does not count the lessons, and
  * it goes when the player has done what it says: only a lesson that just tells them something (the rent, the pool, the shop) has a
- * "Got it". "No tips" ends the tutorial. It is `width` wide. `wide` lays it out along the foot of the screen, the words beside
- * the button, for where there is no room for a tall card.
+ * "Got it". "No tips" ends the tutorial. It is `width` wide. `wide` lays it out in a strip across the screen, the words beside
+ * the buttons, for where there is no room for a tall card (the shop, over its awning).
  */
 export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { lesson: Lesson; keys: boolean; width: number; wide?: boolean; onNext: () => void; onSkip: () => void }) {
   return (
@@ -18,7 +18,7 @@ export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { l
       <Panel image={PLAQUE} gap={2}>
         <Flex direction={wide ? "row" : "column"} alignItems={wide ? "center" : "stretch"} gap={wide ? 12 : 2}>
           <Flex direction="column" gap={0}>
-            {/* Along the foot of the screen there is room for the words only. */}
+            {/* In a strip across the screen there is room for the words only. */}
             {!wide && (
               <Text color={GOLD}>{lesson.title}</Text>
             )}

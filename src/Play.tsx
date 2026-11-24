@@ -17,7 +17,7 @@ import { PoolBasket, PoolBasketBack } from "./PoolBasket.tsx";
 import { PoolBoard } from "./PoolBoard.tsx";
 import { PreserveBoard } from "./PreserveBoard.tsx";
 import { RentBoard } from "./RentBoard.tsx";
-import { acts, lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/tutorial.ts";
+import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/tutorial.ts";
 import { Lit } from "./lit.ts";
 import { learn } from "./settings.ts";
 import { Shelf, ShelfTips } from "./Shelf.tsx";
@@ -67,7 +67,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonActed: "", drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -187,9 +187,8 @@ export function Play() {
           s.lessonSeen = tutorial;
           s.lessonHand = s.run.hand.join();
           s.lessonCursor = s.run.cursor;
-          s.lessonActed = acts(s.run);
         }
-      } else if (lessonDone(lesson, s.run, { looked: s.tip || s.run.cursor !== s.lessonCursor, moved: s.run.hand.join() !== s.lessonHand, acted: acts(s.run) !== s.lessonActed })) toLesson(tutorial + 1);
+      } else if (lessonDone(lesson, s.run, { looked: s.tip || s.run.cursor !== s.lessonCursor, moved: s.run.hand.join() !== s.lessonHand })) toLesson(tutorial + 1);
     }
     // A lesson that comes up while the jar plays holds it still (Main.tsx) until its "Got it", so the moment cannot pass, and take
     // the card with it, before the player has read it. Only once its card is on screen: with nothing over the play screen.
@@ -455,9 +454,9 @@ export function Play() {
       {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} onPoint={point} onClick={click} onAway={away} onConfirm={tapConfirm} onSpace={tapDrop} onPool={openPool} />}
       {/* After the shop, so the pool board opened from it (its basket, or D) is over it. */}
       {s.whole && <PoolBoard run={run} chosenAt={s.poolAt} onLook={lookAt} onLookAway={lookAway} onClose={closePool} />}
-      {/* The first shop of the first game: the lesson lies along the foot of the screen, under the shop's actions, until the player does something there. */}
+      {/* The first shop of the first game: the lesson lies along the top of the screen, over the awning, so the shop's actions, its messages and the labels' Buy buttons stay clear. */}
       {run.phase === "shop" && coached !== null && (
-        <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center">
+        <Flex left={0} right={0} top={0} direction="row" justifyContent="center">
           <Coach wide lesson={coached} keys={keys} width={620} onNext={lessonNext} onSkip={lessonSkip} />
         </Flex>
       )}

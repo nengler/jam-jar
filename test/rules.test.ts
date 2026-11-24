@@ -1287,7 +1287,7 @@ test("the run keeps what its end board shows: its best turn, and what earned its
 });
 
 test("the tutorial's lessons: each waits for its moment, and is done when the player has done it or the moment has passed", () => {
-  const none = { looked: false, moved: false, acted: false };
+  const none = { looked: false, moved: false };
   const at = (phase: Run["phase"]): Run => ({ ...newRun(7), phase });
   const lesson = (id: string) => LESSONS.find((l) => l.id === id)!;
   assert.equal(lessonAt(0)!.id, "shelf");
@@ -1301,7 +1301,7 @@ test("the tutorial's lessons: each waits for its moment, and is done when the pl
   assert.equal(lessonDone(lesson("shelf"), at("drop"), none), true, "its moment passed");
   assert.equal(lessonDone(lesson("order"), at("order"), { ...none, looked: true }), false, "looking is not reordering");
   assert.equal(lessonDone(lesson("order"), at("order"), { ...none, moved: true }), true);
-  assert.equal(lessonDone(lesson("drop"), at("order"), { looked: true, moved: true, acted: true }), false, "only dropping ends it");
+  assert.equal(lessonDone(lesson("drop"), at("order"), { looked: true, moved: true }), false, "only dropping ends it");
   assert.deepEqual(LESSONS.filter((l) => l.told === true).map((l) => l.id), ["score", "rent", "pool", "shop", "chain"], "the five that only tell have a Got it");
   // The two that come up while the jar plays hold it still until their Got it: their moment cannot pass under them.
   assert.deepEqual(LESSONS.filter((l) => l.holds === true).map((l) => l.id), ["score", "chain"]);
@@ -1315,10 +1315,9 @@ test("the tutorial's lessons: each waits for its moment, and is done when the pl
   assert.equal(lessonShows(lesson("score"), at("settle")), true);
   assert.equal(lessonShows(lesson("shop"), at("shop")), true);
   assert.equal(lessonDone(lesson("shop"), at("order"), none), true, "leaving the shop without buying puts it away");
-  assert.equal(lessonDone(lesson("shop"), at("shop"), { ...none, acted: true }), true, "it lies over the shop's words, so it goes when there is something to read");
   const shopping = inShop(10);
-  assert.equal(lessonDone(lesson("shop"), shopping, none), false, "nothing chosen yet");
-  assert.equal(lessonDone(lesson("shop"), press(shopping, { point: 1, confirm: true }), none), true, "a card chosen: the Buy button stands where it lies");
+  assert.equal(lessonDone(lesson("shop"), shopping, none), false, "nothing chosen: it stays until its Got it");
+  assert.equal(lessonDone(lesson("shop"), press(shopping, { point: 1, confirm: true }), none), true, "a label chosen: its keywords are told where the lesson lies");
   // Every lesson fits its card: a title, and words for the pointer and for the keyboard.
   for (const l of LESSONS) assert.ok(l.title.length <= 14 && l.text.length <= 90 && l.keysText.length <= 90, l.id);
 });
@@ -1610,7 +1609,7 @@ test("the chain's lesson waits for a chain of 5, shows while the jar plays, and 
   assert.equal(lessonShows(chain, at("settle", 5)), true);
   assert.equal(lessonShows(chain, at("tally", 5)), true);
   assert.equal(lessonShows(chain, at("order", 5)), false, "the chain is not on the jar while ordering");
-  assert.equal(lessonDone(chain, at("order", 5), { looked: true, moved: true, acted: true }), false, "it comes back with the next hand");
+  assert.equal(lessonDone(chain, at("order", 5), { looked: true, moved: true }), false, "it comes back with the next hand");
   assert.equal(chain.told, true);
 });
 
