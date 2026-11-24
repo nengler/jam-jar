@@ -9,20 +9,24 @@ interface KeyHintProps {
   /** What the key does. */
   label: string;
   color?: string;
+  /** The room the key takes, so the labels of a column of hints start in one line; the key is centred in it. */
+  keyWidth?: number;
 }
 
 
 /** A key and what it does (the font's capitals are the top 14 pixels of its 20-pixel line, so the name is set 4 down), for a row of hints: a key cap with the key's name on it, then the label. */
-export function KeyHint({ name, label, color = LIGHT }: KeyHintProps) {
+export function KeyHint({ name, label, color = LIGHT, keyWidth }: KeyHintProps) {
   return (
     <Flex direction="row" alignItems="center" gap={6} height={26}>
-      {name === "arrows" && <Flex width={54} height={26} backgroundImage="key-arrows.png" />}
-      {name === "updown" && <Flex width={54} height={26} backgroundImage="key-updown.png" />}
-      {name !== "arrows" && name !== "updown" && (
-        <Flex height={26} minWidth={26} paddingX={8} paddingTop={4} paddingBottom={2} backgroundImage="key.png" sliceTop={4} sliceBottom={8} sliceLeft={4} sliceRight={4} alignItems="center" justifyContent="center">
-          <Text color={INK}>{name}</Text>
-        </Flex>
-      )}
+      <Flex direction="row" justifyContent="center" minWidth={keyWidth ?? 0}>
+        {name === "arrows" && <Flex width={54} height={26} backgroundImage="key-arrows.png" />}
+        {name === "updown" && <Flex width={54} height={26} backgroundImage="key-updown.png" />}
+        {name !== "arrows" && name !== "updown" && (
+          <Flex height={26} minWidth={26} paddingX={8} paddingTop={4} paddingBottom={2} backgroundImage="key.png" sliceTop={4} sliceBottom={8} sliceLeft={4} sliceRight={4} alignItems="center" justifyContent="center">
+            <Text color={INK}>{name}</Text>
+          </Flex>
+        )}
+      </Flex>
       <Text color={color}>{label}</Text>
     </Flex>
   );

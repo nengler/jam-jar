@@ -41,9 +41,9 @@ import {
 } from "./theme.ts";
 
 /** The stall: five labels in a row standing on its counter (three fruit, the item and a glaze), and how far the chosen one is raised. */
-const CARD_W = 120;
+const CARD_W = 124;
 const CARD_H = 200;
-const CARD_GAP = 6;
+const CARD_GAP = 4;
 const CARD_LIFT = 10;
 /**
  * Under the chosen label, its Buy button and the gap over it, as the pick's Take button is under its chosen card: the button is
@@ -76,9 +76,9 @@ const BAR_MESSAGE_W = 280;
  * are centred across it, and the item (48 x 40) stands on the cloth.
  */
 const PICTURE_W = Math.max(64, biggestFruit(OFFERED));
-const PICTURE_H = 76;
+const PICTURE_H = 62;
 const BASKET_W = 56;
-const BASKET_Y = 34;
+const BASKET_Y = 20;
 const CLOTH_W = 60;
 const ITEM_W = 48;
 /** How deep a fruit sits in its basket: this share of its height is below the basket's rim. */
@@ -191,7 +191,7 @@ function OnCloth({ item }: { item: ItemKind | null }) {
  */
 function OnLabel({ price, afford }: { price: number; afford: boolean }) {
   return (
-    <Flex left={10} top={10}>
+    <Flex left={8} top={6}>
       <Price price={price} afford={afford} />
     </Flex>
   );
@@ -226,7 +226,7 @@ interface OfferProps {
 function Offer({ at, chosen, item, drop, opacity, onClick, buy, onBuy, children }: OfferProps) {
   return (
     <Flex height={CARD_H + CARD_LIFT + BUY_ROOM} direction="column" alignItems="center" paddingTop={chosen ? 0 : CARD_LIFT} y={-CARD_DROP * (1 - drop)} opacity={opacity}>
-      <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={14} paddingBottom={buy ? LABEL_FOOT + BUY_TUCK : LABEL_FOOT} backgroundImage={labelFor(chosen, item)} slice={LABEL_SLICE} focusable={false} onPress={() => onClick(at)}>
+      <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={10} paddingBottom={buy ? LABEL_FOOT + BUY_TUCK : LABEL_FOOT} backgroundImage={labelFor(chosen, item)} slice={LABEL_SLICE} focusable={false} onPress={() => onClick(at)}>
         {children}
       </Flex>
       {/* What buys the chosen label, on its foot, as the pick's Take button: a tap or a click on a label only chooses it, so it
@@ -248,7 +248,7 @@ function Words({ name, text }: { name: string; text: string }) {
         {name}
       </Text>
       <Flex width={CARD_W - 12} height="grow" direction="column" alignItems="center" overflow="scroll" scrollbarColor={INK_SOFT}>
-        <RuleText x={0} y={0} width={CARD_W - 20} text={text} color={INK_SOFT} accent={KEYWORD} />
+        <RuleText x={0} y={0} width={CARD_W - 14} text={text} color={INK_SOFT} accent={KEYWORD} />
       </Flex>
     </Flex>
   );

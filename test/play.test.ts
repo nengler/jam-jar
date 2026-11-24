@@ -209,7 +209,10 @@ test("a run is kept once a hand has been played, and one that ends leaves nothin
   // Lose it: the last turn of a cycle with no score (an empty jar: a fruit that Simmers would score, and be tallied first).
   const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run } };
   play.s.run = { ...play.s.run, turn: 5, phase: "settle", hand: [], fruits: [], calmTime: 10 };
+  // The end board comes up a second and a half after the jar settles.
   step("_*5");
+  assert.equal(play.s.run.phase, "tally");
+  step("_*100");
   assert.equal(play.s.run.phase, "over");
   assert.equal(useGame.getState().hasSave, false);
   assert.ok(!backend.stored.has("run"));
