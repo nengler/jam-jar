@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { blastBits, blastFlash, blastJolt, cardText, countdowns, fruitResults, keywordResults, motes, poolRows, termsOf, TILT_TIME, tilted } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
-import { APPLE, BANANA, FRUITS, QUINCE, RASPBERRY, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
+import { APPLE, BANANA, FIG, FRUITS, QUINCE, RASPBERRY, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
@@ -268,14 +268,16 @@ test("two touching Cherries merge into a Grape and score its points", () => {
   assert.equal(run.cycleScore, FRUITS.grape.points);
 });
 
-test("a Lemon blocks merges next to it", () => {
+test("a Merge touching a Lemon is not stopped by it, and scores double", () => {
   const run = jarWith([
     fruit(1, "cherry", 150, JAR.floor - 5, [2, 3]),
     fruit(2, "cherry", 160, JAR.floor - 5, [1, 3]),
     fruit(3, "lemon", 155, JAR.floor - 16, [1, 2]),
   ]);
   for (let i = 0; i < 5; i++) simulate(run, DT);
-  assert.equal(run.fruits.filter((f) => f.kind === "cherry").length, 2);
+  assert.equal(run.fruits.filter((f) => f.kind === "cherry").length, 0);
+  assert.equal(run.cycleScore, 2 * FRUITS.grape.points);
+  assert.ok(run.popups.some((p) => p.text === `Merge +${2 * FRUITS.grape.points} x2`));
 });
 
 test("a Chili touching 4 fruit explodes and scores what it destroys, with the explosion's bonus for each", () => {
@@ -641,16 +643,22 @@ test("a Fruit Fly eats a rotten fruit it touches and another hatches; it never e
   assert.equal(run.cycleScore, FRUITS.fruitfly.points);
 });
 
-test("a rotten Fig blown up makes every Banana score +1 for the rest of the run", () => {
-  const y = JAR.floor - 8;
-  const run = jarWith([{ ...fruit(1, "fig", 300, y), rotten: true }, fruit(3, "fig", 340, y)]);
-  run.fruits.push({ ...fruit(2, "chili", 320, y), lit: true, fuse: 0 });
-  simulate(run, DT);
-  assert.equal(run.bananaBonus, 1, "only the rotten one counts");
-  run.fruits = [fruit(4, "banana", 300, JAR.floor - 18)];
-  const before = run.cycleScore;
+test("a Fig scores once as it turns Rotten, whatever rotted it; and a Fruit Fly rots a neighbour, though it is not rotten", () => {
+  const y = JAR.floor - 18;
+  const run = jarWith([fruit(1, "prune", 300, y, [2]), fruit(2, "fig", 336, y, [1])]);
+  run.turn = 1;
   resolve(run);
-  assert.equal(run.cycleScore - before, BANANA.base + 1);
+  assert.equal(run.fruits[1]!.rotten, true);
+  assert.equal(run.earned["Fig"], FIG.rot);
+  run.phase = "settle";
+  resolve(run);
+  assert.equal(run.earned["Fig"], FIG.rot, "once");
+  assert.match(FRUITS.fig.text, new RegExp(`Turned Rotten: \\+${FIG.rot}\\.`));
+
+  const flies = jarWith([fruit(1, "fruitfly", 300, y, [2]), fruit(2, "cherry", 330, y, [1])]);
+  flies.turn = 1;
+  resolve(flies);
+  assert.deepEqual(flies.fruits.map((f) => [f.kind, f.rotten]), [["fruitfly", false], ["cherry", true]], "spoiled this turn, eaten the next");
 });
 
 test("a Kiwi becomes a copy of the landed fruit it touches, and stays a Kiwi on the bare floor", () => {
@@ -1366,7 +1374,7 @@ test("the cards of the fruit with rules of their own say the rules' numbers", ()
   assert.match(KEYWORDS.honeyed.text, new RegExp(`\\+${HONEY} `));
   assert.match(KEYWORDS.explode.text, new RegExp(`\\+${BLAST_BONUS.chili} \\(big \\+${BLAST_BONUS.durian}\\)`));
   assert.match(FRUITS.prune.text, new RegExp(`Simmer ${FRUITS.prune.points} per`));
-  assert.match(FRUITS.fruitfly.text, new RegExp(`\\+${FRUITS.fruitfly.points} and Hatch`));
+  assert.match(FRUITS.fruitfly.text, new RegExp(`\\+${FRUITS.fruitfly.points}, Hatch`));
   assert.match(FRUITS.pitaya.text, new RegExp(`^Simmer ${FRUITS.pitaya.points}\\.`));
 });
 
@@ -1719,18 +1727,18 @@ test("a chain: each merge is a link and the 5th link scores double; a landing is
   assert.equal(run.bestChain, 5);
 });
 
-test("a chain: a Blast is one link however many fruit it destroys, and a Sprout it sets off is one more", () => {
+test("a chain: a Chili's Blast is a link and one for each fruit it destroys, and a Sprout it sets off is one more", () => {
   const y = JAR.floor - 8;
   const run = jarWith([1, 2, 3, 4].map((id) => fruit(id, "cherry", 286 + id * 6, y)));
   run.fruits.push({ ...fruit(9, "chili", 300, y), lit: true, fuse: 0 });
   simulate(run, DT);
   assert.ok(!run.fruits.some((f) => f.kind === "cherry"), "all four destroyed");
-  assert.equal(run.chainLinks, 1);
+  assert.equal(run.chainLinks, 1 + 4);
 
   const seeded = jarWith([fruit(1, "seed", 300, y), fruit(2, "cherry", 310, y)]);
   seeded.fruits.push({ ...fruit(9, "chili", 290, y), lit: true, fuse: 0 });
   simulate(seeded, DT);
-  assert.equal(seeded.chainLinks, 2, "the Blast and the Sprout");
+  assert.equal(seeded.chainLinks, 4, "the Blast, the two fruit it destroyed and the Sprout");
 });
 
 test("a chain: each Simmer score at the tally is a link, shown as it shows, and a chain that reached a tier ends with its line", () => {
@@ -1787,10 +1795,10 @@ test("a chain: a blast set off by another blast adds two links", () => {
   let run = jarWith([fruit(1, "cherry", 300, y)]);
   run.fruits.push({ ...fruit(2, "chili", 290, y), lit: true, fuse: 0 }, fruit(3, "chili", 316, y));
   run = press(run, {});
-  assert.equal(run.chainLinks, 1, "the first blast");
+  assert.equal(run.chainLinks, 2, "the first blast, and the Cherry it destroyed");
   assert.equal(run.fruits.find((f) => f.id === 3)?.setOff, true, "it lit the other Chili");
   for (let i = 0; i < 30; i++) run = press(run, {});
-  assert.equal(run.chainLinks, 1 + SET_OFF_LINKS);
+  assert.equal(run.chainLinks, 2 + SET_OFF_LINKS);
 });
 
 test("glazes: the shop sells one a visit, put on a plain fruit of a kind it fits, paid for once it is on", () => {
@@ -1898,7 +1906,7 @@ test("Seeded: blown up or Crushed, a plain one grows where it was", () => {
   const regrown = run.fruits.filter((f) => f.kind === "cherry");
   assert.equal(regrown.length, 1, "it grows back at the end of the turn");
   assert.equal(regrown[0]?.glaze, undefined, "plain");
-  assert.equal(run.chainLinks, 2, "the blast and the regrowth");
+  assert.equal(run.chainLinks, 3, "the blast, the fruit it destroyed and the regrowth");
 
   const bomb = jarWith([]);
   bomb.fruits.push({ ...fruit(9, "chili", 290, y), lit: true, fuse: 0, glaze: "seeded" });

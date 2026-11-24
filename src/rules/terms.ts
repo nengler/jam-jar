@@ -26,7 +26,7 @@ export type Keyword =
   | "cluster"
   | "heavy"
   | "double"
-  | "sour"
+  | "spoil"
   | "dense"
   | "edge"
   | "copy"
@@ -68,7 +68,7 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   simmer: { name: "Simmer", text: "Scores this at the end of every turn." },
   booster: { name: "Booster", text: "Scores nothing itself." },
   merge: { name: "Merge", text: "Touching one of its kind turns both into this." },
-  exploder: { name: "Exploder", text: "Explodes when touching this many fruit." },
+  exploder: { name: "Exploder", text: "Explodes touching this many: a link each lost." },
   buried: { name: "Buried", text: "Explodes, big, under this many fruit." },
   explode: { name: "Explode", text: "Destroys nearby fruit: points +10 (big +14)." },
   exploded: { name: "Exploded", text: "When an explosion destroys it." },
@@ -84,8 +84,8 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   grow: { name: "Grow", text: "That kind scores this much more, all run." },
   cluster: { name: "Cluster", text: "Landing, its kind scores this more till rent." },
   heavy: { name: "Heavy", text: "Shoulders lighter fruit aside." },
-  double: { name: "Double", text: "Fruit touching it score x2." },
-  sour: { name: "Sour", text: "Fruit touching it can't Merge." },
+  double: { name: "Double", text: "Fruit and Merges touching it score x2." },
+  spoil: { name: "Spoil", text: "Each turn, turns one neighbour Rotten." },
   dense: { name: "Dense", text: "Counts as this many fruit, and lands as links." },
   edge: { name: "Edge", text: "Scores this more touching the floor or a wall." },
   copy: { name: "Copy", text: "Becomes the first fruit it lands on." },

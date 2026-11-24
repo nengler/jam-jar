@@ -73,6 +73,8 @@ export interface FruitDef {
 export const APPLE = { base: 4, edge: 5 };
 export const BANANA = { base: 4, ripen: 4, rots: 3 };
 export const HONEY = 4;
+/** A Fig scores `rot` once, as it turns Rotten: any rot beside it pays, and then it is a rotten neighbour for a Prune. */
+export const FIG = { rot: 20 };
 /**
  * The Ladder set (design doc, "Next fruit set: Ladder"): merge up, smash down. A Grape, Orange or Melon that is Smashed breaks
  * into 2 of the next size down, and a Watermelon into `SLICES` Slices, which score more together than it did. A Pumpkin Plunges:
@@ -150,10 +152,10 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   durian: { name: "Durian", radius: FRUIT_ART.durian.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Buried 3." },
   pomegranate: { name: "Pomegranate", radius: FRUIT_ART.pomegranate.radius, points: 6, scoring: "fresh", touchWeight: 1, text: "Fresh 6. Exploded or Merged: Burst 5." },
   blueberry: { name: "Blueberry", radius: FRUIT_ART.blueberry.radius, points: 6, scoring: "fresh", touchWeight: 3, text: "Fresh 6. Dense 3." },
-  lemon: { name: "Lemon", radius: FRUIT_ART.lemon.radius, points: 0, scoring: "booster", touchWeight: 1, text: "Booster. Double. Sour." },
+  lemon: { name: "Lemon", radius: FRUIT_ART.lemon.radius, points: 0, scoring: "booster", touchWeight: 1, text: "Booster. Double." },
   prune: { name: "Prune", radius: FRUIT_ART.prune.radius, points: 8, scoring: "simmer", touchWeight: 1, text: "Rotten. Simmer 8 per Rotten neighbour." },
-  fig: { name: "Fig", radius: FRUIT_ART.fig.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Exploded while Rotten: Bananas Grow 1." },
-  fruitfly: { name: "Fruit Fly", radius: FRUIT_ART.fruitfly.radius, points: 24, scoring: "simmer", touchWeight: 1, text: "Each turn, Eat a Rotten fruit: +24 and Hatch." },
+  fig: { name: "Fig", radius: FRUIT_ART.fig.radius, points: 8, scoring: "fresh", touchWeight: 1, text: `Fresh 8. Turned Rotten: +${FIG.rot}.` },
+  fruitfly: { name: "Fruit Fly", radius: FRUIT_ART.fruitfly.radius, points: 24, scoring: "simmer", touchWeight: 1, text: "Each turn, Eat a Rotten fruit: +24, Hatch; Spoil." },
   kiwi: { name: "Kiwi", radius: FRUIT_ART.kiwi.radius, points: 2, scoring: "fresh", touchWeight: 1, text: "Fresh 2. Copy." },
   peach: { name: "Peach", radius: FRUIT_ART.peach.radius, points: 12, scoring: "fresh", touchWeight: 1, text: "Fresh 12. Bouncy." },
   honeydew: { name: "Honeydew", radius: FRUIT_ART.honeydew.radius, points: 2, scoring: "simmer", touchWeight: 1, text: "Honeyed. Each turn, Honey a neighbour." },

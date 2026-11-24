@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, RASPBERRY, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, FIG, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, RASPBERRY, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
 import { FIZZY_LINKS, GLAZE_KINDS, GLAZE_PRICE, GLAZES, glazeFits, ripened, SPICY, type Glaze } from "./glazes.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
@@ -945,7 +945,7 @@ function earn(run: Run, links: readonly number[][], i: number, points: number, l
   return { popup, doubled, fruits, links: boosters.map((booster) => link(run, "boost", booster, f)) };
 }
 
-/** Whether a fruit (by index) touches a Lemon: it cannot merge. */
+/** Whether a fruit (by index) touches a Lemon: a Merge it is in scores double. (It could not merge at all, once: Sour.) */
 function nearLemon(fruits: readonly Fruit[], links: readonly number[][], i: number): boolean {
   return (links[i] ?? []).some((j) => fruits[j]?.kind === "lemon");
 }
@@ -1463,10 +1463,12 @@ function merge(run: Run): void {
   const born: Fruit[] = [];
   const giants: Fruit[] = [];
   for (const [i, a] of run.fruits.entries()) {
-    if (gone.has(a.id) || !canMerge(a) || nearLemon(run.fruits, near, i)) continue;
+    if (gone.has(a.id) || !canMerge(a)) continue;
     for (const j of near[i] ?? []) {
       const b = run.fruits[j];
-      if (b === undefined || j <= i || gone.has(b.id) || b.kind !== a.kind || !canMerge(b) || nearLemon(run.fruits, near, j)) continue;
+      if (b === undefined || j <= i || gone.has(b.id) || b.kind !== a.kind || !canMerge(b)) continue;
+      // A Merge touching a Lemon scores double, as what lands or simmers beside one does.
+      const lemoned = nearLemon(run.fruits, near, i) || nearLemon(run.fruits, near, j);
       gone.add(a.id);
       gone.add(b.id);
       // A Smash's pieces merging are part of the Smash: no link of their own.
@@ -1482,7 +1484,7 @@ function merge(run: Run): void {
         pulse(giant);
         born.push(giant);
         giants.push(giant);
-        score(run, FRUITS.giantpumpkin.points, mx, my - giant.r, { label: "Merge", earner: FRUITS.giantpumpkin.name, chained: true });
+        score(run, FRUITS.giantpumpkin.points * (lemoned ? 2 : 1), mx, my - giant.r, { label: "Merge", earner: FRUITS.giantpumpkin.name, chained: true, doubled: lemoned });
         run.message = `Two Watermelons: a Giant Pumpkin! +${FRUITS.giantpumpkin.points}`;
       } else if (a.kind === "pomegranate") {
         born.push(...burst(run, mx, my));
@@ -1509,7 +1511,7 @@ function merge(run: Run): void {
         }
         pulse(f);
         born.push(f);
-        score(run, FRUITS[into].points, mx, my - f.r, { label: "Merge", chained: true });
+        score(run, FRUITS[into].points * (lemoned ? 2 : 1), mx, my - f.r, { label: "Merge", chained: true, doubled: lemoned });
       }
       break;
     }
@@ -1667,7 +1669,6 @@ function explode(run: Run, bomb: Fruit): void {
   const kept: Fruit[] = [];
   const born: Fruit[] = [];
   let points = 0;
-  let figs = 0;
   let limes = 0;
   let coconuts = 0;
   for (const f of run.fruits) {
@@ -1706,7 +1707,6 @@ function explode(run: Run, bomb: Fruit): void {
     points += (value + bonus) * (doubled.has(f.id) ? 2 : 1);
     if (f.glaze === "seeded") regrow(run, f);
     if (f.kind === "pomegranate") born.push(...burst(run, f.x, f.y));
-    if (f.kind === "fig" && f.rotten) figs += 1;
     if (f.kind === "lime") limes += 1;
     if (f.kind === "coconut") coconuts += 1;
     if (f.kind === "seed") born.push(sprout(run, f));
@@ -1737,6 +1737,9 @@ function explode(run: Run, bomb: Fruit): void {
   effect(run, "boom", bomb.x, bomb.y, radius * 2);
   sound(run, "boom");
   run.message = spicy ? `A Spicy Merge Exploded: ${victims.length} fruit destroyed` : `${FRUITS[bomb.kind].name} Exploded: ${victims.length} fruit destroyed`;
+  // A Chili's blast is a link for each fruit it destroys, as well as its own: in a crowd it lifts the chain for the merges
+  // that follow it, where a Durian's bigger blast scores more for each.
+  if (bomb.kind === "chili" && !spicy) for (let k = 0; k < victims.length; k++) addLink(run);
   // A Coconut blown open leaves its milk, as one that cracked by itself does.
   if (coconuts > 0) {
     pour(run, "milk", coconuts * COCONUT_MILK);
@@ -1745,10 +1748,6 @@ function explode(run: Run, bomb: Fruit): void {
   if (limes > 0) {
     pour(run, "lime", limes * LIME_JUICE);
     run.message = `${FRUITS[bomb.kind].name} Exploded ${limes === 1 ? "a Lime" : `${limes} Limes`}: lime juice rises`;
-  }
-  if (figs > 0) {
-    run.bananaBonus += figs;
-    run.message = `A Rotten Fig Exploded: Bananas Grow to +${run.bananaBonus}`;
   }
 }
 
@@ -1955,12 +1954,15 @@ function ageAndRot(run: Run, tally: Tally): void {
     f.age += 1;
     if (f.kind === "banana" && f.age >= BANANA.rots && !f.rotten) f.rotten = true;
   }
-  const rotten = run.fruits.filter((f) => f.rotten);
+  // A Fruit Fly rots a fruit it touches too, though it is not rotten itself: it brings its own meal, and eats it next turn.
+  const rotten = run.fruits.filter((f) => f.rotten || f.kind === "fruitfly");
   for (const r of rotten) {
     const next = run.fruits.find((o) => !o.rotten && !o.pickled && o.kind !== "lemon" && o.kind !== "fruitfly" && r.touching.includes(o.id));
     if (next === undefined) continue;
     next.rotten = true;
-    stage(tally, null, [next], [link(run, "rot", r, next)]);
+    // A Fig pays as it turns: once, for whatever rotted it.
+    const popup = next.kind === "fig" ? score(run, FIG.rot, next.x, next.y - next.r, { label: "Rotten", earner: FRUITS.fig.name }) : null;
+    stage(tally, popup, [next], [link(run, "rot", r, next)]);
   }
 }
 
