@@ -1302,7 +1302,7 @@ test("a Raspberry scores more for each that has landed this cycle, and they star
   let run = jarWith([fresh(1, 200), fresh(2, 300), fresh(3, 400)]);
   run.turn = 1;
   for (let i = 0; i < 600 && run.phase === "settle"; i++) run = advance(run, 1 / 60, NO_KEYS, []);
-  // Apart on the floor, so none merges or touches: 3, then 3 + 2, then 3 + 4.
+  // Apart on the floor, so none merges or touches: its base, then that and one Cluster, then that and two.
   assert.equal(run.clusterBonus, 3 * RASPBERRY.cluster);
   assert.equal(run.earned["Raspberry"], 3 * RASPBERRY.base + 3 * RASPBERRY.cluster);
   assert.match(FRUITS.raspberry.text, new RegExp(`Fresh ${RASPBERRY.base}\\. Cluster ${RASPBERRY.cluster}\\.`));

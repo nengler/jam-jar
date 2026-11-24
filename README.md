@@ -294,10 +294,12 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     Cherry. After 3 more grow, it grows a Grape."; `cardText` in `src/layout.ts`), on the pick, in the shop and in its tooltips. The count is
     the run's, so it is Ladder's late scaler, and it needs a blast, which ties Boom to Ladder. First bots (24 seeds, rent ignored, nothing bought): never picking 1140 a run, Pumpkin Seed whenever offered
     1032, Chili + Durian + Pumpkin Seed 1132. It does nothing without a bomb, and the bots don't measure late scaling yet.
-- Raspberry: Fresh 3, and Cluster 2: each one that lands makes every Raspberry score 2 more until the rent (`RASPBERRY`,
-  `clusterBonus`). The fruit that is better the more of it a pool holds: one is worth less than a Grape, and a pool of them
-  carries a cycle. It starts again each cycle, and nothing offers it more often to a player who has one, so the build is
-  found and not chosen. Its picture is a placeholder drawn for the game.
+- Raspberry: Fresh 5, and Cluster 8: each one that lands makes every Raspberry score 8 more until the rent (`RASPBERRY`,
+  `clusterBonus`), so a cycle's Raspberries score 5, 13, 21 and on. The fruit that is better the more of it a pool holds. It
+  starts again each cycle, and nothing offers it more often to a player who has one, so the build is found and not chosen.
+  A bot that takes every Raspberry offered and nothing else ends a run with 2.6 of them (48 seeds): at Fresh 3, Cluster 2 it
+  scored 298 a run less than never picking, at 4 and 6, 129 less, and at 5 and 8 it breaks even (36 less, within the noise),
+  with 390 points a run from Raspberries and 970 in its best run. Its picture is a placeholder drawn for the game.
 - Golden Apple: Fresh 2, and Golden 2: it pays 2 coins when the rent is paid with it in the jar, or when an explosion or
   the Juicer destroys it (`GOLDEN`; nothing while it is rotten). An early economy pick that needs no other fruit. The
   balance bots buy nothing in the shop, so they can't value it yet: taken whenever offered it scores 1000 a run.

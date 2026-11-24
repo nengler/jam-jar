@@ -125,7 +125,7 @@ export const QUINCE = { perSize: 2 };
  * lands makes every Raspberry score `cluster` more until the rent: one is a small fruit, five of them carry a cycle. Nothing
  * offers it more often to a player who has one, so a pool of them is found, not chosen.
  */
-export const RASPBERRY = { base: 3, cluster: 2 };
+export const RASPBERRY = { base: 5, cluster: 8 };
 export const GOURD_BURST = 4;
 export const GOURD_SIZES: readonly number[] = [FRUIT_ART.cherry.radius, FRUIT_ART.grape.radius, FRUIT_ART.orange.radius];
 
