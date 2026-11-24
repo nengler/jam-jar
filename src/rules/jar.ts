@@ -106,11 +106,11 @@ export function bossNow(run: Run, cycle = run.cycle): Boss | null {
 }
 
 /**
- * The rent of each cycle. The first two were 120 and 180, which no bot ever missed: a player who never picks and never orders a
- * hand scores about 300 in a first cycle. At 240 and 260 that player misses the first in 1 run of 5 and the second in 2 of 5,
- * and one who picks and orders in 1 of 11 and 1 of 5 (the README's bots, "The opening").
+ * The rent of each cycle. The first two were 120 and 180, which no bot ever missed. At 225 and 250, on a pool of six and two
+ * opening picks, a player who never picks and never orders a hand misses each in 1 run of 3, and one who picks well and
+ * orders in 1 of 14 and 1 of 10 (the README's bots, "The opening").
  */
-export const RENT: readonly number[] = [240, 260, 300, 350, 400];
+export const RENT: readonly number[] = [225, 250, 300, 350, 400];
 /** Points over the rent that make one coin. */
 export const POINTS_PER_COIN = 10;
 /** Seconds between releases of the tray, at the least. In the Flip jar a release also waits for the pile to have been calm for
@@ -334,8 +334,8 @@ export interface Run {
   nextId: number;
   /** The boss jar this run meets on its boss cycles. */
   boss: Boss;
-  /** The basket its pool started from. */
-  basket: BasketId;
+  /** How many of the picks that open a run are still to be made (this one among them, while it is up): 0 once the first hand is dealt. */
+  opening: number;
   /** Every fruit you own. */
   pool: FruitKind[];
   /**
@@ -500,47 +500,43 @@ export function handSlots(hand: readonly FruitKind[]): number {
 
 export const NO_KEYS: Keys = { up: false, down: false, left: false, right: false, confirm: false, drop: false, point: -1 };
 
+/** How many 1-of-3 picks open a run, before its first hand. */
+export const OPENING_PICKS = 2;
+
 /**
- * The baskets a run can start from. Every run used to start from the same nine plain fruit, so the first cycle was always a
- * merge cycle and every run began alike. Now the pool is `BASKET_CORE`, five of the merging fruit, and the three of one basket,
- * which lean the run a way of its own from the first hand: bigger merges, blasts, fruit that score while they stay, or rot.
- * Eight fruit, not nine: with fewer, how a hand is arranged decides more of the first cycle, and each fruit picked is more of
- * what is dealt (the README's bots, "The opening").
+ * The starting pool: 1 Apple and 5 starters, 2–3 Cherries, 1–3 Grapes and at most 1 Orange. It was 1 Apple and 8 starters, and
+ * every first cycle played alike: with nine plain fruit a pick was a small part of what was dealt, and how a hand was arranged
+ * decided little. With six, and the two picks that open a run, a third of the first pool is the player's own choice (the
+ * README's bots, "The opening").
  */
-export type BasketId = "ladder" | "blast" | "garden" | "rot";
-export const BASKET_CORE: readonly FruitKind[] = ["cherry", "cherry", "grape", "grape", "orange"];
-export const BASKETS: Readonly<Record<BasketId, { name: string; fruit: readonly FruitKind[] }>> = {
-  ladder: { name: "Ladder basket", fruit: ["cherry", "orange", "gourd"] },
-  blast: { name: "Blast basket", fruit: ["apple", "chili", "durian"] },
-  garden: { name: "Garden basket", fruit: ["apple", "apple", "banana"] },
-  rot: { name: "Rot basket", fruit: ["apple", "banana", "prune"] },
-};
-export const BASKET_IDS = Object.keys(BASKETS) as BasketId[];
-
-/** The basket a run starts from: one of them, by the run's own stream. */
-export function rollBasket(rng: Rng): BasketId {
-  return rng.pick(BASKET_IDS);
-}
-
-/** The starting pool of a basket: the core and the basket's own three. */
-export function poolOf(basket: BasketId): FruitKind[] {
-  return [...BASKET_CORE, ...BASKETS[basket].fruit];
+export function rollPool(rng: Rng): FruitKind[] {
+  for (;;) {
+    const cherries = rng.int(2, 3);
+    const grapes = rng.int(1, 3);
+    const oranges = 5 - cherries - grapes;
+    if (oranges < 0 || oranges > 1) continue;
+    return [
+      ...Array<FruitKind>(cherries).fill("cherry"),
+      ...Array<FruitKind>(grapes).fill("grape"),
+      ...Array<FruitKind>(oranges).fill("orange"),
+      "apple",
+    ];
+  }
 }
 
 /**
- * A new run. With `opening`, it starts at a pick, before the first hand is dealt: one fruit of three to add to the basket, so
- * the first hand is already partly the player's own. Without it the first hand is dealt at once (the first game's tutorial,
- * which teaches the shelf first and the pick when it comes; and the tests).
+ * A new run. With `opening`, it starts at its opening picks, before the first hand is dealt: `OPENING_PICKS` times one fruit of
+ * three, so the first hand is already partly the player's own. Without it the first hand is dealt at once (the first game's
+ * tutorial, which teaches the shelf first and the pick when it comes; and the tests).
  */
 export function newRun(seed: number, opening = false): Run {
   const rng = new Rng(seed);
-  const basket = rollBasket(rng);
-  const pool = poolOf(basket);
+  const pool = rollPool(rng);
   const run: Run = {
     seed: rng.seed,
     nextId: 1,
     boss: bossFor(seed),
-    basket,
+    opening: opening ? OPENING_PICKS : 0,
     pool,
     draw: rng.shuffle(pool),
     discard: [],
@@ -662,7 +658,7 @@ export function withGlazes(run: Run): Run {
     handGlazes: plain(run.hand, run.handGlazes),
     queueGlazes: plain(run.queue, run.queueGlazes),
     regrowing: run.regrowing ?? [],
-    basket: run.basket ?? "ladder",
+    opening: run.opening ?? 0,
     shop: run.shop === null ? null : { ...run.shop, glaze: run.shop.glaze ?? null, glazing: run.shop.glazing ?? false },
   };
 }
@@ -2035,18 +2031,28 @@ function pickStep(run: Run, keys: Keys): void {
     run.poolGlazes.push(null);
     // Shuffled into what is still to be dealt, so a new fruit shows up soon.
     const rng = new Rng(run.seed);
-    // The opening pick, taken before the first hand is dealt, is dealt first, so it is in that hand (a Wide one too).
-    const opening = run.cycle === 1 && run.turn === 1;
-    const at = opening ? 0 : rng.int(0, run.draw.length);
+    // An opening pick, taken before the first hand is dealt, is dealt first, so it is in that hand.
+    const at = run.opening > 0 ? 0 : rng.int(0, run.draw.length);
     run.draw.splice(at, 0, kind);
     run.drawGlazes.splice(at, 0, null);
     run.seed = rng.seed;
     run.message = "";
     sound(run, "pick");
-    startTurn(run);
+    afterPick(run);
   } else if (keys.drop) {
     run.coins += 1;
     run.message = "";
+    afterPick(run);
+  }
+}
+
+/** After a pick is taken or skipped: the next of the picks that open a run, or the hand. */
+function afterPick(run: Run): void {
+  if (run.opening > 1) {
+    run.opening -= 1;
+    offer(run);
+  } else {
+    run.opening = 0;
     startTurn(run);
   }
 }

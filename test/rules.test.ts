@@ -45,10 +45,8 @@ import {
   rerollPrice,
   RENT,
   resolve,
-  poolOf,
-  BASKETS,
-  BASKET_CORE,
-  BASKET_IDS,
+  rollPool,
+  OPENING_PICKS,
   RIM,
   SHOP_GLAZE,
   SHOP_ITEM,
@@ -118,33 +116,48 @@ function jarWith(fruits: Fruit[]): Run {
   return run;
 }
 
-test("the starting pool is 8: five merging fruit and the three of the run's basket, and the baskets all come up", () => {
-  const seen = new Set<string>();
+test("the starting pool is 6: one Apple and 5 starters within their ranges", () => {
   for (let seed = 1; seed < 200; seed++) {
-    const run = newRun(seed);
-    seen.add(run.basket);
-    assert.equal(run.pool.length, 8);
-    assert.deepEqual(run.pool, poolOf(run.basket));
-    assert.deepEqual(run.pool.slice(0, BASKET_CORE.length), BASKET_CORE);
-    assert.deepEqual(run.pool.slice(BASKET_CORE.length), BASKETS[run.basket].fruit);
+    const pool = rollPool(new Rng(seed));
+    const count = (k: string) => pool.filter((p) => p === k).length;
+    assert.equal(pool.length, 6);
+    assert.equal(count("apple"), 1);
+    assert.ok(count("cherry") >= 2 && count("cherry") <= 3);
+    assert.ok(count("grape") >= 1 && count("grape") <= 3);
+    assert.ok(count("orange") <= 1);
+    assert.deepEqual(newRun(seed).pool, pool);
   }
-  assert.deepEqual([...seen].sort(), [...BASKET_IDS].sort());
 });
 
-test("a run that opens with a pick deals no hand until a fruit is taken, and that fruit is in the first hand", () => {
+test("a run that opens with its picks deals no hand until both are made, and the fruit taken are in the first hand", () => {
   for (let seed = 1; seed < 40; seed++) {
     let run = newRun(seed, true);
-    assert.equal(run.phase, "pick");
-    assert.equal(run.hand.length, 0);
-    assert.equal(run.offers.length, 3);
-    run = advance(run, 1 / 60, { ...NO_KEYS, right: true }, []);
-    const taken = run.offers[run.offerCursor] as FruitKind;
-    run = advance(run, 1 / 60, { ...NO_KEYS, confirm: true }, []);
+    const taken: FruitKind[] = [];
+    for (let pick = 0; pick < OPENING_PICKS; pick++) {
+      assert.equal(run.phase, "pick");
+      assert.equal(run.opening, OPENING_PICKS - pick);
+      assert.equal(run.hand.length, 0);
+      assert.equal(run.offers.length, 3);
+      run = advance(run, 1 / 60, { ...NO_KEYS, right: true }, []);
+      taken.push(run.offers[run.offerCursor] as FruitKind);
+      run = advance(run, 1 / 60, { ...NO_KEYS, confirm: true }, []);
+    }
     assert.equal(run.phase, "order");
-    assert.equal(run.pool.length, 9);
+    assert.equal(run.opening, 0);
+    assert.equal(run.pool.length, 6 + OPENING_PICKS);
     assert.equal(run.turn, 1);
-    assert.ok(run.hand.includes(taken), `seed ${seed}: ${taken} not in ${run.hand.join()}`);
+    // Two Wide fruit do not fit one hand with anything else: then only the last taken is sure to be in it.
+    const wide = taken.filter((kind) => (FRUITS[kind].slots ?? 1) > 1).length;
+    for (const kind of wide > 1 ? taken.slice(-1) : taken) assert.ok(run.hand.includes(kind), `seed ${seed}: ${kind} not in ${run.hand.join()}`);
   }
+});
+
+test("an opening pick skipped pays a coin and goes on to the next, then to the hand", () => {
+  let run = newRun(3, true);
+  run = advance(run, 1 / 60, { ...NO_KEYS, drop: true }, []);
+  assert.deepEqual([run.phase, run.opening, run.coins, run.pool.length], ["pick", 1, 1, 6]);
+  run = advance(run, 1 / 60, { ...NO_KEYS, drop: true }, []);
+  assert.deepEqual([run.phase, run.opening, run.coins, run.pool.length, run.hand.length], ["order", 0, 2, 6, 4]);
 });
 
 test("the same seed and keys play the same run", () => {
@@ -1261,6 +1274,9 @@ test("a pick comes after every second turn of a cycle, and the next hand is deal
   const after = (turn: number): string => {
     const run = jarWith([]);
     run.turn = turn;
+    // The hand was dropped: it is with the dealt fruit, to be shuffled back in when the pool runs out (a pool of 6 does at once).
+    run.discard.push(...run.hand);
+    run.discardGlazes.push(...run.handGlazes);
     run.hand = [];
     resolve(run);
     return `${run.phase} ${run.turn} ${run.hand.length}`;
