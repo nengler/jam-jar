@@ -1465,6 +1465,7 @@ test("a Pumpkin Plunges: it Smashes the ladder fruit it hits, throws the rest, a
   const burst = run.popups.find((pop) => pop.text === `+${worth}`);
   assert.ok(burst !== undefined && burst.big === true, run.popups.map((pop) => pop.text).join());
   assert.equal(run.cycleScore, worth);
+  assert.equal(run.earned["Pumpkin"], worth, "the burst is the Pumpkin's own, so the end board shows the Pumpkin among the fruit that scored");
   assert.equal(pumpkin.plunging, 0);
 });
 

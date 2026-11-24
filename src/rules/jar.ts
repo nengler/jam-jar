@@ -1287,9 +1287,10 @@ function plungeStep(run: Run, dt: number): void {
       pulse(p);
       sound(run, "land");
       if ((p.burst ?? 0) > 0) {
-        // The burst: all its Smashes' points at once, where it came down, big and with no name (it would not fit the jar).
+        // The burst: all its Smashes' points at once, where it came down, big and with no name (it would not fit the jar). They are
+        // the Pumpkin's own, so the end board shows it among the fruit that scored.
         addLink(run);
-        score(run, p.burst ?? 0, p.x, p.y - p.r, { earner: "Plunge", big: true, chained: true });
+        score(run, p.burst ?? 0, p.x, p.y - p.r, { earner: FRUITS.pumpkin.name, big: true, chained: true });
         p.burst = 0;
         effect(run, "boom", p.x, p.y, p.r * 3);
         sound(run, "boom");
