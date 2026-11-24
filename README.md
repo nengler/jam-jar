@@ -91,7 +91,8 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Eat / Hatch | Removes one fruit it touches / a new Fruit Fly appears where it ate. |
 | Grow | That kind scores this much more, all run. |
 | Heavy | Shoulders lighter fruit aside. |
-| Double / Sour | Fruit touching it score x2 / can't Merge. |
+| Double | Fruit and Merges touching it score x2. |
+| Spoil | Each turn, turns one neighbour Rotten. |
 | Dense | Counts as this many fruit, and lands as links. |
 | Edge | Scores this more touching the floor or a wall. |
 | Copy | Becomes the first fruit it lands on. |
@@ -176,11 +177,11 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 - The Boom group: Chili (explodes touching 4+ fruit), Durian (big blast once 3 fruit sit on it), Pomegranate (bursts into 5
   Cherries when hit; two that merge burst into 5 between them), Blueberry (counts as 3 fruit for touch checks) and Seed (sprouts a starter when blown up; the Pumpkin Seed is under the Ladder set). Blasts
   chain into other Chilis and Durians, and score a bonus for each fruit destroyed (10 for a Chili's, 14 for a Durian's).
-- Banana: 4, then +2 a turn, rots after 3 turns, and rot spreads to one touching fruit a turn. Rotten
+- Banana: 4, then +4 a turn, rots after 3 turns, and rot spreads to one touching fruit a turn. Rotten
   fruit score nothing but still merge, and what they merge into is rotten.
 - The rest of the Rot group: Prune (rotten from the start and spreading like any rot, +8 for each rotten fruit touching it), Fruit Fly (eats
-  one rotten fruit it touches a turn for 24, and another Fly hatches there; never a Prune) and Fig (blown up while rotten, it
-  gives every Banana +1 for the rest of the run).
+  one rotten fruit it touches a turn for 24, and another Fly hatches there; never a Prune; and it rots one fruit it touches a
+  turn, though it is not rotten itself) and Fig (scores 40 once as it turns Rotten).
 - Flex fruit: Kiwi (becomes a copy of the first landed fruit it touches), Peach (bounces once when it lands and shoves what it
   landed on aside, each fruit shoved adding 2 links to the chain) and Honeydew (honeys one fruit it touches a turn; honeyed fruit, the Honeydew included, score 4 a turn, are
   tinted gold, and stick to every fruit that comes to touch them, so a honeyed lump moves as one).
@@ -315,7 +316,19 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 
   The bots drop a hand in the order it was dealt, so a fruit that scores by what it lands on or beside (Peach, Coconut, Snow
   Pear) does better than this in a player's hands. Lemon, Fruit Fly and Fig lost points even beside the fruit they are made
-  for, and are not changed here.
+  for, and were changed after these (below).
+- Four more, the same way (same bots; "with" is the pair against the partner alone):
+
+    | Fruit | What changed | Alone, before | Alone, now | With a partner, now |
+    | --- | --- | --- | --- | --- |
+    | Fruit Fly | Spoil: it rots one fruit it touches a turn, so it brings its own meal and eats it the next | -425 | +31 | Prune: +525 (Prune alone +439; was +289). Banana: +197 (was -251) |
+    | Chili | Its blast is a link for each fruit it destroys, as well as its own | -114 | -29 | Blueberry: +134 (was -184). Seed: +84 (was -32) |
+    | Lemon | Sour is gone: it no longer stops merges beside it, and a Merge touching it scores double | -419 | -129 | Apple: +79 (Apple alone +182; was -113). Prune: +281 (was +124) |
+    | Fig | Scores 40 once as it turns Rotten (`FIG.rot`), whatever rotted it; no blast needed, and it no longer grows Bananas | -326 | -306 | Fruit Fly: +149 (Fly alone +31). Prune: +417 (Prune alone +439) |
+
+  A Fig is still nothing alone, by design: it needs a rot beside it. At 20 for turning it was level with a Fruit Fly alone
+  (+24) and cost a Prune build half its points (+222). A Lemon scores nothing itself and doubles what is beside it, which
+  bots that drop a hand as dealt do not set up: it still costs them points beside an Apple or a Prune.
 - Countdowns: a fruit in the jar that is counting down wears the number of turns it has left, in a small dark disc at its
   lower left (`countdowns`, `TurnsMark.tsx`): a frozen fruit until it thaws (an ice-blue ring), a Coconut until it cracks
   (light), a Banana until it rots (brown). A frozen build is timed by that number, and it was nowhere on screen.

@@ -74,7 +74,7 @@ export const APPLE = { base: 4, edge: 5 };
 export const BANANA = { base: 4, ripen: 4, rots: 3 };
 export const HONEY = 4;
 /** A Fig scores `rot` once, as it turns Rotten: any rot beside it pays, and then it is a rotten neighbour for a Prune. */
-export const FIG = { rot: 20 };
+export const FIG = { rot: 40 };
 /**
  * The Ladder set (design doc, "Next fruit set: Ladder"): merge up, smash down. A Grape, Orange or Melon that is Smashed breaks
  * into 2 of the next size down, and a Watermelon into `SLICES` Slices, which score more together than it did. A Pumpkin Plunges:
