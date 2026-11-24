@@ -118,12 +118,12 @@ function jarWith(fruits: Fruit[]): Run {
   return run;
 }
 
-test("the starting pool is 9: six merging fruit and the three of the run's basket, and the baskets all come up", () => {
+test("the starting pool is 8: five merging fruit and the three of the run's basket, and the baskets all come up", () => {
   const seen = new Set<string>();
   for (let seed = 1; seed < 200; seed++) {
     const run = newRun(seed);
     seen.add(run.basket);
-    assert.equal(run.pool.length, 9);
+    assert.equal(run.pool.length, 8);
     assert.deepEqual(run.pool, poolOf(run.basket));
     assert.deepEqual(run.pool.slice(0, BASKET_CORE.length), BASKET_CORE);
     assert.deepEqual(run.pool.slice(BASKET_CORE.length), BASKETS[run.basket].fruit);
@@ -141,7 +141,7 @@ test("a run that opens with a pick deals no hand until a fruit is taken, and tha
     const taken = run.offers[run.offerCursor] as FruitKind;
     run = advance(run, 1 / 60, { ...NO_KEYS, confirm: true }, []);
     assert.equal(run.phase, "order");
-    assert.equal(run.pool.length, 10);
+    assert.equal(run.pool.length, 9);
     assert.equal(run.turn, 1);
     assert.ok(run.hand.includes(taken), `seed ${seed}: ${taken} not in ${run.hand.join()}`);
   }

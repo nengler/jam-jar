@@ -117,11 +117,11 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 
 ## What's in this first slice
 
-- Starting pool: nine fruit. Six are the same every run (3 Cherries, 2 Grapes, 1 Orange: `BASKET_CORE`), and three come from
-  the run's basket, rolled from four (`BASKETS`): Ladder (Orange, Gourd, Apple), Blast (Chili, Durian, Apple), Garden (Apple,
-  Apple, Banana) or Rot (Banana, Prune, Apple). Every run used to start from the same plain merging fruit (1 Apple and 8
-  rolled from Cherries, Grapes and Oranges), so every first cycle was a merge cycle. The pool is dealt like a deck and
-  reshuffles when empty.
+- Starting pool: eight fruit. Five are the same every run (2 Cherries, 2 Grapes, 1 Orange: `BASKET_CORE`), and three come
+  from the run's basket, rolled from four (`BASKETS`): Ladder (Cherry, Orange, Gourd), Blast (Apple, Chili, Durian), Garden
+  (Apple, Apple, Banana) or Rot (Apple, Banana, Prune). Every run used to start from the same nine plain merging fruit (1
+  Apple and 8 rolled from Cherries, Grapes and Oranges), so every first cycle was a merge cycle. The pool is dealt like a
+  deck and reshuffles when empty.
 - The opening pick: a run starts at a pick of 1 of 3, before its first hand, headed with its basket's name. The fruit taken
   is dealt in the first hand. The first game's tutorial run has none: it teaches the shelf first, and the pick when it comes
   after turn 2.

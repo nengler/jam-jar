@@ -39,6 +39,8 @@ import { findComponent } from "@tsengine/testing";
 
 import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
+import { LESSONS } from "../src/rules/tutorial.ts";
+import { setTutorialStep } from "../src/settings.ts";
 import { FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
 import { GLAZE_PRICE, type Glaze } from "../src/rules/glazes.ts";
@@ -215,7 +217,15 @@ function searchHand(player: Player, backend: RecordingBackend, hand: readonly Fr
   return chosen;
 }
 
-const rent = RENT.slice();
+/**
+ *   BALANCE_CYCLES=2                   stop a run after that many cycles
+ *   BALANCE_RENT=225,245,270,300,340   another rent curve (for the coins a "/thin" or "/shop" bot is left with)
+ */
+const env = (name: string) => process.env[name];
+const maxCycles = Number(env("BALANCE_CYCLES") ?? 99);
+
+// BALANCE_RENT=225,245,270,300,340: the rents the bots' coins and the "makes rent" counts are worked out from.
+const rent = env("BALANCE_RENT")?.split(",").map(Number) ?? RENT.slice();
 (RENT as number[]).fill(0);
 
 /** One run: each cycle's score, the pool's size at the end, and how long each turn's settle took. */
@@ -236,11 +246,16 @@ interface Events {
   glazed: number;
 }
 
-function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[]; mismatches: number; events: Events } {
+function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[]; mismatches: number; events: Events; start: FruitKind[]; earnedAt: Record<string, number>[] } {
+  // The opening picks are chosen as the bot picks: the first offer it wants, or any for "random".
+  let start: FruitKind[] | null = null;
+  const earnedAt: Record<string, number>[] = [];
   const backend = new RecordingBackend();
   const player = createPlayer(backend, { ...gameConfig, warn: () => {} });
   // After the player is made (making it resets the game's state): Play adds one to the seed when a run starts.
-  useGame.setState({ screen: "title", paused: false, seed });
+  // The tutorial is off: its lessons hold the jar until a "Got it" the bots never give.
+  setTutorialStep(LESSONS.length);
+  useGame.setState({ screen: "title", paused: false, seed, tutorial: LESSONS.length });
   const rng = new Rng(seed * 7919);
   const scores: number[] = [];
   let pool = 0;
@@ -297,6 +312,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     if (items.some((item) => !found.s.run.items.includes(item))) found.s.run = { ...found.s.run, items };
     if (forcedBoss !== undefined && found.s.run.boss !== forcedBoss) found.s.run = { ...found.s.run, boss: forcedBoss };
     const run = found.s.run;
+    start ??= run.pool.slice();
     pool = run.pool.length;
     // A key, then a few idle frames, so a press is never read twice.
     if (wait > 0) {
@@ -332,6 +348,8 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
       const due = rent[scores.length] as number;
       found.s.run = { ...run, coins: coins + Math.max(0, Math.floor((run.cycleScore - due) / POINTS_PER_COIN)) };
       scores.push(run.cycleScore);
+      earnedAt.push({ ...run.earned });
+      if (scores.length >= maxCycles) break;
       queued = [ENTER];
     } else if (run.phase === "shop") {
       if (forcedGlaze !== undefined && run.shop !== null && run.shop.glaze !== null && run.shop.glaze !== forcedGlaze) found.s.run = { ...run, shop: { ...run.shop, glaze: forcedGlaze } };
@@ -367,7 +385,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
     else wait = 0;
   }
   player.close();
-  return { scores, pool, settles, mismatches, // Giant Pumpkins by the points they scored: "/best" and "/fair" play their turns out of this loop's sight, so ids miss them.
+  return { scores, pool, settles, mismatches, start: start ?? [], earnedAt, // Giant Pumpkins by the points they scored: "/best" and "/fair" play their turns out of this loop's sight, so ids miss them.
     events: { earned: { ...earned }, giants: Math.max(giants.size, Math.round((earned["Giant Pumpkin"] ?? 0) / FRUITS.giantpumpkin.points)), smashes: slices.size / 4 + pieces.size / 2, chains: chains.slice(), bought, glazed } };
 }
 
@@ -376,7 +394,7 @@ const firstSeed = Number(process.argv[5] ?? 1);
 const json = process.env["BALANCE_JSON"];
 console.log(`rent now: ${rent.join(", ")}\n`);
 const players = (process.argv[3]?.split(",") ?? ["skip", "random", ...OFFERABLE]) as Strategy[];
-const written: Record<string, { seed: number; scores: number[] }[]> = {};
+const written: Record<string, { seed: number; scores: number[]; start: FruitKind[]; earnedAt: Record<string, number>[] }[]> = {};
 for (const strategy of players) {
   const all: number[][] = [];
   let pool = 0;
@@ -391,7 +409,7 @@ for (const strategy of players) {
     mismatches += result.mismatches;
     settles.push(...result.settles);
     events.push(result.events);
-    written[strategy]!.push({ seed, scores: result.scores });
+    written[strategy]!.push({ seed, scores: result.scores, start: result.start, earnedAt: result.earnedAt });
     if (json !== undefined) writeFileSync(json, JSON.stringify(written));
   }
   // A searched turn played for real must score what its try did; if not, a snapshot missed something and "/best" is not exact.

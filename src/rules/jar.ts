@@ -497,16 +497,18 @@ export const NO_KEYS: Keys = { up: false, down: false, left: false, right: false
 
 /**
  * The baskets a run can start from. Every run used to start from the same nine plain fruit, so the first cycle was always a
- * merge cycle and every run began alike. Now the pool is `BASKET_CORE`, six of the merging fruit, and the three of one basket,
+ * merge cycle and every run began alike. Now the pool is `BASKET_CORE`, five of the merging fruit, and the three of one basket,
  * which lean the run a way of its own from the first hand: bigger merges, blasts, fruit that score while they stay, or rot.
+ * Eight fruit, not nine: with fewer, how a hand is arranged decides more of the first cycle, and each fruit picked is more of
+ * what is dealt (the README's bots, "The opening").
  */
 export type BasketId = "ladder" | "blast" | "garden" | "rot";
-export const BASKET_CORE: readonly FruitKind[] = ["cherry", "cherry", "cherry", "grape", "grape", "orange"];
+export const BASKET_CORE: readonly FruitKind[] = ["cherry", "cherry", "grape", "grape", "orange"];
 export const BASKETS: Readonly<Record<BasketId, { name: string; fruit: readonly FruitKind[] }>> = {
-  ladder: { name: "Ladder basket", fruit: ["orange", "gourd", "apple"] },
-  blast: { name: "Blast basket", fruit: ["chili", "durian", "apple"] },
+  ladder: { name: "Ladder basket", fruit: ["cherry", "orange", "gourd"] },
+  blast: { name: "Blast basket", fruit: ["apple", "chili", "durian"] },
   garden: { name: "Garden basket", fruit: ["apple", "apple", "banana"] },
-  rot: { name: "Rot basket", fruit: ["banana", "prune", "apple"] },
+  rot: { name: "Rot basket", fruit: ["apple", "banana", "prune"] },
 };
 export const BASKET_IDS = Object.keys(BASKETS) as BasketId[];
 
