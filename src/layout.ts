@@ -1,6 +1,6 @@
 import { FRUITS, pumpkinSeedText, type FruitKind } from "./rules/fruits.ts";
 import { GLAZES, type Glaze } from "./rules/glazes.ts";
-import { BASKETS, BOSS_NAME, bossNow, newRun, RENT, withGlazes, type Run } from "./rules/jar.ts";
+import { BOSS_NAME, bossNow, newRun, OPENING_PICKS, RENT, withGlazes, type Run } from "./rules/jar.ts";
 import { KEYWORDS, keywordsIn } from "./rules/terms.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
@@ -467,12 +467,13 @@ export function dashes(from: number, to: number, dash: number, gap: number): num
   return tops;
 }
 
-/** Whether a run is at its opening pick: the one before its first hand. */
+/** Whether a run is at one of its opening picks: those before its first hand. */
 export function opensAt(run: Run): boolean {
-  return run.phase === "pick" && run.cycle === 1 && run.turn === 1;
+  return run.phase === "pick" && run.opening > 0;
 }
 
-/** The pick's heading: the opening pick's is the basket the run starts from (short enough to stand between the cycle and the pool). */
+/** The pick's heading: an opening pick's says which of them it is (short enough to stand between the cycle and the pool). */
 export function pickHeading(run: Run): string {
-  return opensAt(run) ? BASKETS[run.basket].name : "Pick a fruit";
+  if (!opensAt(run)) return "Pick a fruit";
+  return OPENING_PICKS - run.opening === 0 ? "First fruit" : "Second fruit";
 }

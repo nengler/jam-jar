@@ -50,7 +50,8 @@ test("Play starts a run with a hand of 4; Space drops it into the jar", () => {
   game.close();
   assert.equal(last.phase, "order", "no pick after the first turn: the next hand is dealt");
   assert.equal(last.hand, 4);
-  assert.equal(last.dealt, 4, "all four dropped");
+  // A pool of 6 runs out as the second hand is dealt: the four that dropped were shuffled back in for it.
+  assert.equal(last.dealt, 0, "all four dropped, and dealt from again");
   assert.ok(last.fruits! >= 1 && last.fruits! <= 4, "in the jar (some may have merged)");
 });
 
