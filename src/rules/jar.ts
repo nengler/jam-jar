@@ -848,7 +848,7 @@ function makeFruit(run: Run, kind: FruitKind, x: number, y: number): Fruit {
     kickY: 0,
     landed: false,
     age: 0,
-    rotten: kind === "prune",
+    rotten: false,
     pulse: 0,
     pulseDelay: 0,
     honeyed: kind === "honeydew",
@@ -1813,7 +1813,7 @@ function simmer(run: Run, tally: Tally): void {
     const touched = neighbours(run.fruits, near, i);
     let points = 0;
     if (f.kind === "prune") {
-      // Rotten from the start, and the one rotten fruit that scores: for the rot around it.
+      // Dried, not rotten: it scores for the rot around it, which it makes a neighbour at a time (`ageAndRot`).
       // (A Dense one counts as that many.)
       points = FRUITS.prune.points * touched.filter((o) => o.rotten).reduce((sum, o) => sum + FRUITS[o.kind].touchWeight, 0);
     } else if (f.rotten) {
@@ -1955,9 +1955,12 @@ function ageAndRot(run: Run, tally: Tally): void {
     if (f.kind === "banana" && f.age >= BANANA.rots && !f.rotten) f.rotten = true;
   }
   // A Fruit Fly rots a fruit it touches too, though it is not rotten itself: it brings its own meal, and eats it next turn.
-  const rotten = run.fruits.filter((f) => f.rotten || f.kind === "fruitfly");
+  // So does a Prune, which scores for it.
+  const rotten = run.fruits.filter((f) => f.rotten || f.kind === "fruitfly" || f.kind === "prune");
   for (const r of rotten) {
-    const next = run.fruits.find((o) => !o.rotten && !o.pickled && o.kind !== "lemon" && o.kind !== "fruitfly" && r.touching.includes(o.id));
+    // (Nor a Prune: it is dried, not rotten. It Spoils a neighbour a turn as a Fruit Fly does, and scores for the rot beside
+    // it. It was rotten itself, so two Prunes scored each other: the strongest fruit in the game, and it needed nothing.)
+    const next = run.fruits.find((o) => !o.rotten && !o.pickled && o.kind !== "lemon" && o.kind !== "fruitfly" && o.kind !== "prune" && r.touching.includes(o.id));
     if (next === undefined) continue;
     next.rotten = true;
     // A Fig pays as it turns: once, for whatever rotted it.
@@ -2429,7 +2432,7 @@ function nextCycle(run: Run): void {
   run.flipped = false;
   run.fruits = run.fruits.filter((f) => run.kept.includes(f.id));
   // What a Pickling Jar keeps is Pickled: it does not age, and rot it had is gone.
-  if (run.items.includes("pickling")) for (const f of run.fruits) Object.assign(f, { pickled: true, rotten: f.kind === "prune" });
+  if (run.items.includes("pickling")) for (const f of run.fruits) Object.assign(f, { pickled: true, rotten: false });
   run.kept = [];
   const rng = new Rng(run.seed);
   const shuffled = shuffleGlazed(rng, run.pool, run.poolGlazes);

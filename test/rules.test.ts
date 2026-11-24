@@ -101,7 +101,7 @@ function fruit(id: number, kind: Fruit["kind"], x: number, y: number, touching: 
     kickY: 0,
     landed: true,
     age: 0,
-    rotten: kind === "prune",
+    rotten: false,
     pulse: 0,
     pulseDelay: 0,
     honeyed: kind === "honeydew",
@@ -613,14 +613,21 @@ test("paying the last rent wins the run without a shop", () => {
   assert.equal(run.phase, "won");
 });
 
-test("a Prune is rotten from the start, scores for each other rotten fruit it touches, and spreads its rot", () => {
+test("a Prune is not rotten: it scores for each rotten fruit it touches, Spoils one neighbour a turn, and is not rotted", () => {
   const y = JAR.floor - 14;
   const banana = { ...fruit(2, "banana", 330, y, [1]), rotten: true };
   const run = jarWith([fruit(1, "prune", 300, y, [2, 3]), banana, fruit(3, "cherry", 270, y, [1])]);
-  assert.equal(run.fruits[0]!.rotten, true);
+  assert.equal(run.fruits[0]!.rotten, false);
   resolve(run);
   assert.equal(run.cycleScore, FRUITS.prune.points, "one rotten neighbour when it scored");
-  assert.equal(run.fruits.find((f) => f.id === 3)!.rotten, true, "then the Prune rotted the Cherry");
+  assert.equal(run.fruits.find((f) => f.id === 3)!.rotten, true, "then the Prune Spoiled the Cherry");
+  assert.equal(run.fruits[0]!.rotten, false, "and the Banana's rot does not take it");
+
+  // Two Prunes side by side score nothing for each other: neither is rotten.
+  const pair = jarWith([fruit(1, "prune", 300, y, [2]), fruit(2, "prune", 330, y, [1])]);
+  resolve(pair);
+  assert.equal(pair.cycleScore, 0);
+  assert.deepEqual(pair.fruits.map((f) => f.rotten), [false, false]);
 });
 
 test("rotten fruit still Merge, and what they make is rotten", () => {
@@ -645,7 +652,7 @@ test("a Fruit Fly eats a rotten fruit it touches and another hatches; it never e
 
 test("a Fig scores once as it turns Rotten, whatever rotted it; and a Fruit Fly rots a neighbour, though it is not rotten", () => {
   const y = JAR.floor - 18;
-  const run = jarWith([fruit(1, "prune", 300, y, [2]), fruit(2, "fig", 336, y, [1])]);
+  const run = jarWith([{ ...fruit(1, "banana", 300, y, [2]), rotten: true }, fruit(2, "fig", 336, y, [1])]);
   run.turn = 1;
   resolve(run);
   assert.equal(run.fruits[1]!.rotten, true);

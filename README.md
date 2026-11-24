@@ -179,7 +179,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   chain into other Chilis and Durians, and score a bonus for each fruit destroyed (10 for a Chili's, 14 for a Durian's).
 - Banana: 4, then +4 a turn, rots after 3 turns, and rot spreads to one touching fruit a turn. Rotten
   fruit score nothing but still merge, and what they merge into is rotten.
-- The rest of the Rot group: Prune (rotten from the start and spreading like any rot, +8 for each rotten fruit touching it), Fruit Fly (eats
+- The rest of the Rot group: Prune (not rotten itself: +8 for each rotten fruit touching it, and it rots one fruit it touches a turn), Fruit Fly (eats
   one rotten fruit it touches a turn for 24, and another Fly hatches there; never a Prune; and it rots one fruit it touches a
   turn, though it is not rotten itself) and Fig (scores 40 once as it turns Rotten).
 - Flex fruit: Kiwi (becomes a copy of the first landed fruit it touches), Peach (bounces once when it lands and shoves what it
@@ -329,6 +329,20 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   A Fig is still nothing alone, by design: it needs a rot beside it. At 20 for turning it was level with a Fruit Fly alone
   (+24) and cost a Prune build half its points (+222). A Lemon scores nothing itself and doubles what is beside it, which
   bots that drop a hand as dealt do not set up: it still costs them points beside an Apple or a Prune.
+- The Prune, which was too strong for how little it asked. Rotten from the start and spreading like any rot, it made the
+  neighbours it scores for, and two Prunes scored each other: +439 a run alone, the most of any fruit, and every partner
+  measured made a Prune build worse than Prunes alone. It is no longer rotten: it Spoils a neighbour a turn as a Fruit Fly
+  does and scores 8 for each rotten fruit beside it, but Prunes do not count each other and rot does not take them. Same
+  bots, against never picking:
+
+    | | Prune alone | With a Fruit Fly (alone +31) | With a Blueberry (alone -80) | With a Fig | With a Banana (alone -119) |
+    | --- | --- | --- | --- | --- | --- |
+    | Before | +439 | +525 | +508 | +417 | +165 |
+    | Now | +61 | +226 | +271 | +227 | -8 |
+
+  Two others were tried. A Prune that makes no rot at all scored nothing alone (-444) and cost a Fruit Fly build 179: a
+  trap. The old Prune with rotten Merges scoring nothing (rot costs a merge pool nothing as it is) was still the best
+  fruit alone (+310).
 - Countdowns: a fruit in the jar that is counting down wears the number of turns it has left, in a small dark disc at its
   lower left (`countdowns`, `TurnsMark.tsx`): a frozen fruit until it thaws (an ice-blue ring), a Coconut until it cracks
   (light), a Banana until it rots (brown). A frozen build is timed by that number, and it was nowhere on screen.

@@ -225,9 +225,12 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
     family: "Rot",
     roles: ["Build-around"],
     works: [
-      ["Banana", "makes the rot it feeds on"],
+      ["Fruit Fly", "a second fruit making rot beside it"],
+      ["Blueberry", "rotten, it counts as three neighbours"],
+      ["Fig", "pays 40 as the Prune spoils it"],
       ["Gourd", "absorbing rot makes rotten Cherries"],
     ],
+    clashes: [["Prune", "two side by side score nothing for each other"]],
   },
   kiwi: {
     family: "Flex",
