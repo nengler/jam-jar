@@ -96,7 +96,7 @@ export function pumpkinSprout(grown: number): FruitKind {
 
 /**
  * A Pumpkin Seed's card, which changes as the run goes: the fruit it grows now, and how many more must grow before it grows the
- * next size ("Exploded: grows a Cherry. 3 more: Grape.", short enough for a shop label).
+ * next size ("Exploded: grows a Cherry. After 3 more grow, it grows a Grape.", short enough for a shop label).
  */
 export function pumpkinSeedText(grown: number): string {
   const sizes = PUMPKIN_SEED.sizes;
@@ -105,7 +105,7 @@ export function pumpkinSeedText(grown: number): string {
   const here = `Exploded: grows ${aFruit(now)}.`;
   if (step >= sizes.length - 1) return here;
   const left = PUMPKIN_SEED.every - (grown % PUMPKIN_SEED.every);
-  return `${here} ${left} more: ${FRUITS_NAMES[sizes[step + 1] as FruitKind]}.`;
+  return `${here} After ${left} more ${left === 1 ? "grows" : "grow"}, it grows ${aFruit(sizes[step + 1] as FruitKind)}.`;
 }
 /**
  * The Golden Apple: an early economy pick that needs no synergy. It pays `GOLDEN` coins when the rent is paid with it in the jar,

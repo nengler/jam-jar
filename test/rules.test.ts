@@ -278,10 +278,10 @@ test("a Pumpkin Seed caught in a blast grows a fruit where it was, which scores,
 });
 
 test("a Pumpkin Seed's card says what it grows now and how many more until the next size", () => {
-  assert.equal(pumpkinSeedText(0), "Exploded: grows a Cherry. 3 more: Grape.");
-  assert.equal(pumpkinSeedText(2), "Exploded: grows a Cherry. 1 more: Grape.");
-  assert.equal(pumpkinSeedText(3), "Exploded: grows a Grape. 3 more: Orange.");
-  assert.equal(pumpkinSeedText(8), "Exploded: grows an Orange. 1 more: Melon.");
+  assert.equal(pumpkinSeedText(0), "Exploded: grows a Cherry. After 3 more grow, it grows a Grape.");
+  assert.equal(pumpkinSeedText(2), "Exploded: grows a Cherry. After 1 more grows, it grows a Grape.");
+  assert.equal(pumpkinSeedText(3), "Exploded: grows a Grape. After 3 more grow, it grows an Orange.");
+  assert.equal(pumpkinSeedText(8), "Exploded: grows an Orange. After 1 more grows, it grows a Melon.");
   assert.equal(pumpkinSeedText(9), "Exploded: grows a Melon.");
   assert.equal(FRUITS.pumpkinseed.text, pumpkinSeedText(0));
   const run = newRun(1);
