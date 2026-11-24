@@ -4,7 +4,7 @@ import { Dialog, Rule } from "./Board.tsx";
 import { EndBoard } from "./EndBoard.tsx";
 import { TapButton } from "./KeyHint.tsx";
 import { RENT, rentFor, type Run } from "./rules/jar.ts";
-import { GOOD, INK, INK_SOFT, SHADE } from "./theme.ts";
+import { GOOD, INK_SOFT, SHADE } from "./theme.ts";
 
 interface CycleEndProps {
   run: Run;
@@ -30,10 +30,6 @@ export function CycleEnd({ run, keys, onGoOn, onAgain, onTitle }: CycleEndProps)
               <Flex direction="row" justifyContent="space-between">
                 <Text color={INK_SOFT}>This cycle</Text>
                 <Text color={GOOD}>{`${run.cycleScore} of ${rent}`}</Text>
-              </Flex>
-              <Flex direction="row" justifyContent="space-between">
-                <Text color={INK_SOFT}>The run so far</Text>
-                <Text color={INK}>{`${run.total}`}</Text>
               </Flex>
               <Flex direction="row" justifyContent="space-between">
                 <Text color={INK_SOFT}>Coins</Text>
