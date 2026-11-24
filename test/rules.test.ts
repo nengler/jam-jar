@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { blastBits, blastFlash, blastJolt, cardText, fruitResults, keywordResults, motes, poolRows, termsOf, TILT_TIME, tilted } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
-import { APPLE, BANANA, FRUITS, QUINCE, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
+import { APPLE, BANANA, FRUITS, QUINCE, RASPBERRY, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
@@ -1294,6 +1294,18 @@ test("a pick comes after every turn of a cycle but the last, which goes to the r
   assert.equal(after(3), "pick 4 0");
   assert.equal(after(4), "pick 5 0");
   assert.equal(after(5).split(" ")[0], "over", "and the last turn goes to the rent (unpaid, with an empty jar)");
+});
+
+test("a Raspberry scores more for each that has landed this cycle, and they start again after the rent", () => {
+  const y = JAR.floor - FRUITS.raspberry.radius;
+  const fresh = (id: number, x: number): Fruit => ({ ...fruit(id, "raspberry", x, y), landed: false });
+  let run = jarWith([fresh(1, 200), fresh(2, 300), fresh(3, 400)]);
+  run.turn = 1;
+  for (let i = 0; i < 600 && run.phase === "settle"; i++) run = advance(run, 1 / 60, NO_KEYS, []);
+  // Apart on the floor, so none merges or touches: 3, then 3 + 2, then 3 + 4.
+  assert.equal(run.clusterBonus, 3 * RASPBERRY.cluster);
+  assert.equal(run.earned["Raspberry"], 3 * RASPBERRY.base + 3 * RASPBERRY.cluster);
+  assert.match(FRUITS.raspberry.text, new RegExp(`Fresh ${RASPBERRY.base}\\. Cluster ${RASPBERRY.cluster}\\.`));
 });
 
 test("the first game's run pays a smaller first rent, and the rents after it are everyone's", () => {

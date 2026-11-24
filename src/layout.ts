@@ -191,7 +191,7 @@ export function glazesOf(run: Run, kind: FruitKind): Glaze[] {
 }
 
 export function grownOf(run: Run, kind: FruitKind): number {
-  return kind === "banana" ? run.bananaBonus : kind === "pitaya" ? run.pitayaBonus : 0;
+  return kind === "banana" ? run.bananaBonus : kind === "pitaya" ? run.pitayaBonus : kind === "raspberry" ? run.clusterBonus : 0;
 }
 
 /**

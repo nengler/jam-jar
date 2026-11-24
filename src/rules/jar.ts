@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, RASPBERRY, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
 import { FIZZY_LINKS, GLAZE_KINDS, GLAZE_PRICE, GLAZES, glazeFits, ripened, SPICY, type Glaze } from "./glazes.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
@@ -397,6 +397,8 @@ export interface Run {
   bananaBonus: number;
   /** What every Pitaya scores on top of its own points: +1 for each Cherry one has eaten. */
   pitayaBonus: number;
+  /** What every Raspberry scores over its card, for those that have landed this cycle (`RASPBERRY.cluster` each): 0 again at the rent. */
+  clusterBonus: number;
   /** How many fruit have grown from Pumpkin Seeds this run: every `PUMPKIN_SEED.every` of them, the next grows a size bigger. */
   pumpkinSprouts: number;
   /** The items owned, in the order they were bought. A used-up one (the Lid) is taken out. */
@@ -577,6 +579,7 @@ export function newRun(seed: number, opening = false, learning = false): Run {
     milk: false,
     bananaBonus: 0,
     pitayaBonus: 0,
+    clusterBonus: 0,
     pumpkinSprouts: 0,
     items: [],
     shop: null,
@@ -671,6 +674,7 @@ export function withGlazes(run: Run): Run {
     regrowing: run.regrowing ?? [],
     opening: run.opening ?? 0,
     learning: run.learning ?? false,
+    clusterBonus: run.clusterBonus ?? 0,
     shop: run.shop === null ? null : { ...run.shop, glaze: run.shop.glaze ?? null, glazing: run.shop.glazing ?? false, removed: run.shop.removed ?? false },
   };
 }
@@ -1198,7 +1202,9 @@ function land(run: Run): void {
     sound(run, "land");
     const def = FRUITS[f.kind];
     if (def.scoring === "fresh") {
-      const earned = earn(run, near, i, def.points);
+      // A Raspberry scores what those before it this cycle have added, and adds its own for those after it (not a rotten one).
+      const earned = earn(run, near, i, def.points + (f.kind === "raspberry" ? run.clusterBonus : 0));
+      if (f.kind === "raspberry" && !f.rotten) run.clusterBonus += RASPBERRY.cluster;
       // Landing is the commonest score: only a doubled one lights anything up.
       if (earned !== null && !earned.doubled) f.pulse = 0;
     }
@@ -2351,6 +2357,7 @@ function nextCycle(run: Run): void {
   run.cycle += 1;
   run.turn = 1;
   run.cycleScore = 0;
+  run.clusterBonus = 0;
   run.juice = 0;
   run.lime = false;
   run.milk = false;

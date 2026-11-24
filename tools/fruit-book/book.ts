@@ -340,6 +340,17 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
     ],
     clashes: [["Pumpkin", "its Plunge throws the big fruit away"]],
   },
+  raspberry: {
+    family: "Flex",
+    roles: ["Build-around"],
+    works: [
+      ["Raspberry", "each one that lands makes them all score 2 more until the rent"],
+      ["Kiwi", "landing on a Raspberry it becomes one"],
+      ["A small pool", "the same Raspberries come round more often in a cycle"],
+    ],
+    clashes: [["Chili", "a Raspberry blown up has landed its last"]],
+    gap: "Nothing offers a second one: a pool of them is luck, by design. Not yet measured by the bots.",
+  },
 };
 
 /**

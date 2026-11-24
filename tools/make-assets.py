@@ -79,6 +79,7 @@ FRUIT_SIZES = {
     "fruitfly": 16,
     "pumpkinseed": 16,
     "goldenapple": 16,
+    "raspberry": 16,
     # A bridge fruit.
     "quince": 20,
     # Drawn for the Medlar, a bridge fruit held back until it is redesigned (the README says why); the game does not use it yet.

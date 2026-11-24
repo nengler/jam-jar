@@ -39,7 +39,8 @@ export type FruitKind =
   | "giantpumpkin"
   | "pumpkinseed"
   | "goldenapple"
-  | "quince";
+  | "quince"
+  | "raspberry";
 
 export type Scoring = "fresh" | "simmer" | "booster";
 
@@ -119,6 +120,12 @@ export const GOLDEN = 2;
  * held back: rot comes late in a five-turn cycle, so it almost never worked (see the README).
  */
 export const QUINCE = { perSize: 2 };
+/**
+ * The Raspberry: the fruit that is better the more of it a pool holds. It scores its base as it lands, and each one that
+ * lands makes every Raspberry score `cluster` more until the rent: one is a small fruit, five of them carry a cycle. Nothing
+ * offers it more often to a player who has one, so a pool of them is found, not chosen.
+ */
+export const RASPBERRY = { base: 3, cluster: 2 };
 export const GOURD_BURST = 4;
 export const GOURD_SIZES: readonly number[] = [FRUIT_ART.cherry.radius, FRUIT_ART.grape.radius, FRUIT_ART.orange.radius];
 
@@ -162,6 +169,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   pumpkinseed: { name: "Pumpkin Seed", radius: FRUIT_ART.pumpkinseed.radius, points: 0, scoring: "fresh", touchWeight: 1, text: pumpkinSeedText(0) },
   goldenapple: { name: "Golden Apple", radius: FRUIT_ART.goldenapple.radius, points: 2, scoring: "fresh", touchWeight: 1, text: `Fresh 2. Golden ${GOLDEN}.` },
   quince: { name: "Quince", radius: FRUIT_ART.quince.radius, points: QUINCE.perSize, scoring: "simmer", touchWeight: 1, text: `Simmer ${QUINCE.perSize} per size of its biggest neighbour.` },
+  raspberry: { name: "Raspberry", radius: FRUIT_ART.raspberry.radius, points: RASPBERRY.base, scoring: "fresh", touchWeight: 1, text: `Fresh ${RASPBERRY.base}. Cluster ${RASPBERRY.cluster}.` },
   giantpumpkin: { name: "Giant Pumpkin", radius: FRUIT_ART.giantpumpkin.radius, points: 75, scoring: "fresh", heavy: 4, touchWeight: 1, text: "Fresh 75. Shockwave, then it vanishes." },
 };
 
@@ -190,6 +198,7 @@ export const OFFERABLE: readonly FruitKind[] = [
   "pumpkinseed",
   "goldenapple",
   "quince",
+  "raspberry",
 ];
 
 /** What a Seed can sprout. */
