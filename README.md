@@ -34,7 +34,7 @@ each of its keywords means, as a pick's card does.
 
 The first game has a tutorial (`src/rules/tutorial.ts`, `src/Coach.tsx`). It is not a game of its own: a card beside the jar
 says one thing at a time about the run being played (the shelf, the order, dropping, scoring, the rent, the pick, the pool, the
-shop), frames what it is about, and moves on when the player has done it (a lesson that only tells them something, the rent or the pool, has a "Got it"). The two that come up while the jar plays,
+shop), frames what it is about, and moves on when the player has done it (a lesson that only tells them something, the rent, the pool or the shop, has a "Got it"; nothing in the shop has to be bought to get past it). The two that come up while the jar plays,
 the scoring and the chain, hold the jar still until their "Got it" (or Enter), so the card is not gone before it has been read. A lesson waits for its moment,
 so the card is away in between. "No tips" ends it, and the settings' Tips row turns it off or starts it again.
 

@@ -2,7 +2,8 @@ import { CHAIN_TIERS, type Run } from "./jar.ts";
 
 /**
  * The first game's lessons. They are not a game of their own: a card beside the jar says one thing at a time about the run the
- * player is really playing, and moves on when they have done it. A lesson that only tells them something (the rent, the pool) has a "Got it" to put it away with. Each lesson waits for its moment (the
+ * player is really playing, and moves on when they have done it. A lesson that only tells them something (the rent, the pool, the
+ * shop, where nothing has to be bought) has a "Got it" to put it away with. Each lesson waits for its moment (the
  * pick's waits for the first pick), so the card is away while there is nothing to say. One that comes up while the jar plays (the
  * scoring, the chain) holds the jar still until its "Got it", so it is not gone before it has been read.
  */
@@ -84,9 +85,10 @@ export const LESSONS: readonly Lesson[] = [
   {
     id: "shop",
     title: "The shop",
-    text: "Coins buy fruit and items. Remove weak fruit to see your best more often.",
-    keysText: "Coins buy fruit and items. Remove weak fruit to see your best more often.",
+    text: "Buy fruit, items, or take weak fruit out. Unspent coins carry over.",
+    keysText: "Buy fruit, items, or take weak fruit out. Unspent coins carry over.",
     target: null,
+    told: true,
   },
   {
     id: "chain",
@@ -127,16 +129,6 @@ export interface Did {
   looked: boolean;
   /** Changed the order of the hand. */
   moved: boolean;
-  /** Did something the game answered (bought, or tried to): the coins, the pool or what it says has changed. */
-  acted: boolean;
-}
-
-/**
- * What changes when the player does something the game answers, to compare with what it was (`Did.acted`): the coins (a buy,
- * a removal, a new shelf all cost some), the pool, and what the game says (a buy refused). A buy itself says nothing.
- */
-export function acts(run: Run): string {
-  return `${run.coins}|${run.pool.length}|${run.message}`;
 }
 
 /** Whether a lesson that has been showing is done with: the player did what it asked, or its moment has passed. */
@@ -146,9 +138,9 @@ export function lessonDone(lesson: Lesson, run: Run, did: Did): boolean {
   if (!lessonShows(lesson, run)) return true;
   if (lesson.id === "shelf") return did.looked;
   if (lesson.id === "order") return did.moved;
-  // The shop's lesson lies over where the shop says what happened and over the foot of the labels, where the chosen one's Buy
-  // button stands, so it goes as soon as there is something to say or a card is chosen.
-  if (lesson.id === "shop") return did.acted || (run.shop !== null && !run.shop.removing && run.shop.cursor >= 0);
+  // The shop's only tells (the player may have no coins, or want none of it): it goes with its "Got it", or when they leave the
+  // shop. It lies over the awning, where a chosen label's keywords are told, so it goes too once a label is chosen.
+  if (lesson.id === "shop") return run.shop !== null && !run.shop.removing && run.shop.cursor >= 0;
   return false;
 }
 
