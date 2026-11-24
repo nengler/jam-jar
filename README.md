@@ -276,8 +276,10 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 - Big moments: a score of 20 or more showing, or the chain reaching a tier, knocks the jar and holds the game nearly still
   for a beat (longer from 50 points), and its popup is written bigger (`PUNCH_FROM`, `HIT_SPEED` in `src/Play.tsx`). Only
   drawn and paced: the rules step the same.
-- Lanes: while a hand is ordered, a faint dashed line runs down the jar under each fruit, and a band as wide as the chosen
-  fruit down its lane (`src/Lanes.tsx`), so moving a fruit shows what it will come down on.
+- Lanes (`src/Lanes.tsx`): while the tutorial's lessons about the shelf are up, a faint dashed line runs down the jar under
+  each fruit of the hand. After that, only a fruit being moved (picked up or dragged) shows a band as wide as itself down
+  its lane, so what it will come down on can be seen. Neither in the Blind, Tilted or Flip jar, where a fruit does not end
+  up under its place.
 - A shelf fruit's card stands under the rent board and its keywords under the basket, so neither hides the score, the rent
   or the coins (during a tutorial lesson, whose card is at the right, they are one column in the top left corner).
 - The pick's cards can be put aside to look at the jar and the score ("See the jar", or J), and brought back.

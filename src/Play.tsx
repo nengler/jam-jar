@@ -404,6 +404,8 @@ export function Play() {
   /** What is picked out (Coach.tsx): what the lesson is about, or the jar while a Preserves Jar's fruit are chosen. */
   const lit = coached !== null ? coached.target : preserving ? "jar" : null;
 
+  /** The lanes mean something: a fruit comes down under its place on the shelf. */
+  const guided = bossNow(run) === null || bossNow(run) === "peg";
   /** A fruit of the shelf shows what it does: not before the hand is dealt, and not over the rent board while its lesson is about it. */
   const tipped = !paused && !s.whole && ordering && s.intro >= INTRO.hand && !about(coached, "rent") && (keys || s.tip);
 
@@ -455,8 +457,13 @@ export function Play() {
         </Raise>
       )}
 
-      {/* Where each fruit of the hand will fall, while it is being ordered. */}
-      {ordering && bossNow(run) !== "blind" && s.intro >= INTRO.hand && <Lanes run={run} shown={keys || s.tip || s.drag} />}
+      {/* Where the hand will fall: a line under each fruit while the tutorial says so, and after that only the lane of a fruit
+          being moved. Not in the jars where a fruit does not end up under its place (nor under the Blind jar's cloths). */}
+      {ordering && guided && s.intro >= INTRO.hand && (
+        <Raise id="jar">
+          <Lanes run={run} lines={about(coached, "shelf")} held={run.holding} />
+        </Raise>
+      )}
       {/* While ordering, a tap or a click on the jar drops the hand into it. */}
       {ordering && <Flex x={JAR.left} y={RIM} width={JAR.right - JAR.left} height={JAR.floor - RIM} focusable={false} onPress={() => tapDrop()} />}
 
