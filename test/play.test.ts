@@ -550,45 +550,18 @@ test("a finger drags a pick card's text to scroll it, which neither chooses nor 
   game.close();
 });
 
-test("in the shop, scrolling a chosen label's text keeps it chosen: the scroll is not a second tap", () => {
-  const game = startRun();
-  const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
-  // No label's text is longer than its label today, so the Snow Pear's is made twice as long for this test.
-  const snowpear = FRUITS.snowpear as { text: string };
-  const text = snowpear.text;
-  snowpear.text = `${text} ${text}`;
-  try {
-    play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["snowpear", "cherry", "grape"], item: null, glaze: null, cursor: -1, removing: false, glazing: false, removeCursor: -1, removed: false } };
-    game.input("_*60");
-    const box = findScroller(game.player.world.root);
-    assert.ok(box !== null, "the Snow Pear's text overflows its label");
-    const at = box.worldTransform();
-    const x = Math.round(at.x + 20);
-    const y = Math.round(at.y + 30);
-    game.input(`click@${x},${y}, _*2`);
-    assert.equal(play.s.run.shop!.cursor, 0, "tapped: chosen");
-    const held = [y, y, y - 10, y - 20, y - 40, y - 50, y - 50].map((to) => `MouseLeft+mouse@${x},${to}`).join(", ");
-    game.input(`mouse@${x},${y}, ${held}, _*2`);
-    assert.ok(box.scrollY > 0, `scrolled (${box.scrollY})`);
-    assert.deepEqual([play.s.run.shop!.cursor, play.s.run.coins], [0, 20], "still chosen, nothing bought");
-  } finally {
-    snowpear.text = text;
-  }
-  game.close();
-});
-
-test("the shop by taps: a tap on a label only chooses it, a second puts it back, and the Buy button buys it", () => {
+test("the shop by taps: a tap on a thing on the stall only chooses it, a second puts it back, and the Buy button buys it", () => {
   const game = startRun();
   const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
   play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["apple", "cherry", "grape"], item: null, glaze: null, cursor: -1, removing: false, glazing: false, removeCursor: -1, removed: false } };
   game.input("_*60");
-  // The five labels stand across the stall, 120 wide with 6 between: the second spans 134 to 254.
+  // The five places stand across the stall, 112 wide with 8 between: the second spans 144 to 256.
   game.input("click@243,150, _*2, click@243,150, _*2");
   assert.deepEqual([play.s.run.shop!.cursor, play.s.run.coins], [-1, 20], "tapped twice: put back, not bought");
   game.input("click@243,150, _*2");
   assert.deepEqual([play.s.run.shop!.cursor, play.s.run.coins], [1, 20], "a third time: chosen, not bought");
-  // The Buy button is under the chosen label, tucked over its foot, as the pick's Take button is.
-  game.input("click@194,243, _*2");
+  // The Buy button is beside the chosen one's price, under the counter's front.
+  game.input("click@222,257, _*2");
   assert.equal(play.s.run.coins, 20 - FRUIT_PRICE, "bought");
   assert.equal(play.s.run.shop!.fruits[1], null);
   game.close();

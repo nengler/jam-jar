@@ -35,3 +35,16 @@ export function FruitTip({ kind, grown = 0, text, apart, down = 0 }: { kind: Fru
     </Flex>
   );
 }
+
+/** The same for a thing that is not a fruit (the shop's item, a glaze): its name over what it does, and what its keywords mean. */
+export function CardTip({ name, text }: { name: string; text: string }) {
+  return (
+    <Flex direction="column" alignItems="start" gap={2}>
+      <Flex direction="column" width={TERM_W} paddingX={10} paddingTop={8} paddingBottom={6} backgroundImage={PLAQUE} slice={8} alignItems="center">
+        <Text color={LIGHT}>{name}</Text>
+        <RuleText x={0} y={0} width={TERM_W - 20} text={text} color={LIGHT} accent={KEYWORD_LIGHT} />
+      </Flex>
+      <Terms text={text} />
+    </Flex>
+  );
+}

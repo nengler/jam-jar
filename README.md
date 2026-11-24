@@ -25,7 +25,7 @@ npx tse screenshot . --script "_*2, Enter, _*10, Space, _*150" --at 160 --out sh
 ## Controls
 
 Everything can also be done with the mouse or a finger, with no keyboard: drag a fruit along the shelf to where it should stand, tap the jar to drop the hand into it, and tap the buttons for what Space, Esc and Enter do elsewhere (Skip,
-Done, Back, and Pause on the counter in the bottom right corner). A tap on a card (in the pick or the shop) chooses it and shows what its keywords mean; the Take or Buy button under it (or Enter) takes or buys it.
+Done, Back, and Pause on the counter in the bottom right corner). A tap on a card in the pick chooses it and shows what its keywords mean; the Take button under it (or Enter) takes it. The shop's stall shows each thing with its name and price only: what it does opens beside it while the mouse is over it or it is chosen (a tap, or the arrows), and the Buy button beside its price (or Enter) buys it.
 No card is chosen until you choose one. The shop's actions, a kind in the take-out dialog and a fruit the Preserves Jar can
 keep act on one tap. The basket at the end of the shelf shows how much is still to be dealt; a tap on it (or D) opens a board
 of every fruit in the pool, where a tap on a kind shows all it does beside the board. A fruit's tooltip, on the shelf and on that board, says what
@@ -170,7 +170,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 - The Quince, a bridge fruit (Garden to Ladder): Simmer, 2 at each Resolve for each size of the biggest fruit touching it, a
   Cherry's 1 to a Watermelon's 5 (any fruit counts by its size). A garden wants big fruit built beside it.
 
-  The shop's stall has five labels (three fruit, the item and the glaze); its glaze is drawn from a seed of its own, so the
+  The shop's stall has five places (three fruit, the item and the glaze); its glaze is drawn from a seed of its own, so the
   rest of what a seed decides is as it was. The badges are stand-ins until the fruit are redrawn with an overlay for each
   glaze. A run kept from before glazes loads with every fruit plain (`withGlazes`). The chain starts again with each hand dropped, and carries from the settle into the tally, so a garden
   reaches the tiers with its Simmer scores alone. It stacks with a Booster: a Lemon's x2 at x4 is x8.
