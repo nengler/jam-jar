@@ -359,7 +359,7 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
 
       {/* The bar along the foot. On the left the fruit and the coins, as they are on the play screen: the pool's basket and how many
           fruit are in it (a tap on it, or D, opens the board of the whole pool over the shop), then the jar of coins and how many.
-          In the middle what just happened (a fruit bought, the shelf restocked). The right is left to the pause button. */}
+          In the middle what the shop has to say (a boss jar next, a buy refused). The right is left to the pause button. */}
       <Flex left={BAR_SIDE} top={BAR_Y} height={BAR_H} direction="row" alignItems="center" gap={16} opacity={entered(time, SHOP_GLAZE + 1)}>
         <Flex direction="row" alignItems="center" gap={6} focusable={false} onPress={onPool}>
           <Flex width={POOL_BASKET_W} height={POOL_H}>

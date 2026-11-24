@@ -325,7 +325,8 @@ test("each Golden Apple in the jar when the rent is paid pays its coins on top o
   resolve(run);
   assert.equal(run.phase, "rent");
   assert.equal(run.coins, 3 + 2 * GOLDEN);
-  assert.match(run.message, /from Golden Apples/);
+  assert.equal(run.rentCoins, 3 + 2 * GOLDEN);
+  assert.equal(run.rentGolden, 2 * GOLDEN);
   const missed = jarWith([fruit(1, "goldenapple", 260, JAR.floor - 18)]);
   missed.turn = 5;
   missed.cycleScore = 0;
