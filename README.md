@@ -2,8 +2,7 @@
 
 A roguelike where you build a pool of fruit and the jar plays it. Each turn you're dealt 4 fruits from your pool and you arrange
 them on a tray over the jar. They all drop together, each straight down from its slot with a small wobble, physics settles the pile, merges and blasts score, and then Simmer fruit score at
-Resolve. A run opens with two picks of 1 of 3 new fruits, and after every second turn you pick again, or skip for a coin (two picks a cycle, so the pool stays small enough
-that every fruit in it comes up). Five turns make a rent cycle; miss rent and the run ends.
+Resolve. A run opens with two picks of 1 of 3 new fruits, and after every turn but a cycle's last you pick again, or skip for a coin (four picks a cycle). Five turns make a rent cycle; miss rent and the run ends.
 Between cycles the shop sells fruit, an item, a removal and rerolls for the coins the rent left over.
 
 Built on the [tse engine](https://github.com/nengler/tse). The design doc is the "Jam Jar: Game Design Outline" artifact.
@@ -33,7 +32,7 @@ of every fruit in the pool, where a tap on a kind shows all it does beside the b
 each of its keywords means, as a pick's card does.
 
 The first game has a tutorial (`src/rules/tutorial.ts`, `src/Coach.tsx`). It is not a game of its own: a card beside the jar
-says one thing at a time about the run being played (the shelf, the order, dropping, scoring, the rent, the pick, the pool, the
+says one thing at a time about the run being played (the shelf, the order, dropping, scoring, the pick, the rent, the pool, the
 shop), frames what it is about, and moves on when the player has done it (a lesson that only tells them something, the rent, the pool or the shop, has a "Got it"; nothing in the shop has to be bought to get past it). The two that come up while the jar plays,
 the scoring and the chain, hold the jar still until their "Got it" (or Enter), so the card is not gone before it has been read. The scoring lesson waits until the
 first hand has landed, scored and come to rest, so the first drop is seen through. A lesson waits for its moment,
@@ -123,7 +122,12 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 - The opening picks: a run starts at two picks of 1 of 3 (`OPENING_PICKS`), "First fruit" and "Second fruit", before its
   first hand. The fruit taken are dealt in the first hand, and each can be skipped for a coin. So a third of the first pool is
   what the player chose. The first game's tutorial run has none: it teaches the shelf first, and the pick when it comes after
-  turn 2.
+  the first turn. Its first rent is 150 (`LEARNING_RENT`), not 225: it is played with six fruit by someone who does not
+  know them yet.
+- A pick after every turn (`PICK_EVERY`). It was every second turn, when a pool that started at nine outgrew the 20 fruit
+  a cycle deals; one that starts at six has the room, and a fruit not wanted is a coin.
+- One removal a shop. Taking Cherries out in every shop was worth more than every pick put together (a bot that only did
+  that made all five of the old rents in 54% of runs, against 3% without), so it was the same right answer every run.
 - The opening, measured (96 seeds a bot, rent ignored, nothing bought; `tools/balance.ts`). On the old opening (nine plain
   fruit, picks after turns 2 and 4, rent 120 then 180) nobody missed the first rent, a bot that picks well scored no more in
   cycle 1 than one that never picks, and 73% of cycle 1's points came from the starters' ladder. With a pool of six and the
@@ -324,7 +328,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   - The Flip jar has a lid on, and its gravity turns over after every second drop: the pile falls to the lid, then back to
     the floor, and each fruit starts inside the jar at the end it will fall away from. Nothing spills from it.
 - Rent: 120, 180, 240, 320 and 400 over 5 cycles. Points over rent become coins (1 per 10).
-- The shop, after each rent but the last: three fruit (3 coins each), one item, taking a fruit out of your pool (4 coins; the
+- The shop, after each rent but the last: three fruit (3 coins each), one item, taking a fruit out of your pool (4 coins, one fruit a shop; the
   pool keeps at least one hand of 4) and a new shelf (1 coin). Each costs more every time you buy it (a removal by 2 coins,
   a new shelf by 1), and the price stays where it has got to for the rest of the run.
 - Items, which stand on the counter once you own them:

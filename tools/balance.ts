@@ -367,7 +367,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
         queued = shop.cursor === SHOP_GLAZE ? [ENTER] : shop.cursor < SHOP_GLAZE ? [RIGHT] : [LEFT];
         continue;
       }
-      const canThin = thin && run.coins >= removalPrice(run) && run.pool.length > 4 && run.pool.includes("cherry");
+      const canThin = thin && !shop.removed && run.coins >= removalPrice(run) && run.pool.length > 4 && run.pool.includes("cherry");
       // Buying: the first fruit on the shelf it would pick. The cursor walks the shelf with Left and Right (from nothing chosen,
       // Right goes to the first), and Enter on a card buys it.
       const wanted = picks.split("+");

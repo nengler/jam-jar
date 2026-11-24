@@ -17,7 +17,7 @@ interface CycleEndProps {
 
 /** The end of a cycle (the rent paid) or of the run (`EndBoard`): a board in the middle of the screen, as tall as what it says. */
 export function CycleEnd({ run, keys, onGoOn, onAgain, onTitle }: CycleEndProps) {
-  const rent = rentFor(run.cycle);
+  const rent = rentFor(run);
   const finished = run.phase === "over" || run.phase === "won";
   return (
     <Entity>

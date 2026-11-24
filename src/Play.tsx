@@ -81,7 +81,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed, tutorial >= LESSONS.length), reports: [] as FruitReport[], slow: 0, hit: 0, punch: 99, punchSize: 0, seenPopup: 0, peek: false, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed, tutorial >= LESSONS.length, tutorial < LESSONS.length), reports: [] as FruitReport[], slow: 0, hit: 0, punch: 99, punchSize: 0, seenPopup: 0, peek: false, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -117,7 +117,7 @@ export function Play() {
     // The run is over: Enter plays another, from a new seed.
     if (over && input.pressed("Enter")) {
       start();
-      s.run = newRun(seed + 1, tutorial >= LESSONS.length);
+      s.run = newRun(seed + 1, tutorial >= LESSONS.length, tutorial < LESSONS.length);
       s.intro = 0;
     }
   });
@@ -372,7 +372,7 @@ export function Play() {
   };
   const tapAgain = () => {
     start();
-    s.run = newRun(seed + 1, tutorial >= LESSONS.length);
+    s.run = newRun(seed + 1, tutorial >= LESSONS.length, tutorial < LESSONS.length);
     s.intro = 0;
   };
   const tapTitle = () => {
@@ -511,7 +511,7 @@ export function Play() {
           <Coach wide lesson={coached} keys={keys} width={620} onNext={lessonNext} onSkip={lessonSkip} />
         </Flex>
       )}
-      <LastTurn since={s.last} owed={rentFor(run.cycle) - scored} />
+      <LastTurn since={s.last} owed={rentFor(run) - scored} />
       {paused && <Pause />}
     </Entity>
     </Lit.Provider>

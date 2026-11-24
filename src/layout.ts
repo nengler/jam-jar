@@ -55,9 +55,9 @@ export function moment(run: Run): string {
  * The run the play screen starts with: the one read from the player's files (a copy: the game state's is not to be changed), or a
  * new one, which opens with a pick (`opening`) once the first game's tutorial is over.
  */
-export function startingRun(saved: unknown, seed: number, opening = false): Run {
+export function startingRun(saved: unknown, seed: number, opening = false, learning = false): Run {
   // A run kept before glazes has none: `withGlazes` makes every fruit of it plain.
-  return saved === null || saved === undefined ? newRun(seed, opening) : withGlazes(JSON.parse(JSON.stringify(saved)) as Run);
+  return saved === null || saved === undefined ? newRun(seed, opening, learning) : withGlazes(JSON.parse(JSON.stringify(saved)) as Run);
 }
 
 
