@@ -41,7 +41,7 @@ import { bindings, gameConfig } from "../game.ts";
 import { useGame } from "../src/GameState.ts";
 import { LESSONS } from "../src/rules/tutorial.ts";
 import { setTutorialStep } from "../src/settings.ts";
-import { FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
+import { BANANA, FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
 import { GLAZE_PRICE, type Glaze } from "../src/rules/glazes.ts";
 import { arrangeHand, bossNow, CHAIN_TIERS, FRUIT_PRICE, glazeKinds, POINTS_PER_COIN, SHOP_GLAZE, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
@@ -219,9 +219,18 @@ function searchHand(player: Player, backend: RecordingBackend, hand: readonly Fr
 
 /**
  *   BALANCE_CYCLES=2                   stop a run after that many cycles
+ *   BALANCE_POINTS='{"peach":16}'      other points for some fruit
  *   BALANCE_RENT=225,245,270,300,340   another rent curve (for the coins a "/thin" or "/shop" bot is left with)
  */
 const env = (name: string) => process.env[name];
+// BALANCE_POINTS='{"peach":16}': other points for some fruit, to try a number before it is written in the table (the cards
+// are not rewritten; a Banana's base is `BANANA.base`, which is set with it).
+for (const [kind, points] of Object.entries(JSON.parse(env("BALANCE_POINTS") ?? "{}") as Record<string, number>)) {
+  (FRUITS[kind as FruitKind] as { points: number }).points = points;
+  if (kind === "banana") (BANANA as { base: number }).base = points;
+}
+// BALANCE_RIPEN=4: what a Banana Ripens by each turn.
+if (env("BALANCE_RIPEN") !== undefined) (BANANA as { ripen: number }).ripen = Number(env("BALANCE_RIPEN"));
 const maxCycles = Number(env("BALANCE_CYCLES") ?? 99);
 
 // BALANCE_RENT=225,245,270,300,340: the rents the bots' coins and the "makes rent" counts are worked out from.

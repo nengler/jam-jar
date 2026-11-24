@@ -131,7 +131,7 @@ const CALM_TIME = 0.6;
 export const SETTLE_LIMIT = 8;
 const OVERFLOW_PENALTY = 5;
 /** How many Resolves a Coconut sits through before it cracks. */
-const COCONUT_TURNS = 3;
+const COCONUT_TURNS = 2;
 /** Juice: how deep the liquid a Lime or a Coconut leaves is, in pixels, and the deepest the jar's liquid gets. */
 export const LIME_JUICE = 20;
 export const COCONUT_MILK = 20;
@@ -259,6 +259,8 @@ export interface Fruit {
   pickled: boolean;
   /** Frozen by a Snow Pear: its component pins its ball, so it is held where it is, and an explosion does not destroy it. */
   frozen: boolean;
+  /** While it is frozen: how many turns of ice it has left (`FROZEN_TURNS` when it froze). */
+  ice?: number;
   /** Coated in honey (a Honeydew, or a fruit one has honeyed): it scores at every Resolve. */
   honeyed: boolean;
   /** A Chili or Durian about to go off, and the seconds left. */
@@ -1213,12 +1215,18 @@ function land(run: Run): void {
       kick(f, 0, run.flipped ? FLOOR_BOUNCE : -FLOOR_BOUNCE);
     }
     if (f.kind === "peach") {
-      // It bounces once, and shoves what it landed on away to each side.
+      // It bounces once, and shoves what it landed on away to each side: each fruit shoved is a link of the chain, so a Peach
+      // dropped into a crowd lifts the chain before the merges it shakes loose are scored.
       kick(f, 0, -PEACH_BOUNCE);
       for (const o of neighbours(run.fruits, near, i)) {
         kick(o, (o.x < f.x ? -1 : 1) * PEACH_SHOVE, -PEACH_SHOVE / 3);
+        if (!f.rotten) for (let k = 0; k < PEACH_LINKS; k++) addLink(run);
       }
     }
+    // A Dense fruit lands as that many links: a Blueberry is three.
+    if (FRUITS[f.kind].touchWeight > 1 && !f.rotten) for (let k = 0; k < FRUITS[f.kind].touchWeight; k++) addLink(run);
+    // A Coconut landing on a Coconut cracks the one under it.
+    if (f.kind === "coconut") crack(run, neighbours(run.fruits, near, i).filter((o) => o.kind === "coconut" && o.landed && o !== f && o.y > f.y), "A Coconut cracked a Coconut");
     if (f.kind === "pumpkin") pumpkins.push(f);
   });
   for (const p of pumpkins) if (run.fruits.includes(p)) plunge(run, p);
@@ -1269,6 +1277,11 @@ function plungeStep(run: Run, dt: number): void {
       }
       // An Anchored fruit is neither Smashed nor thrown: the Plunge goes on past it.
       if (o.kind === "giantpumpkin" || o.kind === "pumpkin" || o.glaze === "anchored") continue;
+      // A Coconut it drives into cracks open at once.
+      if (o.kind === "coconut") {
+        crack(run, [o], "A Pumpkin cracked a Coconut");
+        continue;
+      }
       const side = o.x === p.x ? (o.id % 2 === 0 ? 1 : -1) : Math.sign(o.x - p.x);
       if (smashable(o)) {
         p.burst = (p.burst ?? 0) + Math.round(smashWorth(o) * PLUNGE_PAY);
@@ -1421,6 +1434,8 @@ function smash(run: Run, w: Fruit, scores = true): Fruit[] {
 /** How hard a fruit hops when it lands on the floor (px/s): about 8 px up. Landing on another fruit, it does not. */
 const FLOOR_BOUNCE = 140;
 /** How hard a Peach bounces when it lands, and shoves each fruit it landed on sideways (px/s). */
+/** How many links of the chain each fruit a Peach shoves is worth. */
+export const PEACH_LINKS = 2;
 const PEACH_BOUNCE = 380;
 const PEACH_SHOVE = 180;
 
@@ -1654,6 +1669,7 @@ function explode(run: Run, bomb: Fruit): void {
   let points = 0;
   let figs = 0;
   let limes = 0;
+  let coconuts = 0;
   for (const f of run.fruits) {
     if (f === bomb) continue;
     const dx = f.x - bomb.x;
@@ -1692,6 +1708,7 @@ function explode(run: Run, bomb: Fruit): void {
     if (f.kind === "pomegranate") born.push(...burst(run, f.x, f.y));
     if (f.kind === "fig" && f.rotten) figs += 1;
     if (f.kind === "lime") limes += 1;
+    if (f.kind === "coconut") coconuts += 1;
     if (f.kind === "seed") born.push(sprout(run, f));
     if (f.kind === "pumpkinseed") born.push(pumpkinGrow(run, f));
     payGolden(run, f);
@@ -1720,6 +1737,11 @@ function explode(run: Run, bomb: Fruit): void {
   effect(run, "boom", bomb.x, bomb.y, radius * 2);
   sound(run, "boom");
   run.message = spicy ? `A Spicy Merge Exploded: ${victims.length} fruit destroyed` : `${FRUITS[bomb.kind].name} Exploded: ${victims.length} fruit destroyed`;
+  // A Coconut blown open leaves its milk, as one that cracked by itself does.
+  if (coconuts > 0) {
+    pour(run, "milk", coconuts * COCONUT_MILK);
+    run.message = `${FRUITS[bomb.kind].name} cracked ${coconuts === 1 ? "a Coconut" : `${coconuts} Coconuts`}: milk in the jar`;
+  }
   if (limes > 0) {
     pour(run, "lime", limes * LIME_JUICE);
     run.message = `${FRUITS[bomb.kind].name} Exploded ${limes === 1 ? "a Lime" : `${limes} Limes`}: lime juice rises`;
@@ -1793,7 +1815,8 @@ function simmer(run: Run, tally: Tally): void {
     let points = 0;
     if (f.kind === "prune") {
       // Rotten from the start, and the one rotten fruit that scores: for the rot around it.
-      points = FRUITS.prune.points * touched.filter((o) => o.rotten).length;
+      // (A Dense one counts as that many.)
+      points = FRUITS.prune.points * touched.filter((o) => o.rotten).reduce((sum, o) => sum + FRUITS[o.kind].touchWeight, 0);
     } else if (f.rotten) {
       return;
     } else if (f.kind === "apple") {
@@ -1859,22 +1882,57 @@ function pitayasEat(run: Run, tally: Tally): void {
   }
 }
 
-/** A Coconut that has sat 3 turns cracks open and is gone, leaving its milk in the jar. */
+/** A Coconut that has sat `COCONUT_TURNS` turns cracks open and is gone, leaving its milk in the jar. */
 function coconutsCrack(run: Run): void {
-  const cracked = run.fruits.filter((f) => f.kind === "coconut" && f.age >= COCONUT_TURNS - 1);
-  if (cracked.length === 0) return;
-  run.fruits = run.fruits.filter((f) => !cracked.includes(f));
-  pour(run, "milk", cracked.length * COCONUT_MILK);
-  run.message = "A Coconut cracked: milk in the jar";
+  crack(run, run.fruits.filter((f) => f.kind === "coconut" && f.age >= COCONUT_TURNS - 1), "A Coconut cracked");
 }
 
-/** Each Snow Pear freezes itself and every fruit it touches, where they are. */
+/**
+ * Coconuts crack open: they are gone, and their milk is in the jar. By itself after `COCONUT_TURNS`, which leaves three turns of a
+ * cycle's five to score in it; or at once when one is hit hard (a Coconut landing on it, a Pumpkin's Plunge, a blast), so the
+ * milk can be set up for the turns that matter and not waited for.
+ */
+function crack(run: Run, cracked: Fruit[], what: string): void {
+  if (cracked.length === 0) return;
+  run.fruits = run.fruits.filter((f) => !cracked.includes(f));
+  for (const f of cracked) effect(run, "pop", f.x, f.y, f.r * 2);
+  pour(run, "milk", cracked.length * COCONUT_MILK);
+  run.message = `${what}: milk in the jar`;
+}
+
+/** How many turns ice lasts: a fruit frozen at the end of a turn thaws at the end of the `FROZEN_TURNS`th turn after it. */
+export const FROZEN_TURNS = 3;
+
+/**
+ * Ice thaws: each frozen fruit has a turn less of it, and one with none left is a plain fruit again. A Snow Pear whose ice is
+ * gone has melted, and is gone with it. Ice does not go at the rent: what is frozen then stays in the jar for the next cycle,
+ * with the turns it has left, so a pool with Snow Pears coming round keeps a corner of the jar from cycle to cycle.
+ */
+function iceThaws(run: Run): void {
+  const melted: Fruit[] = [];
+  for (const f of run.fruits) {
+    if (!f.frozen) continue;
+    f.ice = (f.ice ?? FROZEN_TURNS) - 1;
+    if (f.ice > 0) continue;
+    f.frozen = false;
+    if (f.kind === "snowpear") melted.push(f);
+  }
+  if (melted.length === 0) return;
+  for (const f of melted) effect(run, "pop", f.x, f.y, f.r * 2);
+  run.fruits = run.fruits.filter((f) => !melted.includes(f));
+}
+
+/**
+ * Each Snow Pear freezes one fruit it touches, where it is, and itself as it lands: one a turn, as a Honeydew honeys. Its own
+ * ice is not made again, so it melts after `FROZEN_TURNS` turns, having frozen that many fruit one after another.
+ */
 function snowPearsFreeze(run: Run, tally: Tally): void {
   for (const f of run.fruits) {
     if (f.kind !== "snowpear") continue;
-    const fresh = [f, ...run.fruits.filter((o) => f.touching.includes(o.id))].filter((o) => !o.frozen);
+    const next = run.fruits.find((o) => !o.frozen && o !== f && f.touching.includes(o.id));
+    const fresh = [...(f.frozen ? [] : [f]), ...(next === undefined ? [] : [next])];
     if (fresh.length === 0) continue;
-    for (const o of fresh) o.frozen = true;
+    for (const o of fresh) Object.assign(o, { frozen: true, ice: FROZEN_TURNS });
     stage(tally, null, fresh, fresh.filter((o) => o !== f).map((o) => link(run, "freeze", f, o)));
   }
 }
@@ -1923,6 +1981,7 @@ const END_OF_TURN: readonly ((run: Run, tally: Tally) => void)[] = [
   fruitFliesEat,
   pitayasEat,
   coconutsCrack,
+  iceThaws,
   snowPearsFreeze,
   honeydewsHoney,
   ageAndRot,
@@ -2330,6 +2389,8 @@ const CLEAR_GAP = 0.08;
  * while the rent board counts the score down to 0 and the rent up to the next cycle's. Nothing scores.
  */
 function startClear(run: Run): void {
+  // What is frozen stays through the rent, as what a Preserves Jar keeps does: its ice thaws by the turn, not at the rent.
+  for (const f of run.fruits) if (f.frozen && !run.kept.includes(f.id)) run.kept.push(f.id);
   const doomed = run.fruits.filter((f) => !run.kept.includes(f.id)).length;
   run.phase = "clear";
   run.message = "";
