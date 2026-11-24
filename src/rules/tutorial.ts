@@ -84,8 +84,8 @@ export const LESSONS: readonly Lesson[] = [
   {
     id: "shop",
     title: "The shop",
-    text: "Coins buy fruit and items. Remove weak fruit to see your best more often.",
-    keysText: "Coins buy fruit and items. Remove weak fruit to see your best more often.",
+    text: "Remove weak fruit to see your best more often.",
+    keysText: "Remove weak fruit to see your best more often.",
     target: null,
   },
   {
@@ -99,6 +99,11 @@ export const LESSONS: readonly Lesson[] = [
   },
 ];
 
+/** Whether a lesson (if one is up) is about `target`: what its frame is drawn around. */
+export function about(lesson: Lesson | null, target: LessonTarget): boolean {
+  return lesson !== null && lesson.target === target;
+}
+
 /** The lesson at a step of the tutorial, or null once it is over. */
 export function lessonAt(step: number): Lesson | null {
   return LESSONS[step] ?? null;
@@ -108,7 +113,8 @@ export function lessonAt(step: number): Lesson | null {
 export function lessonShows(lesson: Lesson, run: Run): boolean {
   switch (lesson.id) {
     case "score":
-      return run.phase === "drop" || run.phase === "settle" || run.phase === "tally";
+      // Once the hand has landed and scored: there is nothing to read about in a jar whose fruit are still on the shelf.
+      return (run.phase === "settle" && run.turnScore > 0 && run.calmTime > 0) || run.phase === "tally";
     case "pick":
       return run.phase === "pick";
     case "shop":

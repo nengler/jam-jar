@@ -15,9 +15,11 @@ import { KEYWORD_LIGHT, LIGHT, PLAQUE, TERM_W } from "./theme.ts";
  * right: the shelf's tip, beside the jar on both sides, as one column of both was taller than the screen for a fruit with many
  * keywords (a Pumpkin's ran off its foot).
  */
-export function FruitTip({ kind, grown = 0, text, apart }: { kind: FruitKind; grown?: number; text: string; apart?: number }) {
+export function FruitTip({ kind, grown = 0, text, apart, down = 0 }: { kind: FruitKind; grown?: number; text: string; apart?: number; down?: number }) {
   return (
     <Flex direction={apart === undefined ? "column" : "row"} width={apart ?? "fit"} justifyContent={apart === undefined ? "start" : "space-between"} alignItems="start" gap={2}>
+      {/* With `apart`, the card stands `down` pixels lower than its keywords: under the rent board, which is taller than the basket. */}
+      <Flex direction="column" paddingTop={apart === undefined ? 0 : down}>
       <Flex direction="column" width={TERM_W} paddingX={10} paddingTop={8} paddingBottom={6} backgroundImage={PLAQUE} slice={8} alignItems="center">
         <Text color={LIGHT}>{FRUITS[kind].name}</Text>
         <RuleText x={0} y={0} width={TERM_W - 20} text={text} color={LIGHT} accent={KEYWORD_LIGHT} />
@@ -27,6 +29,7 @@ export function FruitTip({ kind, grown = 0, text, apart }: { kind: FruitKind; gr
             {`Every ${FRUITS[kind].name} has Grown +${grown}.`}
           </Text>
         )}
+      </Flex>
       </Flex>
       <Terms text={text} />
     </Flex>

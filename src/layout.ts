@@ -432,3 +432,34 @@ export function keywordResults(run: Run): { label: string; points: number }[] {
     .map(([label, points]) => ({ label, points }))
     .sort((a, b) => b.points - a.points || a.label.localeCompare(b.label));
 }
+
+/** A lane of the jar a fruit of the hand will fall down: its place in the hand, its middle and how far the fruit reaches either side. */
+export interface Lane {
+  at: number;
+  x: number;
+  left: number;
+  right: number;
+}
+
+/**
+ * The lanes the hand will fall down, in its order now: each fruit at the middle of its lane (of its two, for a Wide one), as the
+ * rules drop it (`dropHand`, a few pixels either way), with the fruit's own width kept inside the jar's walls.
+ */
+export function lanesOf(hand: readonly FruitKind[], jarLeft: number, jarRight: number, lanes: number, spans: readonly number[]): Lane[] {
+  const width = (jarRight - jarLeft) / lanes;
+  let start = 0;
+  return hand.map((kind, at) => {
+    const span = spans[at] ?? 1;
+    const x = jarLeft + width * (start + span / 2);
+    start += span;
+    const r = FRUITS[kind].radius;
+    return { at, x, left: Math.max(jarLeft, x - r), right: Math.min(jarRight, x + r) };
+  });
+}
+
+/** The tops of the dashes of a dashed line from `from` down to `to`: each `dash` long, `gap` apart. */
+export function dashes(from: number, to: number, dash: number, gap: number): number[] {
+  const tops: number[] = [];
+  for (let y = from; y + dash <= to; y += dash + gap) tops.push(y);
+  return tops;
+}

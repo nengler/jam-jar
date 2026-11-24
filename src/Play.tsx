@@ -8,6 +8,7 @@ import { Jar } from "./Jar.tsx";
 import { JarMarks } from "./JarMarks.tsx";
 import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { PauseButton } from "./KeyHint.tsx";
+import { Lanes } from "./Lanes.tsx";
 import { LastTurn } from "./LastTurn.tsx";
 import { atRest, crossed, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, shelfSlot, startingRun } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
@@ -17,7 +18,7 @@ import { PoolBasket, PoolBasketBack } from "./PoolBasket.tsx";
 import { PoolBoard } from "./PoolBoard.tsx";
 import { PreserveBoard } from "./PreserveBoard.tsx";
 import { RentBoard } from "./RentBoard.tsx";
-import { acts, lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/tutorial.ts";
+import { about, acts, lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/tutorial.ts";
 import { Lit } from "./lit.ts";
 import { learn } from "./settings.ts";
 import { Shelf, ShelfTips } from "./Shelf.tsx";
@@ -36,6 +37,19 @@ const MOVE_QUIET = 0.12;
 /** Slow motion: how fast the game runs in it, and how long it lasts after the Blast that set it off, in the game's slowed seconds. */
 const SLOW_SPEED = 0.35;
 const SLOW_TIME = 0.4;
+/**
+ * A big moment: a score of `PUNCH_FROM` points or more showing, or the chain reaching a tier. The jar is knocked (as a blast
+ * knocks it, `PUNCH_PX` at the most, for a score of `PUNCH_FULL`) and the game stands nearly still for a beat (`HIT_SPEED` for
+ * `HIT_STEPS` of its steps, twice that for a full punch), so a Watermelon made or x2 reached does not look like a Cherry landing.
+ */
+const PUNCH_FROM = 20;
+const PUNCH_FULL = 50;
+const PUNCH_PX = 5;
+const PUNCH_TIME = 0.3;
+const HIT_SPEED = 0.12;
+const HIT_STEPS = 1;
+/** How much bigger a score of `PUNCH_FROM` or more is written, and one of `PUNCH_FULL`. */
+const POPUP_GROW = [1.25, 1.5] as const;
 /** How loud the chain's tier sound is, of the sounds' volume. */
 const TIER_VOLUME = 0.6;
 /** The chain on the jar: where its words stand (their middle, just over the rim), and how much bigger they are at each tier past the first. */
@@ -67,7 +81,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonActed: "", drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed), reports: [] as FruitReport[], slow: 0, hit: 0, punch: 99, punchSize: 0, seenPopup: 0, peek: false, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, lessonActed: "", drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -111,9 +125,14 @@ export function Play() {
   useUpdate((dt, input) => {
     const before = moment(s.run);
     const phase = s.run.phase;
+    const peeking = s.peek;
     // While the whole pool is up, the run hears no keys: Enter, Space or D put the board away, and the jar plays on behind it.
-    const looking = s.whole;
-    if (looking && (input.pressed("Enter") || input.pressed("Space") || input.pressed("D"))) s.whole = false;
+    // And while the pick's cards are put aside to look at the jar (J, or the pick's button), it hears none either.
+    if (s.run.phase !== "pick") s.peek = false;
+    else if (!s.whole && input.pressed("J")) s.peek = !s.peek;
+    else if (s.peek && !s.whole && (input.pressed("Enter") || input.pressed("Space"))) s.peek = false;
+    const looking = s.whole || s.peek || peeking;
+    if (s.whole && (input.pressed("Enter") || input.pressed("Space") || input.pressed("D"))) s.whole = false;
     else if (!looking && input.pressed("D")) s.whole = true;
     if (s.run.phase !== "order" || looking) s.drag = false;
     if (s.run.phase !== "order") s.tip = false;
@@ -201,13 +220,29 @@ export function Play() {
       if (atRest(s.run)) keepRun(s.run);
       else if (s.run.phase === "over" || s.run.phase === "won") dropRun();
     }
+    // A big score showing, or the chain reaching a tier, knocks the jar and stops the game for a beat.
+    if (s.run.nextId <= s.seenPopup) s.seenPopup = 0;
+    let punch = chainTier(shownLinks(s.run)) > chainTier(s.heardLinks) ? 1 : 0;
+    for (const p of s.run.popups) {
+      if (p.id <= s.seenPopup || p.delay > 0) continue;
+      s.seenPopup = p.id;
+      if (p.points >= PUNCH_FROM) punch = Math.max(punch, Math.min(1, p.points / PUNCH_FULL));
+    }
+    if (punch > 0) {
+      s.punch = 0;
+      s.punchSize = punch;
+      s.hit = punch >= 1 ? HIT_STEPS * 2 : HIT_STEPS;
+    } else {
+      if (s.punch < PUNCH_TIME) s.punch += dt;
+      if (s.hit > 0) s.hit -= 1;
+    }
     // A chain of Blasts, or a big one, plays in slow motion: long enough to see what it threw and what it set off.
     if (dramatic(s.run)) s.slow = SLOW_TIME;
     else if (s.slow > 0) s.slow -= dt;
     // Otherwise the jar's own business (dropping, settling, the tally) can be hurried: twice as fast with the Speed setting,
     // three times while F is held. What the player decides at (ordering, the pick, the shop) is never hurried.
     const busy = s.run.phase === "drop" || s.run.phase === "settle" || s.run.phase === "tally";
-    const pace = s.slow > 0 ? SLOW_SPEED : !busy ? 1 : input.down("F") ? HURRY_SPEED : fast ? FAST_SPEED : 1;
+    const pace = s.hit > 0 && busy ? HIT_SPEED : s.slow > 0 ? SLOW_SPEED : !busy ? 1 : input.down("F") ? HURRY_SPEED : fast ? FAST_SPEED : 1;
     if (pace !== speed) setSpeed(pace);
     const heard = s.run.sounds;
     // Each at its own level; the engine scales them all by the player's sounds setting.
@@ -302,6 +337,9 @@ export function Play() {
   const tapConfirm = () => {
     s.click = true;
   };
+  const tapPeek = () => {
+    s.peek = !s.peek;
+  };
   const tapPause = () => {
     pause();
   };
@@ -367,6 +405,9 @@ export function Play() {
   /** What is picked out (Coach.tsx): what the lesson is about, or the jar while a Preserves Jar's fruit are chosen. */
   const lit = coached !== null ? coached.target : preserving ? "jar" : null;
 
+  /** A fruit of the shelf shows what it does: not before the hand is dealt, and not over the rent board while its lesson is about it. */
+  const tipped = !paused && !s.whole && ordering && s.intro >= INTRO.hand && !about(coached, "rent") && (keys || s.tip);
+
   return (
     <Lit.Provider value={lit}>
     <Entity>
@@ -374,7 +415,7 @@ export function Play() {
 
       {/* The jar, what is drawn on it and its points: all raised together when it is picked out. */}
       <Raise id="jar">
-      <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(run.effects.filter((e) => e.kind === "boom"))} angle={angle} />
+      <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(run.effects.filter((e) => e.kind === "boom")) + (s.punch < PUNCH_TIME ? PUNCH_PX * s.punchSize * (1 - s.punch / PUNCH_TIME) * Math.cos(s.punch * 90) : 0)} angle={angle} />
       <JarMarks run={run} angle={angle} onPoint={point} onChoose={click} />
       {/* The chain, over the rim: it counts up with each link, and grows and turns gold at each tier. */}
       {linked > 0 && (
@@ -384,7 +425,7 @@ export function Play() {
       )}
       {/* The points stay upright over a leaning jar. */}
       {popups.map((p) => (
-        <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={p.big === true ? DISPLAY_SIZE * 2 : DISPLAY_SIZE} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={p.big === true ? 4 : 2} shadowY={p.big === true ? 4 : 2}>
+        <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={p.big === true ? DISPLAY_SIZE * 2 : Math.round(DISPLAY_SIZE * (p.points >= PUNCH_FULL ? POPUP_GROW[1] : p.points >= PUNCH_FROM ? POPUP_GROW[0] : 1))} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={p.big === true ? 4 : 2} shadowY={p.big === true ? 4 : 2}>
           {p.text}
         </Text>
       ))}
@@ -411,10 +452,12 @@ export function Play() {
       {/* What a fruit does, for the one tapped or the mouse is over; not under the Blind jar's cloth. */}
       {bossNow(run) !== "blind" && (
         <Raise id="shelf">
-          <ShelfTips run={run} shown={!paused && !s.whole && ordering && (keys || s.tip)} coached={coached !== null} />
+          <ShelfTips run={run} shown={tipped} coached={coached !== null} />
         </Raise>
       )}
 
+      {/* Where each fruit of the hand will fall, while it is being ordered. */}
+      {ordering && bossNow(run) !== "blind" && s.intro >= INTRO.hand && <Lanes run={run} shown={keys || s.tip || s.drag} />}
       {/* While ordering, a tap or a click on the jar drops the hand into it. */}
       {ordering && <Flex x={JAR.left} y={RIM} width={JAR.right - JAR.left} height={JAR.floor - RIM} focusable={false} onPress={() => tapDrop()} />}
 
@@ -450,14 +493,14 @@ export function Play() {
         <PauseButton pressKey={s.whole || s.run.phase === "over" || s.run.phase === "won" ? undefined : "Escape"} onPress={tapPause} />
       </Flex>
 
-      {picking && <PickBoard run={run} paused={paused} hints={hints} keys={keys} coached={coached} onChoose={click} onAway={away} onTake={tapConfirm} onSkip={tapDrop} onLessonNext={lessonNext} onLessonSkip={lessonSkip} />}
+      {picking && <PickBoard run={run} paused={paused} hints={hints} keys={keys} coached={coached} onChoose={click} onAway={away} onTake={tapConfirm} onSkip={tapDrop} onLessonNext={lessonNext} onLessonSkip={lessonSkip} peek={s.peek} onPeek={tapPeek} />}
       {ended && <CycleEnd run={run} keys={keys} onGoOn={tapEnd} onAgain={tapAgain} onTitle={tapTitle} />}
-      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} onPoint={point} onClick={click} onAway={away} onConfirm={tapConfirm} onSpace={tapDrop} onPool={openPool} />}
+      {run.phase === "shop" && run.shop !== null && <Shop run={run} shop={run.shop} onPoint={point} onClick={click} onAway={away} onConfirm={tapConfirm} onSpace={tapDrop} onPool={openPool} coached={coached !== null} />}
       {/* After the shop, so the pool board opened from it (its basket, or D) is over it. */}
       {s.whole && <PoolBoard run={run} chosenAt={s.poolAt} onLook={lookAt} onLookAway={lookAway} onClose={closePool} />}
-      {/* The first shop of the first game: the lesson lies along the foot of the screen, under the shop's actions, until the player does something there. */}
+      {/* The first shop of the first game: the lesson lies along the head of the screen, over the awning and clear of the actions and the coins, until the player does something there. */}
       {run.phase === "shop" && coached !== null && (
-        <Flex left={0} right={0} bottom={0} direction="row" justifyContent="center">
+        <Flex left={0} right={0} top={0} direction="row" justifyContent="center">
           <Coach wide lesson={coached} keys={keys} width={620} onNext={lessonNext} onSkip={lessonSkip} />
         </Flex>
       )}

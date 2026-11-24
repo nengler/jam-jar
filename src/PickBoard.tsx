@@ -26,6 +26,10 @@ const TAKE_TUCK = 20;
 /** The room left under a pick card's text, inside its frame: a longer text scrolls rather than running over it. */
 const OFFER_FOOT = 10;
 /** The picture at the top of a pick card: square, as big as the biggest fruit a pick can offer, each fruit standing on its foot. */
+/** The tutorial's lesson along the foot: as wide as leaves the Skip button, at the left, clear of it. */
+const COACH_W = 352;
+/** The button that puts the cards aside to look at the jar: this far from the right edge, clear of the pause button. */
+const PEEK_RIGHT = 52;
 const OFFER_PICTURE = biggestFruit(OFFERED);
 
 interface PickBoardProps {
@@ -44,13 +48,23 @@ interface PickBoardProps {
   onSkip: () => void;
   onLessonNext: () => void;
   onLessonSkip: () => void;
+  /** The cards are put aside to look at the jar and the score they are chosen for; `onPeek` puts them aside or brings them back. */
+  peek: boolean;
+  onPeek: () => void;
 }
 
 /**
  * The pick: three cards in a row in the middle of a dimmed kitchen, under their heading. Each place is a little taller than its
  * card, and the chosen card stands at the top of its place with its Take button under it.
  */
-export function PickBoard({ run, paused, hints, keys, coached, onChoose, onAway, onTake, onSkip, onLessonNext, onLessonSkip }: PickBoardProps) {
+export function PickBoard({ run, paused, hints, keys, coached, onChoose, onAway, onTake, onSkip, onLessonNext, onLessonSkip, peek, onPeek }: PickBoardProps) {
+  // Put aside: the jar, the rent and the pool as they are, and the way back.
+  if (peek)
+    return (
+      <Flex right={PEEK_RIGHT} bottom={2}>
+        <TapButton label="Back to the pick" keyName={keys ? "J" : ""} onPress={onPeek} />
+      </Flex>
+    );
   return (
     <Entity>
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
@@ -93,13 +107,19 @@ export function PickBoard({ run, paused, hints, keys, coached, onChoose, onAway,
       {/* The first pick of the first game: the tutorial's lesson says it, along the foot of the screen. */}
       {coached !== null && (
         <Flex right={8} bottom={2}>
-          <Coach wide lesson={coached} keys={keys} width={440} onNext={onLessonNext} onSkip={onLessonSkip} />
+          <Coach wide lesson={coached} keys={keys} width={COACH_W} onNext={onLessonNext} onSkip={onLessonSkip} />
         </Flex>
       )}
       {/* The way out, always there, in the bottom left corner: a card's keywords open to its side, never over this. */}
       <Flex left={16} bottom={2} direction="row" alignItems="center" gap={20}>
         <TapButton label="Skip for 1 coin" keyName={hints ? "Space" : ""} onPress={onSkip} />
       </Flex>
+      {/* And a look at the jar and the score the pick is for, in the bottom right corner, beside the pause button. */}
+      {coached === null && (
+        <Flex right={PEEK_RIGHT} bottom={2}>
+          <TapButton label="See the jar" keyName={keys ? "J" : ""} onPress={onPeek} />
+        </Flex>
+      )}
     </Entity>
   );
 }

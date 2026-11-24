@@ -35,7 +35,8 @@ each of its keywords means, as a pick's card does.
 The first game has a tutorial (`src/rules/tutorial.ts`, `src/Coach.tsx`). It is not a game of its own: a card beside the jar
 says one thing at a time about the run being played (the shelf, the order, dropping, scoring, the rent, the pick, the pool, the
 shop), frames what it is about, and moves on when the player has done it (a lesson that only tells them something, the rent or the pool, has a "Got it"). The two that come up while the jar plays,
-the scoring and the chain, hold the jar still until their "Got it" (or Enter), so the card is not gone before it has been read. A lesson waits for its moment,
+the scoring and the chain, hold the jar still until their "Got it" (or Enter), so the card is not gone before it has been read. The scoring lesson waits until the
+first hand has landed, scored and come to rest, so the first drop is seen through. A lesson waits for its moment,
 so the card is away in between. "No tips" ends it, and the settings' Tips row turns it off or starts it again.
 
 `npx tse package . --engine web` builds the game as a web page in `dist/jam-jar-web`, and `.github/workflows/pages.yml`
@@ -52,7 +53,7 @@ changes them.
 | Phase | Keys |
 | --- | --- |
 | Order your hand | Up/Down choose, Enter pick up / put down (then Up/Down move it), Space drop |
-| Pick | Left/Right or Up/Down choose, Enter take, Space skip (+1 coin) |
+| Pick | Left/Right or Up/Down choose, Enter take, Space skip (+1 coin), J put the cards aside to see the jar (and back) |
 | Rent paid / run over | Enter |
 | Shop | Arrows choose, Enter buy, Space next cycle (or back, while choosing a fruit to remove) |
 | Preserves Jar | Left/Right choose a fruit in the jar, Enter keep it or let it go, Space next cycle |
@@ -272,6 +273,14 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   balance bots buy nothing in the shop, so they can't value it yet: taken whenever offered it scores 1000 a run.
 - The title has a jar filling up by itself: a run the rules play (`src/rules/demo.ts`: each hand dropped as dealt, every
   pick skipped, a new run a moment after the rent comes due).
+- Big moments: a score of 20 or more showing, or the chain reaching a tier, knocks the jar and holds the game nearly still
+  for a beat (longer from 50 points), and its popup is written bigger (`PUNCH_FROM`, `HIT_SPEED` in `src/Play.tsx`). Only
+  drawn and paced: the rules step the same.
+- Lanes: while a hand is ordered, a faint dashed line runs down the jar under each fruit, and a band as wide as the chosen
+  fruit down its lane (`src/Lanes.tsx`), so moving a fruit shows what it will come down on.
+- A shelf fruit's card stands under the rent board and its keywords under the basket, so neither hides the score, the rent
+  or the coins (during a tutorial lesson, whose card is at the right, they are one column in the top left corner).
+- The pick's cards can be put aside to look at the jar and the score ("See the jar", or J), and brought back.
 - Fruit roll: the physics has no angle, so each fruit's turning is drawn from how far it moves along what it touches.
 - Music on every screen, with a volume each for the music and the sounds in Settings, kept between launches.
 - Pace: the game steps 60 times a second whatever the display does, so the jar's own business (dropping, settling, the

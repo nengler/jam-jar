@@ -9,6 +9,7 @@ import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { ITEMS, type ItemKind } from "./rules/items.ts";
 import { RuleText } from "./RuleText.tsx";
 import { Bloops } from "./Sounds.tsx";
+import { FruitTip } from "./FruitTip.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUIT_PRICE, glazeKinds, removalPrice, rerollPrice, SHOP_GLAZE, SHOP_ITEM, SHOP_LEAVE, SHOP_REMOVE, SHOP_REROLL, OFFERED, type Run, type Shop as ShopState } from "./rules/jar.ts";
 import { GLAZE_PRICE, GLAZES, type Glaze } from "./rules/glazes.ts";
@@ -75,15 +76,17 @@ const BAR_MESSAGE_W = 280;
  * are centred across it, and the item (48 x 40) stands on the cloth.
  */
 const PICTURE_W = Math.max(64, biggestFruit(OFFERED));
-const PICTURE_H = 88;
+const PICTURE_H = 76;
 const BASKET_W = 56;
-const BASKET_Y = 46;
+const BASKET_Y = 34;
 const CLOTH_W = 60;
 const ITEM_W = 48;
 /** How deep a fruit sits in its basket: this share of its height is below the basket's rim. */
 const BASKET_SINK = 0.4;
 /** Choosing a fruit to take out: the pool's kinds on a board, each in a cell its fruit's width and a little more, wrapping at this width. */
 const REMOVE_W = 520;
+/** Where a chosen label's tooltip opens while the tutorial's lesson lies along the head of the screen: this far below the label's top. */
+const TIP_UNDER = 14;
 
 /** A kind's cell on the take-out board: its fruit's width with room for the frame round the chosen one. */
 function removeCell(kind: FruitKind): number {
@@ -104,6 +107,8 @@ interface ShopProps {
   onSpace: () => void;
   /** The pool's basket was tapped: open the board of the whole pool, to compare what is for sale with what is in it. */
   onPool: () => void;
+  /** The tutorial's lesson is up, along the head of the screen: what the chosen label's keywords mean opens lower, under it. */
+  coached: boolean;
 }
 
 /** A price: the coin and the number, in a row. The number is red when the run has not the coins. */
@@ -281,7 +286,7 @@ const ACTION_RISE = 120;
  * on it: the arrows, Enter, Space and D work as on the play screen. The rules (rules/jar.ts, `Shop`) hold what is for sale and
  * where the cursor is; this draws them.
  */
-export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, onPool }: ShopProps) {
+export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, onPool, coached }: ShopProps) {
   // The card the cursor is on shows what its keywords mean, but not over the pause menu.
   const paused = useGame((g) => g.paused);
   // The kinds on the board for taking one out, or, for a glaze bought, those it can go on.
@@ -314,8 +319,8 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
         {placed(shop.fruits).map((slot) => (
           <Offer key={slot.at} at={slot.at} chosen={chosen === slot.at} item={false} drop={popIn(time, slot.at * ENTER.gap, ENTER.pop)} opacity={entered(time, slot.at)} onClick={onClick} buy={forSale && chosen === slot.at} onBuy={onConfirm}>
             {slot.card !== null && (
-              <Tooltip show={!paused && chosen === slot.at} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                <Terms text={cardText(run, slot.card)} />
+              <Tooltip show={!paused && chosen === slot.at} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={coached ? TIP_UNDER : -40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                <FruitTip kind={slot.card} text={cardText(run, slot.card)} />
               </Tooltip>
             )}
             {slot.card !== null && <Basket kind={slot.card} />}
@@ -326,7 +331,7 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
         ))}
         <Offer at={SHOP_ITEM} chosen={chosen === SHOP_ITEM} item={true} drop={popIn(time, SHOP_ITEM * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_ITEM)} onClick={onClick} buy={forSale && chosen === SHOP_ITEM} onBuy={onConfirm}>
           {shop.item !== null && (
-            <Tooltip show={!paused && chosen === SHOP_ITEM} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+            <Tooltip show={!paused && chosen === SHOP_ITEM} anchor="top-right" to="top-left" offsetX={-4} offsetY={coached ? TIP_UNDER : -40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
               <Terms text={ITEMS[shop.item].text} />
             </Tooltip>
           )}
@@ -337,7 +342,7 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
         </Offer>
         <Offer at={SHOP_GLAZE} chosen={chosen === SHOP_GLAZE} item={true} drop={popIn(time, SHOP_GLAZE * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_GLAZE)} onClick={onClick} buy={forSale && chosen === SHOP_GLAZE} onBuy={onConfirm}>
           {shop.glaze !== null && (
-            <Tooltip show={!paused && chosen === SHOP_GLAZE} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+            <Tooltip show={!paused && chosen === SHOP_GLAZE} anchor="top-right" to="top-left" offsetX={-4} offsetY={coached ? TIP_UNDER : -40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
               <Terms text={GLAZES[shop.glaze].text} />
             </Tooltip>
           )}
