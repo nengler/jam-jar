@@ -47,6 +47,7 @@ import {
   rentFor,
   resolve,
   rollPool,
+  FROZEN_TURNS,
   PEACH_LINKS,
   LEARNING_RENT,
   OPENING_PICKS,
@@ -693,18 +694,35 @@ test("a Coconut hit hard cracks at once: one landing on it, or a blast, leaves i
   assert.ok(blown.milk && blown.juice > 0);
 });
 
-test("what a Snow Pear froze stays in the jar through the rent, thawed; the Snow Pear and the rest are cleared", () => {
+test("what is frozen stays in the jar through the rent, still frozen; the rest is cleared", () => {
   const y = JAR.floor - 18;
   let run = inShop(0);
   run.fruits = [
-    { ...fruit(1, "snowpear", 300, y, [2]), frozen: true },
-    { ...fruit(2, "apple", 332, y, [1]), frozen: true },
+    { ...fruit(1, "snowpear", 300, y, [2]), frozen: true, ice: 2 },
+    { ...fruit(2, "apple", 332, y, [1]), frozen: true, ice: 3 },
     fruit(3, "cherry", 420, y),
   ];
   run.shop!.cursor = SHOP_LEAVE;
   run = cleared(press(run, { confirm: true }));
   assert.equal(run.phase, "order");
-  assert.deepEqual(run.fruits.map((f) => [f.id, f.frozen]), [[2, false]]);
+  assert.deepEqual(run.fruits.map((f) => [f.id, f.frozen, f.ice]), [[1, true, 2], [2, true, 3]], "the rent takes no turn of ice");
+});
+
+test("ice lasts 3 turns: a frozen fruit thaws, and a Snow Pear melts when its own ice is gone", () => {
+  const y = JAR.floor - 18;
+  const run = jarWith([fruit(1, "snowpear", 300, y, [2, 3]), fruit(2, "cherry", 332, y, [1]), fruit(3, "apple", 268, y, [1]), fruit(4, "grape", 420, y)]);
+  const turn = () => {
+    run.turn = 1;
+    run.phase = "settle";
+    resolve(run);
+    return run.fruits.map((f) => `${f.id}${f.frozen ? `*${f.ice}` : ""}`).join(" ");
+  };
+  assert.equal(FROZEN_TURNS, 3);
+  assert.equal(turn(), "1*3 2*3 3 4", "itself and one neighbour");
+  assert.equal(turn(), "1*2 2*2 3*3 4", "then the other");
+  assert.equal(turn(), "1*1 2*1 3*2 4");
+  assert.equal(turn(), "2 3*1 4", "the Snow Pear has melted, and the first it froze has thawed");
+  assert.equal(turn(), "2 3 4");
 });
 
 test("a Honeydew scores its honey each turn and honeys one fruit it touches each turn, which then scores it as well", () => {

@@ -107,7 +107,7 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Absorb | Takes in a fruit no bigger and grows a size. |
 | Shockwave | Throws the pile aside, Smashes what it hits. |
 | Plunge | Sinks to the floor; Smashes pay 75% at once. |
-| Frozen | Held in place, blast-proof, kept past rent. |
+| Frozen | Held, blast-proof, kept past rent. 3 turns. |
 | Spill | Fruit over the rim are lost: -5 each. |
 
 A new card is a row of these, how it scores first ("Fresh 8. Heavy. Crack 2: Milk."), with a trigger before a colon ("Exploded:
@@ -186,8 +186,9 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   tinted gold, and stick to every fruit that comes to touch them, so a honeyed lump moves as one).
 - Snow Pear: at the end of each turn it and one fruit touching it turn Frozen (one a turn, as a Honeydew honeys). A Frozen fruit is held where it is (its
   ball is pinned, so it hangs there even if what was under it goes), an explosion does not destroy it, and it is tinted ice
-  blue. What a Snow Pear froze is not cleared at the rent: it stays in the jar for the next cycle, thawed, and the Snow Pear
-  itself melts.
+  blue. Ice lasts 3 turns: a frozen fruit thaws at the end of the third turn after it froze, and a Snow Pear whose own ice is
+  gone has melted. The rent takes no turn of it and clears nothing frozen, so what is frozen in a cycle's last turns stays
+  in the jar for the next, and a pool that keeps Snow Pears coming keeps a corner of the jar from cycle to cycle.
 - Legendary: the Dragonfruit (a Merge touching it skips a size: two Cherries make an Orange). A Legendary takes the last
   place of a pick about one time in twelve, and is never in the shop.
 - Eat and grow: the Pitaya eats one Cherry it touches a turn, and every Pitaya scores 1 more for the rest of the run.
@@ -303,10 +304,14 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     | Fruit | What changed | Alone, before | Alone, now | With a partner, before and now |
     | --- | --- | --- | --- | --- |
     | Blueberry | Lands as 3 links of the chain; counts as 3 rotten neighbours to a Prune | -298 | -80 | Chili: -184, +65. Prune: +508 (Prune alone +439) |
-    | Snow Pear | What it froze stays in the jar through the rent, thawed; the Snow Pear melts. It freezes one neighbour a turn, not all of them (all: +127 alone, +379 with Apple) | -371 | +80 | Apple: -169, +349 (Apple alone +182) |
+    | Snow Pear | Ice lasts 3 turns (`FROZEN_TURNS`) and does not go at the rent: what is frozen then stays in the jar for the next cycle. It freezes one neighbour a turn, and melts when its own ice is gone | -371 | -124 | Apple: -169, +84 (Apple alone +182) |
     | Peach | Each fruit it shoves as it lands is 2 links (`PEACH_LINKS`; 1 link: -161, 3 links: +30) | -226 | -62 | |
     | Coconut | Cracks at its 2nd Resolve, not its 3rd, and at once when hit hard (a Coconut landing on it, a Plunge, a blast) | -242 | -106 | Apple: +13, +185 |
     | Banana | Ripen 4, was 2 (Ripen 5: -86) | -183 | -119 | |
+
+  The Snow Pear was first tried keeping all it froze through the rent, thawed (+127 alone, +379 with an Apple: too strong)
+  and then freezing one neighbour a turn (+80, +349). With ice that thaws, 4 turns of it scored no more than 3 (-131, +101)
+  and 5 less (-152, +45): the jar fills with fruit that will not move, and 8.7 spill a run.
 
   The bots drop a hand in the order it was dealt, so a fruit that scores by what it lands on or beside (Peach, Coconut, Snow
   Pear) does better than this in a player's hands. Lemon, Fruit Fly and Fig lost points even beside the fruit they are made

@@ -259,6 +259,8 @@ export interface Fruit {
   pickled: boolean;
   /** Frozen by a Snow Pear: its component pins its ball, so it is held where it is, and an explosion does not destroy it. */
   frozen: boolean;
+  /** While it is frozen: how many turns of ice it has left (`FROZEN_TURNS` when it froze). */
+  ice?: number;
   /** Coated in honey (a Honeydew, or a fruit one has honeyed): it scores at every Resolve. */
   honeyed: boolean;
   /** A Chili or Durian about to go off, and the seconds left. */
@@ -1898,10 +1900,31 @@ function crack(run: Run, cracked: Fruit[], what: string): void {
   run.message = `${what}: milk in the jar`;
 }
 
+/** How many turns ice lasts: a fruit frozen at the end of a turn thaws at the end of the `FROZEN_TURNS`th turn after it. */
+export const FROZEN_TURNS = 3;
+
 /**
- * Each Snow Pear freezes itself and one fruit it touches, where they are: one a turn, as a Honeydew honeys. It froze every
- * fruit it touched, which was little when ice only stopped blasts; now that what is frozen stays through the rent, one a turn
- * makes when the Snow Pear lands the choice (early, and it keeps more of the pile it is in).
+ * Ice thaws: each frozen fruit has a turn less of it, and one with none left is a plain fruit again. A Snow Pear whose ice is
+ * gone has melted, and is gone with it. Ice does not go at the rent: what is frozen then stays in the jar for the next cycle,
+ * with the turns it has left, so a pool with Snow Pears coming round keeps a corner of the jar from cycle to cycle.
+ */
+function iceThaws(run: Run): void {
+  const melted: Fruit[] = [];
+  for (const f of run.fruits) {
+    if (!f.frozen) continue;
+    f.ice = (f.ice ?? FROZEN_TURNS) - 1;
+    if (f.ice > 0) continue;
+    f.frozen = false;
+    if (f.kind === "snowpear") melted.push(f);
+  }
+  if (melted.length === 0) return;
+  for (const f of melted) effect(run, "pop", f.x, f.y, f.r * 2);
+  run.fruits = run.fruits.filter((f) => !melted.includes(f));
+}
+
+/**
+ * Each Snow Pear freezes one fruit it touches, where it is, and itself as it lands: one a turn, as a Honeydew honeys. Its own
+ * ice is not made again, so it melts after `FROZEN_TURNS` turns, having frozen that many fruit one after another.
  */
 function snowPearsFreeze(run: Run, tally: Tally): void {
   for (const f of run.fruits) {
@@ -1909,7 +1932,7 @@ function snowPearsFreeze(run: Run, tally: Tally): void {
     const next = run.fruits.find((o) => !o.frozen && o !== f && f.touching.includes(o.id));
     const fresh = [...(f.frozen ? [] : [f]), ...(next === undefined ? [] : [next])];
     if (fresh.length === 0) continue;
-    for (const o of fresh) o.frozen = true;
+    for (const o of fresh) Object.assign(o, { frozen: true, ice: FROZEN_TURNS });
     stage(tally, null, fresh, fresh.filter((o) => o !== f).map((o) => link(run, "freeze", f, o)));
   }
 }
@@ -1958,6 +1981,7 @@ const END_OF_TURN: readonly ((run: Run, tally: Tally) => void)[] = [
   fruitFliesEat,
   pitayasEat,
   coconutsCrack,
+  iceThaws,
   snowPearsFreeze,
   honeydewsHoney,
   ageAndRot,
@@ -2365,8 +2389,8 @@ const CLEAR_GAP = 0.08;
  * while the rent board counts the score down to 0 and the rent up to the next cycle's. Nothing scores.
  */
 function startClear(run: Run): void {
-  // What a Snow Pear froze stays through the rent, as what a Preserves Jar keeps does; the Snow Pears themselves melt.
-  for (const f of run.fruits) if (f.frozen && f.kind !== "snowpear" && !run.kept.includes(f.id)) run.kept.push(f.id);
+  // What is frozen stays through the rent, as what a Preserves Jar keeps does: its ice thaws by the turn, not at the rent.
+  for (const f of run.fruits) if (f.frozen && !run.kept.includes(f.id)) run.kept.push(f.id);
   const doomed = run.fruits.filter((f) => !run.kept.includes(f.id)).length;
   run.phase = "clear";
   run.message = "";
@@ -2402,8 +2426,6 @@ function nextCycle(run: Run): void {
   run.drops = 0;
   run.flipped = false;
   run.fruits = run.fruits.filter((f) => run.kept.includes(f.id));
-  // The ice is gone with the Snow Pear that made it: what it kept is a plain fruit of the new cycle.
-  for (const f of run.fruits) f.frozen = false;
   // What a Pickling Jar keeps is Pickled: it does not age, and rot it had is gone.
   if (run.items.includes("pickling")) for (const f of run.fruits) Object.assign(f, { pickled: true, rotten: f.kind === "prune" });
   run.kept = [];
