@@ -1898,11 +1898,16 @@ function crack(run: Run, cracked: Fruit[], what: string): void {
   run.message = `${what}: milk in the jar`;
 }
 
-/** Each Snow Pear freezes itself and every fruit it touches, where they are. */
+/**
+ * Each Snow Pear freezes itself and one fruit it touches, where they are: one a turn, as a Honeydew honeys. It froze every
+ * fruit it touched, which was little when ice only stopped blasts; now that what is frozen stays through the rent, one a turn
+ * makes when the Snow Pear lands the choice (early, and it keeps more of the pile it is in).
+ */
 function snowPearsFreeze(run: Run, tally: Tally): void {
   for (const f of run.fruits) {
     if (f.kind !== "snowpear") continue;
-    const fresh = [f, ...run.fruits.filter((o) => f.touching.includes(o.id))].filter((o) => !o.frozen);
+    const next = run.fruits.find((o) => !o.frozen && o !== f && f.touching.includes(o.id));
+    const fresh = [...(f.frozen ? [] : [f]), ...(next === undefined ? [] : [next])];
     if (fresh.length === 0) continue;
     for (const o of fresh) o.frozen = true;
     stage(tally, null, fresh, fresh.filter((o) => o !== f).map((o) => link(run, "freeze", f, o)));

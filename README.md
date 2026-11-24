@@ -184,7 +184,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 - Flex fruit: Kiwi (becomes a copy of the first landed fruit it touches), Peach (bounces once when it lands and shoves what it
   landed on aside, each fruit shoved adding 2 links to the chain) and Honeydew (honeys one fruit it touches a turn; honeyed fruit, the Honeydew included, score 4 a turn, are
   tinted gold, and stick to every fruit that comes to touch them, so a honeyed lump moves as one).
-- Snow Pear: at the end of each turn it and every fruit touching it turn Frozen. A Frozen fruit is held where it is (its
+- Snow Pear: at the end of each turn it and one fruit touching it turn Frozen (one a turn, as a Honeydew honeys). A Frozen fruit is held where it is (its
   ball is pinned, so it hangs there even if what was under it goes), an explosion does not destroy it, and it is tinted ice
   blue. What a Snow Pear froze is not cleared at the rent: it stays in the jar for the next cycle, thawed, and the Snow Pear
   itself melts.
@@ -303,7 +303,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     | Fruit | What changed | Alone, before | Alone, now | With a partner, before and now |
     | --- | --- | --- | --- | --- |
     | Blueberry | Lands as 3 links of the chain; counts as 3 rotten neighbours to a Prune | -298 | -80 | Chili: -184, +65. Prune: +508 (Prune alone +439) |
-    | Snow Pear | What it froze stays in the jar through the rent, thawed; the Snow Pear melts | -371 | +127 | Apple: -169, +379 (Apple alone +182) |
+    | Snow Pear | What it froze stays in the jar through the rent, thawed; the Snow Pear melts. It freezes one neighbour a turn, not all of them (all: +127 alone, +379 with Apple) | -371 | +80 | Apple: -169, +349 (Apple alone +182) |
     | Peach | Each fruit it shoves as it lands is 2 links (`PEACH_LINKS`; 1 link: -161, 3 links: +30) | -226 | -62 | |
     | Coconut | Cracks at its 2nd Resolve, not its 3rd, and at once when hit hard (a Coconut landing on it, a Plunge, a blast) | -242 | -106 | Apple: +13, +185 |
     | Banana | Ripen 4, was 2 (Ripen 5: -86) | -183 | -119 | |

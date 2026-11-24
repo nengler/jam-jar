@@ -1290,6 +1290,17 @@ test("the backdrop's motes are worked out from the time alone, stay on the wall,
   assert.ok(a.every((m, i) => Math.abs(m.x - b[i]!.x) <= 1 && Math.abs(m.y - b[i]!.y) <= 1 || Math.abs(m.y - b[i]!.y) > 300), "a pixel a step at most, but for wrapping");
 });
 
+test("a Snow Pear freezes one fruit it touches a turn, not all of them at once", () => {
+  const y = JAR.floor - 18;
+  const run = jarWith([fruit(1, "snowpear", 300, y, [2, 3]), fruit(2, "cherry", 332, y, [1]), fruit(3, "cherry", 268, y, [1])]);
+  run.turn = 1;
+  resolve(run);
+  assert.deepEqual(run.fruits.map((f) => f.frozen), [true, true, false], "itself and one neighbour");
+  run.phase = "settle";
+  resolve(run);
+  assert.deepEqual(run.fruits.map((f) => f.frozen), [true, true, true], "the other the turn after");
+});
+
 test("a Snow Pear freezes itself and what it touches at the end of a turn; Frozen fruit survive an explosion", () => {
   const y = JAR.floor - 18;
   const run = jarWith([fruit(1, "snowpear", 300, y, [2]), fruit(2, "cherry", 332, y, [1]), fruit(3, "cherry", 380, y)]);
