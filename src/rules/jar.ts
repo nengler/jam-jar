@@ -1213,12 +1213,18 @@ function land(run: Run): void {
       kick(f, 0, run.flipped ? FLOOR_BOUNCE : -FLOOR_BOUNCE);
     }
     if (f.kind === "peach") {
-      // It bounces once, and shoves what it landed on away to each side.
+      // It bounces once, and shoves what it landed on away to each side: each fruit shoved is a link of the chain, so a Peach
+      // dropped into a crowd lifts the chain before the merges it shakes loose are scored.
       kick(f, 0, -PEACH_BOUNCE);
       for (const o of neighbours(run.fruits, near, i)) {
         kick(o, (o.x < f.x ? -1 : 1) * PEACH_SHOVE, -PEACH_SHOVE / 3);
+        if (!f.rotten) addLink(run);
       }
     }
+    // A Dense fruit lands as that many links: a Blueberry is three.
+    if (FRUITS[f.kind].touchWeight > 1 && !f.rotten) for (let k = 0; k < FRUITS[f.kind].touchWeight; k++) addLink(run);
+    // A Coconut landing on a Coconut cracks the one under it.
+    if (f.kind === "coconut") crack(run, neighbours(run.fruits, near, i).filter((o) => o.kind === "coconut" && o.landed && o !== f && o.y > f.y), "A Coconut cracked a Coconut");
     if (f.kind === "pumpkin") pumpkins.push(f);
   });
   for (const p of pumpkins) if (run.fruits.includes(p)) plunge(run, p);
@@ -1269,6 +1275,11 @@ function plungeStep(run: Run, dt: number): void {
       }
       // An Anchored fruit is neither Smashed nor thrown: the Plunge goes on past it.
       if (o.kind === "giantpumpkin" || o.kind === "pumpkin" || o.glaze === "anchored") continue;
+      // A Coconut it drives into cracks open at once.
+      if (o.kind === "coconut") {
+        crack(run, [o], "A Pumpkin cracked a Coconut");
+        continue;
+      }
       const side = o.x === p.x ? (o.id % 2 === 0 ? 1 : -1) : Math.sign(o.x - p.x);
       if (smashable(o)) {
         p.burst = (p.burst ?? 0) + Math.round(smashWorth(o) * PLUNGE_PAY);
@@ -1654,6 +1665,7 @@ function explode(run: Run, bomb: Fruit): void {
   let points = 0;
   let figs = 0;
   let limes = 0;
+  let coconuts = 0;
   for (const f of run.fruits) {
     if (f === bomb) continue;
     const dx = f.x - bomb.x;
@@ -1692,6 +1704,7 @@ function explode(run: Run, bomb: Fruit): void {
     if (f.kind === "pomegranate") born.push(...burst(run, f.x, f.y));
     if (f.kind === "fig" && f.rotten) figs += 1;
     if (f.kind === "lime") limes += 1;
+    if (f.kind === "coconut") coconuts += 1;
     if (f.kind === "seed") born.push(sprout(run, f));
     if (f.kind === "pumpkinseed") born.push(pumpkinGrow(run, f));
     payGolden(run, f);
@@ -1720,6 +1733,11 @@ function explode(run: Run, bomb: Fruit): void {
   effect(run, "boom", bomb.x, bomb.y, radius * 2);
   sound(run, "boom");
   run.message = spicy ? `A Spicy Merge Exploded: ${victims.length} fruit destroyed` : `${FRUITS[bomb.kind].name} Exploded: ${victims.length} fruit destroyed`;
+  // A Coconut blown open leaves its milk, as one that cracked by itself does.
+  if (coconuts > 0) {
+    pour(run, "milk", coconuts * COCONUT_MILK);
+    run.message = `${FRUITS[bomb.kind].name} cracked ${coconuts === 1 ? "a Coconut" : `${coconuts} Coconuts`}: milk in the jar`;
+  }
   if (limes > 0) {
     pour(run, "lime", limes * LIME_JUICE);
     run.message = `${FRUITS[bomb.kind].name} Exploded ${limes === 1 ? "a Lime" : `${limes} Limes`}: lime juice rises`;
@@ -1793,7 +1811,8 @@ function simmer(run: Run, tally: Tally): void {
     let points = 0;
     if (f.kind === "prune") {
       // Rotten from the start, and the one rotten fruit that scores: for the rot around it.
-      points = FRUITS.prune.points * touched.filter((o) => o.rotten).length;
+      // (A Dense one counts as that many.)
+      points = FRUITS.prune.points * touched.filter((o) => o.rotten).reduce((sum, o) => sum + FRUITS[o.kind].touchWeight, 0);
     } else if (f.rotten) {
       return;
     } else if (f.kind === "apple") {
@@ -1861,11 +1880,20 @@ function pitayasEat(run: Run, tally: Tally): void {
 
 /** A Coconut that has sat 3 turns cracks open and is gone, leaving its milk in the jar. */
 function coconutsCrack(run: Run): void {
-  const cracked = run.fruits.filter((f) => f.kind === "coconut" && f.age >= COCONUT_TURNS - 1);
+  crack(run, run.fruits.filter((f) => f.kind === "coconut" && f.age >= COCONUT_TURNS - 1), "A Coconut cracked");
+}
+
+/**
+ * Coconuts crack open: they are gone, and their milk is in the jar. By itself after `COCONUT_TURNS`, which leaves two turns of a
+ * cycle's five to score in it; or at once when one is hit hard (a Coconut landing on it, a Pumpkin's Plunge, a blast), so the
+ * milk can be set up for the turns that matter and not waited for.
+ */
+function crack(run: Run, cracked: Fruit[], what: string): void {
   if (cracked.length === 0) return;
   run.fruits = run.fruits.filter((f) => !cracked.includes(f));
+  for (const f of cracked) effect(run, "pop", f.x, f.y, f.r * 2);
   pour(run, "milk", cracked.length * COCONUT_MILK);
-  run.message = "A Coconut cracked: milk in the jar";
+  run.message = `${what}: milk in the jar`;
 }
 
 /** Each Snow Pear freezes itself and every fruit it touches, where they are. */
@@ -2330,6 +2358,8 @@ const CLEAR_GAP = 0.08;
  * while the rent board counts the score down to 0 and the rent up to the next cycle's. Nothing scores.
  */
 function startClear(run: Run): void {
+  // What a Snow Pear froze stays through the rent, as what a Preserves Jar keeps does; the Snow Pears themselves melt.
+  for (const f of run.fruits) if (f.frozen && f.kind !== "snowpear" && !run.kept.includes(f.id)) run.kept.push(f.id);
   const doomed = run.fruits.filter((f) => !run.kept.includes(f.id)).length;
   run.phase = "clear";
   run.message = "";
@@ -2365,6 +2395,8 @@ function nextCycle(run: Run): void {
   run.drops = 0;
   run.flipped = false;
   run.fruits = run.fruits.filter((f) => run.kept.includes(f.id));
+  // The ice is gone with the Snow Pear that made it: what it kept is a plain fruit of the new cycle.
+  for (const f of run.fruits) f.frozen = false;
   // What a Pickling Jar keeps is Pickled: it does not age, and rot it had is gone.
   if (run.items.includes("pickling")) for (const f of run.fruits) Object.assign(f, { pickled: true, rotten: f.kind === "prune" });
   run.kept = [];

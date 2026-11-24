@@ -667,6 +667,45 @@ test("a Peach bounces when it lands and shoves what it landed on aside", () => {
   assert.ok(left.kickX < 0 && right.kickX > 0, "apart");
 });
 
+test("each fruit a Peach shoves is a link of the chain, a Blueberry lands as three, and a rotten one adds none", () => {
+  const y = JAR.floor - 18;
+  const peach = jarWith([{ ...fruit(1, "peach", 300, y - 30, [2, 3]), landed: false }, fruit(2, "grape", 282, y, [1]), fruit(3, "grape", 318, y, [1])]);
+  simulate(peach, DT);
+  assert.equal(peach.chainLinks, 2, "two fruit shoved");
+  const berry = jarWith([{ ...fruit(1, "blueberry", 300, JAR.floor - FRUITS.blueberry.radius), landed: false }]);
+  simulate(berry, DT);
+  assert.equal(berry.chainLinks, FRUITS.blueberry.touchWeight);
+  const rotten = jarWith([{ ...fruit(1, "blueberry", 300, JAR.floor - FRUITS.blueberry.radius), landed: false, rotten: true }]);
+  simulate(rotten, DT);
+  assert.equal(rotten.chainLinks, 0);
+});
+
+test("a Coconut hit hard cracks at once: one landing on it, or a blast, leaves its milk in the jar", () => {
+  const y = JAR.floor - FRUITS.coconut.radius;
+  const stacked = jarWith([fruit(1, "coconut", 300, y, [2]), { ...fruit(2, "coconut", 300, y - 2 * FRUITS.coconut.radius, [1]), landed: false }]);
+  simulate(stacked, DT);
+  assert.deepEqual(stacked.fruits.map((f) => f.id), [2], "the one under is gone, the one that landed stays");
+  assert.ok(stacked.milk && stacked.juice > 0);
+  const blown = jarWith([fruit(1, "coconut", 300, y), { ...fruit(9, "chili", 330, y), lit: true, fuse: 0 }]);
+  simulate(blown, DT);
+  assert.ok(!blown.fruits.some((f) => f.kind === "coconut"));
+  assert.ok(blown.milk && blown.juice > 0);
+});
+
+test("what a Snow Pear froze stays in the jar through the rent, thawed; the Snow Pear and the rest are cleared", () => {
+  const y = JAR.floor - 18;
+  let run = inShop(0);
+  run.fruits = [
+    { ...fruit(1, "snowpear", 300, y, [2]), frozen: true },
+    { ...fruit(2, "apple", 332, y, [1]), frozen: true },
+    fruit(3, "cherry", 420, y),
+  ];
+  run.shop!.cursor = SHOP_LEAVE;
+  run = cleared(press(run, { confirm: true }));
+  assert.equal(run.phase, "order");
+  assert.deepEqual(run.fruits.map((f) => [f.id, f.frozen]), [[2, false]]);
+});
+
 test("a Honeydew scores its honey each turn and honeys one fruit it touches each turn, which then scores it as well", () => {
   const y = JAR.floor - 22;
   const run = jarWith([fruit(1, "honeydew", 300, y, [2, 3]), fruit(2, "orange", 344, y, [1]), fruit(3, "orange", 256, y, [1])]);

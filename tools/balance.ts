@@ -229,6 +229,8 @@ for (const [kind, points] of Object.entries(JSON.parse(env("BALANCE_POINTS") ?? 
   (FRUITS[kind as FruitKind] as { points: number }).points = points;
   if (kind === "banana") (BANANA as { base: number }).base = points;
 }
+// BALANCE_RIPEN=4: what a Banana Ripens by each turn.
+if (env("BALANCE_RIPEN") !== undefined) (BANANA as { ripen: number }).ripen = Number(env("BALANCE_RIPEN"));
 const maxCycles = Number(env("BALANCE_CYCLES") ?? 99);
 
 // BALANCE_RENT=225,245,270,300,340: the rents the bots' coins and the "makes rent" counts are worked out from.
