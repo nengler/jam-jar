@@ -10,10 +10,15 @@ import type { FruitKind } from "./rules/fruits.ts";
 import { bossNow, handSlots, type Run } from "./rules/jar.ts";
 import { biggestFruit, CARD_SLICE, fruitImageSize, SELECT } from "./theme.ts";
 
-/** Where the card of a fruit on the shelf stands: in the top left corner, over the rent board for as long as it is up, and what
- * its keywords mean in the top right corner, so neither lies over the jar, which is what the player is deciding about. */
+/** Where the card of a fruit on the shelf stands: at the left under the rent board, and what its keywords mean at the right under
+ * the basket and the coins, so neither lies over the jar, which is what the player is deciding about, nor over the score, the
+ * rent or the coins, which they are deciding by. */
 const TIP_X = 4;
-const TIP_TOP = 4;
+const TIP_TOP = 68;
+/** While a tutorial lesson is up its card is at the right, so the fruit's card and its keywords are one column in the top left
+ * corner, as tall as the screen has room for: over the rent board, which is dimmed then (the rent's own lesson shows no tip). */
+const COACHED_TOP = 4;
+const CARD_DOWN = 100;
 
 /** A fruit on the shelf: its size, how far it is lifted (while it is being moved), and the frame round it when it is the chosen one. */
 function shelfLook(card: FruitKind, at: number, span: number, held: boolean) {
@@ -76,7 +81,7 @@ export function Shelf({ run, roll, dragging, dragX, framed, listening, onDragSta
 
 /**
  * What a fruit on the shelf does: shown for the one that was tapped (or the cursor is on, at a keyboard) while `shown`, and for
- * one the mouse is over, in the top corners whichever fruit it is for (its card left, its keywords right), so it never lies over the jar. Its box stays at the
+ * one the mouse is over, beside the jar whichever fruit it is for (its card left, under the rent board, its keywords right, under the basket), so it never lies over the jar or the score. Its box stays at the
  * fruit's place on the shelf, not under a fruit being dragged: one that followed the pointer and was moved back by as much shook
  * as it was dragged.
  *
@@ -89,8 +94,8 @@ export function ShelfTips({ run, shown, coached }: { run: Run; shown: boolean; c
     <Entity>
       {placed(shelf.cards).map((slot) => (
         <Flex key={`tip${slot.card}${slot.at}`} x={shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0) - 20} y={SHELF_Y - 38} width={40} height={40}>
-          <Tooltip show={shown && slot.at === run.cursor ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X - (shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0) - 20)} offsetY={TIP_TOP - (SHELF_Y - 38)} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-            <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} text={glazedText(run, slot.card, shelf.glazes[slot.at])} apart={coached ? undefined : 640 - TIP_X * 2} />
+          <Tooltip show={shown && slot.at === run.cursor ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X - (shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0) - 20)} offsetY={(coached ? COACHED_TOP : TIP_TOP) - (SHELF_Y - 38)} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+            <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} text={glazedText(run, slot.card, shelf.glazes[slot.at])} apart={coached ? undefined : 640 - TIP_X * 2} down={CARD_DOWN} />
           </Tooltip>
         </Flex>
       ))}

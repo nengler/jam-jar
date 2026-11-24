@@ -134,7 +134,7 @@ export const JUICE_MOST = 120;
 const HONEY_POINTS = HONEY;
 const POPUP_LIFE = 0.9;
 /** About how wide a popup's character is on screen, and a popup's line, in pixels. */
-const POPUP_CHAR = 13;
+const POPUP_CHAR = 15;
 const POPUP_LINE = 22;
 /** How fast a popup rises once it shows, in pixels a second. */
 const POPUP_RISE = 36;

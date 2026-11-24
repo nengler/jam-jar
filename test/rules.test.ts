@@ -1312,7 +1312,10 @@ test("the tutorial's lessons: each waits for its moment, and is done when the pl
   // The pick's and the shop's wait for the first pick and the first shop.
   assert.equal(lessonShows(lesson("pick"), at("order")), false);
   assert.equal(lessonShows(lesson("pick"), at("pick")), true);
-  assert.equal(lessonShows(lesson("score"), at("settle")), true);
+  assert.equal(lessonShows(lesson("score"), at("drop")), false, "not while the hand is still falling");
+  assert.equal(lessonShows(lesson("score"), at("settle")), false, "nor before anything has landed and scored");
+  assert.equal(lessonShows(lesson("score"), { ...at("settle"), turnScore: 13, calmTime: 0.1 }), true, "once the hand has landed, scored and come to rest");
+  assert.equal(lessonShows(lesson("score"), at("tally")), true);
   assert.equal(lessonShows(lesson("shop"), at("shop")), true);
   assert.equal(lessonDone(lesson("shop"), at("order"), none), true, "leaving the shop without buying puts it away");
   const shopping = inShop(10);

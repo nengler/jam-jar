@@ -632,12 +632,15 @@ test("the first game's tutorial: a card says one thing at a time and moves on as
   game.input("mouse@248,30, mouse@248,30+MouseLeft, mouse@300,30+MouseLeft, mouse@350,30+MouseLeft, mouse@350,30, _*3");
   assert.equal(step(), 2, "on to dropping the hand");
   game.input("Space, _*3");
-  assert.equal(step(), 3, "dropped: how it merges and scores, while it does");
+  assert.equal(step(), 3, "dropped: how it merges and scores, once the hand has landed");
+  assert.equal(coach(), null, "its card waits for the fruit to land: the first drop is not stopped at the rim");
+  game.stepUntil(() => coach() !== null, { maxSteps: 600 });
+  assert.ok(runOf(game).turnScore > 0, "the hand has landed and scored");
   // That lesson holds the jar still until its Got it, so its card does not go with the turn before it has been read.
   game.input("_*3");
   const held = JSON.stringify(runOf(game));
   game.input("_*120");
-  assert.equal(runOf(game).phase, "drop");
+  assert.equal(runOf(game).phase, "settle");
   assert.equal(JSON.stringify(runOf(game)), held, "nothing moved while the card was up");
   assert.equal(step(), 3, "and it is still up");
   // Enter is its Got it, at a keyboard: the jar plays on.
