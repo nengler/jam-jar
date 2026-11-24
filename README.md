@@ -182,11 +182,12 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   one rotten fruit it touches a turn for 24, and another Fly hatches there; never a Prune) and Fig (blown up while rotten, it
   gives every Banana +1 for the rest of the run).
 - Flex fruit: Kiwi (becomes a copy of the first landed fruit it touches), Peach (bounces once when it lands and shoves what it
-  landed on aside) and Honeydew (honeys one fruit it touches a turn; honeyed fruit, the Honeydew included, score 4 a turn, are
+  landed on aside, each fruit shoved adding 2 links to the chain) and Honeydew (honeys one fruit it touches a turn; honeyed fruit, the Honeydew included, score 4 a turn, are
   tinted gold, and stick to every fruit that comes to touch them, so a honeyed lump moves as one).
 - Snow Pear: at the end of each turn it and every fruit touching it turn Frozen. A Frozen fruit is held where it is (its
   ball is pinned, so it hangs there even if what was under it goes), an explosion does not destroy it, and it is tinted ice
-  blue. It thaws when the rent empties the jar.
+  blue. What a Snow Pear froze is not cleared at the rent: it stays in the jar for the next cycle, thawed, and the Snow Pear
+  itself melts.
 - Legendary: the Dragonfruit (a Merge touching it skips a size: two Cherries make an Orange). A Legendary takes the last
   place of a pick about one time in twelve, and is never in the shop.
 - Eat and grow: the Pitaya eats one Cherry it touches a turn, and every Pitaya scores 1 more for the rest of the run.
@@ -194,7 +195,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   - A Lime that is Exploded or Crushed leaves lime juice 20 pixels deep. Fruit in lime juice float: they rise and come to
     rest half out of it (so they are off the floor and away from the Juicer, off the floor for an Apple's Edge, and nearer the rim).
   - A Coconut is Heavy, so it sinks and shoulders its way down. At its second Resolve it cracks open and is gone, leaving
-    milk 20 deep. Fruit that sit in milk score double.
+    milk 20 deep; so it does at once when a Coconut lands on it, a Pumpkin Plunges into it or a blast catches it. Fruit that sit in milk score double.
   - The liquid is one pool: it gets deeper with each Lime and Coconut, up to 120 pixels, holds whatever went into it,
     and goes when the rent empties the jar.
 - The Ladder set (big fruit; merge up, smash down):
