@@ -570,13 +570,13 @@ test("the shop by taps: a tap on a label only chooses it, a second puts it back,
   const play = findComponent("Play", game.player.world.root) as unknown as { s: { run: Run } };
   play.s.run = { ...play.s.run, phase: "shop", coins: 20, shop: { fruits: ["apple", "cherry", "grape"], item: null, glaze: null, cursor: -1, removing: false, glazing: false, removeCursor: -1 } };
   game.input("_*60");
-  // The four labels stand across the stall, 148 wide with 6 between: the second's middle is at 243.
+  // The five labels stand across the stall, 120 wide with 6 between: the second spans 134 to 254.
   game.input("click@243,150, _*2, click@243,150, _*2");
   assert.deepEqual([play.s.run.shop!.cursor, play.s.run.coins], [-1, 20], "tapped twice: put back, not bought");
   game.input("click@243,150, _*2");
   assert.deepEqual([play.s.run.shop!.cursor, play.s.run.coins], [1, 20], "a third time: chosen, not bought");
-  // The Buy button is in the middle of the bar along the foot. It is off the shelf, but it does not put the label back first.
-  game.input("click@316,338, _*2");
+  // The Buy button is under the chosen label, tucked over its foot, as the pick's Take button is.
+  game.input("click@194,243, _*2");
   assert.equal(play.s.run.coins, 20 - FRUIT_PRICE, "bought");
   assert.equal(play.s.run.shop!.fruits[1], null);
   game.close();
