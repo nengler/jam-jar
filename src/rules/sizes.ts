@@ -30,6 +30,7 @@ export const FRUIT_ART = {
   fruitfly: { size: 32, radius: 10 },
   pumpkinseed: { size: 32, radius: 14 },
   goldenapple: { size: 32, radius: 14 },
+  raspberry: { size: 32, radius: 14 },
   quince: { size: 40, radius: 18 },
   medlar: { size: 40, radius: 18 },
 } as const;

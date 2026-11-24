@@ -357,7 +357,7 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
       <Sprite image={AWNING} x={0} y={awning} />
       {/* The actions: wooden signs under the stall, the way out painted green. */}
       <Flex left={0} right={0} top={ACTION_Y} direction="row" justifyContent="center" gap={ACTION_GAP} y={ACTION_RISE * (1 - popIn(time, (SHOP_GLAZE + 1) * ENTER.gap, ENTER.pop))} opacity={entered(time, SHOP_GLAZE + 1)}>
-        <ActionSign chosen={chosen === SHOP_REMOVE} label="Remove one" price={removalPrice(run)} afford={run.coins >= removalPrice(run)} onPoint={() => onPoint(SHOP_REMOVE)} onPress={() => onClick(SHOP_REMOVE)} />
+        <ActionSign chosen={chosen === SHOP_REMOVE} label={shop.removed ? "Removed" : "Remove one"} price={removalPrice(run)} afford={!shop.removed && run.coins >= removalPrice(run)} onPoint={() => onPoint(SHOP_REMOVE)} onPress={() => onClick(SHOP_REMOVE)} />
         <ActionSign chosen={chosen === SHOP_REROLL} label="New shelf" price={rerollPrice(run)} afford={run.coins >= rerollPrice(run)} onPoint={() => onPoint(SHOP_REROLL)} onPress={() => onClick(SHOP_REROLL)} />
         <ActionSign chosen={chosen === SHOP_LEAVE} go={true} label="Next cycle >" onPoint={() => onPoint(SHOP_LEAVE)} onPress={() => onClick(SHOP_LEAVE)} />
       </Flex>

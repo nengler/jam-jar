@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { blastBits, blastFlash, blastJolt, cardText, fruitResults, keywordResults, motes, poolRows, termsOf, TILT_TIME, tilted } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
-import { APPLE, BANANA, FRUITS, QUINCE, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
+import { APPLE, BANANA, FRUITS, QUINCE, RASPBERRY, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
@@ -44,8 +44,10 @@ import {
   removalPrice,
   rerollPrice,
   RENT,
+  rentFor,
   resolve,
   rollPool,
+  LEARNING_RENT,
   OPENING_PICKS,
   RIM,
   SHOP_GLAZE,
@@ -512,7 +514,7 @@ test("the shop by touch: a tap on a kind in the take-out dialog only chooses it,
   assert.equal(run.shop!.removing, false);
 });
 
-test("the shop: taking a fruit out costs two more each time, all run", () => {
+test("the shop: one fruit can be taken out a shop, and it costs two more each time, all run", () => {
   let run = inShop(20);
   run.pool = ["cherry", "cherry", "cherry", "grape", "grape", "apple"];
   run.shop!.cursor = SHOP_REMOVE;
@@ -522,6 +524,13 @@ test("the shop: taking a fruit out costs two more each time, all run", () => {
   run = press(run, { confirm: true });
   assert.equal(run.coins, 20 - REMOVAL_PRICE);
   assert.equal(removalPrice(run), REMOVAL_PRICE + REMOVAL_STEP);
+  assert.equal(run.shop!.removed, true);
+  // A second in the same shop is refused: nothing opens, nothing is paid.
+  run = press(run, { confirm: true });
+  assert.deepEqual([run.shop!.removing, run.coins, run.pool.length], [false, 20 - REMOVAL_PRICE, 5]);
+  assert.equal(run.message, "One fruit out a shop");
+  // The next shop sells one again, at the price the run has reached.
+  run.shop = { ...run.shop!, removed: false };
   run = press(run, { confirm: true });
   run = press(run, { right: true });
   run = press(run, { confirm: true });
@@ -1270,22 +1279,41 @@ test("the cards of the fruit with rules of their own say the rules' numbers", ()
   assert.match(FRUITS.pitaya.text, new RegExp(`^Simmer ${FRUITS.pitaya.points}\\.`));
 });
 
-test("a pick comes after every second turn of a cycle, and the next hand is dealt straight away after the others", () => {
+test("a pick comes after every turn of a cycle but the last, which goes to the rent", () => {
   const after = (turn: number): string => {
     const run = jarWith([]);
     run.turn = turn;
-    // The hand was dropped: it is with the dealt fruit, to be shuffled back in when the pool runs out (a pool of 6 does at once).
     run.discard.push(...run.hand);
     run.discardGlazes.push(...run.handGlazes);
     run.hand = [];
     resolve(run);
     return `${run.phase} ${run.turn} ${run.hand.length}`;
   };
-  assert.equal(after(1), "order 2 4", "no pick after the first: the next hand is on the shelf");
+  assert.equal(after(1), "pick 2 0");
   assert.equal(after(2), "pick 3 0");
-  assert.equal(after(3), "order 4 4");
+  assert.equal(after(3), "pick 4 0");
   assert.equal(after(4), "pick 5 0");
   assert.equal(after(5).split(" ")[0], "over", "and the last turn goes to the rent (unpaid, with an empty jar)");
+});
+
+test("a Raspberry scores more for each that has landed this cycle, and they start again after the rent", () => {
+  const y = JAR.floor - FRUITS.raspberry.radius;
+  const fresh = (id: number, x: number): Fruit => ({ ...fruit(id, "raspberry", x, y), landed: false });
+  let run = jarWith([fresh(1, 200), fresh(2, 300), fresh(3, 400)]);
+  run.turn = 1;
+  for (let i = 0; i < 600 && run.phase === "settle"; i++) run = advance(run, 1 / 60, NO_KEYS, []);
+  // Apart on the floor, so none merges or touches: its base, then that and one Cluster, then that and two.
+  assert.equal(run.clusterBonus, 3 * RASPBERRY.cluster);
+  assert.equal(run.earned["Raspberry"], 3 * RASPBERRY.base + 3 * RASPBERRY.cluster);
+  assert.match(FRUITS.raspberry.text, new RegExp(`Fresh ${RASPBERRY.base}\\. Cluster ${RASPBERRY.cluster}\\.`));
+});
+
+test("the first game's run pays a smaller first rent, and the rents after it are everyone's", () => {
+  const learning = newRun(7, false, true);
+  assert.equal(rentFor(learning), LEARNING_RENT);
+  assert.equal(rentFor(learning, 2), RENT[1]);
+  assert.equal(rentFor(newRun(7)), RENT[0]);
+  assert.equal(rentFor(newRun(7, true)), RENT[0]);
 });
 
 test("the run keeps what its end board shows: its best turn, and what earned its points, the most first", () => {

@@ -23,6 +23,7 @@ export type Keyword =
   | "eat"
   | "hatch"
   | "grow"
+  | "cluster"
   | "heavy"
   | "double"
   | "sour"
@@ -81,6 +82,7 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   eat: { name: "Eat", text: "Removes one fruit it touches." },
   hatch: { name: "Hatch", text: "A new Fruit Fly appears where it ate." },
   grow: { name: "Grow", text: "That kind scores this much more, all run." },
+  cluster: { name: "Cluster", text: "Landing, its kind scores this more till rent." },
   heavy: { name: "Heavy", text: "Shoulders lighter fruit aside." },
   double: { name: "Double", text: "Fruit touching it score x2." },
   sour: { name: "Sour", text: "Fruit touching it can't Merge." },

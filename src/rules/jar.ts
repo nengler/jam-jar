@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, RASPBERRY, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
 import { FIZZY_LINKS, GLAZE_KINDS, GLAZE_PRICE, GLAZES, glazeFits, ripened, SPICY, type Glaze } from "./glazes.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
@@ -56,10 +56,11 @@ function spot(rng: Rng, low: number, high: number): number {
 export const HAND_SIZE = 4;
 export const TURNS_PER_CYCLE = 5;
 /**
- * A new fruit is offered after every `PICK_EVERY`th turn of a cycle (after turns 2 and 4), not after each one: a cycle deals 20
- * fruit, and a pool that grew by four a cycle soon held more than that, so fruit the player had chosen never came up.
+ * A new fruit is offered after every `PICK_EVERY`th turn of a cycle but its last (which goes to the rent): after each of the
+ * first four. It was every second turn, when the pool started at nine and four picks a cycle outgrew the 20 fruit a cycle
+ * deals. A pool that starts at six has the room, and a fruit not wanted is skipped for a coin.
  */
-export const PICK_EVERY = 2;
+export const PICK_EVERY = 1;
 /** The boss jar's peg: a round post in the middle of the jar that splits the pile, on every third cycle. */
 export const PEG = { x: 320, y: 244, r: 22 };
 export const BOSS_EVERY = 3;
@@ -225,6 +226,8 @@ export interface Shop {
   /** Choosing which fruit to take out of the pool: `removeCursor` is a row of `poolKinds`. */
   removing: boolean;
   removeCursor: number;
+  /** A fruit has been taken out in this shop: one a shop, so thinning the pool is a choice each cycle and not all there is to buy. */
+  removed: boolean;
 }
 
 export interface Fruit {
@@ -336,6 +339,8 @@ export interface Run {
   boss: Boss;
   /** How many of the picks that open a run are still to be made (this one among them, while it is up): 0 once the first hand is dealt. */
   opening: number;
+  /** The first game's run, played with the tutorial: its first rent is `LEARNING_RENT`. */
+  learning: boolean;
   /** Every fruit you own. */
   pool: FruitKind[];
   /**
@@ -392,6 +397,8 @@ export interface Run {
   bananaBonus: number;
   /** What every Pitaya scores on top of its own points: +1 for each Cherry one has eaten. */
   pitayaBonus: number;
+  /** What every Raspberry scores over its card, for those that have landed this cycle (`RASPBERRY.cluster` each): 0 again at the rent. */
+  clusterBonus: number;
   /** How many fruit have grown from Pumpkin Seeds this run: every `PUMPKIN_SEED.every` of them, the next grows a size bigger. */
   pumpkinSprouts: number;
   /** The items owned, in the order they were bought. A used-up one (the Lid) is taken out. */
@@ -529,7 +536,7 @@ export function rollPool(rng: Rng): FruitKind[] {
  * three, so the first hand is already partly the player's own. Without it the first hand is dealt at once (the first game's
  * tutorial, which teaches the shelf first and the pick when it comes; and the tests).
  */
-export function newRun(seed: number, opening = false): Run {
+export function newRun(seed: number, opening = false, learning = false): Run {
   const rng = new Rng(seed);
   const pool = rollPool(rng);
   const run: Run = {
@@ -537,6 +544,7 @@ export function newRun(seed: number, opening = false): Run {
     nextId: 1,
     boss: bossFor(seed),
     opening: opening ? OPENING_PICKS : 0,
+    learning,
     pool,
     draw: rng.shuffle(pool),
     discard: [],
@@ -571,6 +579,7 @@ export function newRun(seed: number, opening = false): Run {
     milk: false,
     bananaBonus: 0,
     pitayaBonus: 0,
+    clusterBonus: 0,
     pumpkinSprouts: 0,
     items: [],
     shop: null,
@@ -606,7 +615,12 @@ export function newRun(seed: number, opening = false): Run {
   return run;
 }
 
-export function rentFor(cycle: number): number {
+/** The first rent of the first game, played with the tutorial: no opening picks, and a player who does not know the fruit yet. */
+export const LEARNING_RENT = 150;
+
+/** The rent of a cycle of a run (this one, unless another is asked for). */
+export function rentFor(run: Run, cycle = run.cycle): number {
+  if (run.learning && cycle === 1) return LEARNING_RENT;
   return RENT[Math.min(cycle, RENT.length) - 1] as number;
 }
 
@@ -659,7 +673,9 @@ export function withGlazes(run: Run): Run {
     queueGlazes: plain(run.queue, run.queueGlazes),
     regrowing: run.regrowing ?? [],
     opening: run.opening ?? 0,
-    shop: run.shop === null ? null : { ...run.shop, glaze: run.shop.glaze ?? null, glazing: run.shop.glazing ?? false },
+    learning: run.learning ?? false,
+    clusterBonus: run.clusterBonus ?? 0,
+    shop: run.shop === null ? null : { ...run.shop, glaze: run.shop.glaze ?? null, glazing: run.shop.glazing ?? false, removed: run.shop.removed ?? false },
   };
 }
 
@@ -1186,7 +1202,9 @@ function land(run: Run): void {
     sound(run, "land");
     const def = FRUITS[f.kind];
     if (def.scoring === "fresh") {
-      const earned = earn(run, near, i, def.points);
+      // A Raspberry scores what those before it this cycle have added, and adds its own for those after it (not a rotten one).
+      const earned = earn(run, near, i, def.points + (f.kind === "raspberry" ? run.clusterBonus : 0));
+      if (f.kind === "raspberry" && !f.rotten) run.clusterBonus += RASPBERRY.cluster;
       // Landing is the commonest score: only a doubled one lights anything up.
       if (earned !== null && !earned.doubled) f.pulse = 0;
     }
@@ -1934,7 +1952,7 @@ function timeTally(run: Run, tally: Tally, popupsBefore: number): void {
 /** After the cycle's last turn the rent is due: paid, what is over it becomes coins; missed, the run is over. */
 function dueRent(run: Run): void {
   run.phase = "rent";
-  const rent = rentFor(run.cycle);
+  const rent = rentFor(run);
   if (run.cycleScore >= rent) {
     const earned = Math.floor((run.cycleScore - rent) / POINTS_PER_COIN);
     run.coins += earned;
@@ -1995,7 +2013,7 @@ export function resolve(run: Run): void {
     return;
   }
   run.turn += 1;
-  // The turn just played was `run.turn - 1`: a pick follows every second one, and otherwise the next hand is dealt.
+  // The turn just played was `run.turn - 1`: a pick follows every `PICK_EVERY`th, and otherwise the next hand is dealt.
   if ((run.turn - 1) % PICK_EVERY === 0) offer(run);
   else startTurn(run);
 }
@@ -2086,7 +2104,7 @@ function leaveRent(run: Run): void {
     run.message = "";
     return;
   }
-  run.shop = { fruits: [], item: null, glaze: null, cursor: -1, removing: false, glazing: false, removeCursor: -1 };
+  run.shop = { fruits: [], item: null, glaze: null, cursor: -1, removing: false, glazing: false, removeCursor: -1, removed: false };
   stock(run, run.shop);
   run.phase = "shop";
   const next = bossNow(run, run.cycle + 1);
@@ -2177,6 +2195,7 @@ function shopStep(run: Run, keys: Keys): void {
         run.message = "";
         sound(run, "pick");
         shop.removing = false;
+        shop.removed = true;
       }
     } else if (keys.drop) {
       shop.removing = false;
@@ -2238,7 +2257,10 @@ function shopStep(run: Run, keys: Keys): void {
       run.message = "";
     }
   } else if (shop.cursor === SHOP_REMOVE) {
-    if (run.pool.length <= HAND_SIZE) {
+    if (shop.removed) {
+      run.message = "One fruit out a shop";
+      sound(run, "lose");
+    } else if (run.pool.length <= HAND_SIZE) {
       run.message = `Your pool needs at least ${HAND_SIZE} fruit`;
       sound(run, "lose");
     } else if (run.coins < removalPrice(run)) {
@@ -2336,6 +2358,7 @@ function nextCycle(run: Run): void {
   run.cycle += 1;
   run.turn = 1;
   run.cycleScore = 0;
+  run.clusterBonus = 0;
   run.juice = 0;
   run.lime = false;
   run.milk = false;

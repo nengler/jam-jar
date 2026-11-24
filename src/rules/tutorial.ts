@@ -7,7 +7,7 @@ import { CHAIN_TIERS, type Run } from "./jar.ts";
  * pick's waits for the first pick), so the card is away while there is nothing to say. One that comes up while the jar plays (the
  * scoring, the chain) holds the jar still until its "Got it", so it is not gone before it has been read.
  */
-export type LessonId = "shelf" | "order" | "drop" | "score" | "rent" | "pick" | "pool" | "shop" | "chain";
+export type LessonId = "shelf" | "order" | "drop" | "score" | "pick" | "rent" | "pool" | "shop" | "chain";
 
 /** What a lesson's frame is drawn around on the play screen, if anything. */
 export type LessonTarget = "shelf" | "jar" | "rent" | "pool" | null;
@@ -60,19 +60,19 @@ export const LESSONS: readonly Lesson[] = [
     holds: true,
   },
   {
+    id: "pick",
+    title: "A new fruit",
+    text: "Tap a card to read it, then Take.",
+    keysText: "Arrows choose a card, Enter takes.",
+    target: null,
+  },
+  {
     id: "rent",
     title: "The rent",
     text: "Score the rent within 5 turns or you are evicted. Every 10 points over it is a coin.",
     keysText: "Score the rent within 5 turns or you are evicted. Every 10 points over it is a coin.",
     target: "rent",
     told: true,
-  },
-  {
-    id: "pick",
-    title: "A new fruit",
-    text: "Tap a card to read it, then Take.",
-    keysText: "Arrows choose a card, Enter takes.",
-    target: null,
   },
   {
     id: "pool",
