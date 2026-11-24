@@ -137,8 +137,8 @@ export function lessonDone(lesson: Lesson, run: Run, did: Did): boolean {
   if (!lessonShows(lesson, run)) return true;
   if (lesson.id === "shelf") return did.looked;
   if (lesson.id === "order") return did.moved;
-  // The shop's lesson lies over where the shop says what happened and where the Buy button stands, so it goes as soon as there
-  // is something to say or a card is chosen.
+  // The shop's lesson lies over where the shop says what happened and over the foot of the labels, where the chosen one's Buy
+  // button stands, so it goes as soon as there is something to say or a card is chosen.
   if (lesson.id === "shop") return did.acted || (run.shop !== null && !run.shop.removing && run.shop.cursor >= 0);
   return false;
 }

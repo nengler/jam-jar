@@ -44,6 +44,12 @@ const CARD_W = 120;
 const CARD_H = 200;
 const CARD_GAP = 6;
 const CARD_LIFT = 10;
+/**
+ * Under the chosen label, its Buy button and the gap over it, as the pick's Take button is under its chosen card: the button is
+ * tucked up over the label's foot by BUY_TUCK, and the chosen label's text stops that much higher.
+ */
+const BUY_ROOM = 24;
+const BUY_TUCK = 20;
 /** The room left under a label's text, inside its frame: a longer text scrolls rather than running over it. */
 const LABEL_FOOT = 8;
 /** Where the stall's counter's top is: the labels stand on it. */
@@ -55,7 +61,7 @@ const ACTION_GAP = 11;
 const ACTION_Y = 280;
 /**
  * The bar along the foot of the screen, under the actions: the pool's basket (as on the play screen, 56 x 38) and the coins on the
- * left, the Buy button or what just happened in the middle; the right is the pause button's.
+ * left, what just happened in the middle; the right is the pause button's.
  */
 const BAR_Y = ACTION_Y + ACTION_H + 2;
 const BAR_H = 360 - BAR_Y;
@@ -204,17 +210,27 @@ interface OfferProps {
   /** How far into the shop's coming in it is (0 to 1), and how far it has faded in. */
   drop: number;
   opacity: number;
+  /** Whether it is chosen and for sale: its Buy button stands under it, and presses `onBuy`. */
+  buy: boolean;
+  onBuy: () => void;
   onClick: (place: number) => void;
   children: Child;
 }
 
 /** One place on the stall: a label standing on the counter, raised when it is the chosen one, dropping into place as the shop comes in. */
-function Offer({ at, chosen, item, drop, opacity, onClick, children }: OfferProps) {
+function Offer({ at, chosen, item, drop, opacity, onClick, buy, onBuy, children }: OfferProps) {
   return (
-    <Flex height={CARD_H + CARD_LIFT} direction="column" justifyContent={chosen ? "start" : "end"} y={-CARD_DROP * (1 - drop)} opacity={opacity}>
-      <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={14} paddingBottom={LABEL_FOOT} backgroundImage={labelFor(chosen, item)} slice={LABEL_SLICE} focusable={false} onPress={() => onClick(at)}>
+    <Flex height={CARD_H + CARD_LIFT + BUY_ROOM} direction="column" alignItems="center" paddingTop={chosen ? 0 : CARD_LIFT} y={-CARD_DROP * (1 - drop)} opacity={opacity}>
+      <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={14} paddingBottom={buy ? LABEL_FOOT + BUY_TUCK : LABEL_FOOT} backgroundImage={labelFor(chosen, item)} slice={LABEL_SLICE} focusable={false} onPress={() => onClick(at)}>
         {children}
       </Flex>
+      {/* What buys the chosen label, on its foot, as the pick's Take button: a tap or a click on a label only chooses it, so it
+          can be read and its text scrolled first. Enter does the same. */}
+      {buy && (
+        <Flex y={-BUY_TUCK}>
+          <TapButton label="Buy" onPress={onBuy} />
+        </Flex>
+      )}
     </Flex>
   );
 }
@@ -260,7 +276,8 @@ const ACTION_RISE = 120;
 /**
  * The shop between two cycles: a market stall over the dimmed kitchen. A striped awning across the top; three fruit in baskets
  * and an item on a cloth, each on a jam-jar label with its price in the corner, standing on the stall's counter; wooden signs
- * for removal, a reroll and the way out; and a bar along the foot with the pool, the Buy button and the coins. No keys are shown
+ * for removal, a reroll and the way out; and a bar along the foot with the pool, the coins and what just happened. The chosen
+ * label has its Buy button under it, as the pick's chosen card has its Take button. No keys are shown
  * on it: the arrows, Enter, Space and D work as on the play screen. The rules (rules/jar.ts, `Shop`) hold what is for sale and
  * where the cursor is; this draws them.
  */
@@ -295,7 +312,7 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
           does not choose it (see the pick). */}
       <Flex left={0} right={0} top={STALL_Y + 2 - CARD_H - CARD_LIFT} direction="row" justifyContent="center" gap={CARD_GAP} onPressOutside={onAway}>
         {placed(shop.fruits).map((slot) => (
-          <Offer key={slot.at} at={slot.at} chosen={chosen === slot.at} item={false} drop={popIn(time, slot.at * ENTER.gap, ENTER.pop)} opacity={entered(time, slot.at)} onClick={onClick}>
+          <Offer key={slot.at} at={slot.at} chosen={chosen === slot.at} item={false} drop={popIn(time, slot.at * ENTER.gap, ENTER.pop)} opacity={entered(time, slot.at)} onClick={onClick} buy={forSale && chosen === slot.at} onBuy={onConfirm}>
             {slot.card !== null && (
               <Tooltip show={!paused && chosen === slot.at} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                 <Terms text={cardText(run, slot.card)} />
@@ -307,7 +324,7 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
             {slot.card === null && <Sold><Basket kind={null} /></Sold>}
           </Offer>
         ))}
-        <Offer at={SHOP_ITEM} chosen={chosen === SHOP_ITEM} item={true} drop={popIn(time, SHOP_ITEM * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_ITEM)} onClick={onClick}>
+        <Offer at={SHOP_ITEM} chosen={chosen === SHOP_ITEM} item={true} drop={popIn(time, SHOP_ITEM * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_ITEM)} onClick={onClick} buy={forSale && chosen === SHOP_ITEM} onBuy={onConfirm}>
           {shop.item !== null && (
             <Tooltip show={!paused && chosen === SHOP_ITEM} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
               <Terms text={ITEMS[shop.item].text} />
@@ -318,7 +335,7 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
           {shop.item !== null && <OnLabel price={ITEMS[shop.item].price} afford={run.coins >= ITEMS[shop.item].price} />}
           {shop.item === null && <Sold><OnCloth item={null} /></Sold>}
         </Offer>
-        <Offer at={SHOP_GLAZE} chosen={chosen === SHOP_GLAZE} item={true} drop={popIn(time, SHOP_GLAZE * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_GLAZE)} onClick={onClick}>
+        <Offer at={SHOP_GLAZE} chosen={chosen === SHOP_GLAZE} item={true} drop={popIn(time, SHOP_GLAZE * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_GLAZE)} onClick={onClick} buy={forSale && chosen === SHOP_GLAZE} onBuy={onConfirm}>
           {shop.glaze !== null && (
             <Tooltip show={!paused && chosen === SHOP_GLAZE} anchor="top-right" to="top-left" offsetX={-4} offsetY={-40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
               <Terms text={GLAZES[shop.glaze].text} />
@@ -342,9 +359,7 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
 
       {/* The bar along the foot. On the left the fruit and the coins, as they are on the play screen: the pool's basket and how many
           fruit are in it (a tap on it, or D, opens the board of the whole pool over the shop), then the jar of coins and how many.
-          In the middle the Buy button while a card for sale is chosen (a tap on a card only chooses it, so it can be read and its
-          text scrolled first; Enter buys it too), else what the shop has to say (a boss jar next, a buy refused). The right is left
-          to the pause button. */}
+          In the middle what the shop has to say (a boss jar next, a buy refused). The right is left to the pause button. */}
       <Flex left={BAR_SIDE} top={BAR_Y} height={BAR_H} direction="row" alignItems="center" gap={16} opacity={entered(time, SHOP_GLAZE + 1)}>
         <Flex direction="row" alignItems="center" gap={6} focusable={false} onPress={onPool}>
           <Flex width={POOL_BASKET_W} height={POOL_H}>
@@ -361,12 +376,9 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
         </Flex>
       </Flex>
       <Flex left={0} right={0} top={BAR_Y} height={BAR_H} direction="row" alignItems="center" justifyContent="center" opacity={entered(time, SHOP_GLAZE + 1)}>
-        {forSale && <TapButton label="Buy" onPress={onConfirm} />}
-        {!forSale && (
-          <Text width={BAR_MESSAGE_W} maxWidth={BAR_MESSAGE_W} align="center" color={LIGHT}>
-            {run.message}
-          </Text>
-        )}
+        <Text width={BAR_MESSAGE_W} maxWidth={BAR_MESSAGE_W} align="center" color={LIGHT}>
+          {run.message}
+        </Text>
       </Flex>
 
       {/* Taking a fruit out, or choosing one for a glaze: the pool by kind on a board in the middle of the screen, its kinds
