@@ -89,7 +89,7 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   dense: { name: "Dense", text: "Counts as this many fruit, and lands as links." },
   edge: { name: "Edge", text: "Scores this more touching the floor or a wall." },
   copy: { name: "Copy", text: "Becomes the first fruit it lands on." },
-  bouncy: { name: "Bouncy", text: "Shoves its neighbours: each one is a link." },
+  bouncy: { name: "Bouncy", text: "Shoves its neighbours: each one is 2 links." },
   crack: { name: "Crack", text: "After this many turns, or hit hard, it opens:" },
   juice: { name: "Juice", text: "Pours juice in the jar. Fruit in it float." },
   milk: { name: "Milk", text: "Pours milk in the jar. Fruit in it score x2." },

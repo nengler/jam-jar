@@ -71,7 +71,7 @@ export interface FruitDef {
  * rots after `rots` turns. A honeyed fruit scores `HONEY` each turn.
  */
 export const APPLE = { base: 4, edge: 5 };
-export const BANANA = { base: 4, ripen: 2, rots: 3 };
+export const BANANA = { base: 4, ripen: 4, rots: 3 };
 export const HONEY = 4;
 /**
  * The Ladder set (design doc, "Next fruit set: Ladder"): merge up, smash down. A Grape, Orange or Melon that is Smashed breaks
@@ -158,7 +158,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   peach: { name: "Peach", radius: FRUIT_ART.peach.radius, points: 12, scoring: "fresh", touchWeight: 1, text: "Fresh 12. Bouncy." },
   honeydew: { name: "Honeydew", radius: FRUIT_ART.honeydew.radius, points: 2, scoring: "simmer", touchWeight: 1, text: "Honeyed. Each turn, Honey a neighbour." },
   pitaya: { name: "Pitaya", radius: FRUIT_ART.pitaya.radius, points: 4, scoring: "simmer", touchWeight: 1, text: "Simmer 4. Each turn, Eat a Cherry: Grow 1." },
-  coconut: { name: "Coconut", radius: FRUIT_ART.coconut.radius, points: 8, scoring: "fresh", touchWeight: 1, heavy: 5, text: "Fresh 8. Heavy. Crack 3: Milk." },
+  coconut: { name: "Coconut", radius: FRUIT_ART.coconut.radius, points: 8, scoring: "fresh", touchWeight: 1, heavy: 5, text: "Fresh 8. Heavy. Crack 2: Milk." },
   lime: { name: "Lime", radius: FRUIT_ART.lime.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Exploded or Crushed: Juice." },
   dragonfruit: { name: "Dragonfruit", radius: FRUIT_ART.dragonfruit.radius, points: 0, scoring: "booster", touchWeight: 1, legendary: true, text: "Legendary. Booster. Skip." },
   snowpear: { name: "Snow Pear", radius: FRUIT_ART.snowpear.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Each turn, it and its neighbours turn Frozen." },

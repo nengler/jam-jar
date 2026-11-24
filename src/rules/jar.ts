@@ -131,7 +131,7 @@ const CALM_TIME = 0.6;
 export const SETTLE_LIMIT = 8;
 const OVERFLOW_PENALTY = 5;
 /** How many Resolves a Coconut sits through before it cracks. */
-const COCONUT_TURNS = 3;
+const COCONUT_TURNS = 2;
 /** Juice: how deep the liquid a Lime or a Coconut leaves is, in pixels, and the deepest the jar's liquid gets. */
 export const LIME_JUICE = 20;
 export const COCONUT_MILK = 20;
@@ -1218,7 +1218,7 @@ function land(run: Run): void {
       kick(f, 0, -PEACH_BOUNCE);
       for (const o of neighbours(run.fruits, near, i)) {
         kick(o, (o.x < f.x ? -1 : 1) * PEACH_SHOVE, -PEACH_SHOVE / 3);
-        if (!f.rotten) addLink(run);
+        if (!f.rotten) for (let k = 0; k < PEACH_LINKS; k++) addLink(run);
       }
     }
     // A Dense fruit lands as that many links: a Blueberry is three.
@@ -1432,6 +1432,8 @@ function smash(run: Run, w: Fruit, scores = true): Fruit[] {
 /** How hard a fruit hops when it lands on the floor (px/s): about 8 px up. Landing on another fruit, it does not. */
 const FLOOR_BOUNCE = 140;
 /** How hard a Peach bounces when it lands, and shoves each fruit it landed on sideways (px/s). */
+/** How many links of the chain each fruit a Peach shoves is worth. */
+export const PEACH_LINKS = 2;
 const PEACH_BOUNCE = 380;
 const PEACH_SHOVE = 180;
 
@@ -1878,13 +1880,13 @@ function pitayasEat(run: Run, tally: Tally): void {
   }
 }
 
-/** A Coconut that has sat 3 turns cracks open and is gone, leaving its milk in the jar. */
+/** A Coconut that has sat `COCONUT_TURNS` turns cracks open and is gone, leaving its milk in the jar. */
 function coconutsCrack(run: Run): void {
   crack(run, run.fruits.filter((f) => f.kind === "coconut" && f.age >= COCONUT_TURNS - 1), "A Coconut cracked");
 }
 
 /**
- * Coconuts crack open: they are gone, and their milk is in the jar. By itself after `COCONUT_TURNS`, which leaves two turns of a
+ * Coconuts crack open: they are gone, and their milk is in the jar. By itself after `COCONUT_TURNS`, which leaves three turns of a
  * cycle's five to score in it; or at once when one is hit hard (a Coconut landing on it, a Pumpkin's Plunge, a blast), so the
  * milk can be set up for the turns that matter and not waited for.
  */

@@ -92,11 +92,11 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Grow | That kind scores this much more, all run. |
 | Heavy | Shoulders lighter fruit aside. |
 | Double / Sour | Fruit touching it score x2 / can't Merge. |
-| Dense | Counts as this many fruit when touched. |
+| Dense | Counts as this many fruit, and lands as links. |
 | Edge | Scores this more touching the floor or a wall. |
 | Copy | Becomes the first fruit it lands on. |
-| Bouncy | Bounces, shoving its neighbours. |
-| Crack | After this many turns it breaks open, then: |
+| Bouncy | Shoves its neighbours: each one is 2 links. |
+| Crack | After this many turns, or hit hard, it opens: |
 | Juice / Milk | Pours juice in the jar: fruit in it float / pours milk in the jar: fruit in it score x2. |
 | Skip | A Merge touching it skips a size. |
 | Legendary | Rare, and never in the shop. |
@@ -107,10 +107,10 @@ means is in a tooltip beside the card, which shows for the card chosen with the 
 | Absorb | Takes in a fruit no bigger and grows a size. |
 | Shockwave | Throws the pile aside, Smashes what it hits. |
 | Plunge | Sinks to the floor; Smashes pay 75% at once. |
-| Frozen | Held in place. Explosions can't destroy it. |
+| Frozen | Held in place, blast-proof, kept past rent. |
 | Spill | Fruit over the rim are lost: -5 each. |
 
-A new card is a row of these, how it scores first ("Fresh 8. Heavy. Crack 3: Milk."), with a trigger before a colon ("Exploded:
+A new card is a row of these, how it scores first ("Fresh 8. Heavy. Crack 2: Milk."), with a trigger before a colon ("Exploded:
 Sprout."). A new effect gets a keyword and a definition of at most 46 characters, not a sentence on one card. A card holds
 at most four keywords, which is what a tooltip has room for. Tests hold the cards to this, and to the rules' own numbers.
 
@@ -193,7 +193,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
 - Juice: liquid pools at the bottom of the jar, and what sits in it is changed by it.
   - A Lime that is Exploded or Crushed leaves lime juice 20 pixels deep. Fruit in lime juice float: they rise and come to
     rest half out of it (so they are off the floor and away from the Juicer, off the floor for an Apple's Edge, and nearer the rim).
-  - A Coconut is Heavy, so it sinks and shoulders its way down. At its third Resolve it cracks open and is gone, leaving
+  - A Coconut is Heavy, so it sinks and shoulders its way down. At its second Resolve it cracks open and is gone, leaving
     milk 20 deep. Fruit that sit in milk score double.
   - The liquid is one pool: it gets deeper with each Lime and Coconut, up to 120 pixels, holds whatever went into it,
     and goes when the rent empties the jar.
@@ -294,6 +294,22 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     Cherry. After 3 more grow, it grows a Grape."; `cardText` in `src/layout.ts`), on the pick, in the shop and in its tooltips. The count is
     the run's, so it is Ladder's late scaler, and it needs a blast, which ties Boom to Ladder. First bots (24 seeds, rent ignored, nothing bought): never picking 1140 a run, Pumpkin Seed whenever offered
     1032, Chili + Durian + Pumpkin Seed 1132. It does nothing without a bomb, and the bots don't measure late scaling yet.
+- Fruit that did little, given something to do (bots, 48 seeds, a player who takes that fruit whenever it is offered and
+  nothing else, in points a run against never picking; about 30 either way is noise). A fruit that does not merge takes a
+  place from what scores, the merges and the chain, and one of these needed about Fresh 22 to 25 to break even on points
+  alone (Peach at Fresh 20: 87 less a run). So their points were left as they were, and their effects changed:
+
+    | Fruit | What changed | Alone, before | Alone, now | With a partner, before and now |
+    | --- | --- | --- | --- | --- |
+    | Blueberry | Lands as 3 links of the chain; counts as 3 rotten neighbours to a Prune | -298 | -80 | Chili: -184, +65. Prune: +508 (Prune alone +439) |
+    | Snow Pear | What it froze stays in the jar through the rent, thawed; the Snow Pear melts | -371 | +127 | Apple: -169, +379 (Apple alone +182) |
+    | Peach | Each fruit it shoves as it lands is 2 links (`PEACH_LINKS`; 1 link: -161, 3 links: +30) | -226 | -62 | |
+    | Coconut | Cracks at its 2nd Resolve, not its 3rd, and at once when hit hard (a Coconut landing on it, a Plunge, a blast) | -242 | -106 | Apple: +13, +185 |
+    | Banana | Ripen 4, was 2 (Ripen 5: -86) | -183 | -119 | |
+
+  The bots drop a hand in the order it was dealt, so a fruit that scores by what it lands on or beside (Peach, Coconut, Snow
+  Pear) does better than this in a player's hands. Lemon, Fruit Fly and Fig lost points even beside the fruit they are made
+  for, and are not changed here.
 - Raspberry: Fresh 5, and Cluster 8: each one that lands makes every Raspberry score 8 more until the rent (`RASPBERRY`,
   `clusterBonus`), so a cycle's Raspberries score 5, 13, 21 and on. The fruit that is better the more of it a pool holds. It
   starts again each cycle, and nothing offers it more often to a player who has one, so the build is found and not chosen.

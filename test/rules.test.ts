@@ -47,6 +47,7 @@ import {
   rentFor,
   resolve,
   rollPool,
+  PEACH_LINKS,
   LEARNING_RENT,
   OPENING_PICKS,
   RIM,
@@ -671,7 +672,7 @@ test("each fruit a Peach shoves is a link of the chain, a Blueberry lands as thr
   const y = JAR.floor - 18;
   const peach = jarWith([{ ...fruit(1, "peach", 300, y - 30, [2, 3]), landed: false }, fruit(2, "grape", 282, y, [1]), fruit(3, "grape", 318, y, [1])]);
   simulate(peach, DT);
-  assert.equal(peach.chainLinks, 2, "two fruit shoved");
+  assert.equal(peach.chainLinks, 2 * PEACH_LINKS, "two fruit shoved");
   const berry = jarWith([{ ...fruit(1, "blueberry", 300, JAR.floor - FRUITS.blueberry.radius), landed: false }]);
   simulate(berry, DT);
   assert.equal(berry.chainLinks, FRUITS.blueberry.touchWeight);
@@ -818,7 +819,7 @@ test("a Pitaya eats a Cherry it touches each turn, and every Pitaya scores 1 mor
   assert.equal(run.cycleScore, FRUITS.pitaya.points * 2 + 1);
 });
 
-test("a Coconut cracks at its third Resolve and is gone, leaving milk; fruit that sit in the milk score double", () => {
+test("a Coconut cracks at its second Resolve and is gone, leaving milk; fruit that sit in the milk score double", () => {
   const y = JAR.floor - 22;
   const run = jarWith([fruit(1, "coconut", 300, y), fruit(2, "apple", 360, JAR.floor - FRUITS.apple.radius), fruit(3, "apple", JAR.right - FRUITS.apple.radius, JAR.floor - 150)]);
   const scores: number[] = [];
@@ -836,7 +837,7 @@ test("a Coconut cracks at its third Resolve and is gone, leaving milk; fruit tha
   assert.equal(run.milk, true);
   assert.equal(run.lime, false);
   // Each Apple scores 9, one on the floor and one against the right wall; from the turn after the Coconut cracks, the low one sits in milk: 18.
-  assert.deepEqual(scores, [18, 18, 18, 27]);
+  assert.deepEqual(scores, [18, 18, 27, 27]);
   assert.equal(run.popups.find((p) => p.points === 18)!.text, "+18 x2");
 });
 
