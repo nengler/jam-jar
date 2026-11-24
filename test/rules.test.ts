@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { blastBits, blastFlash, blastJolt, cardText, fruitResults, keywordResults, motes, poolRows, termsOf, TILT_TIME, tilted } from "../src/layout.ts";
+import { blastBits, blastFlash, blastJolt, cardText, countdowns, fruitResults, keywordResults, motes, poolRows, termsOf, TILT_TIME, tilted } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
 import { APPLE, BANANA, FRUITS, QUINCE, RASPBERRY, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
@@ -47,6 +47,7 @@ import {
   rentFor,
   resolve,
   rollPool,
+  COCONUT_TURNS,
   FROZEN_TURNS,
   PEACH_LINKS,
   LEARNING_RENT,
@@ -706,6 +707,27 @@ test("what is frozen stays in the jar through the rent, still frozen; the rest i
   run = cleared(press(run, { confirm: true }));
   assert.equal(run.phase, "order");
   assert.deepEqual(run.fruits.map((f) => [f.id, f.frozen, f.ice]), [[1, true, 2], [2, true, 3]], "the rent takes no turn of ice");
+});
+
+test("fruit that are counting down say how many turns they have left: ice, a Coconut's crack, a Banana's rot", () => {
+  const y = JAR.floor - 18;
+  const run = jarWith([
+    { ...fruit(1, "apple", 200, y), frozen: true, ice: 2 },
+    fruit(2, "coconut", 280, y),
+    { ...fruit(3, "banana", 360, y), age: 1 },
+    { ...fruit(4, "banana", 420, y), age: 3, rotten: true },
+    fruit(5, "cherry", 460, y),
+  ]);
+  assert.deepEqual(
+    countdowns(run).map((c) => [c.id, c.what, c.turns]),
+    [
+      [1, "ice", 2],
+      [2, "crack", COCONUT_TURNS],
+      [3, "rot", BANANA.rots - 1],
+    ],
+    "not the rotten Banana, nor the Cherry"
+  );
+  for (const c of countdowns(run)) assert.ok(c.y <= JAR.floor - 9 && c.x >= JAR.left + 9, "inside the jar");
 });
 
 test("ice lasts 3 turns: a frozen fruit thaws, and a Snow Pear melts when its own ice is gone", () => {

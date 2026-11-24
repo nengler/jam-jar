@@ -316,6 +316,9 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   The bots drop a hand in the order it was dealt, so a fruit that scores by what it lands on or beside (Peach, Coconut, Snow
   Pear) does better than this in a player's hands. Lemon, Fruit Fly and Fig lost points even beside the fruit they are made
   for, and are not changed here.
+- Countdowns: a fruit in the jar that is counting down wears the number of turns it has left, in a small dark disc at its
+  lower left (`countdowns`, `TurnsMark.tsx`): a frozen fruit until it thaws (an ice-blue ring), a Coconut until it cracks
+  (light), a Banana until it rots (brown). A frozen build is timed by that number, and it was nowhere on screen.
 - Raspberry: Fresh 5, and Cluster 8: each one that lands makes every Raspberry score 8 more until the rent (`RASPBERRY`,
   `clusterBonus`), so a cycle's Raspberries score 5, 13, 21 and on. The fruit that is better the more of it a pool holds. It
   starts again each cycle, and nothing offers it more often to a player who has one, so the build is found and not chosen.

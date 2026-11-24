@@ -131,7 +131,7 @@ const CALM_TIME = 0.6;
 export const SETTLE_LIMIT = 8;
 const OVERFLOW_PENALTY = 5;
 /** How many Resolves a Coconut sits through before it cracks. */
-const COCONUT_TURNS = 2;
+export const COCONUT_TURNS = 2;
 /** Juice: how deep the liquid a Lime or a Coconut leaves is, in pixels, and the deepest the jar's liquid gets. */
 export const LIME_JUICE = 20;
 export const COCONUT_MILK = 20;
