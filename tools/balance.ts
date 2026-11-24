@@ -405,11 +405,11 @@ for (const strategy of players) {
   // The Ladder set's checks: how often its big-fruit events happen, their share of the points, and how much spills.
   const per = (label: string) => events.reduce((sum, e) => sum + (e.earned[label] ?? 0), 0) / runs;
   const total = events.reduce((sum, e) => sum + Object.values(e.earned).reduce((a, b) => a + Math.max(0, b), 0), 0) / runs;
-  const ladder = per("Slice") + per("Smash") + per("Plunge") + per("Gourd") + per("Giant Pumpkin");
+  const ladder = per("Slice") + per("Smash") + per("Pumpkin") + per("Gourd") + per("Giant Pumpkin");
   const giantRuns = events.filter((e) => e.giants > 0).length;
   console.log(
     `${"".padEnd(34)} a run: ${total.toFixed(0)} points; Giant Pumpkins ${(events.reduce((a, e) => a + e.giants, 0) / runs).toFixed(2)} (in ${giantRuns}/${runs} runs), ` +
-      `Smashes ${(events.reduce((a, e) => a + e.smashes, 0) / runs).toFixed(2)} (+${(per("Slice") + per("Smash") + per("Plunge")).toFixed(0)}), Ladder events ${(events.reduce((a, e) => a + e.smashes + e.giants, 0) / runs).toFixed(2)}, Plunge bursts +${per("Plunge").toFixed(0)}, Gourd +${per("Gourd").toFixed(0)}, ` +
+      `Smashes ${(events.reduce((a, e) => a + e.smashes, 0) / runs).toFixed(2)} (+${(per("Slice") + per("Smash") + per("Pumpkin")).toFixed(0)}), Ladder events ${(events.reduce((a, e) => a + e.smashes + e.giants, 0) / runs).toFixed(2)}, Plunge bursts +${per("Pumpkin").toFixed(0)}, Gourd +${per("Gourd").toFixed(0)}, ` +
       `Ladder share ${((100 * ladder) / Math.max(1, total)).toFixed(0)}%, spills ${(-per("Spill") / 5).toFixed(1)} (${(-per("Spill") / 5 / rent.length).toFixed(1)} a cycle)`
   );
   const turns = events.flatMap((e) => e.chains);
