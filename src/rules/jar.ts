@@ -1813,7 +1813,7 @@ function simmer(run: Run, tally: Tally): void {
     const touched = neighbours(run.fruits, near, i);
     let points = 0;
     if (f.kind === "prune") {
-      // Dried, not rotten: it scores for the rot around it, and makes none.
+      // Dried, not rotten: it scores for the rot around it, which it makes a neighbour at a time (`ageAndRot`).
       // (A Dense one counts as that many.)
       points = FRUITS.prune.points * touched.filter((o) => o.rotten).reduce((sum, o) => sum + FRUITS[o.kind].touchWeight, 0);
     } else if (f.rotten) {
@@ -1955,10 +1955,11 @@ function ageAndRot(run: Run, tally: Tally): void {
     if (f.kind === "banana" && f.age >= BANANA.rots && !f.rotten) f.rotten = true;
   }
   // A Fruit Fly rots a fruit it touches too, though it is not rotten itself: it brings its own meal, and eats it next turn.
-  const rotten = run.fruits.filter((f) => f.rotten || f.kind === "fruitfly");
+  // So does a Prune, which scores for it.
+  const rotten = run.fruits.filter((f) => f.rotten || f.kind === "fruitfly" || f.kind === "prune");
   for (const r of rotten) {
-    // (Nor a Prune: it is dried, not rotten, and scores for the rot beside it without making any. It was rotten from the start
-    // and spread like any rot, which made its own neighbours pay: the strongest fruit in the game, and it needed nothing.)
+    // (Nor a Prune: it is dried, not rotten. It Spoils a neighbour a turn as a Fruit Fly does, and scores for the rot beside
+    // it. It was rotten itself, so two Prunes scored each other: the strongest fruit in the game, and it needed nothing.)
     const next = run.fruits.find((o) => !o.rotten && !o.pickled && o.kind !== "lemon" && o.kind !== "fruitfly" && o.kind !== "prune" && r.touching.includes(o.id));
     if (next === undefined) continue;
     next.rotten = true;

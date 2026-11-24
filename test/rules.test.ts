@@ -613,15 +613,21 @@ test("paying the last rent wins the run without a shop", () => {
   assert.equal(run.phase, "won");
 });
 
-test("a Prune is not rotten: it scores for each rotten fruit it touches, makes no rot, and is not rotted", () => {
+test("a Prune is not rotten: it scores for each rotten fruit it touches, Spoils one neighbour a turn, and is not rotted", () => {
   const y = JAR.floor - 14;
   const banana = { ...fruit(2, "banana", 330, y, [1]), rotten: true };
   const run = jarWith([fruit(1, "prune", 300, y, [2, 3]), banana, fruit(3, "cherry", 270, y, [1])]);
   assert.equal(run.fruits[0]!.rotten, false);
   resolve(run);
-  assert.equal(run.cycleScore, FRUITS.prune.points, "one rotten neighbour");
-  assert.equal(run.fruits.find((f) => f.id === 3)!.rotten, false, "the Prune rots nothing");
+  assert.equal(run.cycleScore, FRUITS.prune.points, "one rotten neighbour when it scored");
+  assert.equal(run.fruits.find((f) => f.id === 3)!.rotten, true, "then the Prune Spoiled the Cherry");
   assert.equal(run.fruits[0]!.rotten, false, "and the Banana's rot does not take it");
+
+  // Two Prunes side by side score nothing for each other: neither is rotten.
+  const pair = jarWith([fruit(1, "prune", 300, y, [2]), fruit(2, "prune", 330, y, [1])]);
+  resolve(pair);
+  assert.equal(pair.cycleScore, 0);
+  assert.deepEqual(pair.fruits.map((f) => f.rotten), [false, false]);
 });
 
 test("rotten fruit still Merge, and what they make is rotten", () => {
