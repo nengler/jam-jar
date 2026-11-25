@@ -141,6 +141,8 @@ const OVERFLOW_PENALTY = 5;
 export const COCONUT_TURNS = 2;
 /** Juice: how deep the liquid a Lime or a Coconut leaves is, in pixels, and the deepest the jar's liquid gets. */
 export const LIME_JUICE = 20;
+/** What a fruit afloat in lime juice scores over what it would, each time it scores. */
+export const JUICE_BONUS = 6;
 export const COCONUT_MILK = 20;
 export const JUICE_MOST = 120;
 /** What a honeyed fruit scores at each Resolve. */
@@ -395,6 +397,8 @@ export interface Run {
   discardIds: number[];
   handIds: number[];
   queueIds: number[];
+  /** The fruit of this turn's hand that sat out in the basket (what a Kumquat copies), until the next hand drops. */
+  benched: FruitKind[];
   /** The number the next fruit to join the pool takes. */
   nextCard: number;
   /** What a fruit of the pool scores over its card, by its number: a Persimmon's, for the picks skipped while it was owned. */
@@ -622,6 +626,7 @@ export function newRun(seed: number, opening = false, learning = false): Run {
     discardIds: [],
     handIds: [],
     queueIds: [],
+    benched: [],
     nextCard: pool.length + 1,
     grown: {},
     cursor: 0,
@@ -714,6 +719,7 @@ function copy(run: Run): Run {
     handIds: run.handIds.slice(),
     queueIds: run.queueIds.slice(),
     grown: { ...run.grown },
+    benched: run.benched.slice(),
     fruits: run.fruits.map((f) => ({ ...f })),
     items: run.items.slice(),
     kept: run.kept.slice(),
@@ -761,6 +767,7 @@ export function withGlazes(run: Run): Run {
     queueIds: taken(run.queue, run.queueIds),
     nextCard: run.nextCard ?? run.pool.length + 1,
     grown: run.grown ?? {},
+    benched: run.benched ?? [],
     poolGlazes: plain(run.pool, run.poolGlazes),
     drawGlazes: plain(run.draw, run.drawGlazes),
     discardGlazes: plain(run.discard, run.discardGlazes),
@@ -1047,9 +1054,11 @@ function earn(run: Run, links: readonly number[][], i: number, points: number, l
   // Doubled by a Lemon it touches, or by Coconut milk it sits in (once, not twice over).
   const doubled = boosted(run.fruits, links, i) || (run.milk && soaked(run, f));
   // A Fizzy fruit's score adds links of its own first, so it can lift itself to the next tier.
+  // A fruit afloat in lime juice scores a little more whenever it scores: juice is worth having in a jar, not only in the way.
+  const juiced = points > 0 && run.lime && run.juice > 0 && f.y + f.r > surface(run) ? JUICE_BONUS : 0;
   const fizzy = f.glaze === "fizzy" && points > 0;
   if (fizzy) for (let k = 0; k < FIZZY_LINKS; k++) addLink(run);
-  const popup = score(run, points * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled, earner: FRUITS[f.kind].name, chained: chained || fizzy });
+  const popup = score(run, (points + juiced) * (doubled ? 2 : 1), f.x, f.y - f.r, { label, doubled, earner: FRUITS[f.kind].name, chained: chained || fizzy });
   if (popup === null) return null;
   if (fizzy) popup.links = (popup.links ?? 0) + FIZZY_LINKS;
   const boosters = doubled ? neighbours(run.fruits, links, i).filter((o) => o.kind === "lemon") : [];
@@ -1179,6 +1188,7 @@ function order(run: Run, keys: Keys): void {
     run.queue = run.hand.slice(0, count);
     run.queueGlazes = run.handGlazes.slice(0, count);
     run.queueIds = run.hand.slice(0, count).map((_, at) => run.handIds[at] ?? 0);
+    run.benched = run.hand.slice(count);
     run.discard.push(...run.hand.slice(count));
     run.discardGlazes.push(...run.handGlazes.slice(count));
     run.discardIds.push(...run.hand.slice(count).map((_, at) => run.handIds[count + at] ?? 0));
@@ -1239,12 +1249,13 @@ function flipDue(run: Run): boolean {
 }
 
 /**
- * What a Kumquat at a place of the tray drops as: a copy of the fruit to its right (to its left, when it is the last), so the
- * tray's order chooses what is doubled: a second Melon beside the first, which merge. Not a Wide fruit, which would not fit its
- * one lane, nor another Kumquat: then it drops as itself.
+ * What a Kumquat drops as: a copy of the fruit left in the basket this turn, down the Kumquat's own lane. So the best fruit of
+ * a hand can sit out and still be dropped, and two of it land. Not a Wide fruit, which would not fit one lane, nor another
+ * Kumquat, nor when nothing sat out: then it drops as itself. (It copied the fruit to its right in the tray at first, which
+ * was the Kiwi's copy chosen another way.)
  */
-export function echoOf(tray: readonly FruitKind[], at: number): FruitKind {
-  const beside = tray[at + 1] ?? tray[at - 1];
+export function echoOf(benched: readonly FruitKind[]): FruitKind {
+  const beside = benched[0];
   return beside === undefined || beside === "kumquat" || slotsOf(beside) > 1 ? "kumquat" : beside;
 }
 
@@ -1269,8 +1280,8 @@ function trayRelease(run: Run, flip: boolean): void {
     const glaze = run.queueGlazes[at] ?? null;
     // A Ripe fruit lands one size bigger, as a plain fruit of that size: it has changed, so the glaze stays in the pool.
     const own = glaze === "ripe" ? (ripened(dealt) ?? dealt) : dealt;
-    // A Kumquat drops as a copy of the fruit to its right in the tray (`echoOf`), down its own lane.
-    const kind = dealt === "kumquat" ? echoOf(run.queue, at) : own;
+    // A Kumquat drops as a copy of the fruit left in the basket (`echoOf`), down its own lane.
+    const kind = dealt === "kumquat" ? echoOf(run.benched) : own;
     const r = dealt === "gourd" && glaze === "ripe" ? (GOURD_SIZES[1] as number) : FRUITS[kind].radius;
     // A Wide fruit drops down the middle of its two lanes.
     const place = places[at] as { start: number; span: number };

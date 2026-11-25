@@ -34,6 +34,7 @@ import {
   JUICER_BONUS,
   JUICE_MOST,
   LIME_JUICE,
+  JUICE_BONUS,
   keeps,
   newRun,
   NO_KEYS,
@@ -909,7 +910,7 @@ test("a Lime pours its juice as it lands, and a Cranberry afloat in it scores", 
   assert.deepEqual([run.juice, run.lime], [LIME_JUICE, true]);
   run.turn = 1;
   resolve(run);
-  assert.equal(run.earned["Cranberry"], FRUITS.cranberry.points);
+  assert.equal(run.earned["Cranberry"], FRUITS.cranberry.points + JUICE_BONUS, "and the juice's own 2 with it");
 });
 
 test("a Lime that is Exploded or Crushed leaves lime juice, which rises with each and is gone with the rent", () => {
@@ -950,7 +951,7 @@ test("a fruit that comes to rest afloat in lime juice has landed, and scores as 
   run.fruits = [{ ...fruit(1, "orange", 300, JAR.floor - 60), landed: false, speed: 4 }];
   simulate(run, DT);
   assert.equal(run.fruits[0]!.landed, true);
-  assert.equal(run.cycleScore, FRUITS.orange.points);
+  assert.equal(run.cycleScore, FRUITS.orange.points + JUICE_BONUS, "with what the juice adds to a fruit afloat in it");
 });
 
 test("terms: a keyword is found by its capital, whatever punctuation follows it, and the number after it is coloured with it", () => {
@@ -1526,20 +1527,20 @@ test("a Plum scores 3 for each link of the turn's chain, not multiplied by its t
   assert.equal(run.earned["Plum"], 6 * PLUM.perLink);
 });
 
-test("a Kumquat's Echo: it drops as a copy of the fruit to its right in the tray", () => {
-  assert.equal(echoOf(["kumquat", "orange", "cherry", "grape"], 0), "orange");
-  assert.equal(echoOf(["cherry", "grape", "melon", "kumquat"], 3), "melon", "the last place copies the one to its left");
-  assert.equal(echoOf(["kumquat", "kumquat", "cherry"], 0), "kumquat", "not another Kumquat");
-  assert.equal(echoOf(["kumquat", "pumpkin", "cherry"], 0), "kumquat", "nor a Wide fruit");
-  assert.equal(echoOf(["kumquat"], 0), "kumquat");
+test("a Kumquat's Echo: it drops as a copy of the fruit left in the basket", () => {
+  assert.equal(echoOf(["melon"]), "melon");
+  assert.equal(echoOf([]), "kumquat", "nothing sat out");
+  assert.equal(echoOf(["kumquat"]), "kumquat", "not another Kumquat");
+  assert.equal(echoOf(["pumpkin"]), "kumquat", "nor a Wide fruit");
 
   let run = newRun(3);
-  run.hand = ["kumquat", "orange", "cherry", "grape", "apple"];
+  run.hand = ["kumquat", "cherry", "grape", "apple", "orange"];
   run.handGlazes = [null, null, null, null, null];
   run = press(run, { drop: true });
+  assert.deepEqual(run.benched, ["orange"]);
   for (let i = 0; i < 40 && run.phase === "drop"; i++) run = press(run, {});
-  assert.deepEqual(run.fruits.map((f) => f.kind).sort(), ["cherry", "grape", "orange", "orange"]);
-  assert.ok(run.discard.includes("kumquat"), "it is still a Kumquat in the pool");
+  assert.deepEqual(run.fruits.map((f) => f.kind).sort(), ["apple", "cherry", "grape", "orange"], "the Orange sat out, and an Orange dropped");
+  assert.ok(run.discard.includes("kumquat") && run.discard.includes("orange"), "both are still in the pool as they were");
 });
 
 test("a Grapefruit scores for each fruit under it, and a Cranberry only while it sits in juice", () => {
@@ -1559,7 +1560,7 @@ test("a Grapefruit scores for each fruit under it, and a Cranberry only while it
   run.juice = 60;
   run.lime = true;
   resolve(run);
-  assert.equal(run.earned["Cranberry"], FRUITS.cranberry.points);
+  assert.equal(run.earned["Cranberry"], FRUITS.cranberry.points + JUICE_BONUS);
 });
 
 test("a Sprig grows a Cherry beside it each turn, but not once the pile is near the rim", () => {

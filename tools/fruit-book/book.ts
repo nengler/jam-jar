@@ -375,9 +375,9 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
     family: "Flex",
     roles: ["Build-around"],
     works: [
-      ["Melon", "a second Melon beside the first: a Watermelon"],
-      ["Orange", "two Oranges down neighbouring lanes merge"],
-      ["Raspberry", "one more landing for the cluster"],
+      ["The basket", "it drops as the fruit left there: the best one sits out and lands anyway"],
+      ["Melon", "leave it in the basket, and the Kumquat lands as a Melon"],
+      ["Olive", "the Olive scores for sitting out, and the Kumquat lands as one"],
     ],
     clashes: [["Pumpkin", "it cannot copy a Wide fruit, and drops as itself"]],
   },

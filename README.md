@@ -361,7 +361,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     | --- | --- | --- | --- |
     | Olive | Fresh 4. Benched: +15 (left in the basket for the turn) | -260 dealt as it comes; +70 left in the basket whenever it is dealt | |
     | Plum | Simmer 3 per Link: 3 for each link of the turn's chain, not multiplied by its tier | -3 | Blueberry: +28 (alone -80). Chili: +15. Peach: +5 |
-    | Kumquat | Fresh 4. Echo: it drops as a copy of the fruit to its right in the tray | -70 as dealt; -7 put beside the biggest landing | Melon: +818 (Melon alone +688) |
+    | Kumquat | Fresh 4. Echo: it drops as a copy of the fruit left in the basket | +31, with the biggest landing left in the basket | Melon: +424 (Melon alone +412) |
     | Grapefruit | Simmer 3 per fruit under it | -31 (at 2: -137; at 4: +75) | Sprig: +136 |
     | Sprig | Fresh 2. Each turn, Bud: a Cherry grows beside it, while the pile is more than 48 pixels under the rim | +131 | Pitaya: +271 |
     | Cranberry | Afloat: Simmer 16, only in juice or milk | -388 (it never floats) | Coconut: +96 (alone -106). Lime: -204 (alone -299) |
@@ -388,6 +388,12 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   Bots (48 seeds, a player who takes every Persimmon and skips every other pick, against never picking): -152 a run at
   Swell 2, -73 at 3, +7 at 4. It is 3: that player also ends with a coin for every pick skipped, which these bots never
   spend. Pitaya and Raspberry still grow as a kind.
+- The Kumquat and the Lime again. A Kumquat copied the fruit to its right in the tray, which was the Kiwi's copy chosen
+  another way; it drops as a copy of the fruit left in the basket now (`echoOf`, `benched`), so a hand's best fruit can
+  sit out and still land. And juice did nothing good: it took an Apple off the floor and its Edge, and a Lime was -299 a
+  run for pouring it. A fruit afloat in lime juice now scores 6 more each time it scores (`JUICE_BONUS`). Same bots: a
+  Lime alone -299, then -231 at 2 more, -173 at 4, -114 at 6; with an Apple -114, -26, +62 (an Apple alone +90); a
+  Cranberry and a Lime -159, -79, +1.
 - Countdowns: a fruit in the jar that is counting down wears the number of turns it has left, in a small dark disc at its
   lower left (`countdowns`, `TurnsMark.tsx`): a frozen fruit until it thaws (an ice-blue ring), a Coconut until it cracks
   (light), a Banana until it rots (brown). A frozen build is timed by that number, and it was nowhere on screen.

@@ -201,21 +201,16 @@ function playTurn(player: Player, backend: RecordingBackend, hand: FruitKind[], 
  */
 /**
  * A hand as a player who knows two fruit would leave it: an Olive in the basket (the last place), where it scores for sitting
- * out, and a Kumquat just left of the fruit on the tray with the biggest landing, which then lands twice.
+ * out; and with a Kumquat on the tray, the fruit with the biggest landing in the basket, which the Kumquat then drops as.
  */
 function benchHand(hand: readonly FruitKind[]): FruitKind[] {
   const out = hand.slice();
+  if (out.length <= 4) return out;
+  const landing = (kind: FruitKind) => (FRUITS[kind].scoring === "fresh" && kind !== "kumquat" && (FRUITS[kind].slots ?? 1) === 1 ? FRUITS[kind].points : -1);
   const olive = out.indexOf("olive");
-  if (olive >= 0 && out.length > 4) out.push(...out.splice(olive, 1));
-  const tray = out.slice(0, 4);
-  const kumquat = tray.indexOf("kumquat");
-  if (kumquat >= 0) {
-    const rest = tray.filter((_, at) => at !== kumquat);
-    const landing = (kind: FruitKind) => (FRUITS[kind].scoring === "fresh" && kind !== "kumquat" ? FRUITS[kind].points : -1);
-    const best = rest.reduce((top, kind, at) => (landing(kind) > landing(rest[top] as FruitKind) ? at : top), 0);
-    rest.splice(best, 0, "kumquat");
-    out.splice(0, tray.length, ...rest);
-  }
+  const best = out.reduce((top, kind, at) => (landing(kind) > landing(out[top] as FruitKind) ? at : top), 0);
+  const sits = olive >= 0 ? olive : out.includes("kumquat") && landing(out[best] as FruitKind) >= 0 ? best : -1;
+  if (sits >= 0) out.push(...out.splice(sits, 1));
   return out;
 }
 

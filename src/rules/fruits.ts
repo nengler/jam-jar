@@ -138,7 +138,7 @@ export const RASPBERRY = { base: 5, cluster: 8 };
 /**
  * Six fruit for the systems that had none (the fruit ideas page of 25 November). An Olive scores `benched` on a turn it is the
  * fruit left in the basket. A Plum scores `perLink` for each link of the turn's chain, when the turn is counted, and that is
- * never multiplied by the chain's tier. A Kumquat drops as a copy of the fruit beside it in the tray. A Grapefruit
+ * never multiplied by the chain's tier. A Kumquat drops as a copy of the fruit left in the basket. A Grapefruit
  * scores `perFruit` for each fruit under it. A Sprig grows a Cherry beside it each turn, while the pile's top is more than
  * `room` pixels under the rim. A Cranberry scores its points only while it sits in juice or milk.
  */
