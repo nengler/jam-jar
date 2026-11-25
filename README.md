@@ -378,6 +378,16 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   taken for dry). At Simmer 12 it was still -361 with a Lime and -64 with a Coconut; at 20, -127 and +218; it is 16. The
   Lime itself is no better for pouring (-299 alone), so a Lime and a Cranberry together still cost points: the Lime is the
   next fruit to look at.
+- Fruit told apart, and the Persimmon. Each fruit of the pool has a number of its own (`poolIds`, and `handIds` and the rest
+  where it is dealt), which goes with it as its glaze does, so a run can keep something for one fruit and not for its kind
+  (`grown`). Nothing plays differently for it: the same seeds deal the same hands, and a run kept before it is numbered as it
+  is read. The Persimmon is the first fruit to use it: "Fresh 4. A pick skipped: Swell 3." Each pick skipped while it is in
+  the pool makes that Persimmon score 3 more for the rest of the run, so the one taken early is the big one and a second
+  starts from nothing. What a fruit has grown shows on it on the shelf ("+9" at its lower left) and in its tooltip, and
+  the pool's board says what the biggest of a kind has. Taking a fruit out in the shop takes the one that has grown least.
+  Bots (48 seeds, a player who takes every Persimmon and skips every other pick, against never picking): -152 a run at
+  Swell 2, -73 at 3, +7 at 4. It is 3: that player also ends with a coin for every pick skipped, which these bots never
+  spend. Pitaya and Raspberry still grow as a kind.
 - Countdowns: a fruit in the jar that is counting down wears the number of turns it has left, in a small dark disc at its
   lower left (`countdowns`, `TurnsMark.tsx`): a frozen fruit until it thaws (an ice-blue ring), a Coconut until it cracks
   (light), a Banana until it rots (brown). A frozen build is timed by that number, and it was nowhere on screen.

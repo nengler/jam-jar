@@ -1,14 +1,14 @@
-import { Entity, Flex, Sprite, Tooltip } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Sprite, Text, Tooltip } from "@tsengine/runtime/jsx";
 
 import { Frame } from "./Coach.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { GlazeMark } from "./GlazeMark.tsx";
-import { grownOf, glazedText, placed, rollIn, rollStarted, shelfX } from "./layout.ts";
+import { grownOf, glazedText, placed, rollIn, rollStarted, shelfX, swelledAt, swellNote } from "./layout.ts";
 import { BASKET_H, HOLD_LIFT, ROLL_FROM, SHELF_FOOT, SHELF_Y, shelfOf, SLOT } from "./places.ts";
 import type { FruitKind } from "./rules/fruits.ts";
 import { bossNow, dropping, handSlots, type Run } from "./rules/jar.ts";
-import { biggestFruit, CARD_SLICE, fruitImageSize, SELECT } from "./theme.ts";
+import { biggestFruit, CARD_SLICE, fruitImageSize, SELECT, GOLD, INK } from "./theme.ts";
 
 /** Where the card of a fruit on the shelf stands: at the left under the rent board, and what its keywords mean at the right under
  * the basket and the coins, so neither lies over the jar, which is what the player is deciding about, nor over the score, the
@@ -76,6 +76,10 @@ export function Shelf({ run, roll, dragging, dragX, framed, listening, onDragSta
           {!blind && (!ordering || rollStarted(roll, slot.at)) && <FruitBall kind={slot.card} x={0} y={-slot.lift - slot.size / 2} turn={ordering ? rollIn(roll, slot.at, ROLL_FROM - shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0)) / 16 : 0} glaze={shelf.glazes[slot.at]} seed={slot.at} />}
           {/* Its glaze's badge at its lower right (a big fruit's top is off the screen), rolling in with it. */}
           {!blind && (!ordering || rollStarted(roll, slot.at)) && shelf.glazes[slot.at] != null && <GlazeMark glaze={shelf.glazes[slot.at]!} x={slot.size * 0.35} y={-slot.lift - slot.size * 0.2} />}
+          {/* What this one fruit has grown by itself, at its lower left: two of a kind on the shelf are told apart by it. */}
+          {!blind && swelledAt(run, slot.at) > 0 && (!ordering || rollStarted(roll, slot.at)) && (
+            <Text x={-slot.size / 2 - 2} y={-slot.lift - 14} color={GOLD} shadow={INK} shadowX={2} shadowY={2}>{`+${swelledAt(run, slot.at)}`}</Text>
+          )}
           {blind && (!ordering || rollStarted(roll, slot.at)) && <Sprite image="covered.png" x={-16} y={-32} />}
         </Entity>
       ))}
@@ -99,7 +103,7 @@ export function ShelfTips({ run, shown, coached }: { run: Run; shown: boolean; c
       {placed(shelf.cards).map((slot) => (
         <Flex key={`tip${slot.card}${slot.at}`} x={shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0) - 20} y={SHELF_Y - 38} width={40} height={40}>
           <Tooltip show={shown && slot.at === run.cursor ? true : undefined} anchor="top-left" to="top-left" offsetX={TIP_X - (shelfX(slot.at, shelf.left, SLOT, shelf.spans, false, 0) - 20)} offsetY={(coached ? COACHED_TOP : TIP_TOP) - (SHELF_Y - 38)} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-            <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} text={glazedText(run, slot.card, shelf.glazes[slot.at])} apart={coached ? undefined : 640 - TIP_X * 2} down={CARD_DOWN} />
+            <FruitTip kind={slot.card} grown={grownOf(run, slot.card)} note={swellNote(swelledAt(run, slot.at), false)} text={glazedText(run, slot.card, shelf.glazes[slot.at])} apart={coached ? undefined : 640 - TIP_X * 2} down={CARD_DOWN} />
           </Tooltip>
         </Flex>
       ))}

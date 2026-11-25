@@ -33,6 +33,7 @@ export const FRUIT_ART = {
   raspberry: { size: 32, radius: 14 },
   olive: { size: 32, radius: 14 },
   plum: { size: 40, radius: 18 },
+  persimmon: { size: 40, radius: 18 },
   kumquat: { size: 32, radius: 14 },
   grapefruit: { size: 48, radius: 22 },
   sprig: { size: 32, radius: 14 },

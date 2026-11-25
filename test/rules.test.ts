@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { blastBits, blastFlash, blastJolt, cardText, countdowns, fruitResults, keywordResults, motes, poolRows, termsOf, TILT_TIME, tilted } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
-import { APPLE, BANANA, FIG, FRUITS, GRAPEFRUIT, OLIVE, PLUM, SPRIG, QUINCE, RASPBERRY, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
+import { APPLE, BANANA, FIG, FRUITS, GRAPEFRUIT, OLIVE, PERSIMMON, PLUM, SPRIG, QUINCE, RASPBERRY, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
@@ -1455,6 +1455,49 @@ test("a Raspberry scores more for each that has landed this cycle, and they star
   assert.equal(run.clusterBonus, 3 * RASPBERRY.cluster);
   assert.equal(run.earned["Raspberry"], 3 * RASPBERRY.base + 3 * RASPBERRY.cluster);
   assert.match(FRUITS.raspberry.text, new RegExp(`Fresh ${RASPBERRY.base}\\. Cluster ${RASPBERRY.cluster}\\.`));
+});
+
+test("a Persimmon Swells for each pick skipped while it is in the pool: that fruit, and not one that joins later", () => {
+  let run = newRun(3);
+  const offers = (r: Run): Run => ({ ...r, phase: "pick", offers: ["persimmon", "apple", "grape"], offerCursor: -1 });
+  // Take a Persimmon, skip two picks, take another, skip one more.
+  run = press(press(offers(run), { right: true }), { confirm: true });
+  const first = run.poolIds[run.pool.indexOf("persimmon")]!;
+  run = press(offers(run), { drop: true });
+  run = press(offers(run), { drop: true });
+  assert.equal(run.grown[first], 2 * PERSIMMON.swell);
+  run = press(press(offers(run), { right: true }), { confirm: true });
+  const second = run.poolIds[run.pool.lastIndexOf("persimmon")]!;
+  assert.notEqual(second, first);
+  run = press(offers(run), { drop: true });
+  assert.deepEqual([run.grown[first], run.grown[second]], [3 * PERSIMMON.swell, PERSIMMON.swell], "the one taken early is the big one");
+  assert.match(FRUITS.persimmon.text, new RegExp(`Fresh ${PERSIMMON.base}\\. A pick skipped: Swell ${PERSIMMON.swell}\\.`));
+
+  // It lands for its card and what it has grown; a Persimmon with no number (a Kumquat's copy) only for its card.
+  const y = JAR.floor - FRUITS.persimmon.radius;
+  const jar = jarWith([{ ...fruit(1, "persimmon", 250, y), landed: false, card: 77 }, { ...fruit(2, "persimmon", 400, y), landed: false }]);
+  jar.grown = { 77: 10 };
+  simulate(jar, DT);
+  assert.equal(jar.cycleScore, PERSIMMON.base + 10 + PERSIMMON.base);
+});
+
+test("every fruit of the pool has a number of its own, which goes with it to the hand, the tray and back", () => {
+  let run = newRun(3);
+  assert.deepEqual(run.poolIds.slice().sort(), [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual([...run.handIds, ...run.drawIds].sort(), [1, 2, 3, 4, 5, 6]);
+  for (const [at, id] of run.handIds.entries()) assert.equal(run.pool[run.poolIds.indexOf(id)], run.hand[at], "a number names a fruit of that kind");
+  const hand = run.handIds.slice();
+  run = press(run, { drop: true });
+  assert.deepEqual(run.queueIds, hand.slice(0, 4));
+  assert.deepEqual(run.discardIds, hand.slice(4), "the one that sits out goes back with its number");
+  // A run kept before fruit were numbered is numbered as it is read, each fruit dealt taking a number of its kind.
+  const old = { ...newRun(5) } as Partial<Run>;
+  delete old.poolIds;
+  delete old.handIds;
+  delete old.drawIds;
+  const read = withGlazes(old as Run);
+  assert.equal(new Set([...read.handIds, ...read.drawIds]).size, 6);
+  for (const [at, id] of read.handIds.entries()) assert.equal(read.pool[read.poolIds.indexOf(id)], read.hand[at]);
 });
 
 test("an Olive left in the basket scores for sitting the turn out; one that drops only lands", () => {

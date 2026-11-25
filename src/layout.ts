@@ -1,7 +1,7 @@
 import type { Mood } from "./GameState.ts";
 import { BANANA, FRUITS, pumpkinSeedText, type FruitKind } from "./rules/fruits.ts";
 import { GLAZES, type Glaze } from "./rules/glazes.ts";
-import { BOSS_NAME, bossNow, COCONUT_TURNS, FROZEN_TURNS, JAR, TURNS_PER_CYCLE, newRun, OPENING_PICKS, RENT, withGlazes, type Boss, type Run } from "./rules/jar.ts";
+import { BOSS_NAME, bossNow, COCONUT_TURNS, FROZEN_TURNS, grownBy, JAR, TURNS_PER_CYCLE, newRun, OPENING_PICKS, RENT, withGlazes, type Boss, type Run } from "./rules/jar.ts";
 import { KEYWORDS, keywordsIn } from "./rules/terms.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
@@ -622,4 +622,20 @@ export const RECEDE_TIME = 0.25;
 /** How solid something is that fades away over its last moments, `left` seconds before it goes: a score's popup. The screen's shader draws the fade as a dither. */
 export function fading(left: number): number {
   return Math.max(0, Math.min(1, left / 0.25));
+}
+
+/** What the fruit at a place of the shelf has grown by itself (a Persimmon's Swell): the hand while it is ordered, then what is left to drop. */
+export function swelledAt(run: Run, at: number): number {
+  const ids = run.phase === "order" ? run.handIds : run.queueIds;
+  return run.grown[ids[at] ?? 0] ?? 0;
+}
+
+/** The most any one fruit of a kind in the pool has grown by itself, for the pool's board, which shows a kind and not each fruit. */
+export function swelledMost(run: Run, kind: FruitKind): number {
+  return Math.max(0, ...run.pool.map((k, at) => (k === kind ? grownBy(run, at) : 0)));
+}
+
+/** What a fruit's tooltip says of its own growth: "" for none. */
+export function swellNote(swelled: number, biggest: boolean): string {
+  return swelled <= 0 ? "" : biggest ? `The biggest has Swelled +${swelled}.` : `This one has Swelled +${swelled}.`;
 }

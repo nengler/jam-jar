@@ -46,7 +46,8 @@ export type FruitKind =
   | "kumquat"
   | "grapefruit"
   | "sprig"
-  | "cranberry";
+  | "cranberry"
+  | "persimmon";
 
 export type Scoring = "fresh" | "simmer" | "booster";
 
@@ -141,6 +142,12 @@ export const RASPBERRY = { base: 5, cluster: 8 };
  * scores `perFruit` for each fruit under it. A Sprig grows a Cherry beside it each turn, while the pile's top is more than
  * `room` pixels under the rim. A Cranberry scores its points only while it sits in juice or milk.
  */
+/**
+ * The Persimmon: the first fruit that grows by itself and not with its kind. Each pick skipped while a Persimmon is in the pool
+ * makes that Persimmon score `swell` more for the rest of the run, so the one taken early is the big one and a second starts
+ * from nothing (the run keeps it by the fruit's number: `grown` in rules/jar.ts).
+ */
+export const PERSIMMON = { base: 4, swell: 3 };
 export const OLIVE = { benched: 15 };
 export const PLUM = { perLink: 3 };
 export const GRAPEFRUIT = { perFruit: 3 };
@@ -195,6 +202,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   grapefruit: { name: "Grapefruit", radius: FRUIT_ART.grapefruit.radius, points: GRAPEFRUIT.perFruit, scoring: "simmer", touchWeight: 1, text: `Simmer ${GRAPEFRUIT.perFruit} per fruit under it.` },
   sprig: { name: "Sprig", radius: FRUIT_ART.sprig.radius, points: 2, scoring: "fresh", touchWeight: 1, text: "Fresh 2. Each turn, Bud." },
   cranberry: { name: "Cranberry", radius: FRUIT_ART.cranberry.radius, points: 16, scoring: "simmer", touchWeight: 1, text: "Afloat: Simmer 16." },
+  persimmon: { name: "Persimmon", radius: FRUIT_ART.persimmon.radius, points: PERSIMMON.base, scoring: "fresh", touchWeight: 1, text: `Fresh ${PERSIMMON.base}. A pick skipped: Swell ${PERSIMMON.swell}.` },
   giantpumpkin: { name: "Giant Pumpkin", radius: FRUIT_ART.giantpumpkin.radius, points: 75, scoring: "fresh", heavy: 4, touchWeight: 1, text: "Fresh 75. Shockwave, then it vanishes." },
 };
 
@@ -230,6 +238,7 @@ export const OFFERABLE: readonly FruitKind[] = [
   "grapefruit",
   "sprig",
   "cranberry",
+  "persimmon",
 ];
 
 /** What a Seed can sprout. */

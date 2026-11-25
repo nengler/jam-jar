@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { APPLE, BANANA, FIG, FRUITS, GRAPEFRUIT, OLIVE, PLUM, SPRIG, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, RASPBERRY, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, FIG, FRUITS, GRAPEFRUIT, OLIVE, PERSIMMON, PLUM, SPRIG, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, RASPBERRY, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
 import { FIZZY_LINKS, GLAZE_KINDS, GLAZE_PRICE, GLAZES, glazeFits, ripened, SPICY, type Glaze } from "./glazes.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
@@ -1348,7 +1348,8 @@ function land(run: Run): void {
     const def = FRUITS[f.kind];
     if (def.scoring === "fresh") {
       // A Raspberry scores what those before it this cycle have added, and adds its own for those after it (not a rotten one).
-      const earned = earn(run, near, i, def.points + (f.kind === "raspberry" ? run.clusterBonus : 0));
+      // And what this fruit of the pool has grown by itself (a Persimmon's Swell).
+      const earned = earn(run, near, i, def.points + (f.kind === "raspberry" ? run.clusterBonus : 0) + (run.grown[f.card ?? 0] ?? 0));
       if (f.kind === "raspberry" && !f.rotten) run.clusterBonus += RASPBERRY.cluster;
       // Landing is the commonest score: only a doubled one lights anything up.
       if (earned !== null && !earned.doubled) f.pulse = 0;
@@ -2319,8 +2320,18 @@ function pickStep(run: Run, keys: Keys): void {
   } else if (keys.drop) {
     run.coins += 1;
     run.message = "";
+    // Each Persimmon in the pool Swells for the pick passed up: that fruit, by its number, and no other.
+    run.pool.forEach((kind, at) => {
+      const id = run.poolIds[at] ?? 0;
+      if (kind === "persimmon" && id !== 0) run.grown[id] = (run.grown[id] ?? 0) + PERSIMMON.swell;
+    });
     afterPick(run);
   }
+}
+
+/** What the fruit at a place of the pool has grown by itself (`grown`). */
+export function grownBy(run: Run, at: number): number {
+  return run.grown[run.poolIds[at] ?? 0] ?? 0;
 }
 
 /** A fruit joins the pool, plain, with a number of its own: returns the number. */
@@ -2454,9 +2465,12 @@ function shopStep(run: Run, keys: Keys): void {
       const kind = kinds[shop.removeCursor] as FruitKind;
       if (pay(run, removalPrice(run))) {
         run.removals += 1;
-        // A plain one goes, if there is one: a glaze was bought for the fruit it is on.
-        const plain = run.pool.findIndex((k, at) => k === kind && run.poolGlazes[at] === null);
-        const at = plain >= 0 ? plain : run.pool.indexOf(kind);
+        // A plain one goes, if there is one: a glaze was bought for the fruit it is on. And of those, the one that has grown
+        // least: a Persimmon that has Swelled is not the one to throw out.
+        const least = (ats: number[]) => ats.reduce((best, at) => (grownBy(run, at) < grownBy(run, best) ? at : best), ats[0] ?? -1);
+        const all = run.pool.flatMap((k, at) => (k === kind ? [at] : []));
+        const plain = least(all.filter((at) => run.poolGlazes[at] === null));
+        const at = plain >= 0 ? plain : least(all);
         run.pool.splice(at, 1);
         run.poolGlazes.splice(at, 1);
         const [gone] = run.poolIds.splice(at, 1);

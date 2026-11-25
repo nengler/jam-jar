@@ -409,6 +409,16 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
     ],
     gap: "Nothing without juice or milk in the jar. With a Lime it still costs points, because the Lime does.",
   },
+  persimmon: {
+    family: "Economy",
+    roles: ["Late scaler"],
+    works: [
+      ["Skipping picks", "each one passed up is 3 more for this Persimmon, and a coin"],
+      ["A small pool", "it comes round more often, and skipping keeps the pool small"],
+      ["Kumquat", "a copy of it lands, but only as a plain Persimmon"],
+    ],
+    gap: "Taken late it has little time to grow: the first fruit that rewards being taken early.",
+  },
 };
 
 /**
