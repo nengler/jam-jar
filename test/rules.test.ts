@@ -47,6 +47,7 @@ import {
   rentFor,
   resolve,
   rollPool,
+  echoOf,
   DEAL_SIZE,
   HAND_SIZE,
   dropping,
@@ -1472,20 +1473,20 @@ test("a Plum scores 3 for each link of the turn's chain, not multiplied by its t
   assert.equal(run.earned["Plum"], 6 * PLUM.perLink);
 });
 
-test("a Kumquat's Echo: the fruit to its right in the tray scores its landing twice", () => {
+test("a Kumquat's Echo: it drops as a copy of the fruit to its right in the tray", () => {
+  assert.equal(echoOf(["kumquat", "orange", "cherry", "grape"], 0), "orange");
+  assert.equal(echoOf(["cherry", "grape", "melon", "kumquat"], 3), "melon", "the last place copies the one to its left");
+  assert.equal(echoOf(["kumquat", "kumquat", "cherry"], 0), "kumquat", "not another Kumquat");
+  assert.equal(echoOf(["kumquat", "pumpkin", "cherry"], 0), "kumquat", "nor a Wide fruit");
+  assert.equal(echoOf(["kumquat"], 0), "kumquat");
+
   let run = newRun(3);
   run.hand = ["kumquat", "orange", "cherry", "grape", "apple"];
   run.handGlazes = [null, null, null, null, null];
   run = press(run, { drop: true });
   for (let i = 0; i < 40 && run.phase === "drop"; i++) run = press(run, {});
-  const orange = run.fruits.find((f) => f.kind === "orange")!;
-  assert.equal(orange.echo, true);
-  assert.deepEqual(run.fruits.filter((f) => f.echo === true).map((f) => f.kind), ["orange"]);
-
-  const y = JAR.floor - FRUITS.orange.radius;
-  const landing = jarWith([{ ...fruit(1, "orange", 300, y), landed: false, echo: true }]);
-  simulate(landing, DT);
-  assert.equal(landing.cycleScore, 2 * FRUITS.orange.points);
+  assert.deepEqual(run.fruits.map((f) => f.kind).sort(), ["cherry", "grape", "orange", "orange"]);
+  assert.ok(run.discard.includes("kumquat"), "it is still a Kumquat in the pool");
 });
 
 test("a Grapefruit scores for each fruit under it, and a Cranberry only while it sits in juice", () => {

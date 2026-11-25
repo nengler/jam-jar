@@ -354,6 +354,22 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   One who picks well and orders makes all five rents in 32% of runs (40% before), and with one removal a shop in 50% (66%).
   The bots do not choose which fruit sits out: it is whichever their ordering leaves last, and the ordering bot that never
   picks does worse for it (1283 a run, from 1491). A player who leaves out the weakest fruit does better than these.
+- Six fruit for the systems that had none (same bots, 48 seeds, a player who takes that fruit whenever offered and nothing
+  else, in points a run against never picking; about 35 either way is noise):
+
+    | Fruit | Card | Alone | With a partner |
+    | --- | --- | --- | --- |
+    | Olive | Fresh 4. Benched: +15 (left in the basket for the turn) | -260 dealt as it comes; +70 left in the basket whenever it is dealt | |
+    | Plum | Simmer 3 per Link: 3 for each link of the turn's chain, not multiplied by its tier | -3 | Blueberry: +28 (alone -80). Chili: +15. Peach: +5 |
+    | Kumquat | Fresh 4. Echo: it drops as a copy of the fruit to its right in the tray | -70 as dealt; -7 put beside the biggest landing | Melon: +818 (Melon alone +688) |
+    | Grapefruit | Simmer 3 per fruit under it | -31 (at 2: -137; at 4: +75) | Sprig: +136 |
+    | Sprig | Fresh 2. Each turn, Bud: a Cherry grows beside it, while the pile is more than 48 pixels under the rim | +131 | Pitaya: +271 |
+    | Cranberry | Afloat: Simmer 12, only in juice or milk | -345 (it never floats) | Coconut: -57 (alone -106). Lime and Chili: -203 |
+
+  The Kumquat was first built to make its neighbour score its landing twice: a landing is the smallest score there is, and
+  it was worth nothing (-277, and it cost a Melon build half its points). The Olive and the Kumquat are about the tray, so
+  the bots were given `/bench` for them: an Olive goes in the basket, a Kumquat beside the fruit with the biggest landing.
+  A Melon taken whenever it is offered is +688 a run by itself, the most of any fruit now.
 - Countdowns: a fruit in the jar that is counting down wears the number of turns it has left, in a small dark disc at its
   lower left (`countdowns`, `TurnsMark.tsx`): a frozen fruit until it thaws (an ice-blue ring), a Coconut until it cracks
   (light), a Banana until it rots (brown). A frozen build is timed by that number, and it was nowhere on screen.

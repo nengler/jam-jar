@@ -89,7 +89,7 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   grow: { name: "Grow", text: "That kind scores this much more, all run." },
   benched: { name: "Benched", text: "On a turn it sits out, left in the basket." },
   link: { name: "Link", text: "Each link of the turn's chain. Not multiplied." },
-  echo: { name: "Echo", text: "Its right-hand tray neighbour lands twice." },
+  echo: { name: "Echo", text: "Drops as a copy of the fruit on its right." },
   bud: { name: "Bud", text: "Grows a Cherry beside it, if the jar has room." },
   afloat: { name: "Afloat", text: "While it sits in juice or milk." },
   cluster: { name: "Cluster", text: "Landing, its kind scores this more till rent." },

@@ -288,8 +288,6 @@ export interface Fruit {
   pickled: boolean;
   /** Frozen by a Snow Pear: its component pins its ball, so it is held where it is, and an explosion does not destroy it. */
   frozen: boolean;
-  /** The fruit a Kumquat stood to the left of in the tray: it scores its landing twice (Echo). */
-  echo?: boolean;
   /** While it is frozen: how many turns of ice it has left (`FROZEN_TURNS` when it froze). */
   ice?: number;
   /** Coated in honey (a Honeydew, or a fruit one has honeyed): it scores at every Resolve. */
@@ -1177,6 +1175,16 @@ function flipDue(run: Run): boolean {
 }
 
 /**
+ * What a Kumquat at a place of the tray drops as: a copy of the fruit to its right (to its left, when it is the last), so the
+ * tray's order chooses what is doubled: a second Melon beside the first, which merge. Not a Wide fruit, which would not fit its
+ * one lane, nor another Kumquat: then it drops as itself.
+ */
+export function echoOf(tray: readonly FruitKind[], at: number): FruitKind {
+  const beside = tray[at + 1] ?? tray[at - 1];
+  return beside === undefined || beside === "kumquat" || slotsOf(beside) > 1 ? "kumquat" : beside;
+}
+
+/**
  * The tray drop (`TRAY`): every fruit left in the queue appears at once, one per lane, left to right. In the Blind jar the tray is
  * shuffled first, so the covered hand is not simply dropped as dealt.
  */
@@ -1195,7 +1203,9 @@ function trayRelease(run: Run, flip: boolean): void {
   run.queue.forEach((dealt, at) => {
     const glaze = run.queueGlazes[at] ?? null;
     // A Ripe fruit lands one size bigger, as a plain fruit of that size: it has changed, so the glaze stays in the pool.
-    const kind = glaze === "ripe" ? (ripened(dealt) ?? dealt) : dealt;
+    const own = glaze === "ripe" ? (ripened(dealt) ?? dealt) : dealt;
+    // A Kumquat drops as a copy of the fruit to its right in the tray (`echoOf`), down its own lane.
+    const kind = dealt === "kumquat" ? echoOf(run.queue, at) : own;
     const r = dealt === "gourd" && glaze === "ripe" ? (GOURD_SIZES[1] as number) : FRUITS[kind].radius;
     // A Wide fruit drops down the middle of its two lanes.
     const place = places[at] as { start: number; span: number };
@@ -1209,13 +1219,6 @@ function trayRelease(run: Run, flip: boolean): void {
     run.drops += 1;
     run.discard.push(dealt);
     run.discardGlazes.push(glaze);
-  });
-  // A Kumquat's Echo: the fruit to its right in the tray (the one to its left, when it is the last) scores its landing twice.
-  const dropped = run.fruits.slice(run.fruits.length - run.queue.length);
-  dropped.forEach((f, at) => {
-    if (f.kind !== "kumquat") return;
-    const beside = dropped[at + 1] ?? dropped[at - 1];
-    if (beside !== undefined) beside.echo = true;
   });
   run.seed = rng.seed;
   run.queue = [];
@@ -1279,8 +1282,6 @@ function land(run: Run): void {
       if (f.kind === "raspberry" && !f.rotten) run.clusterBonus += RASPBERRY.cluster;
       // Landing is the commonest score: only a doubled one lights anything up.
       if (earned !== null && !earned.doubled) f.pulse = 0;
-      // Beside a Kumquat in the tray: it scores its landing again.
-      if (f.echo === true) earn(run, near, i, def.points + (f.kind === "raspberry" ? run.clusterBonus : 0), "Echo");
     }
     if (lying && f.kind !== "peach") {
       // A fruit that lands on the floor (the lid, turned over) hops once, a little, so it does not just stop dead.
