@@ -375,9 +375,9 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
     family: "Flex",
     roles: ["Build-around"],
     works: [
-      ["Melon", "a second Melon beside the first: a Watermelon"],
-      ["Orange", "two Oranges down neighbouring lanes merge"],
-      ["Raspberry", "one more landing for the cluster"],
+      ["The basket", "it drops as the fruit left there: the best one sits out and lands anyway"],
+      ["Melon", "leave it in the basket, and the Kumquat lands as a Melon"],
+      ["Olive", "the Olive scores for sitting out, and the Kumquat lands as one"],
     ],
     clashes: [["Pumpkin", "it cannot copy a Wide fruit, and drops as itself"]],
   },
@@ -408,6 +408,16 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
       ["Coconut", "its milk floats it, and doubles it"],
     ],
     gap: "Nothing without juice or milk in the jar. With a Lime it still costs points, because the Lime does.",
+  },
+  persimmon: {
+    family: "Economy",
+    roles: ["Late scaler"],
+    works: [
+      ["Skipping picks", "each one passed up is 3 more for this Persimmon, and a coin"],
+      ["A small pool", "it comes round more often, and skipping keeps the pool small"],
+      ["Kumquat", "a copy of it lands, but only as a plain Persimmon"],
+    ],
+    gap: "Taken late it has little time to grow: the first fruit that rewards being taken early.",
   },
 };
 
