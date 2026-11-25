@@ -1,7 +1,7 @@
 // The whole screen, as the last thing drawn (src/Main.tsx). Two things are always on: the corners fall away into the dark, as a
-// kitchen lit by one lamp, and every pixel is put on the screen's palette (the `lookup`, assets/screen-palette.png: 26 of
-// the art's 46 colours, tools/palette/screen.hex: fifteen for everything, and eleven more that only the fruit are drawn in, so
-// the fruit keep their colours), with a
+// kitchen lit by one lamp, and every pixel is put on the screen's palette (the `lookup`, assets/screen-palette.png: 29 of
+// the art's 46 colours, tools/palette/screen.hex: fifteen for everything, eleven more that only the fruit are drawn in, so
+// the fruit keep their colours, and three that keep the jar's glass, the wood and the paper from being all dither), with a
 // dither where a colour lies between two of them, so what the game blends (a dimmed screen, a tint, a flash) is still drawn
 // in the art's own colours. Two more come and go with the run:
 //
@@ -57,6 +57,18 @@ vec3 onPalette(vec3 rgb, vec2 q) {
   return along > (BAYER[at] + 0.5) / 16.0 ? second : first;
 }
 
+// A number from 0 to 1 for each point of a grid, the same every time, and the same smoothed between the grid's points: the
+// paper's grain.
+float grainAt(vec2 cell) {
+  return fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
+}
+float grain(vec2 p) {
+  vec2 cell = floor(p);
+  vec2 f = p - cell;
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(grainAt(cell), grainAt(cell + vec2(1.0, 0.0)), f.x), mix(grainAt(cell + vec2(0.0, 1.0)), grainAt(cell + vec2(1.0, 1.0)), f.x), f.y);
+}
+
 vec4 effect(vec2 uv) {
   vec4 c = texture(image, uv);
   if (params[0] == 0.0) return c;
@@ -67,6 +79,15 @@ vec4 effect(vec2 uv) {
   vec2 d = (at - GAME / 2.0) / (GAME / 2.0);
   float out_ = length(d);
   vec3 rgb = c.rgb;
+
+  // Paper (a board, a card, a key cap) has a grain: patches a little darker, which come out as a dither in the paper's two
+  // colours. Only the paper's own colour is touched, so what is written on it stays clean.
+  vec3 paper = vec3(0.906, 0.835, 0.702);
+  vec3 off = rgb - paper;
+  if (dot(off, off) < 0.0004) {
+    float worn = grain(at / 38.0) * 0.65 + grain(at / 13.0) * 0.35;
+    rgb = mix(rgb, vec3(0.843, 0.710, 0.580), 0.55 * smoothstep(0.42, 0.85, worn));
+  }
 
   // The Flip jar, as gravity turns: the picture is dragged up and down for a moment.
   float smear = params[6];
