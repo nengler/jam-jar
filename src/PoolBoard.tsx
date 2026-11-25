@@ -1,14 +1,14 @@
-import { Entity, Flex, Shape, Text } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Layer, Shape, Text, useTime } from "@tsengine/runtime/jsx";
 
 import { Dialog } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { TapButton } from "./KeyHint.tsx";
 import { GlazeMark } from "./GlazeMark.tsx";
-import { countOf, glazesOf, grownOf, kindAt, placed, poolRows, cardText } from "./layout.ts";
+import { countOf, dissolved, glazesOf, grownOf, kindAt, placed, poolRows, cardText } from "./layout.ts";
 import type { FruitKind } from "./rules/fruits.ts";
 import type { Run } from "./rules/jar.ts";
-import { CARD_SLICE, fruitImageSize, INK, INK_SOFT, SELECT, SHADE, TERM_W } from "./theme.ts";
+import { CARD_SLICE, fruitImageSize, INK, INK_SOFT, SELECT, SHADE_SOFT, TERM_W } from "./theme.ts";
 
 /** The whole-pool board: each kind in a cell its own fruit's width and a little more, a row as tall as its tallest, wrapping at this width. */
 const POOL_W = 400;
@@ -38,9 +38,11 @@ interface PoolBoardProps {
 export function PoolBoard({ run, chosenAt, onLook, onLookAway, onClose }: PoolBoardProps) {
   const whole = poolRows(run.pool);
   const looked = kindAt(whole, chosenAt);
+  // The board fills in from the top as it comes up (assets/dissolve.glsl), over a kitchen that has receded.
+  const time = useTime();
   return (
-    <Entity>
-      <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
+    <Layer shader="dissolve.glsl" params={[dissolved(time)]}>
+      <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE_SOFT} />
       <Flex left={0} right={0} top={0} bottom={0} direction="row" alignItems="center" justifyContent="center" gap={8}>
         {/* At most as tall as the screen: a Watermelon's card and keywords are a little taller, and scroll. */}
         <Flex width={TERM_W} maxHeight={TIP_MAX_H} direction="column" alignItems="stretch" overflow="scroll" scrollbarColor={INK_SOFT}>
@@ -75,6 +77,6 @@ export function PoolBoard({ run, chosenAt, onLook, onLookAway, onClose }: PoolBo
           </Dialog>
         </Flex>
       </Flex>
-    </Entity>
+    </Layer>
   );
 }

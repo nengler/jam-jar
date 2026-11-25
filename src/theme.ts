@@ -16,6 +16,10 @@ export const GOOD = "#468232";
 export const BAD = "#a53030";
 /** Over the jar while a menu or the pick is up: the darkest Apollo colour, see-through. */
 export const SHADE = "#090a14c0";
+/** Over the game where it has already receded to a few colours (assets/recede.glsl): the same dark, lighter. */
+export const SHADE_SOFT = "#090a1470";
+/** The shadow a board casts on the wall: the dark, see-through, so the screen's shader draws it as a dither over what is under it. */
+export const BOARD_SHADOW = "#090a14a0";
 /** The same dark, solid: what the shop's swirl is painted on. */
 export const NIGHT = "#090a14";
 /** Over everything a tutorial lesson is not about: the same dark, lighter, so the rest can still be made out. */

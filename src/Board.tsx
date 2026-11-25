@@ -2,7 +2,7 @@ import { Entity, Flex, Text, useTime, type Child } from "@tsengine/runtime/jsx";
 
 import { popIn, ripple } from "./layout.ts";
 
-import { DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT, PANEL, PANEL_SLICE, SIGN, SIGN_SLICE, WALL_SHADOW, WELL } from "./theme.ts";
+import { DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT, PANEL, PANEL_SLICE, SIGN, SIGN_SLICE, BOARD_SHADOW, WELL } from "./theme.ts";
 
 /** How far a titled board's frame starts below its top: the heading takes the top of the space the board is given. */
 const TITLE_ROOM = 12;
@@ -17,7 +17,7 @@ export function Panel({ title, image = PANEL, gap = 0, children }: { title?: str
   return (
     <Flex direction="column" alignItems="stretch" paddingTop={title === undefined ? 0 : TITLE_ROOM}>
       {/* The shadow, pinned a little down and right of the frame; then the frame over it. */}
-      <Flex left={4} right={-4} top={(title === undefined ? 0 : TITLE_ROOM) + 4} bottom={-4} background={WALL_SHADOW} />
+      <Flex left={4} right={-4} top={(title === undefined ? 0 : TITLE_ROOM) + 4} bottom={-4} background={BOARD_SHADOW} />
       <Flex direction="column" alignItems="stretch" gap={gap} paddingX={16} paddingTop={6} paddingBottom={10} backgroundImage={image} slice={PANEL_SLICE}>
         {children}
       </Flex>
@@ -49,7 +49,7 @@ export function Dialog({ title, gap = 6, still = false, children }: { title: str
   const time = useTime();
   return (
     <Flex direction="column" alignItems="stretch" paddingTop={SIGN_ABOVE}>
-      <Flex left={4} right={-4} top={SIGN_ABOVE + 4} bottom={-4} background={WALL_SHADOW} />
+      <Flex left={4} right={-4} top={SIGN_ABOVE + 4} bottom={-4} background={BOARD_SHADOW} />
       <Flex direction="column" alignItems="stretch" gap={gap} paddingX={20} paddingTop={SIGN_H - SIGN_ABOVE + 10} paddingBottom={16} backgroundImage={PANEL} slice={PANEL_SLICE}>
         {children}
       </Flex>

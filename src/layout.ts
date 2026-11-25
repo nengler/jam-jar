@@ -547,12 +547,12 @@ export interface BossLook {
  * `time` seconds after the mood began, and the boss jar's look. A missed rent comes at the end of a last turn, so its edges
  * stay dark while it drains.
  */
-export function screenParams(styled: boolean, mood: Mood, time: number, look: BossLook): number[] {
+export function screenParams(styled: boolean, mood: Mood, time: number, look: BossLook, lampX: number): number[] {
   if (!styled) return [0];
   const through = mood === "" ? 0 : Math.max(0, Math.min(1, time / MOOD_TIME[mood]));
   const come = look.boss === 0 ? 0 : Math.min(1, look.bossTime / BOSS_TIME);
   const smear = look.boss === BOSS_CODE.flip && look.flipTime < SMEAR_TIME ? 1 - look.flipTime / SMEAR_TIME : 0;
-  return [1, mood === "last" ? through : mood === "over" ? 1 : 0, mood === "over" ? through : 0, look.boss, come, look.flipped ? 1 : 0, smear];
+  return [1, mood === "last" ? through : mood === "over" ? 1 : 0, mood === "over" ? through : 0, look.boss, come, look.flipped ? 1 : 0, smear, lampX];
 }
 
 /** The boss jar a run is at while its jar is on screen (not in the shop or on the rent's board), as the screen's shader numbers it: 0 for none. */
@@ -604,4 +604,22 @@ const OPENING = { dark: 0.15, lift: 0.6 } as const;
 /** How dark the screen still is `time` seconds after the game started, 1 (all dark) to 0: the title fades in. */
 export function opening(time: number): number {
   return Math.max(0, Math.min(1, 1 - (time - OPENING.dark) / OPENING.lift));
+}
+
+/** Where the lamp's pool of light is on each screen, across (assets/screen.glsl): over the jar. 0 for none. */
+export function lampOf(screen: string): number {
+  return screen === "title" ? 320 + 176 : screen === "play" ? 320 : 0;
+}
+
+/** The four colours the game recedes to under a board (assets/recede.glsl), darkest first, as the numbers its shader takes after how far it has receded. */
+const RECEDE = ["#10141f", "#172038", "#253a5e", "#3c5e8b"].flatMap((hex) => [parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255]);
+export function recedeParams(gone: number): number[] {
+  return [gone, ...RECEDE];
+}
+/** Seconds the game takes to recede, or come back. */
+export const RECEDE_TIME = 0.25;
+
+/** How solid something is that fades away over its last moments, `left` seconds before it goes: a score's popup. The screen's shader draws the fade as a dither. */
+export function fading(left: number): number {
+  return Math.max(0, Math.min(1, left / 0.25));
 }

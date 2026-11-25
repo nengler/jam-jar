@@ -15,6 +15,9 @@
 //              Flip: the dark hangs from the side the pile falls away from (params[5]: 1 while gravity is turned over), and
 // params[6]    the screen smears up and down for a moment as gravity turns, 1 fading to 0.
 //
+// params[7]  where the lamp's pool of light is, across, in game pixels (0: none): a warm light over the jar, falling off
+//            into the wall through the dither.
+//
 // It works by the art's pixels (two game pixels square), so the dither is as coarse as the art.
 
 const vec2 GAME = vec2(640.0, 360.0);
@@ -77,6 +80,13 @@ vec4 effect(vec2 uv) {
   // The last turn: the edges darken and warm, as the light goes.
   float last = params[1] * smoothstep(0.6, 1.3, out_);
   rgb = mix(rgb, rgb * vec3(1.05, 0.62, 0.42), last * 0.75);
+
+  // The lamp's pool of light, over the jar: warm, and gone within a couple of hundred pixels.
+  if (params[7] > 0.0) {
+    vec2 from = (at - vec2(params[7], 200.0)) / vec2(190.0, 230.0);
+    float pool = 1.0 - smoothstep(0.25, 1.0, length(from));
+    rgb += pool * 0.075 * vec3(1.0, 0.85, 0.6);
+  }
 
   // The lamp: the corners fall away into the dark.
   float dark = smoothstep(0.95, 1.5, out_) * 0.5;
