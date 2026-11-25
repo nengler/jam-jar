@@ -2,7 +2,7 @@ import { Entity, Flex, Shape, Sprite, Text, useInput, useInputDevice, useMutable
 
 import { Backdrop } from "./Backdrop.tsx";
 import { Panel } from "./Board.tsx";
-import { Coach, Dim } from "./Coach.tsx";
+import { Coach, Dim, Raise } from "./Coach.tsx";
 import { CycleEnd } from "./CycleEnd.tsx";
 import { Jar } from "./Jar.tsx";
 import { JarMarks } from "./JarMarks.tsx";
@@ -13,7 +13,7 @@ import { LastTurn } from "./LastTurn.tsx";
 import { atRest, crossed, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, moodOf, opensAt, shelfSlot, startingRun } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { PickBoard } from "./PickBoard.tsx";
-import { BOARD_W, HUD_X, JAR_MID, litBox, litOf, SHELF_Y, shelfOf, SLOT } from "./places.ts";
+import { BOARD_W, HUD_X, JAR_MID, SHELF_Y, shelfOf, SLOT } from "./places.ts";
 import { PoolBasket, PoolBasketBack } from "./PoolBasket.tsx";
 import { PoolBoard } from "./PoolBoard.tsx";
 import { PreserveBoard } from "./PreserveBoard.tsx";
@@ -409,7 +409,7 @@ export function Play() {
   /** The slate that says what just happened shows when there is something to say and no lesson in its place. */
   const noted = coached === null && run.message !== "" && run.phase !== "shop";
   /** What is picked out (Coach.tsx): what the lesson is about, or the jar while a Preserves Jar's fruit are chosen. */
-  const lit = litOf(coached, preserving);
+  const lit = coached !== null ? coached.target : preserving ? "jar" : null;
 
   /** The lanes mean something: a fruit comes down under its place on the shelf. */
   const guided = bossNow(run) === null || bossNow(run) === "peg";
@@ -422,7 +422,8 @@ export function Play() {
     <Entity>
       <Backdrop />
 
-      {/* The jar, what is drawn on it and its points: the dark leaves them clear when the jar is picked out. */}
+      {/* The jar, what is drawn on it and its points: all raised together when it is picked out. */}
+      <Raise id="jar">
       <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(run.effects.filter((e) => e.kind === "boom")) + (s.punch < PUNCH_TIME ? PUNCH_PX * s.punchSize * (1 - s.punch / PUNCH_TIME) * Math.cos(s.punch * 90) : 0)} angle={angle} split={s.punch < SPLIT_TIME ? SPLIT_PX * s.punchSize : 0} />
       <JarMarks run={run} angle={angle} onPoint={point} onChoose={click} />
       {/* The chain, over the rim: it counts up with each link, and grows and turns gold at each tier. */}
@@ -440,6 +441,7 @@ export function Play() {
           {p.text}
         </Text>
       ))}
+      </Raise>
 
       {/* The items owned stand on the counter, left of the jar. */}
       {run.items.map((item, i) => (
@@ -447,29 +449,44 @@ export function Play() {
       ))}
 
       {/* The shelf, the basket behind the fruit rolling out of it, the hand, the basket's front over them, and what the fruit do. */}
+      <Raise id="shelf">
         <Sprite image="shelf.png" x={JAR_MID - 104} y={SHELF_Y - shelfDrop} />
+      </Raise>
+      <Raise id="pool">
         <PoolBasketBack drop={shelfDrop} />
+      </Raise>
+      <Raise id="shelf">
         <Shelf run={run} roll={s.roll} dragging={s.drag && ordering && run.holding} dragX={s.dragX} framed={keys || s.tip} listening={ordering && !s.whole} onDragStart={dragStart} onDrag={dragMove} onDragEnd={dragEnd} onPressOutside={untip} />
+      </Raise>
+      <Raise id="pool">
         <PoolBasket run={run} drop={shelfDrop} onOpen={openPool} />
+      </Raise>
+      {/* What a fruit does, for the one tapped or the mouse is over; not under the Blind jar's cloth. */}
+      {bossNow(run) !== "blind" && (
+        <Raise id="shelf">
+          <ShelfTips run={run} shown={tipped} coached={coached !== null} />
+        </Raise>
+      )}
 
       {/* Where the hand will fall: a line under each fruit while the tutorial says so, and after that only the lane of a fruit
           being moved. Not in the jars where a fruit does not end up under its place (nor under the Blind jar's cloths). */}
       {ordering && guided && s.intro >= INTRO.hand && (
+        <Raise id="jar">
           <Lanes run={run} lines={about(coached, "shelf")} held={run.holding} />
+        </Raise>
       )}
       {/* While ordering, a tap or a click on the jar drops the hand into it. */}
       {ordering && <Flex x={JAR.left} y={RIM} width={JAR.right - JAR.left} height={JAR.floor - RIM} focusable={false} onPress={() => tapDrop()} />}
 
       {/* Left: the rent board. (The coins are beside the pool's basket, at the shelf's end.) Nothing else is on this side: how to
           move a fruit and drop the hand is said on the fruit's card under the shelf. */}
+      <Raise id="rent">
         <RentBoard run={run} scored={scored} left={HUD_X - 240 * (1 - popIn(s.intro, INTRO.left, INTRO.pop))} />
+      </Raise>
 
-      {/* While something is picked out (`lit`), the rest of the screen is dimmed: the dark leaves a hole where that is, and what
+      {/* While something is picked out (`lit`), the rest of the screen is dimmed: what is raised stands above the dark, and what
           comes after this (the lesson's card, the Preserves Jar's board, the pause button) stays lit too. */}
-      <Dim hole={litBox(lit, run)} />
-      {/* What a fruit does, for the one tapped or the mouse is over; not under the Blind jar's cloth. After the dark, so it is read
-          over it. */}
-      {bossNow(run) !== "blind" && <ShelfTips run={run} shown={tipped} coached={coached !== null} />}
+      <Dim />
       {/* The first game's tutorial takes the slate's place: one lesson at a time, about what is on screen now. */}
       {coached !== null && !picking && run.phase !== "shop" && (
         <Flex right={HUD_X} bottom={NOTE_FOOT}>

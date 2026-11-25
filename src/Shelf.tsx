@@ -5,10 +5,10 @@ import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { GlazeMark } from "./GlazeMark.tsx";
 import { grownOf, glazedText, placed, rollIn, rollStarted, shelfX } from "./layout.ts";
-import { BASKET_H, HOLD_LIFT, ROLL_FROM, SHELF_FOOT, SHELF_Y, shelfOf, shelfTall, SLOT } from "./places.ts";
+import { BASKET_H, HOLD_LIFT, ROLL_FROM, SHELF_FOOT, SHELF_Y, shelfOf, SLOT } from "./places.ts";
 import type { FruitKind } from "./rules/fruits.ts";
 import { bossNow, dropping, handSlots, type Run } from "./rules/jar.ts";
-import { CARD_SLICE, fruitImageSize, SELECT } from "./theme.ts";
+import { biggestFruit, CARD_SLICE, fruitImageSize, SELECT } from "./theme.ts";
 
 /** Where the card of a fruit on the shelf stands: at the left under the rent board, and what its keywords mean at the right under
  * the basket and the coins, so neither lies over the jar, which is what the player is deciding about, nor over the score, the
@@ -57,13 +57,13 @@ export function Shelf({ run, roll, dragging, dragX, framed, listening, onDragSta
   const blind = bossNow(run) === "blind";
   const shelf = shelfOf(run);
   /** How far above the plank the hand reaches, a lifted fruit with its frame included: what the drag box and the shelf's lesson cover. */
-  const tall = shelfTall(shelf.cards);
+  const shelfTall = Math.max(44, biggestFruit(shelf.cards) + SHELF_FOOT + HOLD_LIFT + 4);
   /** Each fruit on the shelf with its size, how far it is lifted, and the size of the frame round it when it is the chosen one. */
   const looks = placed(shelf.cards).map((slot) => shelfLook(slot.card, slot.at, shelf.spans[slot.at] ?? 1, ordering && run.holding && slot.at === run.cursor, ordering && slot.at >= dropping(shelf.cards)));
   return (
     <Entity>
       {listening && (
-        <Flex x={shelf.left} y={SHELF_Y - tall} width={handSlots(shelf.cards) * SLOT} height={tall + 8} onDragStart={onDragStart} onDrag={onDrag} onDragEnd={onDragEnd} onPressOutside={onPressOutside}>
+        <Flex x={shelf.left} y={SHELF_Y - shelfTall} width={handSlots(shelf.cards) * SLOT} height={shelfTall + 8} onDragStart={onDragStart} onDrag={onDrag} onDragEnd={onDragEnd} onPressOutside={onPressOutside}>
           <Frame id="shelf" pad={8} padTop={2} padBottom={2} />
         </Flex>
       )}
