@@ -116,10 +116,10 @@ vec4 effect(vec2 uv) {
     float pool = 1.0 - smoothstep(0.25, 1.0, length(from));
     // The inside of the jar (its glass's own dark tint) takes none of that light: added to the glass it lay half way between
     // two colours, and the whole jar was dithered from wall to wall, right behind the fruit. The glass is shaded instead: a thin
-    // dither of its next tone in a ring: clear in the middle of the jar, thickening outwards, and thickest in its corners.
+    // dither of its next tone in a ring: clear in the middle of the jar, thickening outwards, and thickest in its corners. The ring's edge wanders (the paper's grain, again), so it is not a drawn oval.
     vec3 glass = rgb - vec3(0.125, 0.180, 0.216);
     if (dot(glass, glass) > 0.0004) rgb += pool * 0.075 * vec3(1.0, 0.85, 0.6);
-    else rgb = mix(rgb, vec3(0.224, 0.290, 0.314), 0.55 * smoothstep(0.45, 1.15, length((at - vec2(params[7], 228.0)) / vec2(96.0, 116.0))));
+    else rgb = mix(rgb, vec3(0.224, 0.290, 0.314), 0.55 * smoothstep(0.45, 1.15, length((at - vec2(params[7], 228.0)) / vec2(96.0, 116.0)) + (grain(at / 24.0) - 0.5) * 0.34 + (grain(at / 9.0) - 0.5) * 0.14));
   }
 
   // The lamp: the corners fall away into the dark.
