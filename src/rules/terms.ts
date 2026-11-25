@@ -24,6 +24,11 @@ export type Keyword =
   | "hatch"
   | "grow"
   | "cluster"
+  | "benched"
+  | "link"
+  | "echo"
+  | "bud"
+  | "afloat"
   | "heavy"
   | "double"
   | "spoil"
@@ -82,6 +87,11 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   eat: { name: "Eat", text: "Removes one fruit it touches." },
   hatch: { name: "Hatch", text: "A new Fruit Fly appears where it ate." },
   grow: { name: "Grow", text: "That kind scores this much more, all run." },
+  benched: { name: "Benched", text: "On a turn it sits out, left in the basket." },
+  link: { name: "Link", text: "Each link of the turn's chain. Not multiplied." },
+  echo: { name: "Echo", text: "Drops as a copy of the fruit on its right." },
+  bud: { name: "Bud", text: "Grows a Cherry beside it, if the jar has room." },
+  afloat: { name: "Afloat", text: "While it sits in juice or milk." },
   cluster: { name: "Cluster", text: "Landing, its kind scores this more till rent." },
   heavy: { name: "Heavy", text: "Shoulders lighter fruit aside." },
   double: { name: "Double", text: "Fruit and Merges touching it score x2." },

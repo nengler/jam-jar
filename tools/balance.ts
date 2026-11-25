@@ -199,6 +199,26 @@ function playTurn(player: Player, backend: RecordingBackend, hand: FruitKind[], 
  * The arrangement of the hand that scores most this turn ("best") or least ("worst"), found by playing each from a snapshot, with
  * the turn's own luck. "fair" plays each `tries` times with other luck (`SPOTS.salt` 1, 2, ...) and takes the best average.
  */
+/**
+ * A hand as a player who knows two fruit would leave it: an Olive in the basket (the last place), where it scores for sitting
+ * out, and a Kumquat just left of the fruit on the tray with the biggest landing, which then lands twice.
+ */
+function benchHand(hand: readonly FruitKind[]): FruitKind[] {
+  const out = hand.slice();
+  const olive = out.indexOf("olive");
+  if (olive >= 0 && out.length > 4) out.push(...out.splice(olive, 1));
+  const tray = out.slice(0, 4);
+  const kumquat = tray.indexOf("kumquat");
+  if (kumquat >= 0) {
+    const rest = tray.filter((_, at) => at !== kumquat);
+    const landing = (kind: FruitKind) => (FRUITS[kind].scoring === "fresh" && kind !== "kumquat" ? FRUITS[kind].points : -1);
+    const best = rest.reduce((top, kind, at) => (landing(kind) > landing(rest[top] as FruitKind) ? at : top), 0);
+    rest.splice(best, 0, "kumquat");
+    out.splice(0, tray.length, ...rest);
+  }
+  return out;
+}
+
 function searchHand(player: Player, backend: RecordingBackend, hand: readonly FruitKind[], want: "best" | "worst" | "fair", tries: number): { hand: FruitKind[]; points: number } {
   const snapshot = takeSnapshot(player);
   let chosen = { hand: hand.slice(), points: want === "worst" ? Infinity : -Infinity };
@@ -286,12 +306,14 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   const shopping = plan.includes("/shop");
   const glazing = plan.includes("/glaze");
   const order = plan.includes("/order");
+  // "/bench": the bot uses the tray as a player would for two fruit that are about it (`benchHand`).
+  const bench = plan.includes("/bench");
   const search = plan.includes("/best") ? "best" : plan.includes("/worst") ? "worst" : plan.includes("/fair") ? "fair" : null;
   if (/\/spots(\/|$)/.test(plan)) throw new Error('"/spots" was the drop before the tray, and the rules no longer have it');
   TRAY.wobble = Number(/\/wobble(\d+)/.exec(plan)?.[1] ?? 4);
   // With no luck to average over (a tray with no wobble), one try is the whole story.
   const tries = TRAY.wobble === 0 ? 1 : Number(process.env["BALANCE_TRIES"] ?? 3);
-  const picks = plan.replace(/\/(thin|shop|glaze|order|best|worst|fair|tray|wobble\d+)/g, "");
+  const picks = plan.replace(/\/(thin|shop|glaze|order|bench|best|worst|fair|tray|wobble\d+)/g, "");
   const items = owned === "" ? [] : (owned.split("+") as ItemKind[]);
   let queued: (typeof NONE)[] = [NONE, NONE, ENTER];
   for (let step = 0; step < 60000; step++) {
@@ -343,6 +365,11 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
       if (order && !blind) {
         const arranged = { ...run };
         arrangeHand(arranged, trayHand(run.hand));
+        found.s.run = arranged;
+      }
+      if (bench && !blind) {
+        const arranged = { ...found.s.run };
+        arrangeHand(arranged, benchHand(arranged.hand));
         found.s.run = arranged;
       }
       queued = [SPACE];

@@ -40,7 +40,13 @@ export type FruitKind =
   | "pumpkinseed"
   | "goldenapple"
   | "quince"
-  | "raspberry";
+  | "raspberry"
+  | "olive"
+  | "plum"
+  | "kumquat"
+  | "grapefruit"
+  | "sprig"
+  | "cranberry";
 
 export type Scoring = "fresh" | "simmer" | "booster";
 
@@ -128,6 +134,17 @@ export const QUINCE = { perSize: 2 };
  * offers it more often to a player who has one, so a pool of them is found, not chosen.
  */
 export const RASPBERRY = { base: 5, cluster: 8 };
+/**
+ * Six fruit for the systems that had none (the fruit ideas page of 25 November). An Olive scores `benched` on a turn it is the
+ * fruit left in the basket. A Plum scores `perLink` for each link of the turn's chain, when the turn is counted, and that is
+ * never multiplied by the chain's tier. A Kumquat drops as a copy of the fruit beside it in the tray. A Grapefruit
+ * scores `perFruit` for each fruit under it. A Sprig grows a Cherry beside it each turn, while the pile's top is more than
+ * `room` pixels under the rim. A Cranberry scores its points only while it sits in juice or milk.
+ */
+export const OLIVE = { benched: 15 };
+export const PLUM = { perLink: 3 };
+export const GRAPEFRUIT = { perFruit: 3 };
+export const SPRIG = { room: 48 };
 export const GOURD_BURST = 4;
 export const GOURD_SIZES: readonly number[] = [FRUIT_ART.cherry.radius, FRUIT_ART.grape.radius, FRUIT_ART.orange.radius];
 
@@ -161,7 +178,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   honeydew: { name: "Honeydew", radius: FRUIT_ART.honeydew.radius, points: 2, scoring: "simmer", touchWeight: 1, text: "Honeyed. Each turn, Honey a neighbour." },
   pitaya: { name: "Pitaya", radius: FRUIT_ART.pitaya.radius, points: 4, scoring: "simmer", touchWeight: 1, text: "Simmer 4. Each turn, Eat a Cherry: Grow 1." },
   coconut: { name: "Coconut", radius: FRUIT_ART.coconut.radius, points: 8, scoring: "fresh", touchWeight: 1, heavy: 5, text: "Fresh 8. Heavy. Crack 2: Milk." },
-  lime: { name: "Lime", radius: FRUIT_ART.lime.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Exploded or Crushed: Juice." },
+  lime: { name: "Lime", radius: FRUIT_ART.lime.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Landed, Exploded or Crushed: Juice." },
   dragonfruit: { name: "Dragonfruit", radius: FRUIT_ART.dragonfruit.radius, points: 0, scoring: "booster", touchWeight: 1, legendary: true, text: "Legendary. Booster. Skip." },
   snowpear: { name: "Snow Pear", radius: FRUIT_ART.snowpear.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Each turn, it and one neighbour turn Frozen." },
   seed: { name: "Seed", radius: FRUIT_ART.seed.radius, points: 6, scoring: "fresh", touchWeight: 1, text: "Fresh 6. Exploded: Sprout." },
@@ -172,6 +189,12 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   goldenapple: { name: "Golden Apple", radius: FRUIT_ART.goldenapple.radius, points: 2, scoring: "fresh", touchWeight: 1, text: `Fresh 2. Golden ${GOLDEN}.` },
   quince: { name: "Quince", radius: FRUIT_ART.quince.radius, points: QUINCE.perSize, scoring: "simmer", touchWeight: 1, text: `Simmer ${QUINCE.perSize} per size of its biggest neighbour.` },
   raspberry: { name: "Raspberry", radius: FRUIT_ART.raspberry.radius, points: RASPBERRY.base, scoring: "fresh", touchWeight: 1, text: `Fresh ${RASPBERRY.base}. Cluster ${RASPBERRY.cluster}.` },
+  olive: { name: "Olive", radius: FRUIT_ART.olive.radius, points: 4, scoring: "fresh", touchWeight: 1, text: `Fresh 4. Benched: +${OLIVE.benched}.` },
+  plum: { name: "Plum", radius: FRUIT_ART.plum.radius, points: PLUM.perLink, scoring: "simmer", touchWeight: 1, text: `Simmer ${PLUM.perLink} per Link.` },
+  kumquat: { name: "Kumquat", radius: FRUIT_ART.kumquat.radius, points: 4, scoring: "fresh", touchWeight: 1, text: "Fresh 4. Echo." },
+  grapefruit: { name: "Grapefruit", radius: FRUIT_ART.grapefruit.radius, points: GRAPEFRUIT.perFruit, scoring: "simmer", touchWeight: 1, text: `Simmer ${GRAPEFRUIT.perFruit} per fruit under it.` },
+  sprig: { name: "Sprig", radius: FRUIT_ART.sprig.radius, points: 2, scoring: "fresh", touchWeight: 1, text: "Fresh 2. Each turn, Bud." },
+  cranberry: { name: "Cranberry", radius: FRUIT_ART.cranberry.radius, points: 16, scoring: "simmer", touchWeight: 1, text: "Afloat: Simmer 16." },
   giantpumpkin: { name: "Giant Pumpkin", radius: FRUIT_ART.giantpumpkin.radius, points: 75, scoring: "fresh", heavy: 4, touchWeight: 1, text: "Fresh 75. Shockwave, then it vanishes." },
 };
 
@@ -201,6 +224,12 @@ export const OFFERABLE: readonly FruitKind[] = [
   "goldenapple",
   "quince",
   "raspberry",
+  "olive",
+  "plum",
+  "kumquat",
+  "grapefruit",
+  "sprig",
+  "cranberry",
 ];
 
 /** What a Seed can sprout. */
@@ -208,12 +237,14 @@ export const SPROUTS: readonly FruitKind[] = ["cherry", "grape", "orange"];
 
 /** The Legendary fruit, and the chance that one takes the last place among a pick's three offers. */
 export const LEGENDARY: readonly FruitKind[] = ["dragonfruit"];
-export const LEGENDARY_CHANCE = 0.08;
+export const LEGENDARY_CHANCE = 0.04;
 
 /**
  * The chance that a Melon takes the middle place among a pick's three offers. A starter, otherwise only made by merging, offered
  * now and then so a Ladder build can aim for Watermelons and a Giant Pumpkin. Tuned with the balance bots: at 10% a player who
  * takes every Melon sees a Giant Pumpkin in about 10 runs of 24 and scores about what a Durian player does; offered as often as
- * any other fruit (in about 15% of picks, and in the shop), it made the strongest pick the bots had found.
+ * any other fruit (in about 15% of picks, and in the shop), it made the strongest pick the bots had found. Halved to 5% when a
+ * run went from about 10 picks to about 22: at 10% a run showed two Melons or more, which is what a Melon needs, and taking
+ * every one was worth 688 points a run. The Legendary's chance was halved with it, for the same reason.
  */
-export const MELON_CHANCE = 0.1;
+export const MELON_CHANCE = 0.05;

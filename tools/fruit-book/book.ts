@@ -353,6 +353,62 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
     clashes: [["Chili", "a Raspberry blown up has landed its last"]],
     gap: "Nothing offers a second one: a pool of them is luck, by design. A bot that takes only these ends with 2.6 of them and breaks even.",
   },
+  olive: {
+    family: "Flex",
+    roles: ["Situational"],
+    works: [
+      ["The basket", "left in it for the turn, it scores 15"],
+      ["A full hand of good fruit", "there is always one that sits out"],
+    ],
+    gap: "Not yet measured by a bot that chooses which fruit sits out.",
+  },
+  plum: {
+    family: "Flex",
+    roles: ["Build-around"],
+    works: [
+      ["Blueberry", "three links as it lands"],
+      ["Peach", "two links for each fruit it shoves"],
+      ["Chili", "a link for each fruit it destroys"],
+    ],
+  },
+  kumquat: {
+    family: "Flex",
+    roles: ["Build-around"],
+    works: [
+      ["Melon", "a second Melon beside the first: a Watermelon"],
+      ["Orange", "two Oranges down neighbouring lanes merge"],
+      ["Raspberry", "one more landing for the cluster"],
+    ],
+    clashes: [["Pumpkin", "it cannot copy a Wide fruit, and drops as itself"]],
+  },
+  grapefruit: {
+    family: "Juice and grow",
+    roles: ["Standalone"],
+    works: [
+      ["Sprig", "a Cherry more under it each turn"],
+      ["Pomegranate", "its Burst leaves five Cherries to sit on"],
+      ["Snow Pear", "a frozen pile carried through the rent is under it from the first turn"],
+    ],
+  },
+  sprig: {
+    family: "Ladder",
+    roles: ["Build-around"],
+    works: [
+      ["Pitaya", "a Cherry to eat each turn"],
+      ["Grapefruit", "builds the pile under it"],
+      ["Cherry", "each one it grows can merge"],
+    ],
+    gap: "Stops growing once the pile is within 48 pixels of the rim.",
+  },
+  cranberry: {
+    family: "Juice and grow",
+    roles: ["Situational"],
+    works: [
+      ["Lime", "pours the juice as it lands"],
+      ["Coconut", "its milk floats it, and doubles it"],
+    ],
+    gap: "Nothing without juice or milk in the jar. With a Lime it still costs points, because the Lime does.",
+  },
 };
 
 /**

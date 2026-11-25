@@ -31,6 +31,12 @@ export const FRUIT_ART = {
   pumpkinseed: { size: 32, radius: 14 },
   goldenapple: { size: 32, radius: 14 },
   raspberry: { size: 32, radius: 14 },
+  olive: { size: 32, radius: 14 },
+  plum: { size: 40, radius: 18 },
+  kumquat: { size: 32, radius: 14 },
+  grapefruit: { size: 48, radius: 22 },
+  sprig: { size: 32, radius: 14 },
+  cranberry: { size: 32, radius: 14 },
   quince: { size: 40, radius: 18 },
   medlar: { size: 40, radius: 18 },
 } as const;

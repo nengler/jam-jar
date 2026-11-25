@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { APPLE, BANANA, FIG, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, RASPBERRY, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, FIG, FRUITS, GRAPEFRUIT, OLIVE, PLUM, SPRIG, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, RASPBERRY, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
 import { FIZZY_LINKS, GLAZE_KINDS, GLAZE_PRICE, GLAZES, glazeFits, ripened, SPICY, type Glaze } from "./glazes.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
@@ -1119,6 +1119,9 @@ function order(run: Run, keys: Keys): void {
     run.queueGlazes = run.handGlazes.slice(0, count);
     run.discard.push(...run.hand.slice(count));
     run.discardGlazes.push(...run.handGlazes.slice(count));
+    // An Olive left in the basket scores for sitting the turn out (in the Blind jar too, where it is luck).
+    const olives = run.hand.slice(count).filter((kind) => kind === "olive").length;
+    for (let k = 0; k < olives; k++) score(run, OLIVE.benched, JAR.right - 24, RIM + 16 + k * 14, { label: "Benched", earner: FRUITS.olive.name });
     run.hand = [];
     run.handGlazes = [];
     run.holding = false;
@@ -1172,6 +1175,16 @@ function flipDue(run: Run): boolean {
 }
 
 /**
+ * What a Kumquat at a place of the tray drops as: a copy of the fruit to its right (to its left, when it is the last), so the
+ * tray's order chooses what is doubled: a second Melon beside the first, which merge. Not a Wide fruit, which would not fit its
+ * one lane, nor another Kumquat: then it drops as itself.
+ */
+export function echoOf(tray: readonly FruitKind[], at: number): FruitKind {
+  const beside = tray[at + 1] ?? tray[at - 1];
+  return beside === undefined || beside === "kumquat" || slotsOf(beside) > 1 ? "kumquat" : beside;
+}
+
+/**
  * The tray drop (`TRAY`): every fruit left in the queue appears at once, one per lane, left to right. In the Blind jar the tray is
  * shuffled first, so the covered hand is not simply dropped as dealt.
  */
@@ -1190,7 +1203,9 @@ function trayRelease(run: Run, flip: boolean): void {
   run.queue.forEach((dealt, at) => {
     const glaze = run.queueGlazes[at] ?? null;
     // A Ripe fruit lands one size bigger, as a plain fruit of that size: it has changed, so the glaze stays in the pool.
-    const kind = glaze === "ripe" ? (ripened(dealt) ?? dealt) : dealt;
+    const own = glaze === "ripe" ? (ripened(dealt) ?? dealt) : dealt;
+    // A Kumquat drops as a copy of the fruit to its right in the tray (`echoOf`), down its own lane.
+    const kind = dealt === "kumquat" ? echoOf(run.queue, at) : own;
     const r = dealt === "gourd" && glaze === "ripe" ? (GOURD_SIZES[1] as number) : FRUITS[kind].radius;
     // A Wide fruit drops down the middle of its two lanes.
     const place = places[at] as { start: number; span: number };
@@ -1281,6 +1296,9 @@ function land(run: Run): void {
         if (!f.rotten) for (let k = 0; k < PEACH_LINKS; k++) addLink(run);
       }
     }
+    // A Lime pours its juice as it lands (and again if it is blown up or crushed): it needed a blast or the Juicer to pour
+    // at all, so a jar seldom had juice in it, and what scores afloat (a Cranberry) seldom floated.
+    if (f.kind === "lime" && !f.rotten) pour(run, "lime", LIME_JUICE);
     // A Dense fruit lands as that many links: a Blueberry is three.
     if (FRUITS[f.kind].touchWeight > 1 && !f.rotten) for (let k = 0; k < FRUITS[f.kind].touchWeight; k++) addLink(run);
     // A Coconut landing on a Coconut cracks the one under it.
@@ -1885,6 +1903,13 @@ function simmer(run: Run, tally: Tally): void {
     } else if (f.kind === "quince") {
       // By the size of the biggest fruit it touches: a Cherry 1, up to a Watermelon (or bigger) 5.
       points = QUINCE.perSize * Math.max(0, ...touched.map((o) => sizeStep(o)));
+    } else if (f.kind === "grapefruit") {
+      // For each fruit under it: lower than it and overlapping it across, as a Durian counts what lies over it.
+      points = GRAPEFRUIT.perFruit * run.fruits.filter((o) => o !== f && o.landed && o.y > f.y + f.r * 0.5 && Math.abs(o.x - f.x) < f.r + o.r).length;
+    } else if (f.kind === "cranberry") {
+      // Afloat: in the liquid at all. In lime juice a fruit rides half out of it, its middle at the surface, so `soaked` (its
+      // middle under the surface) would say a floating Cranberry was dry.
+      points = run.juice > 0 && f.y + f.r > surface(run) ? FRUITS.cranberry.points : 0;
     }
     if (f.honeyed) points += HONEY_POINTS;
     // Each Simmer score is a link of the chain, so a garden reaches the tiers at its tally.
@@ -2027,6 +2052,40 @@ function ageAndRot(run: Run, tally: Tally): void {
   }
 }
 
+/**
+ * Each Sprig grows a Cherry beside it, on the side with more room, unless the pile already reaches within `SPRIG.room` of the
+ * rim: five more Cherries a cycle would spill a full jar, and a Sprig that never stopped would run away with a chain.
+ */
+function sprigsBud(run: Run): void {
+  const top = Math.min(JAR.floor, ...run.fruits.filter((f) => f.landed).map((f) => f.y - f.r));
+  if (top < RIM + SPRIG.room) return;
+  const born: Fruit[] = [];
+  for (const f of run.fruits) {
+    if (f.kind !== "sprig" || f.rotten || !f.landed) continue;
+    const r = FRUITS.cherry.radius;
+    const side = f.x < (JAR.left + JAR.right) / 2 ? 1 : -1;
+    const cherry = makeFruit(run, "cherry", inside(f.x + side * (f.r + r), r), f.y + f.r - r);
+    cherry.landed = true;
+    pulse(cherry);
+    born.push(cherry);
+  }
+  run.fruits.push(...born);
+}
+
+/**
+ * Each Plum scores for the links of the turn's chain, once every other score of the turn has added its own. It adds no link and
+ * is not multiplied by the chain's tier: the chain already paid for itself in what it multiplied.
+ */
+function plumsCount(run: Run, tally: Tally): void {
+  if (run.chainLinks === 0) return;
+  const near = links(run.fruits);
+  run.fruits.forEach((f, i) => {
+    if (f.kind !== "plum" || f.rotten || !f.landed) return;
+    const earned = earn(run, near, i, PLUM.perLink * run.chainLinks, "Links");
+    if (earned !== null) stage(tally, earned.popup, earned.fruits, earned.links);
+  });
+}
+
 /** The loop cap lasts a turn: what Slices made may Merge again next turn. */
 function uncap(run: Run): void {
   for (const f of run.fruits) f.remerged = false;
@@ -2047,7 +2106,9 @@ const END_OF_TURN: readonly ((run: Run, tally: Tally) => void)[] = [
   iceThaws,
   snowPearsFreeze,
   honeydewsHoney,
+  sprigsBud,
   ageAndRot,
+  plumsCount,
   uncap,
 ];
 

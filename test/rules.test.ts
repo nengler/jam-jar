@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { blastBits, blastFlash, blastJolt, cardText, countdowns, fruitResults, keywordResults, motes, poolRows, termsOf, TILT_TIME, tilted } from "../src/layout.ts";
 import { DEMO_HOLD, demoKeys, demoOver, demoStep } from "../src/rules/demo.ts";
 import { lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "../src/rules/tutorial.ts";
-import { APPLE, BANANA, FIG, FRUITS, QUINCE, RASPBERRY, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
+import { APPLE, BANANA, FIG, FRUITS, GRAPEFRUIT, OLIVE, PLUM, SPRIG, QUINCE, RASPBERRY, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, OFFERABLE, PUMPKIN_SEED, pumpkinSeedText, pumpkinSprout, SLICES, type FruitKind } from "../src/rules/fruits.ts";
 import {
   advance,
   BLAST_BONUS,
@@ -47,6 +47,7 @@ import {
   rentFor,
   resolve,
   rollPool,
+  echoOf,
   DEAL_SIZE,
   HAND_SIZE,
   dropping,
@@ -902,6 +903,15 @@ test("a Coconut cracks at its second Resolve and is gone, leaving milk; fruit th
   assert.equal(run.popups.find((p) => p.points === 18)!.text, "+18 x2");
 });
 
+test("a Lime pours its juice as it lands, and a Cranberry afloat in it scores", () => {
+  const run = jarWith([{ ...fruit(1, "lime", 300, JAR.floor - FRUITS.lime.radius), landed: false }, fruit(2, "cranberry", 400, JAR.floor - FRUITS.cranberry.radius)]);
+  simulate(run, DT);
+  assert.deepEqual([run.juice, run.lime], [LIME_JUICE, true]);
+  run.turn = 1;
+  resolve(run);
+  assert.equal(run.earned["Cranberry"], FRUITS.cranberry.points);
+});
+
 test("a Lime that is Exploded or Crushed leaves lime juice, which rises with each and is gone with the rent", () => {
   const y = JAR.floor - 18;
   let run = jarWith([fruit(1, "lime", 300, y), fruit(2, "lime", 330, y)]);
@@ -1255,7 +1265,8 @@ test("a Legendary is offered now and then, in the last place of a pick", () => {
     assert.ok(!run.offers.slice(0, 2).includes("dragonfruit"));
     if (run.offers[2] === "dragonfruit") seen += 1;
   }
-  assert.ok(seen > 10 && seen < 70, `${seen} in 400 picks`);
+  // 4% of 400.
+  assert.ok(seen > 5 && seen < 32, `${seen} in 400 picks`);
 });
 
 test("a Melon is offered now and then, in the middle place of a pick, and never in the shop", () => {
@@ -1268,8 +1279,8 @@ test("a Melon is offered now and then, in the middle place of a pick, and never 
     assert.ok(run.offers[0] !== "melon" && run.offers[2] !== "melon");
     if (run.offers[1] === "melon") seen += 1;
   }
-  // 10% of 400.
-  assert.ok(seen > 20 && seen < 65, `${seen} in 400 picks`);
+  // 5% of 400.
+  assert.ok(seen > 8 && seen < 36, `${seen} in 400 picks`);
   assert.ok(!OFFERABLE.includes("melon"), "the shop sells only what a pick offers by default");
 });
 
@@ -1444,6 +1455,82 @@ test("a Raspberry scores more for each that has landed this cycle, and they star
   assert.equal(run.clusterBonus, 3 * RASPBERRY.cluster);
   assert.equal(run.earned["Raspberry"], 3 * RASPBERRY.base + 3 * RASPBERRY.cluster);
   assert.match(FRUITS.raspberry.text, new RegExp(`Fresh ${RASPBERRY.base}\\. Cluster ${RASPBERRY.cluster}\\.`));
+});
+
+test("an Olive left in the basket scores for sitting the turn out; one that drops only lands", () => {
+  let run = newRun(3);
+  run.hand = ["cherry", "grape", "apple", "orange", "olive"];
+  run.handGlazes = [null, null, null, null, null];
+  run = press(run, { drop: true });
+  assert.equal(run.earned["Olive"], OLIVE.benched);
+  assert.equal(run.cycleScore, OLIVE.benched);
+
+  let dropped = newRun(3);
+  dropped.hand = ["olive", "grape", "apple", "orange", "cherry"];
+  dropped.handGlazes = [null, null, null, null, null];
+  dropped = press(dropped, { drop: true });
+  assert.equal(dropped.earned["Olive"], undefined);
+});
+
+test("a Plum scores 3 for each link of the turn's chain, not multiplied by its tier, and adds no link", () => {
+  const y = JAR.floor - FRUITS.apple.radius;
+  const run = jarWith([...[0, 1, 2, 3, 4, 5].map((i) => fruit(i + 1, "apple", 232 + i * 30, y)), fruit(9, "plum", 450, JAR.floor - FRUITS.plum.radius)]);
+  run.turn = 1;
+  run.chainLinks = 0;
+  resolve(run);
+  // Six Apples simmer: six links, and the chain is at its first tier.
+  assert.equal(run.chains.at(-1), 6);
+  assert.equal(run.earned["Plum"], 6 * PLUM.perLink);
+});
+
+test("a Kumquat's Echo: it drops as a copy of the fruit to its right in the tray", () => {
+  assert.equal(echoOf(["kumquat", "orange", "cherry", "grape"], 0), "orange");
+  assert.equal(echoOf(["cherry", "grape", "melon", "kumquat"], 3), "melon", "the last place copies the one to its left");
+  assert.equal(echoOf(["kumquat", "kumquat", "cherry"], 0), "kumquat", "not another Kumquat");
+  assert.equal(echoOf(["kumquat", "pumpkin", "cherry"], 0), "kumquat", "nor a Wide fruit");
+  assert.equal(echoOf(["kumquat"], 0), "kumquat");
+
+  let run = newRun(3);
+  run.hand = ["kumquat", "orange", "cherry", "grape", "apple"];
+  run.handGlazes = [null, null, null, null, null];
+  run = press(run, { drop: true });
+  for (let i = 0; i < 40 && run.phase === "drop"; i++) run = press(run, {});
+  assert.deepEqual(run.fruits.map((f) => f.kind).sort(), ["cherry", "grape", "orange", "orange"]);
+  assert.ok(run.discard.includes("kumquat"), "it is still a Kumquat in the pool");
+});
+
+test("a Grapefruit scores for each fruit under it, and a Cranberry only while it sits in juice", () => {
+  const floor = JAR.floor - FRUITS.cherry.radius;
+  const run = jarWith([
+    fruit(1, "cherry", 290, floor),
+    fruit(2, "cherry", 310, floor),
+    fruit(3, "grapefruit", 300, floor - 40),
+    fruit(4, "cherry", 420, floor),
+    fruit(5, "cranberry", 480, JAR.floor - FRUITS.cranberry.radius),
+  ]);
+  run.turn = 1;
+  resolve(run);
+  assert.equal(run.earned["Grapefruit"], 2 * GRAPEFRUIT.perFruit, "the two under it, not the one apart");
+  assert.equal(run.earned["Cranberry"], undefined, "dry");
+  run.phase = "settle";
+  run.juice = 60;
+  run.lime = true;
+  resolve(run);
+  assert.equal(run.earned["Cranberry"], FRUITS.cranberry.points);
+});
+
+test("a Sprig grows a Cherry beside it each turn, but not once the pile is near the rim", () => {
+  const y = JAR.floor - FRUITS.sprig.radius;
+  const run = jarWith([fruit(1, "sprig", 300, y)]);
+  run.turn = 1;
+  resolve(run);
+  assert.deepEqual(run.fruits.map((f) => f.kind), ["sprig", "cherry"]);
+  assert.ok(run.fruits[1]!.x > 300 && run.fruits[1]!.landed);
+
+  const full = jarWith([fruit(1, "sprig", 300, y), fruit(2, "melon", 400, RIM + SPRIG.room)]);
+  full.turn = 1;
+  resolve(full);
+  assert.ok(!full.fruits.some((f) => f.kind === "cherry"), "no room: the pile reaches within the Sprig's room of the rim");
 });
 
 test("the first game's run pays a smaller first rent, and the rents after it are everyone's", () => {
