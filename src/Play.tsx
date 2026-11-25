@@ -10,7 +10,7 @@ import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { PauseButton } from "./KeyHint.tsx";
 import { Lanes } from "./Lanes.tsx";
 import { LastTurn } from "./LastTurn.tsx";
-import { atRest, bossCode, crossed, fading, recedeParams, RECEDE_TIME, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, moodOf, opensAt, shelfSlot, startingRun } from "./layout.ts";
+import { atRest, bossCode, crossed, entranceWait, fading, recedeParams, RECEDE_TIME, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, moodOf, opensAt, shelfSlot, startingRun } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { PickBoard } from "./PickBoard.tsx";
 import { BOARD_W, HUD_X, JAR_MID, SHELF_Y, shelfOf, SLOT } from "./places.ts";
@@ -87,7 +87,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed, tutorial >= LESSONS.length, tutorial < LESSONS.length), reports: [] as FruitReport[], slow: 0, hit: 0, punch: 99, punchSize: 0, seenPopup: 0, peek: false, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0, recede: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed, tutorial >= LESSONS.length, tutorial < LESSONS.length), reports: [] as FruitReport[], slow: 0, hit: 0, punch: 99, punchSize: 0, seenPopup: 0, peek: false, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: (savedRun === null ? -entranceWait() : 99) as number, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0, recede: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");

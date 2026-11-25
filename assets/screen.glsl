@@ -91,7 +91,9 @@ vec4 effect(vec2 uv) {
   }
 
   // The lamp: the corners fall away into the dark.
-  float dark = smoothstep(0.95, 1.5, out_) * 0.5;
+  // Only what is dark already goes darker: a heading or a number in a corner stays as clean as one in the middle.
+  float bright = dot(rgb, vec3(0.299, 0.587, 0.114));
+  float dark = smoothstep(0.95, 1.5, out_) * 0.5 * (1.0 - smoothstep(0.4, 0.7, bright));
   rgb = mix(rgb, vec3(0.035, 0.039, 0.078), dark);
 
   // The boss jar's own dark, over the lamp's.

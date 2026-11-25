@@ -623,3 +623,16 @@ export const RECEDE_TIME = 0.25;
 export function fading(left: number): number {
   return Math.max(0, Math.min(1, left / 0.25));
 }
+
+let opened = false;
+
+/**
+ * Seconds a screen waits before its entrance plays (the title's name dropping in, the game's boards popping in): until it shows.
+ * A screen being entered is under the dark for the first half of the fade, and the game's very first screen for longer, as it
+ * opens out of the dark; an entrance that began at once was half over before it could be seen.
+ */
+export function entranceWait(): number {
+  const first = !opened;
+  opened = true;
+  return first ? OPENING.dark + OPENING.lift * 0.5 : SCREEN_FADE / 2;
+}

@@ -1,11 +1,11 @@
-import { Entity, Flex, Menu, Text, useInputDevice, useTime } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Menu, Text, useInputDevice, useMutable, useTime } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
 import { DemoJar } from "./DemoJar.tsx";
 import { save, useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
 import { PushButton } from "./PushButton.tsx";
-import { ENTER, entered, INTRO, jarDrop, LANDS, popIn } from "./layout.ts";
+import { ENTER, entered, entranceWait, INTRO, jarDrop, LANDS, popIn } from "./layout.ts";
 import { Bloops, Thud } from "./Sounds.tsx";
 import { DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT_SOFT } from "./theme.ts";
 
@@ -30,14 +30,17 @@ export function Title({ name }: { name: string }) {
   const { start, openSettings } = useGame.actions();
   // The title comes in as a run does: the name drops onto the wall and bounces, the jar falls into place, the line under
   // the name appears, and the buttons slide in from the left one after another, each within its own place in the menu.
-  const time = useTime();
+  // It starts once the screen shows (`entranceWait`), not while it is still under the dark it fades out of.
+  const s = useMutable({ wait: entranceWait() });
+  const up = useTime();
+  const time = Math.max(0, up - s.wait);
   return (
     <Entity>
       <Backdrop />
       {/* The entrance's sounds: the name lands, the jar lands, and a bloop for each button as it slides in. */}
-      <Thud at={LANDS} />
-      <Thud at={ENTER.jar + LANDS} />
-      <Bloops start={MENU_AT} gap={ENTER.gap} count={hasSave ? 3 : 2} />
+      <Thud at={s.wait + LANDS} />
+      <Thud at={s.wait + ENTER.jar + LANDS} />
+      <Bloops start={s.wait + MENU_AT} gap={ENTER.gap} count={hasSave ? 3 : 2} />
       {/* The jar is not there until it falls in: while the screen before this one fades out, its walls would stand in that
           screen's jar (both are in the world while one gives way to the other). */}
       {time >= ENTER.jar && <DemoJar x={JAR_SHIFT} lift={jarDrop(time - ENTER.jar, 400)} wait={INTRO.fall} />}
