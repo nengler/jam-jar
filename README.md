@@ -349,6 +349,11 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   places, and the last fruit of the hand, as the player leaves it, stands in the basket at the end of the shelf and goes back
   with the dealt fruit when the hand drops. So a turn has a fruit to leave out as well as an order to choose, and a pool is
   gone through a fifth faster: a fruit picked comes round sooner. A Wide fruit the tray has no room left for sits out too.
+  Bots on the whole game as it then stood (96 seeds; rent 225, 250, 300, 350, 400 kept): a player who picks at random now
+  scores more than one who never picks (1554 a run against 1405; it was 1318 against 1423 before the fruit were reworked).
+  One who picks well and orders makes all five rents in 32% of runs (40% before), and with one removal a shop in 50% (66%).
+  The bots do not choose which fruit sits out: it is whichever their ordering leaves last, and the ordering bot that never
+  picks does worse for it (1283 a run, from 1491). A player who leaves out the weakest fruit does better than these.
 - Countdowns: a fruit in the jar that is counting down wears the number of turns it has left, in a small dark disc at its
   lower left (`countdowns`, `TurnsMark.tsx`): a frozen fruit until it thaws (an ice-blue ring), a Coconut until it cracks
   (light), a Banana until it rots (brown). A frozen build is timed by that number, and it was nowhere on screen.
