@@ -115,11 +115,21 @@ vec4 effect(vec2 uv) {
     vec2 from = (at - vec2(params[7], 200.0)) / vec2(190.0, 230.0);
     float pool = 1.0 - smoothstep(0.25, 1.0, length(from));
     // The inside of the jar (its glass's own dark tint) takes none of that light: added to the glass it lay half way between
-    // two colours, and the whole jar was dithered from wall to wall, right behind the fruit. The glass is shaded instead: a thin
-    // dither of its next tone in a ring: clear in the middle of the jar, thickening outwards, and thickest in its corners. The ring's edge wanders (the paper's grain, again), so it is not a drawn oval.
+    // two colours, and the whole jar was dithered from wall to wall, right behind the fruit. The glass is shaded instead, in
+    // rings: clear in the middle of the jar, then bands of dither each denser than the last, through the glass's next tone
+    // and on toward the one after it in the corners. The rings' edges wander (the paper's grain, again), so they are not
+    // drawn ovals.
     vec3 glass = rgb - vec3(0.125, 0.180, 0.216);
-    if (dot(glass, glass) > 0.0004) rgb += pool * 0.075 * vec3(1.0, 0.85, 0.6);
-    else rgb = mix(rgb, vec3(0.224, 0.290, 0.314), 0.55 * smoothstep(0.45, 1.15, length((at - vec2(params[7], 228.0)) / vec2(96.0, 116.0)) + (grain(at / 24.0) - 0.5) * 0.34 + (grain(at / 9.0) - 0.5) * 0.14));
+    if (dot(glass, glass) > 0.0004) {
+      rgb += pool * 0.075 * vec3(1.0, 0.85, 0.6);
+    } else {
+      float out_ = length((at - vec2(params[7], 228.0)) / vec2(96.0, 116.0)) + (grain(at / 24.0) - 0.5) * 0.34 + (grain(at / 9.0) - 0.5) * 0.14;
+      // How shaded, 0 in the middle to about 1.5 in the corners, in six steps: each step is one band.
+      float shade = smoothstep(0.42, 1.3, out_);
+      shade = floor(shade * shade * 1.6 * 6.0 + 0.5) / 6.0;
+      vec3 next = vec3(0.224, 0.290, 0.314);
+      rgb = shade <= 1.0 ? mix(rgb, next, shade) : mix(next, vec3(0.341, 0.447, 0.467), shade - 1.0);
+    }
   }
 
   // The lamp: the corners fall away into the dark.
