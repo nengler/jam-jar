@@ -53,7 +53,14 @@ function spot(rng: Rng, low: number, high: number): number {
   if (SPOTS.salt === 0) return own;
   return new Rng((rng.seed ^ Math.imul(SPOTS.salt, 0x9e3779b1)) >>> 0).range(low, high);
 }
+/** How many places the tray has over the jar: what drops in a turn. */
 export const HAND_SIZE = 4;
+/**
+ * How many places are dealt: one more than drop. The fruit of the hand that the tray has no place for (the last of it, in the
+ * order the player leaves it) sits the turn out and goes back with the dealt fruit, to come round again after the next
+ * shuffle. So each turn has a fruit to leave out as well as an order to choose, and a pool is gone through a fifth faster.
+ */
+export const DEAL_SIZE = 5;
 export const TURNS_PER_CYCLE = 5;
 /**
  * A new fruit is offered after every `PICK_EVERY`th turn of a cycle but its last (which goes to the rent): after each of the
@@ -524,6 +531,18 @@ export function shelfPlaces(hand: readonly FruitKind[]): { start: number; span: 
   });
 }
 
+/** How many fruit of a hand drop: those at its front that the tray's `HAND_SIZE` places hold. The rest of it sits the turn out. */
+export function dropping(hand: readonly FruitKind[]): number {
+  let used = 0;
+  let count = 0;
+  for (const kind of hand) {
+    if (used + slotsOf(kind) > HAND_SIZE) break;
+    used += slotsOf(kind);
+    count += 1;
+  }
+  return count;
+}
+
 /** How many places on the shelf a hand takes. */
 export function handSlots(hand: readonly FruitKind[]): number {
   return hand.reduce((sum, kind) => sum + slotsOf(kind), 0);
@@ -723,7 +742,7 @@ function deal(run: Run): void {
   // The hand fills the shelf's places: a Wide fruit takes two. One that would not fit in the places left stays on top for the
   // next hand, and the first fruit under it that does fit is dealt instead, so the hand is short only when none left would fit.
   let used = 0;
-  while (used < HAND_SIZE) {
+  while (used < DEAL_SIZE) {
     if (run.draw.length === 0) {
       const shuffled = shuffleGlazed(rng, run.discard, run.discardGlazes);
       run.draw = shuffled.kinds;
@@ -731,7 +750,7 @@ function deal(run: Run): void {
       run.discard = [];
       run.discardGlazes = [];
     }
-    const at = run.draw.findIndex((kind) => used + slotsOf(kind) <= HAND_SIZE);
+    const at = run.draw.findIndex((kind) => used + slotsOf(kind) <= DEAL_SIZE);
     if (at < 0) break;
     const [next] = run.draw.splice(at, 1) as [FruitKind];
     const [glaze] = run.drawGlazes.splice(at, 1);
@@ -1094,8 +1113,12 @@ function order(run: Run, keys: Keys): void {
     sound(run, "tick");
   }
   if (keys.drop && run.hand.length > 0) {
-    run.queue = run.hand;
-    run.queueGlazes = run.handGlazes;
+    // What the tray holds drops; the rest of the hand sits the turn out, back with the dealt fruit.
+    const count = dropping(run.hand);
+    run.queue = run.hand.slice(0, count);
+    run.queueGlazes = run.handGlazes.slice(0, count);
+    run.discard.push(...run.hand.slice(count));
+    run.discardGlazes.push(...run.handGlazes.slice(count));
     run.hand = [];
     run.handGlazes = [];
     run.holding = false;

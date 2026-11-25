@@ -1,7 +1,7 @@
 import { Entity, Shape } from "@tsengine/runtime/jsx";
 
 import { dashes, lanesOf } from "./layout.ts";
-import { HAND_SIZE, handSlots, JAR, RIM, slotsOf, type Run } from "./rules/jar.ts";
+import { dropping, HAND_SIZE, JAR, RIM, slotsOf, type Run } from "./rules/jar.ts";
 import { GOLD, LIGHT } from "./theme.ts";
 
 /** How strongly a lane's line is drawn, and the band of the chosen fruit's lane (as wide as the fruit). */
@@ -19,7 +19,9 @@ const DASHES = dashes(RIM + 4, JAR.floor, DASH, GAP);
  * shelf shows what it will come down on: a Wide Pumpkin's two lanes, a Melon's reach. Only drawn.
  */
 export function Lanes({ run, lines, held }: { run: Run; lines: boolean; held: boolean }) {
-  const lanes = lanesOf(run.hand, JAR.left, JAR.right, Math.max(HAND_SIZE, handSlots(run.hand)), run.hand.map((kind) => slotsOf(kind)));
+  // Only the fruit that drop have a lane: the one sitting the turn out has none.
+  const tray = run.hand.slice(0, dropping(run.hand));
+  const lanes = lanesOf(tray, JAR.left, JAR.right, HAND_SIZE, tray.map((kind) => slotsOf(kind)));
   return (
     <Entity>
       {lanes.map((lane) => (

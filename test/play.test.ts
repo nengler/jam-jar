@@ -37,12 +37,12 @@ function playedOut(game: GamePlay): Run {
   return runOf(game);
 }
 
-test("Play starts a run with a hand of 4; Space drops it into the jar", () => {
+test("Play starts a run with a hand of 5; Space drops four of it into the jar", () => {
   const game = startRun();
   const first = seen(game.player);
   assert.equal(first.screen, "play");
   assert.equal(first.phase, "order");
-  assert.equal(first.hand, 4);
+  assert.equal(first.hand, 5);
   // A fruit drops once the last has landed and come to rest, so a hand of 4 takes a few seconds.
   game.input("Space, _*2");
   playedOut(game);
@@ -50,7 +50,7 @@ test("Play starts a run with a hand of 4; Space drops it into the jar", () => {
   game.close();
   assert.equal(last.phase, "pick", "a pick after the turn, before the next hand is dealt");
   assert.equal(last.hand, 0);
-  assert.equal(last.dealt, 4, "all four dropped");
+  assert.equal(last.dealt, 5, "four dropped, and the fifth went back with them");
   assert.ok(last.fruits! >= 1 && last.fruits! <= 4, "in the jar (some may have merged)");
 });
 
@@ -592,7 +592,7 @@ test("the end of a run: Play again starts a new one from its board, and Escape g
   const seed = useGame.getState().seed;
   game.input("Enter, _*3");
   assert.deepEqual([play.s.run.phase, play.s.run.cycle, play.s.run.turn, play.s.run.total], ["order", 1, 1, 0], "a new run, its first hand dealt");
-  assert.equal(play.s.run.hand.length, 4);
+  assert.equal(play.s.run.hand.length, 5);
   assert.equal(useGame.getState().seed, seed + 1, "from a new seed");
   assert.equal(findComponent("EndBoard", game.player.world.root), null);
   lose();
@@ -672,7 +672,7 @@ test("things arriving make a sound: the title's name and jar land and its button
   game.input("Enter, _*300");
   assert.equal(count("thud.wav"), 3, "the run's jar lands");
   assert.deepEqual([count("pop-0.wav"), count("pop-1.wav"), count("pop-2.wav")], [2, 2, 1], "the two boards and the shelf");
-  assert.equal(count("tock.wav"), 4, "and each of the four fruit knocks as it rolls to its place");
+  assert.equal(count("tock.wav"), 5, "and each of the five fruit knocks as it rolls to its place");
   game.close();
 });
 

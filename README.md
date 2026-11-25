@@ -1,7 +1,7 @@
 # Jam Jar
 
-A roguelike where you build a pool of fruit and the jar plays it. Each turn you're dealt 4 fruits from your pool and you arrange
-them on a tray over the jar. They all drop together, each straight down from its slot with a small wobble, physics settles the pile, merges and blasts score, and then Simmer fruit score at
+A roguelike where you build a pool of fruit and the jar plays it. Each turn you're dealt 5 fruits from your pool, and you arrange
+four of them on a tray over the jar; the fifth, the one you leave in the basket at the end of the shelf, sits the turn out. They all drop together, each straight down from its slot with a small wobble, physics settles the pile, merges and blasts score, and then Simmer fruit score at
 Resolve. A run opens with two picks of 1 of 3 new fruits, and after every turn but a cycle's last you pick again, or skip for a coin (four picks a cycle). Five turns make a rent cycle; miss rent and the run ends.
 Between cycles the shop sells fruit, an item, a removal and rerolls for the coins the rent left over.
 
@@ -345,6 +345,10 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   Two others were tried. A Prune that makes no rot at all scored nothing alone (-444) and cost a Fruit Fly build 179: a
   trap. The old Prune with rotten Merges scoring nothing (rot costs a merge pool nothing as it is) was still the best
   fruit alone (+310).
+- Five dealt, four dropped (`DEAL_SIZE`, `HAND_SIZE`, `dropping`). The hand is five fruit; the tray over the jar has four
+  places, and the last fruit of the hand, as the player leaves it, stands in the basket at the end of the shelf and goes back
+  with the dealt fruit when the hand drops. So a turn has a fruit to leave out as well as an order to choose, and a pool is
+  gone through a fifth faster: a fruit picked comes round sooner. A Wide fruit the tray has no room left for sits out too.
 - Countdowns: a fruit in the jar that is counting down wears the number of turns it has left, in a small dark disc at its
   lower left (`countdowns`, `TurnsMark.tsx`): a frozen fruit until it thaws (an ice-blue ring), a Coconut until it cracks
   (light), a Banana until it rots (brown). A frozen build is timed by that number, and it was nowhere on screen.

@@ -1,6 +1,6 @@
 import type { FruitKind } from "./rules/fruits.ts";
 import type { Glaze } from "./rules/glazes.ts";
-import { handSlots, JAR, RIM, slotsOf, type Run } from "./rules/jar.ts";
+import { HAND_SIZE, handSlots, JAR, RIM, slotsOf, type Run } from "./rules/jar.ts";
 import type { Lesson, LessonTarget } from "./rules/tutorial.ts";
 import { biggestFruit } from "./theme.ts";
 
@@ -28,7 +28,7 @@ export const LEDGE_GAP = 4;
 export const LEDGE_W = 60;
 export const BASKET_W = 56;
 export const BASKET_H = 38;
-export const ROLL_FROM = JAR_MID + 104 + LEDGE_GAP + LEDGE_W / 2;
+export const ROLL_FROM = JAR_MID + (HAND_SIZE * SLOT) / 2 + SLOT / 2;
 /** The coins stand to the right of the basket and its count, with room for a count of two figures between. */
 export const COINS_X = ROLL_FROM + 56 / 2 + 50;
 
@@ -44,7 +44,7 @@ export interface ShelfRow {
 export function shelfOf(run: Run): ShelfRow {
   const cards = run.phase === "order" ? run.hand : run.queue;
   const glazes = run.phase === "order" ? run.handGlazes : run.queueGlazes;
-  return { cards, glazes, spans: cards.map((kind) => slotsOf(kind)), left: JAR_MID - (handSlots(cards) * SLOT) / 2 };
+  return { cards, glazes, spans: cards.map((kind) => slotsOf(kind)), left: JAR_MID - (Math.min(HAND_SIZE, handSlots(cards)) * SLOT) / 2 };
 }
 
 /** How far above the plank the hand reaches, a lifted fruit with its frame included: what the shelf's drag box and its lesson cover. */

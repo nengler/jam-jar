@@ -5,9 +5,9 @@ import { FruitBall } from "./FruitBall.tsx";
 import { FruitTip } from "./FruitTip.tsx";
 import { GlazeMark } from "./GlazeMark.tsx";
 import { grownOf, glazedText, placed, rollIn, rollStarted, shelfX } from "./layout.ts";
-import { HOLD_LIFT, ROLL_FROM, SHELF_FOOT, SHELF_Y, shelfOf, shelfTall, SLOT } from "./places.ts";
+import { BASKET_H, HOLD_LIFT, ROLL_FROM, SHELF_FOOT, SHELF_Y, shelfOf, shelfTall, SLOT } from "./places.ts";
 import type { FruitKind } from "./rules/fruits.ts";
-import { bossNow, handSlots, type Run } from "./rules/jar.ts";
+import { bossNow, dropping, handSlots, type Run } from "./rules/jar.ts";
 import { CARD_SLICE, fruitImageSize, SELECT } from "./theme.ts";
 
 /** Where the card of a fruit on the shelf stands: at the left under the rent board, and what its keywords mean at the right under
@@ -20,10 +20,14 @@ const TIP_TOP = 68;
 const COACHED_TOP = 4;
 const CARD_DOWN = 100;
 
-/** A fruit on the shelf: its size, how far it is lifted (while it is being moved), and the frame round it when it is the chosen one. */
-function shelfLook(card: FruitKind, at: number, span: number, held: boolean) {
+/**
+ * A fruit on the shelf: its size, how far it is lifted (while it is being moved), and the frame round it when it is the chosen
+ * one. One that sits the turn out (`out`: the tray has no place for it) stands in the basket, at the end of the shelf, lifted so
+ * that most of it shows over the basket's rim: it is going back in.
+ */
+function shelfLook(card: FruitKind, at: number, span: number, held: boolean, out: boolean) {
   const size = fruitImageSize(card);
-  return { card, at, size, lift: held ? HOLD_LIFT : 0, frameW: Math.max(40 + SLOT * (span - 1), size + 8), frameH: Math.max(40, size + 8) };
+  return { card, at, size, lift: (held ? HOLD_LIFT : 0) + (out ? Math.max(0, BASKET_H - Math.round(size * 0.4)) : 0), frameW: Math.max(40 + SLOT * (span - 1), size + 8), frameH: Math.max(40, size + 8) };
 }
 
 interface ShelfProps {
@@ -55,7 +59,7 @@ export function Shelf({ run, roll, dragging, dragX, framed, listening, onDragSta
   /** How far above the plank the hand reaches, a lifted fruit with its frame included: what the drag box and the shelf's lesson cover. */
   const tall = shelfTall(shelf.cards);
   /** Each fruit on the shelf with its size, how far it is lifted, and the size of the frame round it when it is the chosen one. */
-  const looks = placed(shelf.cards).map((slot) => shelfLook(slot.card, slot.at, shelf.spans[slot.at] ?? 1, ordering && run.holding && slot.at === run.cursor));
+  const looks = placed(shelf.cards).map((slot) => shelfLook(slot.card, slot.at, shelf.spans[slot.at] ?? 1, ordering && run.holding && slot.at === run.cursor, ordering && slot.at >= dropping(shelf.cards)));
   return (
     <Entity>
       {listening && (
