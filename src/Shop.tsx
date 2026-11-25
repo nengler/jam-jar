@@ -1,4 +1,4 @@
-import { Entity, Flex, Shape, Sprite, Text, Tooltip, useTime, type Child } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Shape, Sprite, Text, useMutable, useTime, type Child } from "@tsengine/runtime/jsx";
 
 import { Dialog } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
@@ -34,6 +34,7 @@ import {
   signFor,
   SOLD,
   STALL,
+  TERM_W,
 } from "./theme.ts";
 
 /**
@@ -81,9 +82,14 @@ const ITEM_W = 48;
 const BASKET_SINK = 0.4;
 /** Choosing a fruit to take out: the pool's kinds on a board, each in a cell its fruit's width and a little more, wrapping at this width. */
 const REMOVE_W = 520;
-/** Where a place's tooltip opens, from the place's top: just under the awning, or lower while the tutorial's lesson lies along the head of the screen. */
-const TIP_UP = -92;
-const TIP_COACHED = -78;
+/** Where a place's tooltip's top is on the screen: just under the awning, or lower while the tutorial's lesson lies along the head of the screen. */
+const TIP_TOP = 64;
+const TIP_COACHED = 78;
+/** How far a tooltip stands from the frame round its place's picture. */
+const TIP_GAP = 4;
+/** The stall's places, centred across the screen: where the first one's left edge is, and how far each is from the one before. */
+const PLACES_LEFT = (640 - (SHOP_GLAZE + 1) * PLACE_W - SHOP_GLAZE * PLACE_GAP) / 2;
+const PLACE_STEP = PLACE_W + PLACE_GAP;
 
 /** A kind's cell on the take-out board: its fruit's width with room for the frame round the chosen one. */
 function removeCell(kind: FruitKind): number {
@@ -197,7 +203,9 @@ interface OfferProps {
   /** The Buy button beside the chosen one's price presses this. */
   onBuy: () => void;
   onClick: (place: number) => void;
-  /** Its picture, and its tooltip. */
+  /** The mouse came over the place, or left it: its tooltip opens while it is there. */
+  onOver: (place: number, over: boolean) => void;
+  /** Its picture. */
   children: Child;
 }
 
@@ -206,10 +214,10 @@ interface OfferProps {
  * counter's front its price, with the Buy button beside it when it is chosen. A tap or a click only chooses it; the button, or
  * Enter, buys it. It drops into place as the shop comes in.
  */
-function Offer({ at, chosen, name, price, afford, drop, opacity, onClick, onBuy, children }: OfferProps) {
+function Offer({ at, chosen, name, price, afford, drop, opacity, onClick, onBuy, onOver, children }: OfferProps) {
   return (
     <Flex width={PLACE_W} direction="column" alignItems="center" y={-PLACE_DROP * (1 - drop)} opacity={opacity}>
-      <Flex width={PLACE_W} direction="column" alignItems="center" focusable={false} onPress={() => onClick(at)}>
+      <Flex width={PLACE_W} direction="column" alignItems="center" focusable={false} onPress={() => onClick(at)} onPointerEnter={() => onOver(at, true)} onPointerLeave={() => onOver(at, false)}>
         <Flex height={NAME_H} direction="row" justifyContent="center">
           <Text color={chosen ? GOLD : LIGHT} shadow={INK} shadowX={2} shadowY={2}>
             {name}
@@ -241,12 +249,53 @@ function ActionSign({ chosen, go = false, label, price, afford, onPoint, onPress
 }
 
 /**
- * Whether a place's tooltip is up: its own while it is the chosen one, none while another place on the stall is (two would lie
- * over each other), and otherwise while the mouse is over it (the tooltip's own rule: `undefined`). Never when `hidden`: under
- * the pause menu, or the board for choosing a fruit.
+ * Which place's tooltip is up, or -1 for none: the chosen one's while a place on the stall is chosen (two would lie over each
+ * other), and otherwise the one the mouse is over. None when `hidden`: under the pause menu, or the board for choosing a fruit.
  */
-function tipShown(at: number, chosen: number, hidden: boolean): boolean | undefined {
-  return hidden ? false : chosen === at ? true : chosen >= 0 && chosen <= SHOP_GLAZE ? false : undefined;
+function tipAt(chosen: number, over: number, hidden: boolean): number {
+  return hidden ? -1 : chosen >= 0 && chosen <= SHOP_GLAZE ? chosen : over;
+}
+
+/** Where the frame round a place's picture is across the screen: its left edge, and how wide it is. */
+const FRAME_W = PICTURE_W + FRAME * 2;
+function frameLeft(at: number): number {
+  return PLACES_LEFT + at * PLACE_STEP + (PLACE_W - FRAME_W) / 2;
+}
+
+/**
+ * A place's tooltip (the item's, a glaze's): one column beside the frame round its picture, on its right for the first two
+ * places and on its left for the others, so it stays on the screen.
+ *
+ * The tooltips are drawn after everything else in the shop, not inside their places as Tooltip elements: the screen is drawn in
+ * a Layer (for its shader), in which a tooltip's z does not lift it, so the places after it, the signs and the bar were drawn
+ * over it.
+ */
+function PlaceTip({ at, top, children }: { at: number; top: number; children: Child }) {
+  const left = at < 2 ? frameLeft(at) + FRAME_W + TIP_GAP : frameLeft(at) - TIP_GAP - TERM_W;
+  return (
+    <Flex left={left} top={top} width={TERM_W} direction="column">
+      {children}
+    </Flex>
+  );
+}
+
+/**
+ * A fruit's tooltip: its card and what its keywords mean side by side, as the shelf's are, since one column of both ran off the
+ * foot of the screen for a fruit with many keywords (a Pumpkin's, a Watermelon's). Both to the right of the place where they fit
+ * there (the first place); else the card on its left and the keywords on its right where those fit (the third); else both against
+ * the screen's right edge (the second, which has room for neither: they lie over the right of its frame).
+ */
+function FruitPlaceTip({ at, top, kind, text }: { at: number; top: number; kind: FruitKind; text: string }) {
+  const pair = TERM_W * 2 + 2;
+  const right = frameLeft(at) + FRAME_W + TIP_GAP;
+  const around = frameLeft(at) - TIP_GAP - TERM_W;
+  const left = right + pair <= 640 - TIP_GAP ? right : around >= TIP_GAP ? around : 640 - TIP_GAP - pair;
+  const width = left === around ? TERM_W * 2 + FRAME_W + TIP_GAP * 2 : pair;
+  return (
+    <Flex left={left} top={top} width={width} direction="column">
+      <FruitTip kind={kind} text={text} apart={width} />
+    </Flex>
+  );
 }
 
 /** How far above its place a thing on the stall starts as the shop comes in, and how far below theirs the actions start, in pixels. */
@@ -277,6 +326,15 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
   const chosen = choosing ? -1 : shop.cursor;
   // Whether the chosen place on the shelf has something for sale, for the Buy button: not an action, a sold place, or none.
   const awning = -AWNING_H * (1 - popIn(time, 0, ENTER.pop));
+  // The place the mouse is over, for its tooltip (see `tipAt`), and the one whose tooltip is up.
+  const s = useMutable({ over: -1 });
+  const onOver = (place: number, over: boolean) => {
+    if (over) s.over = place;
+    else if (s.over === place) s.over = -1;
+  };
+  const tip = tipAt(chosen, s.over, paused || choosing);
+  const tipTop = coached ? TIP_COACHED : TIP_TOP;
+  const tipFruit = tip >= 0 && tip < SHOP_ITEM ? (shop.fruits[tip] ?? null) : null;
   return (
     <Entity>
       {/* Shaded twice: the shop covers the whole screen, and the boards behind it should not show through. */}
@@ -293,29 +351,14 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
           choose it (see the pick). */}
       <Flex left={0} right={0} top={STALL_Y - PICTURE_H - FRAME - NAME_H} direction="row" justifyContent="center" gap={PLACE_GAP} onPressOutside={onAway}>
         {placed(shop.fruits).map((slot) => (
-          <Offer key={slot.at} at={slot.at} chosen={chosen === slot.at} name={slot.card === null ? "" : FRUITS[slot.card].name} price={slot.card === null ? null : FRUIT_PRICE} afford={run.coins >= FRUIT_PRICE} drop={popIn(time, slot.at * ENTER.gap, ENTER.pop)} opacity={entered(time, slot.at)} onClick={onClick} onBuy={onConfirm}>
-            {slot.card !== null && (
-              <Tooltip show={tipShown(slot.at, chosen, paused || choosing)} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={coached ? TIP_COACHED : TIP_UP} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                <FruitTip kind={slot.card} text={cardText(run, slot.card)} />
-              </Tooltip>
-            )}
+          <Offer key={slot.at} at={slot.at} chosen={chosen === slot.at} name={slot.card === null ? "" : FRUITS[slot.card].name} price={slot.card === null ? null : FRUIT_PRICE} afford={run.coins >= FRUIT_PRICE} drop={popIn(time, slot.at * ENTER.gap, ENTER.pop)} opacity={entered(time, slot.at)} onClick={onClick} onBuy={onConfirm} onOver={onOver}>
             <Basket kind={slot.card} />
           </Offer>
         ))}
-        <Offer at={SHOP_ITEM} chosen={chosen === SHOP_ITEM} name={shop.item === null ? "" : ITEMS[shop.item].name} price={shop.item === null ? null : ITEMS[shop.item].price} afford={shop.item !== null && run.coins >= ITEMS[shop.item].price} drop={popIn(time, SHOP_ITEM * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_ITEM)} onClick={onClick} onBuy={onConfirm}>
-          {shop.item !== null && (
-            <Tooltip show={tipShown(SHOP_ITEM, chosen, paused || choosing)} anchor="top-right" to="top-left" offsetX={-4} offsetY={coached ? TIP_COACHED : TIP_UP} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-              <CardTip name={ITEMS[shop.item].name} text={ITEMS[shop.item].text} />
-            </Tooltip>
-          )}
+        <Offer at={SHOP_ITEM} chosen={chosen === SHOP_ITEM} name={shop.item === null ? "" : ITEMS[shop.item].name} price={shop.item === null ? null : ITEMS[shop.item].price} afford={shop.item !== null && run.coins >= ITEMS[shop.item].price} drop={popIn(time, SHOP_ITEM * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_ITEM)} onClick={onClick} onBuy={onConfirm} onOver={onOver}>
           <OnCloth item={shop.item} />
         </Offer>
-        <Offer at={SHOP_GLAZE} chosen={chosen === SHOP_GLAZE} name={shop.glaze === null ? "" : GLAZES[shop.glaze].name} price={shop.glaze === null ? null : GLAZE_PRICE} afford={run.coins >= GLAZE_PRICE} drop={popIn(time, SHOP_GLAZE * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_GLAZE)} onClick={onClick} onBuy={onConfirm}>
-          {shop.glaze !== null && (
-            <Tooltip show={tipShown(SHOP_GLAZE, chosen, paused || choosing)} anchor="top-right" to="top-left" offsetX={-4} offsetY={coached ? TIP_COACHED : TIP_UP} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-              <CardTip name={`${GLAZES[shop.glaze].name} glaze`} text={GLAZES[shop.glaze].text} />
-            </Tooltip>
-          )}
+        <Offer at={SHOP_GLAZE} chosen={chosen === SHOP_GLAZE} name={shop.glaze === null ? "" : GLAZES[shop.glaze].name} price={shop.glaze === null ? null : GLAZE_PRICE} afford={run.coins >= GLAZE_PRICE} drop={popIn(time, SHOP_GLAZE * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_GLAZE)} onClick={onClick} onBuy={onConfirm} onOver={onOver}>
           <GlazePot glaze={shop.glaze} />
         </Offer>
       </Flex>
@@ -352,6 +395,21 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
           {run.message}
         </Text>
       </Flex>
+
+      {/* What the chosen place (or the one the mouse is over) has for sale does, beside it: after the signs and the bar, so it lies over them. */}
+      {tipFruit !== null && (
+        <FruitPlaceTip at={tip} top={tipTop} kind={tipFruit} text={cardText(run, tipFruit)} />
+      )}
+      {tip === SHOP_ITEM && shop.item !== null && (
+        <PlaceTip at={tip} top={tipTop}>
+          <CardTip name={ITEMS[shop.item].name} text={ITEMS[shop.item].text} />
+        </PlaceTip>
+      )}
+      {tip === SHOP_GLAZE && shop.glaze !== null && (
+        <PlaceTip at={tip} top={tipTop}>
+          <CardTip name={`${GLAZES[shop.glaze].name} glaze`} text={GLAZES[shop.glaze].text} />
+        </PlaceTip>
+      )}
 
       {/* Taking a fruit out, or choosing one for a glaze: the pool by kind on a board in the middle of the screen, its kinds
           wrapping when there are many (for a glaze, only those it can go on). */}
