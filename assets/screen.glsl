@@ -1,5 +1,6 @@
 // The whole screen, as the last thing drawn (src/Main.tsx). Two things are always on: the corners fall away into the dark, as a
-// kitchen lit by one lamp, and every pixel is put back on the game's palette (Apollo: the `lookup`, assets/apollo.png), with a
+// kitchen lit by one lamp, and every pixel is put on the screen's palette (the `lookup`, assets/screen-palette.png: fifteen of
+// the art's 46 colours, tools/palette/screen.hex), with a
 // dither where a colour lies between two of them, so what the game blends (a dimmed screen, a tint, a flash) is still drawn
 // in the art's own colours. Two more come and go with the run:
 //
@@ -27,7 +28,7 @@ const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0
 
 /** The palette's colour for `rgb` at the art pixel `q`: the nearest, or the next nearest by the dither when it lies between. */
 vec3 onPalette(vec3 rgb, vec2 q) {
-  // The palette is the lookup: one pixel a colour (assets/apollo.png, which tools/make-assets.py writes from the palette's file).
+  // The palette is the lookup: one pixel a colour (assets/screen-palette.png, which tools/make-assets.py writes from its file).
   int count = textureSize(lookup, 0).x;
   vec3 first = texelFetch(lookup, ivec2(0, 0), 0).rgb;
   vec3 second = first;

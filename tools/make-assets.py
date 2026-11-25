@@ -300,12 +300,16 @@ SOUNDS = {
 
 
 def write_palette() -> None:
-    """The palette as a picture one pixel high, a colour a pixel in the file's order: what the screen's shader snaps every
-    colour to (assets/screen.glsl reads it as its `lookup`), so the shader's palette is the art's."""
-    colours = [tuple(int(line[i : i + 2], 16) for i in (0, 2, 4)) for line in (ROOT / "tools" / "palette" / "apollo.hex").read_text().split()]
+    """The screen's palette as a picture one pixel high, a colour a pixel: what the screen's shader snaps every colour to
+    (assets/screen.glsl reads it as its `lookup`). It is a part of the art's palette (tools/palette/screen.hex, each colour one
+    of Apollo's): the art is drawn in all 46, and the screen shows it in these, dithering what lies between two of them."""
+    colours = [tuple(int(line[i : i + 2], 16) for i in (0, 2, 4)) for line in (ROOT / "tools" / "palette" / "screen.hex").read_text().split()]
+    strays = [colour for colour in colours if colour not in PALETTE]
+    if strays:
+        raise SystemExit(f"tools/palette/screen.hex: {strays} not in the Apollo palette (tools/palette/apollo.hex)")
     picture = Image.new("RGBA", (len(colours), 1))
     picture.putdata([(*colour, 255) for colour in colours])
-    picture.save(ASSETS / "apollo.png")
+    picture.save(ASSETS / "screen-palette.png")
 
 
 def main() -> None:

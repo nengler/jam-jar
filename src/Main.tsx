@@ -53,7 +53,7 @@ export default function Main() {
         {/* No music for now: the only tracks on hand are loops of a few seconds, which wear thin at once. `<Music src="theme.ogg"
             fade={1} />` here, outside the screens, plays one on from the title into a run. */}
         {/* Everything is in one layer, drawn through the screen's shader; where shaders do not run it is drawn as it is. */}
-        <Layer shader="screen.glsl" lookup="apollo.png" params={screenParams(styled, mood, mood === fx.mood ? fx.time : 0, { boss: fx.boss, bossTime: fx.bossTime, flipped: fx.flipped, flipTime: fx.flipTime }, lampOf(screen))}>
+        <Layer shader="screen.glsl" lookup="screen-palette.png" params={screenParams(styled, mood, mood === fx.mood ? fx.time : 0, { boss: fx.boss, bossTime: fx.bossTime, flipped: fx.flipped, flipTime: fx.flipTime }, lampOf(screen))}>
           {/* One screen at a time, and a change of screen fades through the dark. */}
           <Router route={screen} transition={fadeThrough} duration={SCREEN_FADE} coverColor={NIGHT}>
             <Route name="title">
