@@ -34,6 +34,7 @@ import {
   signFor,
   SOLD,
   STALL,
+  TERM_W,
 } from "./theme.ts";
 
 /**
@@ -84,6 +85,28 @@ const REMOVE_W = 520;
 /** Where a place's tooltip opens, from the place's top: just under the awning, or lower while the tutorial's lesson lies along the head of the screen. */
 const TIP_UP = -92;
 const TIP_COACHED = -78;
+/** How far a tooltip stands from the frame round its place's picture. */
+const TIP_GAP = 4;
+/** The frame round a place's picture: how wide it is, and where the first place's is across the screen (the places are centred). */
+const FRAME_W = PICTURE_W + FRAME * 2;
+const FIRST_FRAME = (640 - (SHOP_GLAZE + 1) * PLACE_W - SHOP_GLAZE * PLACE_GAP) / 2 + (PLACE_W - FRAME_W) / 2;
+
+/**
+ * Where a fruit's tooltip goes, from the left edge of the frame round its place's picture, and how wide it is. Its card and what
+ * its keywords mean stand side by side, as the shelf's do: in one column they ran off the foot of the screen for a fruit with many
+ * keywords (a Watermelon's, a Pumpkin's). Both to the right of the place where they fit there (the first place); else the card on
+ * its left and the keywords on its right where those fit (the third); else both against the screen's right edge (the second,
+ * which has room for neither: they lie over the right of its frame).
+ */
+function fruitTipAt(at: number): { offsetX: number; width: number } {
+  const frame = FIRST_FRAME + at * (PLACE_W + PLACE_GAP);
+  const pair = TERM_W * 2 + 2;
+  const right = frame + FRAME_W + TIP_GAP;
+  const around = frame - TIP_GAP - TERM_W;
+  if (right + pair <= 640 - TIP_GAP) return { offsetX: right - frame, width: pair };
+  if (around >= TIP_GAP) return { offsetX: around - frame, width: TERM_W * 2 + FRAME_W + TIP_GAP * 2 };
+  return { offsetX: 640 - TIP_GAP - pair - frame, width: pair };
+}
 
 /** A kind's cell on the take-out board: its fruit's width with room for the frame round the chosen one. */
 function removeCell(kind: FruitKind): number {
@@ -295,8 +318,8 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
         {placed(shop.fruits).map((slot) => (
           <Offer key={slot.at} at={slot.at} chosen={chosen === slot.at} name={slot.card === null ? "" : FRUITS[slot.card].name} price={slot.card === null ? null : FRUIT_PRICE} afford={run.coins >= FRUIT_PRICE} drop={popIn(time, slot.at * ENTER.gap, ENTER.pop)} opacity={entered(time, slot.at)} onClick={onClick} onBuy={onConfirm}>
             {slot.card !== null && (
-              <Tooltip show={tipShown(slot.at, chosen, paused || choosing)} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={coached ? TIP_COACHED : TIP_UP} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-                <FruitTip kind={slot.card} text={cardText(run, slot.card)} />
+              <Tooltip show={tipShown(slot.at, chosen, paused || choosing)} anchor="top-left" to="top-left" offsetX={fruitTipAt(slot.at).offsetX} offsetY={coached ? TIP_COACHED : TIP_UP} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+                <FruitTip kind={slot.card} text={cardText(run, slot.card)} apart={fruitTipAt(slot.at).width} />
               </Tooltip>
             )}
             <Basket kind={slot.card} />
