@@ -1,12 +1,11 @@
 // The whole screen, as the last thing drawn (src/Main.tsx). Two things are always on: the corners fall away into the dark, as a
 // kitchen lit by one lamp, and every pixel is put back on the game's palette (Apollo, tools/palette/apollo.hex), with a
 // dither where a colour lies between two of them, so what the game blends (a dimmed screen, a tint, a flash) is still drawn
-// in the art's own colours. Three more come and go with the run:
+// in the art's own colours. Two more come and go with the run:
 //
 // params[0]  1 for all of this, 0 to draw the screen as it is (the settings' Screen row).
 // params[1]  the last turn of a cycle, 0 to 1: the edges of the screen darken and warm.
 // params[2]  the rent missed, 0 to 1: the colour drains out of the screen.
-// params[3]  the rent paid, 0 to 1 as a band of gold crosses the screen once (0: none).
 //
 // It works by the art's pixels (two game pixels square), so the dither is as coarse as the art.
 
@@ -104,15 +103,6 @@ vec4 effect(vec2 uv) {
   vec2 d = (at - GAME / 2.0) / (GAME / 2.0);
   float out_ = length(d);
   vec3 rgb = c.rgb;
-
-  // The rent paid: a band of gold, leaning, crosses from the left to the right.
-  float paid = params[3];
-  if (paid > 0.0 && paid < 1.0) {
-    float where = at.x + (GAME.y - at.y) * 0.5;
-    float far = abs(where - (paid * (GAME.x + GAME.y * 0.5 + 160.0) - 80.0));
-    float band = far < 22.0 ? 1.0 : (far < 44.0 ? 0.5 : 0.0);
-    rgb = mix(rgb, vec3(0.910, 0.757, 0.439), band * 0.4);
-  }
 
   // The last turn: the edges darken and warm, as the light goes.
   float last = params[1] * smoothstep(0.6, 1.3, out_);
