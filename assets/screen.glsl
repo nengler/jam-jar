@@ -116,21 +116,18 @@ vec4 effect(vec2 uv) {
     float pool = 1.0 - smoothstep(0.25, 1.0, length(from));
     // The inside of the jar (its glass's own dark tint) takes none of that light: added to the glass it lay half way between
     // two colours, and the whole jar was dithered from wall to wall, right behind the fruit. The glass is shaded instead, in
-    // rings: clear in the middle of the jar, then bands of dither each denser than the last, through the glass's next tone
-    // and on toward the one after it in the corners.
+    // bands of dither of its next tone: densest under the rim, each band down thinner than the last, and clear from about
+    // half way down, where the pile is; and a thin band down each wall. The bands' edges wander by a few pixels.
     vec3 glass = rgb - vec3(0.125, 0.180, 0.216);
     if (dot(glass, glass) > 0.0004) {
       rgb += pool * 0.075 * vec3(1.0, 0.85, 0.6);
     } else {
-      // How far out, 0 in the middle to 1 at the walls: by a rounded square, so the bands follow the jar's own shape and not
-      // an oval's, and by a slow wander of a few pixels, so their edges are drawn by hand and not by compasses.
-      vec2 off = abs(at - vec2(params[7], 228.0)) / vec2(96.0, 116.0);
-      float out_ = pow(off.x * off.x * off.x + off.y * off.y * off.y, 1.0 / 3.0) + (grain(at / 30.0) - 0.5) * 0.14;
-      // How shaded, 0 in the middle to about 1.3 in the corners, in five steps: each step is one band.
-      float shade = smoothstep(0.52, 1.1, out_);
-      shade = floor(pow(shade, 1.6) * 1.3 * 5.0 + 0.5) / 5.0;
-      vec3 next = vec3(0.224, 0.290, 0.314);
-      rgb = shade <= 1.0 ? mix(rgb, next, shade) : mix(next, vec3(0.341, 0.447, 0.467), shade - 1.0);
+      // How far down the jar, 0 at the rim to 1 at the floor, and how near a wall, 0 in the middle to 1 at it.
+      float down = (at.y - 112.0) / 232.0 + (grain(at / 30.0) - 0.5) * 0.08;
+      float wall = abs(at.x - params[7]) / 96.0;
+      float shade = max(0.85 * (1.0 - smoothstep(0.0, 0.52, down)), 0.4 * smoothstep(0.72, 1.0, wall));
+      shade = floor(shade * 5.0 + 0.5) / 5.0;
+      rgb = mix(rgb, vec3(0.224, 0.290, 0.314), shade);
     }
   }
 
