@@ -67,7 +67,8 @@ export default function Main() {
             </Route>
           </Router>
           {/* The game opens out of the dark, as a change of screen does: the dark over its first screen, lifting. Only drawn. */}
-          {opening(fx.up) > 0 && <Shape kind="rect" x={0} y={0} width={640} height={360} color={NIGHT} opacity={opening(fx.up)} />}
+          {/* Not while the phone is held upright: the world waits then, the clock with it, and the card asking for a turn must show. */}
+          {!upright && opening(fx.up) > 0 && <Shape kind="rect" x={0} y={0} width={640} height={360} color={NIGHT} opacity={opening(fx.up)} />}
           {upright && <Rotate />}
         </Layer>
       </Screen>

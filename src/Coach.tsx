@@ -13,10 +13,10 @@ import { CARD_SLICE, DIM, GOLD, LIGHT, PLAQUE, SELECT } from "./theme.ts";
  * the buttons, for where there is no room for a tall card (the shop, over its awning).
  */
 export function Coach({ lesson, keys, width, wide = false, onNext, onSkip }: { lesson: Lesson; keys: boolean; width: number; wide?: boolean; onNext: () => void; onSkip: () => void }) {
-  // The card fades in over a quarter of a second, which the screen's shader draws as a dither.
-  const time = useTime();
+  // The card is there at once, not faded in: a lesson that holds the jar still stops the game's clock as it comes up, and a card
+  // fading in by that clock would never show, with its "Got it" the only way on.
   return (
-    <Flex width={width} direction="column" alignItems="stretch" opacity={Math.min(1, time / 0.25)}>
+    <Flex width={width} direction="column" alignItems="stretch">
       <Panel image={PLAQUE} gap={2}>
         <Flex direction={wide ? "row" : "column"} alignItems={wide ? "center" : "stretch"} gap={wide ? 12 : 2}>
           <Flex direction="column" gap={0}>
