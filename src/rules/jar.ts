@@ -288,6 +288,8 @@ export interface Fruit {
   pickled: boolean;
   /** Frozen by a Snow Pear: its component pins its ball, so it is held where it is, and an explosion does not destroy it. */
   frozen: boolean;
+  /** The fruit of the pool it was dropped as (its number, `poolIds`), when it came from the tray. */
+  card?: number;
   /** While it is frozen: how many turns of ice it has left (`FROZEN_TURNS` when it froze). */
   ice?: number;
   /** Coated in honey (a Honeydew, or a fruit one has honeyed): it scores at every Resolve. */
@@ -383,6 +385,20 @@ export interface Run {
   discardGlazes: (Glaze | null)[];
   handGlazes: (Glaze | null)[];
   queueGlazes: (Glaze | null)[];
+  /**
+   * Which fruit of the pool each one is: every fruit the player owns has a number of its own, in the pool (`pool`'s order) and
+   * wherever it is dealt to, as its glaze goes with it. So something can be kept for one fruit and not for its kind: `grown`.
+   * 0 is a fruit with no number (a hand a test or a bot set by hand).
+   */
+  poolIds: number[];
+  drawIds: number[];
+  discardIds: number[];
+  handIds: number[];
+  queueIds: number[];
+  /** The number the next fruit to join the pool takes. */
+  nextCard: number;
+  /** What a fruit of the pool scores over its card, by its number: a Persimmon's, for the picks skipped while it was owned. */
+  grown: Record<number, number>;
   /** Still to be dealt this shuffle, top first. */
   draw: FruitKind[];
   /** Dealt this shuffle. */
@@ -582,14 +598,18 @@ export function rollPool(rng: Rng): FruitKind[] {
 export function newRun(seed: number, opening = false, learning = false): Run {
   const rng = new Rng(seed);
   const pool = rollPool(rng);
+  // The run's own stream goes on from here, as it did when the first shuffle was made after it was read.
+  const seedAfterRoll = rng.seed;
+  // The pool's fruit are numbered from 1, and dealt in a shuffled order (the same one `rng.shuffle(pool)` gives).
+  const first = rng.shuffle(pool.map((_, at) => at));
   const run: Run = {
-    seed: rng.seed,
+    seed: seedAfterRoll,
     nextId: 1,
     boss: bossFor(seed),
     opening: opening ? OPENING_PICKS : 0,
     learning,
     pool,
-    draw: rng.shuffle(pool),
+    draw: first.map((at) => pool[at] as FruitKind),
     discard: [],
     hand: [],
     poolGlazes: pool.map(() => null),
@@ -597,6 +617,13 @@ export function newRun(seed: number, opening = false, learning = false): Run {
     discardGlazes: [],
     handGlazes: [],
     queueGlazes: [],
+    poolIds: pool.map((_, at) => at + 1),
+    drawIds: first.map((at) => at + 1),
+    discardIds: [],
+    handIds: [],
+    queueIds: [],
+    nextCard: pool.length + 1,
+    grown: {},
     cursor: 0,
     holding: false,
     queue: [],
@@ -681,6 +708,12 @@ function copy(run: Run): Run {
     discardGlazes: run.discardGlazes.slice(),
     handGlazes: run.handGlazes.slice(),
     queueGlazes: run.queueGlazes.slice(),
+    poolIds: run.poolIds.slice(),
+    drawIds: run.drawIds.slice(),
+    discardIds: run.discardIds.slice(),
+    handIds: run.handIds.slice(),
+    queueIds: run.queueIds.slice(),
+    grown: { ...run.grown },
     fruits: run.fruits.map((f) => ({ ...f })),
     items: run.items.slice(),
     kept: run.kept.slice(),
@@ -696,9 +729,9 @@ function copy(run: Run): Run {
 }
 
 /** Shuffle fruit and their glazes together: the glazes in the same order as the fruit. */
-function shuffleGlazed(rng: Rng, kinds: readonly FruitKind[], glazes: readonly (Glaze | null)[]): { kinds: FruitKind[]; glazes: (Glaze | null)[] } {
-  const cards = rng.shuffle(kinds.map((kind, at) => ({ kind, glaze: glazes[at] ?? null })));
-  return { kinds: cards.map((c) => c.kind), glazes: cards.map((c) => c.glaze) };
+function shuffleGlazed(rng: Rng, kinds: readonly FruitKind[], glazes: readonly (Glaze | null)[], ids: readonly number[]): { kinds: FruitKind[]; glazes: (Glaze | null)[]; ids: number[] } {
+  const cards = rng.shuffle(kinds.map((kind, at) => ({ kind, glaze: glazes[at] ?? null, id: ids[at] ?? 0 })));
+  return { kinds: cards.map((c) => c.kind), glazes: cards.map((c) => c.glaze), ids: cards.map((c) => c.id) };
 }
 
 /**
@@ -707,8 +740,27 @@ function shuffleGlazed(rng: Rng, kinds: readonly FruitKind[], glazes: readonly (
  */
 export function withGlazes(run: Run): Run {
   const plain = (kinds: readonly FruitKind[], glazes: readonly (Glaze | null)[] | undefined) => (glazes !== undefined && glazes.length === kinds.length ? glazes.slice() : kinds.map(() => null));
+  // A run kept before its fruit were numbered: the pool's are numbered now, and each fruit dealt somewhere takes the number of a
+  // fruit of its kind in the pool that none before it took.
+  const numbered = run.poolIds !== undefined && run.poolIds.length === run.pool.length;
+  const poolIds = numbered ? run.poolIds.slice() : run.pool.map((_, at) => at + 1);
+  const free = poolIds.slice();
+  const taken = (kinds: readonly FruitKind[], ids: readonly number[] | undefined) => {
+    if (numbered && ids !== undefined && ids.length === kinds.length) return ids.slice();
+    return kinds.map((kind) => {
+      const at = free.findIndex((id) => id !== 0 && run.pool[poolIds.indexOf(id)] === kind);
+      return at < 0 ? 0 : (free.splice(at, 1)[0] as number);
+    });
+  };
   return {
     ...run,
+    poolIds,
+    drawIds: taken(run.draw, run.drawIds),
+    discardIds: taken(run.discard, run.discardIds),
+    handIds: taken(run.hand, run.handIds),
+    queueIds: taken(run.queue, run.queueIds),
+    nextCard: run.nextCard ?? run.pool.length + 1,
+    grown: run.grown ?? {},
     poolGlazes: plain(run.pool, run.poolGlazes),
     drawGlazes: plain(run.draw, run.drawGlazes),
     discardGlazes: plain(run.discard, run.discardGlazes),
@@ -727,11 +779,13 @@ export function withGlazes(run: Run): Run {
  * first of that kind goes.
  */
 export function arrangeHand(run: Run, hand: readonly FruitKind[]): void {
-  const left = run.hand.map((kind, at) => ({ kind, glaze: run.handGlazes[at] ?? null }));
-  run.handGlazes = hand.map((kind) => {
+  const left = run.hand.map((kind, at) => ({ kind, glaze: run.handGlazes[at] ?? null, id: run.handIds[at] ?? 0 }));
+  const cards = hand.map((kind) => {
     const at = left.findIndex((c) => c.kind === kind);
-    return at < 0 ? null : (left.splice(at, 1)[0] as { glaze: Glaze | null }).glaze;
+    return at < 0 ? { glaze: null, id: 0 } : (left.splice(at, 1)[0] as { glaze: Glaze | null; id: number });
   });
+  run.handGlazes = cards.map((c) => c.glaze);
+  run.handIds = cards.map((c) => c.id);
   run.hand = hand.slice();
 }
 
@@ -739,23 +793,28 @@ function deal(run: Run): void {
   const rng = new Rng(run.seed);
   run.hand = [];
   run.handGlazes = [];
+  run.handIds = [];
   // The hand fills the shelf's places: a Wide fruit takes two. One that would not fit in the places left stays on top for the
   // next hand, and the first fruit under it that does fit is dealt instead, so the hand is short only when none left would fit.
   let used = 0;
   while (used < DEAL_SIZE) {
     if (run.draw.length === 0) {
-      const shuffled = shuffleGlazed(rng, run.discard, run.discardGlazes);
+      const shuffled = shuffleGlazed(rng, run.discard, run.discardGlazes, run.discardIds);
       run.draw = shuffled.kinds;
       run.drawGlazes = shuffled.glazes;
+      run.drawIds = shuffled.ids;
       run.discard = [];
       run.discardGlazes = [];
+      run.discardIds = [];
     }
     const at = run.draw.findIndex((kind) => used + slotsOf(kind) <= DEAL_SIZE);
     if (at < 0) break;
     const [next] = run.draw.splice(at, 1) as [FruitKind];
     const [glaze] = run.drawGlazes.splice(at, 1);
+    const [id] = run.drawIds.splice(at, 1);
     run.hand.push(next);
     run.handGlazes.push(glaze ?? null);
+    run.handIds.push(id ?? 0);
     used += slotsOf(next);
   }
   run.seed = rng.seed;
@@ -1104,6 +1163,8 @@ function order(run: Run, keys: Keys): void {
       run.hand.splice(to, 0, held);
       const heldGlaze = run.handGlazes.splice(run.cursor, 1)[0] ?? null;
       run.handGlazes.splice(to, 0, heldGlaze);
+      const heldId = run.handIds.splice(run.cursor, 1)[0] ?? 0;
+      run.handIds.splice(to, 0, heldId);
       sound(run, "move");
     } else sound(run, "tick");
     run.cursor = to;
@@ -1117,13 +1178,16 @@ function order(run: Run, keys: Keys): void {
     const count = dropping(run.hand);
     run.queue = run.hand.slice(0, count);
     run.queueGlazes = run.handGlazes.slice(0, count);
+    run.queueIds = run.hand.slice(0, count).map((_, at) => run.handIds[at] ?? 0);
     run.discard.push(...run.hand.slice(count));
     run.discardGlazes.push(...run.handGlazes.slice(count));
+    run.discardIds.push(...run.hand.slice(count).map((_, at) => run.handIds[count + at] ?? 0));
     // An Olive left in the basket scores for sitting the turn out (in the Blind jar too, where it is luck).
     const olives = run.hand.slice(count).filter((kind) => kind === "olive").length;
     for (let k = 0; k < olives; k++) score(run, OLIVE.benched, JAR.right - 24, RIM + 16 + k * 14, { label: "Benched", earner: FRUITS.olive.name });
     run.hand = [];
     run.handGlazes = [];
+    run.handIds = [];
     run.holding = false;
     run.chainLinks = 0;
     run.dropTimer = 0;
@@ -1191,9 +1255,10 @@ export function echoOf(tray: readonly FruitKind[], at: number): FruitKind {
 function trayRelease(run: Run, flip: boolean): void {
   if (bossNow(run) === "blind") {
     const shuffler = new Rng(run.seed);
-    const shuffled = shuffleGlazed(shuffler, run.queue, run.queueGlazes);
+    const shuffled = shuffleGlazed(shuffler, run.queue, run.queueGlazes, run.queueIds);
     run.queue = shuffled.kinds;
     run.queueGlazes = shuffled.glazes;
+    run.queueIds = shuffled.ids;
     run.seed = shuffler.seed;
   }
   const lanes = Math.max(HAND_SIZE, handSlots(run.queue));
@@ -1215,14 +1280,19 @@ function trayRelease(run: Run, flip: boolean): void {
     const made = makeFruit(run, kind, x, y);
     if (kind === "gourd") made.r = r;
     if (glaze !== null && glaze !== "ripe") made.glaze = glaze;
+    // It is that fruit of the pool, unless it dropped as another (a Kumquat's copy, a Ripe fruit a size bigger).
+    const id = run.queueIds[at] ?? 0;
+    if (kind === dealt && id !== 0) made.card = id;
     run.fruits.push(made);
     run.drops += 1;
     run.discard.push(dealt);
     run.discardGlazes.push(glaze);
+    run.discardIds.push(id);
   });
   run.seed = rng.seed;
   run.queue = [];
   run.queueGlazes = [];
+  run.queueIds = [];
   run.dropTimer = DROP_GAP;
   run.dropWait = 0;
   run.calmTime = 0;
@@ -2234,14 +2304,14 @@ function pickStep(run: Run, keys: Keys): void {
   }
   if (keys.confirm && !pointed && run.offerCursor >= 0) {
     const kind = run.offers[run.offerCursor] as FruitKind;
-    run.pool.push(kind);
-    run.poolGlazes.push(null);
+    const id = join(run, kind);
     // Shuffled into what is still to be dealt, so a new fruit shows up soon.
     const rng = new Rng(run.seed);
     // An opening pick, taken before the first hand is dealt, is dealt first, so it is in that hand.
     const at = run.opening > 0 ? 0 : rng.int(0, run.draw.length);
     run.draw.splice(at, 0, kind);
     run.drawGlazes.splice(at, 0, null);
+    run.drawIds.splice(at, 0, id);
     run.seed = rng.seed;
     run.message = "";
     sound(run, "pick");
@@ -2251,6 +2321,15 @@ function pickStep(run: Run, keys: Keys): void {
     run.message = "";
     afterPick(run);
   }
+}
+
+/** A fruit joins the pool, plain, with a number of its own: returns the number. */
+function join(run: Run, kind: FruitKind): number {
+  const id = run.nextCard++;
+  run.pool.push(kind);
+  run.poolGlazes.push(null);
+  run.poolIds.push(id);
+  return id;
 }
 
 /** After a pick is taken or skipped: the next of the picks that open a run, or the hand. */
@@ -2380,6 +2459,8 @@ function shopStep(run: Run, keys: Keys): void {
         const at = plain >= 0 ? plain : run.pool.indexOf(kind);
         run.pool.splice(at, 1);
         run.poolGlazes.splice(at, 1);
+        const [gone] = run.poolIds.splice(at, 1);
+        if (gone !== undefined) delete run.grown[gone];
         run.message = "";
         sound(run, "pick");
         shop.removing = false;
@@ -2416,8 +2497,7 @@ function shopStep(run: Run, keys: Keys): void {
   if (shop.cursor < SHOP_FRUITS) {
     const kind = shop.fruits[shop.cursor];
     if (kind == null || !pay(run, FRUIT_PRICE)) return;
-    run.pool.push(kind);
-    run.poolGlazes.push(null);
+    join(run, kind);
     shop.fruits[shop.cursor] = null;
     run.message = "";
     sound(run, "pick");
@@ -2559,11 +2639,13 @@ function nextCycle(run: Run): void {
   if (run.items.includes("pickling")) for (const f of run.fruits) Object.assign(f, { pickled: true, rotten: false });
   run.kept = [];
   const rng = new Rng(run.seed);
-  const shuffled = shuffleGlazed(rng, run.pool, run.poolGlazes);
+  const shuffled = shuffleGlazed(rng, run.pool, run.poolGlazes, run.poolIds);
   run.draw = shuffled.kinds;
   run.drawGlazes = shuffled.glazes;
+  run.drawIds = shuffled.ids;
   run.discard = [];
   run.discardGlazes = [];
+  run.discardIds = [];
   run.seed = rng.seed;
   const boss = bossNow(run);
   // The rent board shows the cycle and its rent; only a boss jar's rule needs saying.
