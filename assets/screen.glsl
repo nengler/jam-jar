@@ -1,5 +1,7 @@
 // The whole screen, as the last thing drawn (src/Main.tsx). Two things are always on: the corners fall away into the dark, as a
-// kitchen lit by one lamp, and every pixel is put back on the game's palette (Apollo: the `lookup`, assets/apollo.png), with a
+// kitchen lit by one lamp, and every pixel is put on the screen's palette (the `lookup`, assets/screen-palette.png: 26 of
+// the art's 46 colours, tools/palette/screen.hex: fifteen for everything, and eleven more that only the fruit are drawn in, so
+// the fruit keep their colours), with a
 // dither where a colour lies between two of them, so what the game blends (a dimmed screen, a tint, a flash) is still drawn
 // in the art's own colours. Two more come and go with the run:
 //
@@ -15,6 +17,9 @@
 //              Flip: the dark hangs from the side the pile falls away from (params[5]: 1 while gravity is turned over), and
 // params[6]    the screen smears up and down for a moment as gravity turns, 1 fading to 0.
 //
+// params[7]  where the lamp's pool of light is, across, in game pixels (0: none): a warm light over the jar, falling off
+//            into the wall through the dither.
+//
 // It works by the art's pixels (two game pixels square), so the dither is as coarse as the art.
 
 const vec2 GAME = vec2(640.0, 360.0);
@@ -24,7 +29,7 @@ const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0
 
 /** The palette's colour for `rgb` at the art pixel `q`: the nearest, or the next nearest by the dither when it lies between. */
 vec3 onPalette(vec3 rgb, vec2 q) {
-  // The palette is the lookup: one pixel a colour (assets/apollo.png, which tools/make-assets.py writes from the palette's file).
+  // The palette is the lookup: one pixel a colour (assets/screen-palette.png, which tools/make-assets.py writes from its file).
   int count = textureSize(lookup, 0).x;
   vec3 first = texelFetch(lookup, ivec2(0, 0), 0).rgb;
   vec3 second = first;
@@ -77,6 +82,13 @@ vec4 effect(vec2 uv) {
   // The last turn: the edges darken and warm, as the light goes.
   float last = params[1] * smoothstep(0.6, 1.3, out_);
   rgb = mix(rgb, rgb * vec3(1.05, 0.62, 0.42), last * 0.75);
+
+  // The lamp's pool of light, over the jar: warm, and gone within a couple of hundred pixels.
+  if (params[7] > 0.0) {
+    vec2 from = (at - vec2(params[7], 200.0)) / vec2(190.0, 230.0);
+    float pool = 1.0 - smoothstep(0.25, 1.0, length(from));
+    rgb += pool * 0.075 * vec3(1.0, 0.85, 0.6);
+  }
 
   // The lamp: the corners fall away into the dark.
   float dark = smoothstep(0.95, 1.5, out_) * 0.5;

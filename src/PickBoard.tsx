@@ -10,7 +10,7 @@ import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
 import { type Run } from "./rules/jar.ts";
 import type { Lesson } from "./rules/tutorial.ts";
-import { CARD_SLICE, cardFor, DISPLAY, DISPLAY_SIZE, fruitImageSize, INK, INK_SOFT, KEYWORD, SHADE } from "./theme.ts";
+import { CARD_SLICE, cardFor, DISPLAY, DISPLAY_SIZE, fruitImageSize, INK, INK_SOFT, KEYWORD, SHADE_SOFT } from "./theme.ts";
 
 /** The pick: three cards across the middle. */
 const OFFER_W = 184;
@@ -73,7 +73,7 @@ export function PickBoard({ run, paused, hints, keys, coached, onChoose, onAway,
     );
   return (
     <Layer shader="dissolve.glsl" params={[dissolved(time)]}>
-      <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
+      <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE_SOFT} />
       <Flex left={0} right={0} top={12} bottom={0} direction="column" alignItems="center" gap={8}>
         <Flex direction="row" justifyContent="center" height={32}>
           <Letters text={pickHeading(run)} seed={5} />

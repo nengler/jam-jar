@@ -1,10 +1,11 @@
-import { Entity, Flex, Shape, Text } from "@tsengine/runtime/jsx";
+import { Flex, Layer, Shape, Text, useTime } from "@tsengine/runtime/jsx";
 
 import { Dialog, Rule } from "./Board.tsx";
 import { EndBoard } from "./EndBoard.tsx";
 import { TapButton } from "./KeyHint.tsx";
 import { RENT, rentFor, type Run } from "./rules/jar.ts";
-import { GOOD, INK_SOFT, SHADE } from "./theme.ts";
+import { dissolved } from "./layout.ts";
+import { GOOD, INK_SOFT, SHADE_SOFT } from "./theme.ts";
 
 interface CycleEndProps {
   run: Run;
@@ -19,9 +20,11 @@ interface CycleEndProps {
 export function CycleEnd({ run, keys, onGoOn, onAgain, onTitle }: CycleEndProps) {
   const rent = rentFor(run);
   const finished = run.phase === "over" || run.phase === "won";
+  // The board fills in from the top as it comes up (assets/dissolve.glsl), over a kitchen that has receded.
+  const time = useTime();
   return (
-    <Entity>
-      <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
+    <Layer shader="dissolve.glsl" params={[dissolved(time)]}>
+      <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE_SOFT} />
       <Flex left={0} right={0} top={0} bottom={0} direction="column" alignItems="center" justifyContent="center">
         {finished && <EndBoard run={run} rent={rent} keys={keys} onAgain={onAgain} onTitle={onTitle} />}
         {!finished && (
@@ -49,6 +52,6 @@ export function CycleEnd({ run, keys, onGoOn, onAgain, onTitle }: CycleEndProps)
           </Flex>
         )}
       </Flex>
-    </Entity>
+    </Layer>
   );
 }

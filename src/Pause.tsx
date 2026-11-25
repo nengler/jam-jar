@@ -4,7 +4,7 @@ import { KeyHint } from "./KeyHint.tsx";
 import { PushButton } from "./PushButton.tsx";
 import { useGame } from "./GameState.ts";
 import { Dialog, Rule } from "./Board.tsx";
-import { INK, SHADE } from "./theme.ts";
+import { INK, SHADE_SOFT } from "./theme.ts";
 
 /** The room each key of the list takes: as wide as the widest (Space, Enter). */
 const KEY_W = 72;
@@ -20,7 +20,7 @@ export function Pause() {
   const { resume, toTitle } = useGame.actions();
   return (
     <Entity>
-      <Flex modal width={640} height={360} paddingBottom={24} background={SHADE} alignItems="center" justifyContent="center">
+      <Flex modal width={640} height={360} paddingBottom={24} background={SHADE_SOFT} alignItems="center" justifyContent="center">
         <Flex width={256} direction="column" alignItems="stretch">
           <Dialog title="Paused" still>
             <Menu gap={8} alignItems="stretch" onBack={resume}>

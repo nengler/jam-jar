@@ -1,4 +1,4 @@
-import { Entity, Flex, Shape, Sprite, Text, useInput, useInputDevice, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Layer, Shape, Sprite, Text, useInput, useInputDevice, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
 import { Panel } from "./Board.tsx";
@@ -10,7 +10,7 @@ import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { PauseButton } from "./KeyHint.tsx";
 import { Lanes } from "./Lanes.tsx";
 import { LastTurn } from "./LastTurn.tsx";
-import { atRest, bossCode, crossed, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, moodOf, opensAt, shelfSlot, startingRun } from "./layout.ts";
+import { atRest, bossCode, crossed, fading, recedeParams, RECEDE_TIME, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, moodOf, opensAt, shelfSlot, startingRun } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { PickBoard } from "./PickBoard.tsx";
 import { BOARD_W, HUD_X, JAR_MID, SHELF_Y, shelfOf, SLOT } from "./places.ts";
@@ -87,7 +87,7 @@ export function Play() {
   // `slow` is the seconds of slow motion left, in the game's own (slowed) time.
   // A run read from the player's files goes on where it was kept; otherwise a new one.
   const savedRun = useGame((g) => g.savedRun);
-  const s = useMutable({ run: startingRun(savedRun, seed, tutorial >= LESSONS.length, tutorial < LESSONS.length), reports: [] as FruitReport[], slow: 0, hit: 0, punch: 99, punchSize: 0, seenPopup: 0, peek: false, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0 });
+  const s = useMutable({ run: startingRun(savedRun, seed, tutorial >= LESSONS.length, tutorial < LESSONS.length), reports: [] as FruitReport[], slow: 0, hit: 0, punch: 99, punchSize: 0, seenPopup: 0, peek: false, point: -1, click: false, drop: false, whole: false, tip: false, away: false, poolAt: -1, intro: savedRun === null ? 0 : 99, roll: 99, dealt: "", last: 99, moveQuiet: 0, wasShown: false, lessonSeen: -1, lessonHand: "", lessonCursor: 0, drag: false, dragMoved: false, dragX: 0, tiltFrom: 0, tiltTo: 0, tiltT: TILT_TIME, heardLinks: 0, recede: 0 });
   const playLand = useSound("land.wav");
   const playMerge = useSound("merge.wav");
   const playBoom = useSound("boom.wav");
@@ -249,6 +249,9 @@ export function Play() {
     // three times while F is held. What the player decides at (ordering, the pick, the shop) is never hurried.
     const busy = s.run.phase === "drop" || s.run.phase === "settle" || s.run.phase === "tally";
     const pace = s.hit > 0 && busy ? HIT_SPEED : s.slow > 0 ? SLOW_SPEED : !busy ? 1 : input.down("F") ? HURRY_SPEED : fast ? FAST_SPEED : 1;
+    // The kitchen recedes while something is up over it, and comes back after.
+    const covered = (s.run.phase === "pick" && !s.peek && !(opensAt(s.run) && s.intro < INTRO.end)) || s.run.phase === "rent" || s.run.phase === "over" || s.run.phase === "won" || s.whole;
+    s.recede = Math.max(0, Math.min(1, s.recede + (covered ? dt : -dt) / RECEDE_TIME));
     if (pace !== speed) setSpeed(pace);
     // What the whole screen shows of the run (Main.tsx): its last turn, the rent missed.
     if (moodOf(s.run) !== mood) setMood(moodOf(s.run));
@@ -424,6 +427,9 @@ export function Play() {
   return (
     <Lit.Provider value={lit}>
     <Entity>
+      {/* The kitchen and everything in it is one layer: when something comes up over it (the pick, a board, the pause menu) it
+          recedes to a few colours (assets/recede.glsl). */}
+      <Layer shader="recede.glsl" params={recedeParams(paused ? 1 : s.recede)}>
       <Backdrop />
 
       {/* The jar, what is drawn on it and its points: all raised together when it is picked out. */}
@@ -440,10 +446,13 @@ export function Play() {
       {popups.filter((p) => p.quiet === true).map((p) => (
         <Shape key={p.id} kind="rect" x={Math.round(p.x - (p.text.length * LINE_CHAR) / 2 - 8)} y={Math.round(p.y) - 2} width={p.text.length * LINE_CHAR + 16} height={LINE_H} color={LINE_BAND} />
       ))}
-      {popups.map((p) => (
-        <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={Math.round(DISPLAY_SIZE * popupScale(p))} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={p.big === true ? 4 : 2} shadowY={p.big === true ? 4 : 2}>
+{/* Each fades out over its last quarter second, which the screen's shader draws as a dither. */}
+            {popups.map((p) => (
+        <Entity key={p.id} opacity={fading(p.life)}>
+        <Text x={p.x} y={p.y} align="center" font={DISPLAY} size={Math.round(DISPLAY_SIZE * popupScale(p))} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={p.big === true ? 4 : 2} shadowY={p.big === true ? 4 : 2}>
           {p.text}
         </Text>
+        </Entity>
       ))}
       </Raise>
 
@@ -513,6 +522,8 @@ export function Play() {
       <Flex right={HUD_X} bottom={PAUSE_FOOT - 240 * (1 - popIn(s.intro, INTRO.right, INTRO.pop))}>
         <PauseButton pressKey={s.whole || s.run.phase === "over" || s.run.phase === "won" ? undefined : "Escape"} onPress={tapPause} />
       </Flex>
+
+      </Layer>
 
       {picking && !(opensAt(run) && s.intro < INTRO.end) && <PickBoard run={run} paused={paused} hints={hints} keys={keys} coached={coached} onChoose={click} onAway={away} onTake={tapConfirm} onSkip={tapDrop} onLessonNext={lessonNext} onLessonSkip={lessonSkip} peek={s.peek} onPeek={tapPeek} />}
       {ended && <CycleEnd run={run} keys={keys} onGoOn={tapEnd} onAgain={tapAgain} onTitle={tapTitle} />}
