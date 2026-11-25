@@ -248,7 +248,7 @@ export function Play() {
     const busy = s.run.phase === "drop" || s.run.phase === "settle" || s.run.phase === "tally";
     const pace = s.hit > 0 && busy ? HIT_SPEED : s.slow > 0 ? SLOW_SPEED : !busy ? 1 : input.down("F") ? HURRY_SPEED : fast ? FAST_SPEED : 1;
     if (pace !== speed) setSpeed(pace);
-    // What the whole screen shows of the run (Main.tsx): its last turn, the rent missed, the rent paid.
+    // What the whole screen shows of the run (Main.tsx): its last turn, the rent missed.
     if (moodOf(s.run) !== mood) setMood(moodOf(s.run));
     const heard = s.run.sounds;
     // Each at its own level; the engine scales them all by the player's sounds setting.

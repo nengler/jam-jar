@@ -7,10 +7,10 @@ import { LESSONS } from "./rules/tutorial.ts";
 type Screen = "title" | "settings" | "play";
 
 /**
- * What the run is going through that the whole screen shows (assets/screen.glsl): the last turn of a cycle, the rent missed, the
- * rent paid, or nothing.
+ * What the run is going through that the whole screen shows (assets/screen.glsl): the last turn of a cycle, the rent missed, or
+ * nothing.
  */
-export type Mood = "" | "last" | "over" | "paid";
+export type Mood = "" | "last" | "over";
 
 /**
  * The game's state, in one place: which screen shows and whether play is paused. A component reads one value with

@@ -299,9 +299,19 @@ SOUNDS = {
 }
 
 
+def write_palette() -> None:
+    """The palette as a picture one pixel high, a colour a pixel in the file's order: what the screen's shader snaps every
+    colour to (assets/screen.glsl reads it as its `lookup`), so the shader's palette is the art's."""
+    colours = [tuple(int(line[i : i + 2], 16) for i in (0, 2, 4)) for line in (ROOT / "tools" / "palette" / "apollo.hex").read_text().split()]
+    picture = Image.new("RGBA", (len(colours), 1))
+    picture.putdata([(*colour, 255) for colour in colours])
+    picture.save(ASSETS / "apollo.png")
+
+
 def main() -> None:
     ASSETS.mkdir(exist_ok=True)
     pictures = write_pictures()
+    write_palette()
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
     write_score_notes()

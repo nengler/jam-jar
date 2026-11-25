@@ -9,7 +9,7 @@ Built on the [tse engine](https://github.com/nengler/tse). The design doc is the
 
 ## Running it
 
-The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.23.0), with
+The engine isn't on npm yet, so `package.json` points at the packs attached to a tse GitHub release (v0.24.0), with
 `overrides` so the packs' own dependencies on each other resolve to the same release:
 
 ```sh
@@ -61,7 +61,7 @@ changes them.
 
 The screens word their prompts by what the player is using, whichever was pressed last: a keyboard is told its keys, a
 mouse or a finger to tap and drag, and no key is named to a player who has not pressed one (the engine's `useInputDevice`).
-The whole screen is drawn through a shader (`assets/screen.glsl`): the corners fall away into the dark, every pixel is put back on the palette with a dither, the edges warm on a cycle's last turn, a band of gold crosses when the rent is paid, and the colour drains when it is missed. The settings' Screen row turns it off (Plain). Special fruit and blasts have shaders of their own (`assets/fruit.glsl`, `assets/blast.glsl`). `tse screenshot --gpu` shows them; the plain `tse screenshot` and the tests run none.
+The whole screen is drawn through a shader (`assets/screen.glsl`): the corners fall away into the dark, every pixel is put back on the palette (`assets/apollo.png`, written from `tools/palette/apollo.hex`) with a dither, the edges warm on a cycle's last turn, and the colour drains when the rent is missed. The settings' Screen row turns it off (Plain). Special fruit and blasts have shaders of their own (`assets/fruit.glsl`, `assets/blast.glsl`). `tse screenshot --gpu` shows them; the plain `tse screenshot` and the tests run none.
 
 For a player at a keyboard, the keys for the pick and the shop are on screen the first time each comes up and not again;
 the pause menu always lists them. That, and the two volumes on the settings screen (music and sounds, 0 to 10), are the
