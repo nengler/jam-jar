@@ -319,17 +319,68 @@ def write_palette() -> None:
     picture.save(ASSETS / "screen-palette.png")
 
 
+# The paper's grain (assets/grain.png): the paper's colour and the darker tone its patches are, both on the screen's palette.
+PAPER = (0xE7, 0xD5, 0xB3)
+PAPER_WORN = (0xD7, 0xB5, 0x94)
+# How big the grain's picture is, in art pixels: more than the biggest paper (a dialog), with room to start it somewhere else on each.
+GRAIN_SIZE = (400, 240)
+# The 4 x 4 ordered dither, and how much it is turned down, as assets/screen.glsl has them.
+BAYER = (0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5)
+CALM = 1.25
+
+
+def write_grain() -> None:
+    """The paper's grain: patches a little darker, dithered in the paper's two tones, clear elsewhere. It is drawn over the
+    paper of a board, a card or a dialog (`Grain` in src/Board.tsx), under what is on it, so it moves with the paper as the
+    paper slides in. It was the screen's shader's once, worked out at each place on the screen, so it stood still while the
+    board went by under it."""
+
+    def at(x: float, y: float) -> float:
+        return math.sin(x * 127.1 + y * 311.7) * 43758.5453 % 1.0
+
+    def grain(x: float, y: float) -> float:
+        cx, cy = math.floor(x), math.floor(y)
+        fx, fy = x - cx, y - cy
+        fx, fy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
+        top = at(cx, cy) + (at(cx + 1, cy) - at(cx, cy)) * fx
+        bottom = at(cx, cy + 1) + (at(cx + 1, cy + 1) - at(cx, cy + 1)) * fx
+        return top + (bottom - top) * fy
+
+    def smoothstep(a: float, b: float, x: float) -> float:
+        t = min(1.0, max(0.0, (x - a) / (b - a)))
+        return t * t * (3 - 2 * t)
+
+    width, height = GRAIN_SIZE
+    picture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    pixels = picture.load()
+    for y in range(height):
+        for x in range(width):
+            # The middle of the art pixel, in screen pixels, as the shader measured it.
+            mx, my = x * PX + 1, y * PX + 1
+            worn = grain(mx / 38, my / 38) * 0.65 + grain(mx / 13, my / 13) * 0.35
+            amount = 0.55 * smoothstep(0.42, 0.85, worn)
+            # The nearer of the two tones, and how far along the way to the other this pixel is.
+            darker = amount > 0.5
+            along = 1 - amount if darker else amount
+            along = min(1.0, max(0.0, 0.5 + (along - 0.5) * CALM))
+            other = along > (BAYER[x % 4 + (y % 4) * 4] + 0.5) / 16
+            if darker != other:
+                pixels[x, y] = (*PAPER_WORN, 255)
+    picture.resize((width * PX, height * PX), Image.NEAREST).save(ASSETS / "grain.png")
+
+
 def main() -> None:
     ASSETS.mkdir(exist_ok=True)
     pictures = write_pictures()
     write_palette()
+    write_grain()
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
     write_score_notes()
     write_last_turn()
     write_entrance_sounds()
     write_chain_tier()
-    print(f"wrote {pictures} pictures and {len(SOUNDS)} sounds (the music among them), and made the tally's notes, the chain's tier and the entrance sounds")
+    print(f"wrote {pictures} pictures and {len(SOUNDS)} sounds (the music among them), and made the paper's grain, the tally's notes, the chain's tier and the entrance sounds")
 
 
 if __name__ == "__main__":

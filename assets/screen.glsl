@@ -63,8 +63,8 @@ vec3 onPalette(vec3 rgb, vec2 q) {
   return along > (BAYER[at] + 0.5) / 16.0 ? second : first;
 }
 
-// A number from 0 to 1 for each point of a grid, the same every time, and the same smoothed between the grid's points: the
-// paper's grain.
+// A number from 0 to 1 for each point of a grid, the same every time, and the same smoothed between the grid's points: where
+// the glass's bands wander. (The paper's grain is a picture, assets/grain.png, drawn on the paper so it moves with it.)
 float grainAt(vec2 cell) {
   return fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -85,15 +85,6 @@ vec4 effect(vec2 uv) {
   vec2 d = (at - GAME / 2.0) / (GAME / 2.0);
   float out_ = length(d);
   vec3 rgb = c.rgb;
-
-  // Paper (a board, a card, a key cap) has a grain: patches a little darker, which come out as a dither in the paper's two
-  // colours. Only the paper's own colour is touched, so what is written on it stays clean.
-  vec3 paper = vec3(0.906, 0.835, 0.702);
-  vec3 off = rgb - paper;
-  if (dot(off, off) < 0.0004) {
-    float worn = grain(at / 38.0) * 0.65 + grain(at / 13.0) * 0.35;
-    rgb = mix(rgb, vec3(0.843, 0.710, 0.580), 0.55 * smoothstep(0.42, 0.85, worn));
-  }
 
   // The Flip jar, as gravity turns: the picture is dragged up and down for a moment.
   float smear = params[6];
