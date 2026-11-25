@@ -1907,7 +1907,9 @@ function simmer(run: Run, tally: Tally): void {
       // For each fruit under it: lower than it and overlapping it across, as a Durian counts what lies over it.
       points = GRAPEFRUIT.perFruit * run.fruits.filter((o) => o !== f && o.landed && o.y > f.y + f.r * 0.5 && Math.abs(o.x - f.x) < f.r + o.r).length;
     } else if (f.kind === "cranberry") {
-      points = soaked(run, f) ? FRUITS.cranberry.points : 0;
+      // Afloat: in the liquid at all. In lime juice a fruit rides half out of it, its middle at the surface, so `soaked` (its
+      // middle under the surface) would say a floating Cranberry was dry.
+      points = run.juice > 0 && f.y + f.r > surface(run) ? FRUITS.cranberry.points : 0;
     }
     if (f.honeyed) points += HONEY_POINTS;
     // Each Simmer score is a link of the chain, so a garden reaches the tiers at its tally.

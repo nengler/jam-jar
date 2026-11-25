@@ -194,7 +194,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   kumquat: { name: "Kumquat", radius: FRUIT_ART.kumquat.radius, points: 4, scoring: "fresh", touchWeight: 1, text: "Fresh 4. Echo." },
   grapefruit: { name: "Grapefruit", radius: FRUIT_ART.grapefruit.radius, points: GRAPEFRUIT.perFruit, scoring: "simmer", touchWeight: 1, text: `Simmer ${GRAPEFRUIT.perFruit} per fruit under it.` },
   sprig: { name: "Sprig", radius: FRUIT_ART.sprig.radius, points: 2, scoring: "fresh", touchWeight: 1, text: "Fresh 2. Each turn, Bud." },
-  cranberry: { name: "Cranberry", radius: FRUIT_ART.cranberry.radius, points: 12, scoring: "simmer", touchWeight: 1, text: "Afloat: Simmer 12." },
+  cranberry: { name: "Cranberry", radius: FRUIT_ART.cranberry.radius, points: 16, scoring: "simmer", touchWeight: 1, text: "Afloat: Simmer 16." },
   giantpumpkin: { name: "Giant Pumpkin", radius: FRUIT_ART.giantpumpkin.radius, points: 75, scoring: "fresh", heavy: 4, touchWeight: 1, text: "Fresh 75. Shockwave, then it vanishes." },
 };
 

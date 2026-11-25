@@ -196,7 +196,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   place of a pick about one time in twelve, and is never in the shop.
 - Eat and grow: the Pitaya eats one Cherry it touches a turn, and every Pitaya scores 1 more for the rest of the run.
 - Juice: liquid pools at the bottom of the jar, and what sits in it is changed by it.
-  - A Lime that is Exploded or Crushed leaves lime juice 20 pixels deep. Fruit in lime juice float: they rise and come to
+  - A Lime leaves lime juice 20 pixels deep as it lands, and again if it is Exploded or Crushed. Fruit in lime juice float: they rise and come to
     rest half out of it (so they are off the floor and away from the Juicer, off the floor for an Apple's Edge, and nearer the rim).
   - A Coconut is Heavy, so it sinks and shoulders its way down. At its second Resolve it cracks open and is gone, leaving
     milk 20 deep; so it does at once when a Coconut lands on it, a Pumpkin Plunges into it or a blast catches it. Fruit that sit in milk score double.
@@ -364,12 +364,20 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     | Kumquat | Fresh 4. Echo: it drops as a copy of the fruit to its right in the tray | -70 as dealt; -7 put beside the biggest landing | Melon: +818 (Melon alone +688) |
     | Grapefruit | Simmer 3 per fruit under it | -31 (at 2: -137; at 4: +75) | Sprig: +136 |
     | Sprig | Fresh 2. Each turn, Bud: a Cherry grows beside it, while the pile is more than 48 pixels under the rim | +131 | Pitaya: +271 |
-    | Cranberry | Afloat: Simmer 12, only in juice or milk | -345 (it never floats) | Coconut: -57 (alone -106). Lime and Chili: -203 |
+    | Cranberry | Afloat: Simmer 16, only in juice or milk | -388 (it never floats) | Coconut: +96 (alone -106). Lime: -204 (alone -299) |
 
   The Kumquat was first built to make its neighbour score its landing twice: a landing is the smallest score there is, and
   it was worth nothing (-277, and it cost a Melon build half its points). The Olive and the Kumquat are about the tray, so
   the bots were given `/bench` for them: an Olive goes in the basket, a Kumquat beside the fruit with the biggest landing.
-  A Melon taken whenever it is offered is +688 a run by itself, the most of any fruit now.
+  A Melon taken whenever it was offered was +688 a run by itself, the most of any fruit: it took a place in one pick in
+  ten, set when a run had about 10 picks, and a run has about 22 now, so it showed the two Melons a Melon needs. It is one
+  pick in twenty (`MELON_CHANCE`): +320, and +438 with a Kumquat beside it. The Dragonfruit's chance was halved with it.
+
+  The Cranberry needed juice and nothing made any: a Lime poured only when blown up or crushed. A Lime pours as it lands now,
+  and a Cranberry counts as afloat when it is in the liquid at all (in lime juice a fruit rides half out of it, and was
+  taken for dry). At Simmer 12 it was still -361 with a Lime and -64 with a Coconut; at 20, -127 and +218; it is 16. The
+  Lime itself is no better for pouring (-299 alone), so a Lime and a Cranberry together still cost points: the Lime is the
+  next fruit to look at.
 - Countdowns: a fruit in the jar that is counting down wears the number of turns it has left, in a small dark disc at its
   lower left (`countdowns`, `TurnsMark.tsx`): a frozen fruit until it thaws (an ice-blue ring), a Coconut until it cracks
   (light), a Banana until it rots (brown). A frozen build is timed by that number, and it was nowhere on screen.

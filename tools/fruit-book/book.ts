@@ -404,10 +404,10 @@ export const BOOK: Readonly<Record<FruitKind, BookEntry>> = {
     family: "Juice and grow",
     roles: ["Situational"],
     works: [
-      ["Lime", "blown up or crushed, it leaves the juice"],
+      ["Lime", "pours the juice as it lands"],
       ["Coconut", "its milk floats it, and doubles it"],
     ],
-    gap: "Nothing without juice or milk in the jar, which most runs never have.",
+    gap: "Nothing without juice or milk in the jar. With a Lime it still costs points, because the Lime does.",
   },
 };
 
