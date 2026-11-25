@@ -7,7 +7,7 @@ import { createSettings } from "@tsengine/runtime";
  */
 export const settings = createSettings({
   name: "settings",
-  defaults: { music: 0.4, effects: 0.8, fast: false, learned: [] as string[], tutorial: 0 },
+  defaults: { music: 0.4, effects: 0.8, fast: false, styled: true, learned: [] as string[], tutorial: 0 },
 });
 
 /** A volume as the settings screen shows it, 0 to 10. */
@@ -30,6 +30,15 @@ export function fastPlay(): boolean {
 
 export function toggleFast(): void {
   settings.set({ fast: !settings.get().fast });
+}
+
+/** Whether the whole screen is drawn through its shader (the settings screen's Screen row; assets/screen.glsl). A file from before the setting has none: styled. */
+export function styledScreen(): boolean {
+  return settings.get().styled !== false;
+}
+
+export function toggleStyled(): void {
+  settings.set({ styled: !styledScreen() });
 }
 
 /** The moments already learned. The same list until it changes, so a component that reads it is not drawn again for nothing. */

@@ -134,7 +134,7 @@ export function Fruit({ id, kind, r, x0, y0, rotten, honeyed, pickled, frozen, h
   const grow = r / FRUITS[kind].radius;
   return (
     <Entity x={leanX(x, y, lean, JAR.right, JAR.floor)} y={leanY(x, y, lean, JAR.right, JAR.floor) + sink} scaleX={grow * (1 + s.squash)} scaleY={grow * (1 - s.squash)}>
-      <FruitBall kind={kind} x={0} y={0} turn={s.turn + lean} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} />
+      <FruitBall kind={kind} x={0} y={0} turn={s.turn + lean} rotten={rotten} honeyed={honeyed} pickled={pickled} frozen={frozen} lit={lit} glow={glow} glaze={glaze} seed={id} />
       {glaze !== undefined && <GlazeMark glaze={glaze} x={FRUITS[kind].radius * 0.65} y={-FRUITS[kind].radius * 0.65} />}
     </Entity>
   );

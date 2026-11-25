@@ -1,6 +1,7 @@
+import type { Mood } from "./GameState.ts";
 import { BANANA, FRUITS, pumpkinSeedText, type FruitKind } from "./rules/fruits.ts";
 import { GLAZES, type Glaze } from "./rules/glazes.ts";
-import { BOSS_NAME, bossNow, COCONUT_TURNS, FROZEN_TURNS, JAR, newRun, OPENING_PICKS, RENT, withGlazes, type Run } from "./rules/jar.ts";
+import { BOSS_NAME, bossNow, COCONUT_TURNS, FROZEN_TURNS, JAR, TURNS_PER_CYCLE, newRun, OPENING_PICKS, RENT, withGlazes, type Run } from "./rules/jar.ts";
 import { KEYWORDS, keywordsIn } from "./rules/terms.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
@@ -503,4 +504,44 @@ export function countdowns(run: Run): Countdown[] {
     // Inside the jar: a fruit on the floor or against the left wall has its badge moved in from them.
     return [{ id: f.id, x: Math.round(Math.max(JAR.left + COUNT_INSET, f.x - f.r * 0.7)), y: Math.round(Math.min(JAR.floor - COUNT_INSET, f.y + f.r * 0.7)), turns, what }];
   });
+}
+
+/** How many seconds a blast's ripple takes to run out through the jar (assets/blast.glsl): as long as its picture shows. */
+const RIPPLE_TIME = 0.5;
+
+/**
+ * What the jar's shader is given (assets/blast.glsl): the two newest blasts, each as where it is on screen and how far through
+ * its ripple it is (0 to 1), then how far apart a big score splits the colours, in pixels. `angle` is the jar's lean, which
+ * moves a blast as it moves the fruit.
+ */
+export function blastParams(blasts: readonly { x: number; y: number; age: number }[], angle: number, cx: number, cy: number, split: number): number[] {
+  const newest = leaned(blasts.filter((b) => b.age < RIPPLE_TIME), angle, cx, cy).sort((a, b) => a.age - b.age);
+  const [a, b] = newest;
+  // The first step of a blast is at age 0, which the shader reads as none: it starts a hair in.
+  const through = (blast: { age: number }) => Math.max(0.001, blast.age / RIPPLE_TIME);
+  return [a?.x ?? 0, a?.y ?? 0, a === undefined ? 0 : through(a), b?.x ?? 0, b?.y ?? 0, b === undefined ? 0 : through(b), Math.round(split), 0];
+}
+
+/** Seconds the last turn's light takes to go, the colour takes to drain when the rent is missed, and the gold takes to cross when it is paid. */
+const MOOD_TIME: Readonly<Record<Mood, number>> = { "": 0, last: 0.8, over: 1.2, paid: 0.9 };
+
+/**
+ * What the whole screen's shader is given (assets/screen.glsl): whether it is on, and how far each of the run's moods has come,
+ * `time` seconds after the mood began. A missed rent comes at the end of a last turn, so its edges stay dark while it drains.
+ */
+export function screenParams(styled: boolean, mood: Mood, time: number): number[] {
+  if (!styled) return [0, 0, 0, 0];
+  const through = mood === "" ? 0 : Math.max(0, Math.min(1, time / MOOD_TIME[mood]));
+  return [1, mood === "last" ? through : mood === "over" ? 1 : 0, mood === "over" ? through : 0, mood === "paid" && through < 1 ? Math.max(0.001, through) : 0];
+}
+
+/** The mood of a run, for the whole screen: its last turn while it is played, the rent missed (from the moment the jar settles short of it), or the rent paid. */
+export function moodOf(run: Run): Mood {
+  const after = run.phase === "tally" ? run.afterTally : run.phase;
+  if (after === "over") return "over";
+  if (run.phase === "rent") return "paid";
+  const playing = run.phase === "order" || run.phase === "drop" || run.phase === "settle" || run.phase === "tally";
+  // Resolve has counted the next turn by the tally: the turn being tallied is the one before.
+  const turn = run.phase === "tally" && after !== "rent" ? run.turn - 1 : run.turn;
+  return playing && turn >= TURNS_PER_CYCLE ? "last" : "";
 }

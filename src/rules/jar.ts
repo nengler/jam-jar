@@ -142,6 +142,23 @@ const POPUP_LIFE = 0.9;
 /** About how wide a popup's character is on screen, and a popup's line, in pixels. */
 const POPUP_CHAR = 15;
 const POPUP_LINE = 22;
+/**
+ * A big score is written bigger (Play.tsx): one of `PUNCH_FROM` points or more, and one of `PUNCH_FULL`. They are here because a
+ * popup's place depends on how wide it is drawn.
+ */
+export const PUNCH_FROM = 20;
+export const PUNCH_FULL = 50;
+const POPUP_GROW = [1.25, 1.5] as const;
+
+/** How much bigger than the plain lettering a popup is drawn: twice for a Plunge's burst, and a little for a big score. */
+export function popupScale(p: { points: number; big?: boolean }): number {
+  return p.big === true ? 2 : p.points >= PUNCH_FULL ? POPUP_GROW[1] : p.points >= PUNCH_FROM ? POPUP_GROW[0] : 1;
+}
+
+/** About how wide a popup is on screen, in pixels, and how tall its line. */
+function popupWidth(p: { text: string; points: number; big?: boolean }): number {
+  return p.text.length * POPUP_CHAR * popupScale(p);
+}
 /** How fast a popup rises once it shows, in pixels a second. */
 const POPUP_RISE = 36;
 /** A chain: a Blast within this many seconds of the last one. And a big Blast: one that destroys at least this many fruit. */
@@ -170,6 +187,11 @@ export const PULSE = 0.35;
 const TALLY_STEP = 0.22;
 const TALLY_MOST = 2.2;
 const TALLY_HOLD = 0.5;
+/**
+ * And the pause after a turn's last score before something comes up over the jar (the pick's cards, the rent board), so the
+ * score can be seen before it is covered. The next hand, which covers nothing, still follows after `TALLY_HOLD`.
+ */
+const COVER_HOLD = 1.5;
 /** How long a blast's explosion (9 frames) shows, in seconds. */
 export const BOOM_LIFE = 0.54;
 
@@ -758,23 +780,36 @@ function score(run: Run, scored: number, x: number, y: number, why: Why = {}): P
 
 /** A popup at (x, y): kept inside the jar's walls and under its rim, and moved clear of any popup already there, so two never sit on each other. */
 function say(run: Run, x: number, y: number, text: string, points = 0, big = false): Popup {
-  const half = Math.min((JAR.right - JAR.left) / 2, text.length * POPUP_CHAR * (big ? 2 : 1)) / 2 + 4;
+  // Its whole width is kept inside the walls, at the size it is drawn at; one wider than the jar stands in its middle.
+  const sized = { text, points, big };
+  const half = Math.min(JAR.right - JAR.left, popupWidth(sized) + 8) / 2;
   const px = Math.max(JAR.left + half, Math.min(JAR.right - half, x));
+  const line = POPUP_LINE * popupScale(sized);
   // It rises while it shows, and should still be inside the jar when it fades: one that would start too near the rim (a pile up to
   // the top, or the Flip jar's pile lying on its lid) starts lower, over the fruit, and makes room downwards.
   const top = RIM + POPUP_RISE * POPUP_LIFE + 4;
-  const step = y < top ? POPUP_LINE : -POPUP_LINE;
+  const free = (at: number): boolean => !run.popups.some((p) => Math.abs(p.x - px) < besides(p, sized) && Math.abs(p.y - at) < Math.max(line, POPUP_LINE * popupScale(p)));
   let py = Math.max(y, top);
-  for (let tries = 0; tries < 6 && run.popups.some((p) => Math.abs(p.x - px) < besides(p.text, text) && Math.abs(p.y - py) < POPUP_LINE); tries++) py += step;
+  if (!free(py)) {
+    // The nearest clear line above it, but never over `top` (that would put it on the chain's count and out of the jar); failing
+    // that, the nearest below, down to the floor. With no clear line at all it stays where it is.
+    let to: number | null = null;
+    for (let up = py - line; up >= top && to === null; up -= line) if (free(up)) to = up;
+    for (let down = py + line; down <= JAR.floor - line && to === null; down += line) if (free(down)) to = down;
+    py = to ?? py;
+  }
   const popup: Popup = { id: run.nextId++, x: px, y: py, text, life: POPUP_LIFE, delay: 0, points, ...(big ? { big } : {}) };
   run.popups.push(popup);
   return popup;
 }
 
 /** How far apart two popups' middles must be to sit side by side: half of each one's width, about. */
-function besides(a: string, b: string): number {
-  return ((a.length + b.length) * POPUP_CHAR) / 2;
+function besides(a: Sized, b: Sized): number {
+  return (popupWidth(a) + popupWidth(b)) / 2;
 }
+
+/** What a popup's size on screen comes from. */
+type Sized = { text: string; points: number; big?: boolean };
 
 /** Where a popup will be, `after` seconds from now: it waits out its delay, then rises. */
 function popupY(p: Popup, after: number): number {
@@ -785,7 +820,7 @@ function popupY(p: Popup, after: number): number {
 function clearOf(popup: Popup, earlier: readonly Popup[]): void {
   for (let tries = 0; tries < 8; tries++) {
     const inTheWay = earlier.find(
-      (p) => popup.delay - p.delay < POPUP_LIFE && Math.abs(p.x - popup.x) < besides(p.text, popup.text) && Math.abs(popupY(p, popup.delay) - popup.y) < POPUP_LINE
+      (p) => popup.delay - p.delay < POPUP_LIFE && Math.abs(p.x - popup.x) < besides(p, popup) && Math.abs(popupY(p, popup.delay) - popup.y) < POPUP_LINE
     );
     if (inTheWay === undefined) return;
     popup.y = popupY(inTheWay, popup.delay) - POPUP_LINE;
@@ -2065,6 +2100,8 @@ export function resolve(run: Run): void {
   const popupsBefore = run.popups.length;
   for (const step of END_OF_TURN) step(run, tally);
   timeTally(run, tally, popupsBefore);
+  // When the turn's last score shows. What covers the jar next (the pick, the rent board, the end board) waits `COVER_HOLD` from then.
+  const lastScore = Math.max(0, run.tallyTime - TALLY_HOLD);
   run.scoreNote = 0;
   run.chains.push(run.chainLinks);
   if (run.chainLinks >= (CHAIN_TIERS[0] as number)) chainLine(run);
@@ -2074,12 +2111,15 @@ export function resolve(run: Run): void {
 
   if (run.turn >= TURNS_PER_CYCLE) {
     dueRent(run);
+    run.tallyTime = Math.max(run.tallyTime, lastScore + COVER_HOLD);
     return;
   }
   run.turn += 1;
   // The turn just played was `run.turn - 1`: a pick follows every `PICK_EVERY`th, and otherwise the next hand is dealt.
-  if ((run.turn - 1) % PICK_EVERY === 0) offer(run);
-  else startTurn(run);
+  if ((run.turn - 1) % PICK_EVERY === 0) {
+    offer(run);
+    run.tallyTime = Math.max(run.tallyTime, lastScore + COVER_HOLD);
+  } else startTurn(run);
 }
 
 function offer(run: Run): void {

@@ -252,6 +252,8 @@ test("the jar settles once every fruit reports being slow", () => {
   for (let i = 0; i < 60; i++) run = press(run, {});
   assert.equal(run.phase, "settle", "still moving");
   for (let i = 0; i < 60; i++) run = advance(run, DT, NO_KEYS, [{ id: 1, x: 150, y: JAR.floor - 5, speed: 1, touching: [] }]);
+  assert.equal(run.phase, "tally", "settled: the jar is left in view for a moment before the pick covers it");
+  for (let i = 0; i < 120; i++) run = advance(run, DT, NO_KEYS, [{ id: 1, x: 150, y: JAR.floor - 5, speed: 1, touching: [] }]);
   assert.equal(run.phase, "pick");
 });
 
@@ -1107,14 +1109,40 @@ test("the tally: Simmer fruit score one after another, the score on screen catch
   assert.equal(run.phase, "pick");
 });
 
-test("the tally: a jar with nothing to tally goes straight on, and a long one is squeezed into about two seconds", () => {
+test("the tally: the pick waits a second or two after the last score, and a long tally is squeezed into about two seconds", () => {
+  // Nothing to tally: the jar still stays in view for a second and a half before the pick's cards cover it.
   let run = newRun(7);
   run.fruits = [fruit(1, "cherry", 250, JAR.floor - 14)];
   run.turn = 2;
   run.phase = "settle";
   run.calmTime = 10;
   run = press(run, {});
+  assert.equal(run.phase, "tally");
+  let steps = 0;
+  for (; steps < 300 && run.phase === "tally"; steps++) run = press(run, {});
   assert.equal(run.phase, "pick");
+  assert.ok(steps >= 60 && steps <= 120, `between one and two seconds: ${steps} steps`);
+
+  // And after a tally, the wait is counted from its last score: three Apples show 0.22 seconds apart, the last at 0.44.
+  let apples = newRun(7);
+  apples.fruits = [fruit(1, "apple", 250, JAR.floor - FRUITS.apple.radius), fruit(2, "apple", 300, JAR.floor - FRUITS.apple.radius), fruit(3, "apple", 350, JAR.floor - FRUITS.apple.radius)];
+  apples.turn = 2;
+  apples.phase = "settle";
+  apples.calmTime = 10;
+  apples = press(apples, {});
+  const last = Math.max(...apples.popups.map((p) => p.delay));
+  assert.ok(Math.abs(apples.tallyTime - (last + 1.5)) < 1e-9, `${apples.tallyTime} after a last score at ${last}`);
+
+  // The rent board waits the same.
+  let due = newRun(7);
+  due.fruits = [fruit(1, "cherry", 250, JAR.floor - 14)];
+  due.turn = 5;
+  due.cycleScore = RENT[0]!;
+  due.phase = "settle";
+  due.calmTime = 10;
+  due = press(due, {});
+  assert.equal(due.phase, "tally");
+  assert.ok(Math.abs(due.tallyTime - 1.5) < 1e-9, `${due.tallyTime}`);
 
   const many = jarWith(Array.from({ length: 30 }, (_, i) => fruit(i + 1, "apple", 230 + i * 6, JAR.floor - FRUITS.apple.radius)));
   many.turn = 2;

@@ -1,4 +1,4 @@
-import { Entity, Flex, Sprite, Text, useInput, useInputDevice, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Shape, Sprite, Text, useInput, useInputDevice, useMutable, useSound, useUpdate } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
 import { Panel } from "./Board.tsx";
@@ -10,7 +10,7 @@ import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { PauseButton } from "./KeyHint.tsx";
 import { Lanes } from "./Lanes.tsx";
 import { LastTurn } from "./LastTurn.tsx";
-import { atRest, crossed, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, opensAt, shelfSlot, startingRun } from "./layout.ts";
+import { atRest, crossed, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, moodOf, opensAt, shelfSlot, startingRun } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { PickBoard } from "./PickBoard.tsx";
 import { BOARD_W, HUD_X, JAR_MID, SHELF_Y, shelfOf, SLOT } from "./places.ts";
@@ -23,7 +23,7 @@ import { Lit } from "./lit.ts";
 import { learn } from "./settings.ts";
 import { Shelf, ShelfTips } from "./Shelf.tsx";
 import { Shop } from "./Shop.tsx";
-import { advance, bossNow, chainTier, newRun, dramatic, lean, shownLinks, shownScore, JAR, rentFor, RIM, TURNS_PER_CYCLE, type FruitReport } from "./rules/jar.ts";
+import { advance, bossNow, chainTier, newRun, dramatic, lean, shownLinks, shownScore, popupScale, PUNCH_FROM, PUNCH_FULL, JAR, rentFor, RIM, TURNS_PER_CYCLE, type FruitReport } from "./rules/jar.ts";
 import { BAD, COUNTER_Y, DISPLAY, DISPLAY_SIZE, GOLD, INK, LIGHT, PLAQUE, POP_VOLUME, THUD_VOLUME, TOCK_VOLUME } from "./theme.ts";
 
 /** The pause button stands on the counter in the bottom right corner, its foot where the jar's is. */
@@ -42,14 +42,17 @@ const SLOW_TIME = 0.4;
  * knocks it, `PUNCH_PX` at the most, for a score of `PUNCH_FULL`) and the game stands nearly still for a beat (`HIT_SPEED` for
  * `HIT_STEPS` of its steps, twice that for a full punch), so a Watermelon made or x2 reached does not look like a Cherry landing.
  */
-const PUNCH_FROM = 20;
-const PUNCH_FULL = 50;
 const PUNCH_PX = 5;
 const PUNCH_TIME = 0.3;
+/** And the jar's colours are split for the first of it (assets/blast.glsl): this many pixels apart for a full punch, for this long. */
+const SPLIT_PX = 4;
+const SPLIT_TIME = 0.1;
 const HIT_SPEED = 0.12;
 const HIT_STEPS = 1;
-/** How much bigger a score of `PUNCH_FROM` or more is written, and one of `PUNCH_FULL`. */
-const POPUP_GROW = [1.25, 1.5] as const;
+/** The line a turn's chain ends with ("10 links, 174 points") stands on a dark band, as the last turn's banner does: it is wider than the jar, and the last scores are still rising behind it. About how wide a letter of it is, and the band's height. */
+const LINE_CHAR = 11;
+const LINE_H = 30;
+const LINE_BAND = "#090a14d0";
 /** How loud the chain's tier sound is, of the sounds' volume. */
 const TIER_VOLUME = 0.6;
 /** The chain on the jar: where its words stand (their middle, just over the rim), and how much bigger they are at each tier past the first. */
@@ -74,7 +77,8 @@ export function Play() {
   const device = useInputDevice();
   const keys = device === "keyboard";
   const speed = useGame((g) => g.speed);
-  const { pause, toTitle, setSpeed, start, toLesson, hold } = useGame.actions();
+  const { pause, toTitle, setSpeed, setMood, start, toLesson, hold } = useGame.actions();
+  const mood = useGame((g) => g.mood);
   // The first game's tutorial: which lesson the player is at (rules/tutorial.ts).
   const tutorial = useGame((g) => g.tutorial);
   // The fruit report where they are after the engine moves them; the run reads the reports at its next step.
@@ -244,6 +248,8 @@ export function Play() {
     const busy = s.run.phase === "drop" || s.run.phase === "settle" || s.run.phase === "tally";
     const pace = s.hit > 0 && busy ? HIT_SPEED : s.slow > 0 ? SLOW_SPEED : !busy ? 1 : input.down("F") ? HURRY_SPEED : fast ? FAST_SPEED : 1;
     if (pace !== speed) setSpeed(pace);
+    // What the whole screen shows of the run (Main.tsx): its last turn, the rent missed, the rent paid.
+    if (moodOf(s.run) !== mood) setMood(moodOf(s.run));
     const heard = s.run.sounds;
     // Each at its own level; the engine scales them all by the player's sounds setting.
     if (heard.includes("land")) playLand(0.4);
@@ -407,8 +413,9 @@ export function Play() {
 
   /** The lanes mean something: a fruit comes down under its place on the shelf. */
   const guided = bossNow(run) === null || bossNow(run) === "peg";
-  /** A fruit of the shelf shows what it does: not before the hand is dealt, and not over the rent board while its lesson is about it. */
-  const tipped = !paused && !s.whole && ordering && s.intro >= INTRO.hand && !about(coached, "rent") && (keys || s.tip);
+  /** A fruit of the shelf shows what it does: not before the hand is dealt, not over the rent board while its lesson is about it,
+   * and not while the last turn's banner crosses the screen (a tooltip is drawn over everything, so it would cover the banner). */
+  const tipped = !paused && !s.whole && ordering && s.intro >= INTRO.hand && !about(coached, "rent") && (keys || s.tip) && s.last >= SWEEP_TIME;
 
   return (
     <Lit.Provider value={lit}>
@@ -417,7 +424,7 @@ export function Play() {
 
       {/* The jar, what is drawn on it and its points: all raised together when it is picked out. */}
       <Raise id="jar">
-      <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(run.effects.filter((e) => e.kind === "boom")) + (s.punch < PUNCH_TIME ? PUNCH_PX * s.punchSize * (1 - s.punch / PUNCH_TIME) * Math.cos(s.punch * 90) : 0)} angle={angle} />
+      <Jar run={run} onReport={report} lift={(s.intro < INTRO.jar ? 400 : jarDrop(s.intro - INTRO.jar, 400)) + blastJolt(run.effects.filter((e) => e.kind === "boom")) + (s.punch < PUNCH_TIME ? PUNCH_PX * s.punchSize * (1 - s.punch / PUNCH_TIME) * Math.cos(s.punch * 90) : 0)} angle={angle} split={s.punch < SPLIT_TIME ? SPLIT_PX * s.punchSize : 0} />
       <JarMarks run={run} angle={angle} onPoint={point} onChoose={click} />
       {/* The chain, over the rim: it counts up with each link, and grows and turns gold at each tier. */}
       {linked > 0 && (
@@ -426,8 +433,11 @@ export function Play() {
         </Text>
       )}
       {/* The points stay upright over a leaning jar. */}
+      {popups.filter((p) => p.quiet === true).map((p) => (
+        <Shape key={p.id} kind="rect" x={Math.round(p.x - (p.text.length * LINE_CHAR) / 2 - 8)} y={Math.round(p.y) - 2} width={p.text.length * LINE_CHAR + 16} height={LINE_H} color={LINE_BAND} />
+      ))}
       {popups.map((p) => (
-        <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={p.big === true ? DISPLAY_SIZE * 2 : Math.round(DISPLAY_SIZE * (p.points >= PUNCH_FULL ? POPUP_GROW[1] : p.points >= PUNCH_FROM ? POPUP_GROW[0] : 1))} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={p.big === true ? 4 : 2} shadowY={p.big === true ? 4 : 2}>
+        <Text key={p.id} x={p.x} y={p.y} align="center" font={DISPLAY} size={Math.round(DISPLAY_SIZE * popupScale(p))} color={p.points < 0 ? BAD : GOLD} shadow={INK} shadowX={p.big === true ? 4 : 2} shadowY={p.big === true ? 4 : 2}>
           {p.text}
         </Text>
       ))}

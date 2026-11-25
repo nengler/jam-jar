@@ -1,7 +1,8 @@
-import { Collider, Entity, Flex, Shape, Sprite } from "@tsengine/runtime/jsx";
+import { Collider, Entity, Flex, Layer, Shape, Sprite } from "@tsengine/runtime/jsx";
 
 import { Frame } from "./Coach.tsx";
 import { Fruit } from "./Fruit.tsx";
+import { blastParams } from "./layout.ts";
 import { Peg } from "./Peg.tsx";
 import { JAR, PULSE, RIM, TILT_PULL, bossNow, jarHeld, lean, surface, type FruitReport, type Run } from "./rules/jar.ts";
 import { JUICE } from "./theme.ts";
@@ -18,14 +19,18 @@ interface JarProps {
   lift?: number;
   /** How far the jar is drawn leaning, in radians, while it tilts over or back (the play screen eases it); the run's lean otherwise. */
   angle?: number;
+  /** How far apart the jar's colours are split this instant, in pixels: a big score knocking it (the play screen). */
+  split?: number;
 }
 
 /**
  * The jar and the fruit in it, where the rules say the jar is (`JAR`): its back (the tinted inside and the glass walls) behind
  * the fruit, its front (shine and fill line) over them, and the solid walls and floor the fruit's balls are stopped by. The
- * play screen draws a run in it, and the title a run that plays itself.
+ * play screen draws a run in it, and the title a run that plays itself. The whole of it is one layer drawn through a shader
+ * (assets/blast.glsl): a blast sends a ripple out through the jar and its fruit, and a big score splits its colours for an
+ * instant. Where shaders do not run the layer is drawn as it is.
  */
-export function Jar({ run, onReport, lift = 0, angle: drawn }: JarProps) {
+export function Jar({ run, onReport, lift = 0, angle: drawn, split = 0 }: JarProps) {
   const angle = drawn ?? lean(run);
   const x = JAR.left - JAR_MARGIN;
   const y = RIM - JAR_NECK - JAR_MARGIN;
@@ -36,7 +41,7 @@ export function Jar({ run, onReport, lift = 0, angle: drawn }: JarProps) {
   const held = jarHeld(run);
   const liquid = run.lime && run.milk ? "both" : run.milk ? "milk" : "lime";
   return (
-    <Entity>
+    <Layer shader="blast.glsl" params={blastParams(run.effects.filter((e) => e.kind === "boom"), angle, JAR.right, JAR.floor, split)}>
       {/* The jar's pictures turn about its low corner when it leans (the Tilted jar). Its walls, floor and fruit do not: they
           are moved in the jar's own frame, where the walls stand straight, and each fruit is drawn where the lean puts it. */}
       <Entity x={JAR.right} y={JAR.floor} rotation={angle}>
@@ -89,6 +94,6 @@ export function Jar({ run, onReport, lift = 0, angle: drawn }: JarProps) {
       <Entity x={JAR.right} y={JAR.floor} rotation={angle}>
         <Sprite image="jar-front.png" x={x - JAR.right} y={y - JAR.floor - lift} />
       </Entity>
-    </Entity>
+    </Layer>
   );
 }

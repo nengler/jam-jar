@@ -8,9 +8,9 @@ import { placed, cardText, pickHeading } from "./layout.ts";
 import { RuleText } from "./RuleText.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
-import { OFFERED, type Run } from "./rules/jar.ts";
+import { type Run } from "./rules/jar.ts";
 import type { Lesson } from "./rules/tutorial.ts";
-import { biggestFruit, CARD_SLICE, cardFor, DISPLAY, DISPLAY_SIZE, fruitImageSize, INK, INK_SOFT, KEYWORD, SHADE } from "./theme.ts";
+import { CARD_SLICE, cardFor, DISPLAY, DISPLAY_SIZE, fruitImageSize, INK, INK_SOFT, KEYWORD, SHADE } from "./theme.ts";
 
 /** The pick: three cards across the middle. */
 const OFFER_W = 184;
@@ -25,12 +25,16 @@ const TAKE_ROOM = 34;
 const TAKE_TUCK = 20;
 /** The room left under a pick card's text, inside its frame: a longer text scrolls rather than running over it. */
 const OFFER_FOOT = 10;
-/** The picture at the top of a pick card: square, as big as the biggest fruit a pick can offer, each fruit standing on its foot. */
+/**
+ * The picture at the top of a pick card: each fruit standing on its foot at its own size. The room is that of a middling fruit,
+ * not the biggest: most fruit are small, and room for a Pumpkin left a third of every other card empty. A bigger one stands
+ * taller, into the card's top margin.
+ */
 /** The tutorial's lesson along the foot: as wide as leaves the Skip button, at the left, clear of it. */
 const COACH_W = 352;
 /** The button that puts the cards aside to look at the jar: this far from the right edge, clear of the pause button. */
 const PEEK_RIGHT = 52;
-const OFFER_PICTURE = biggestFruit(OFFERED);
+const OFFER_PICTURE = 56;
 
 interface PickBoardProps {
   run: Run;

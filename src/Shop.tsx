@@ -7,10 +7,8 @@ import { TapButton } from "./KeyHint.tsx";
 import { chosenName, ENTER, entered, placed, popIn, poolRows, cardText } from "./layout.ts";
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { ITEMS, type ItemKind } from "./rules/items.ts";
-import { RuleText } from "./RuleText.tsx";
 import { Bloops } from "./Sounds.tsx";
-import { FruitTip } from "./FruitTip.tsx";
-import { Terms } from "./Terms.tsx";
+import { CardTip, FruitTip } from "./FruitTip.tsx";
 import { FRUIT_PRICE, glazeKinds, removalPrice, rerollPrice, SHOP_GLAZE, SHOP_ITEM, SHOP_LEAVE, SHOP_REMOVE, SHOP_REROLL, OFFERED, type Run, type Shop as ShopState } from "./rules/jar.ts";
 import { GLAZE_PRICE, GLAZES, type Glaze } from "./rules/glazes.ts";
 import { GlazeMark } from "./GlazeMark.tsx";
@@ -26,11 +24,9 @@ import {
   COIN_JAR,
   DISPLAY,
   DISPLAY_SIZE,
+  GOLD,
   INK,
   INK_SOFT,
-  KEYWORD,
-  LABEL_SLICE,
-  labelFor,
   LIGHT,
   SELECT,
   SHADE,
@@ -40,21 +36,21 @@ import {
   STALL,
 } from "./theme.ts";
 
-/** The stall: five labels in a row standing on its counter (three fruit, the item and a glaze), and how far the chosen one is raised. */
-const CARD_W = 120;
-const CARD_H = 200;
-const CARD_GAP = 6;
-const CARD_LIFT = 10;
 /**
- * Under the chosen label, its Buy button and the gap over it, as the pick's Take button is under its chosen card: the button is
- * tucked up over the label's foot by BUY_TUCK, and the chosen label's text stops that much higher.
+ * The stall: five places in a row on its counter (three fruit in their baskets, the item and a glaze), each with its name over it
+ * and its price hung on the front of the counter under it. What a thing does is not written on the stall: it opens beside the
+ * place the mouse is over, or the chosen one.
  */
-const BUY_ROOM = 24;
-const BUY_TUCK = 20;
-/** The room left under a label's text, inside its frame: a longer text scrolls rather than running over it. */
-const LABEL_FOOT = 8;
-/** Where the stall's counter's top is: the labels stand on it. */
-const STALL_Y = 256;
+const PLACE_W = 112;
+const PLACE_GAP = 8;
+/** A name's line over its place, and the room round the picture for the frame of the chosen one. */
+const NAME_H = 20;
+const FRAME = 4;
+/** Where the stall's counter's top is: the goods stand on it. */
+const STALL_Y = 222;
+const STALL_H = 20;
+/** The row under the counter's front: each place's price, and beside it the chosen one's Buy button. */
+const TAG_H = 30;
 /** The actions: three signs under the stall, as wide across as the labels. */
 const ACTION_W = 196;
 const ACTION_H = 36;
@@ -76,17 +72,18 @@ const BAR_MESSAGE_W = 280;
  * are centred across it, and the item (48 x 40) stands on the cloth.
  */
 const PICTURE_W = Math.max(64, biggestFruit(OFFERED));
-const PICTURE_H = 76;
+const PICTURE_H = 62;
 const BASKET_W = 56;
-const BASKET_Y = 34;
+const BASKET_Y = PICTURE_H - 38;
 const CLOTH_W = 60;
 const ITEM_W = 48;
 /** How deep a fruit sits in its basket: this share of its height is below the basket's rim. */
 const BASKET_SINK = 0.4;
 /** Choosing a fruit to take out: the pool's kinds on a board, each in a cell its fruit's width and a little more, wrapping at this width. */
 const REMOVE_W = 520;
-/** Where a chosen label's tooltip opens while the tutorial's lesson lies along the head of the screen: this far below the label's top. */
-const TIP_UNDER = 14;
+/** Where a place's tooltip opens, from the place's top: just under the awning, or lower while the tutorial's lesson lies along the head of the screen. */
+const TIP_UP = -92;
+const TIP_COACHED = -78;
 
 /** A kind's cell on the take-out board: its fruit's width with room for the frame round the chosen one. */
 function removeCell(kind: FruitKind): number {
@@ -144,12 +141,12 @@ function GlazePot({ glaze }: { glaze: Glaze | null }) {
     <Flex width={PICTURE_W} height={PICTURE_H}>
       <Entity>
         <PictureRoom />
-        <Sprite image={CLOTH} x={(PICTURE_W - CLOTH_W) / 2} y={PICTURE_H - 14} />
+        <Sprite image={CLOTH} x={(PICTURE_W - CLOTH_W) / 2} y={PICTURE_H - 12} />
         {glaze !== null && (
           <Entity>
-            <Shape kind="circle" x={(PICTURE_W - POT) / 2} y={PICTURE_H - 12 - POT} width={POT} height={POT} color={INK} />
-            <Shape kind="circle" x={(PICTURE_W - POT) / 2 + POT_RING} y={PICTURE_H - 12 - POT + POT_RING} width={POT - POT_RING * 2} height={POT - POT_RING * 2} color={GLAZE_COLOR[glaze]} />
-            <Shape kind="rect" x={PICTURE_W / 2 - 8} y={PICTURE_H - 12 - POT + 8} width={4} height={4} color={LIGHT} />
+            <Shape kind="circle" x={(PICTURE_W - POT) / 2} y={PICTURE_H - 10 - POT} width={POT} height={POT} color={INK} />
+            <Shape kind="circle" x={(PICTURE_W - POT) / 2 + POT_RING} y={PICTURE_H - 10 - POT + POT_RING} width={POT - POT_RING * 2} height={POT - POT_RING * 2} color={GLAZE_COLOR[glaze]} />
+            <Shape kind="rect" x={PICTURE_W / 2 - 8} y={PICTURE_H - 10 - POT + 8} width={4} height={4} color={LIGHT} />
           </Entity>
         )}
       </Entity>
@@ -178,31 +175,9 @@ function OnCloth({ item }: { item: ItemKind | null }) {
     <Flex width={PICTURE_W} height={PICTURE_H}>
       <Entity>
         <PictureRoom />
-        <Sprite image={CLOTH} x={(PICTURE_W - CLOTH_W) / 2} y={PICTURE_H - 14} />
-        {item !== null && <Sprite image={`item-${item}.png`} x={(PICTURE_W - ITEM_W) / 2} y={PICTURE_H - 50} />}
+        <Sprite image={CLOTH} x={(PICTURE_W - CLOTH_W) / 2} y={PICTURE_H - 12} />
+        {item !== null && <Sprite image={`item-${item}.png`} x={(PICTURE_W - ITEM_W) / 2} y={PICTURE_H - 48} />}
       </Entity>
-    </Flex>
-  );
-}
-
-/**
- * The price, in the label's top left corner inside its frame: the picture is centred, so the corner beside it is clear (a fruit is
- * round, and the widest, the Pumpkin, leaves its corners empty). It takes no room from what is laid out on the label.
- */
-function OnLabel({ price, afford }: { price: number; afford: boolean }) {
-  return (
-    <Flex left={10} top={10}>
-      <Price price={price} afford={afford} />
-    </Flex>
-  );
-}
-
-/** What a place on the stall shows once it is bought: its empty basket or cloth, stamped SOLD. */
-function Sold({ children }: { children: Child }) {
-  return (
-    <Flex height="grow" direction="column" alignItems="center" justifyContent="center" gap={8} paddingBottom={20}>
-      {children}
-      <Sprite image={SOLD} />
     </Flex>
   );
 }
@@ -211,44 +186,43 @@ interface OfferProps {
   /** Its place in the shop's cursor order. */
   at: number;
   chosen: boolean;
-  item: boolean;
+  /** What it is called, or "" once it is bought. */
+  name: string;
+  /** What it costs and whether the run has the coins, or null once it is bought: the place is stamped SOLD. */
+  price: number | null;
+  afford: boolean;
   /** How far into the shop's coming in it is (0 to 1), and how far it has faded in. */
   drop: number;
   opacity: number;
-  /** Whether it is chosen and for sale: its Buy button stands under it, and presses `onBuy`. */
-  buy: boolean;
+  /** The Buy button beside the chosen one's price presses this. */
   onBuy: () => void;
   onClick: (place: number) => void;
+  /** Its picture, and its tooltip. */
   children: Child;
 }
 
-/** One place on the stall: a label standing on the counter, raised when it is the chosen one, dropping into place as the shop comes in. */
-function Offer({ at, chosen, item, drop, opacity, onClick, buy, onBuy, children }: OfferProps) {
+/**
+ * One place on the stall: the thing's name, the thing standing on the counter (framed when it is the chosen one), and under the
+ * counter's front its price, with the Buy button beside it when it is chosen. A tap or a click only chooses it; the button, or
+ * Enter, buys it. It drops into place as the shop comes in.
+ */
+function Offer({ at, chosen, name, price, afford, drop, opacity, onClick, onBuy, children }: OfferProps) {
   return (
-    <Flex height={CARD_H + CARD_LIFT + BUY_ROOM} direction="column" alignItems="center" paddingTop={chosen ? 0 : CARD_LIFT} y={-CARD_DROP * (1 - drop)} opacity={opacity}>
-      <Flex width={CARD_W} height={CARD_H} direction="column" alignItems="center" paddingX={6} paddingTop={14} paddingBottom={buy ? LABEL_FOOT + BUY_TUCK : LABEL_FOOT} backgroundImage={labelFor(chosen, item)} slice={LABEL_SLICE} focusable={false} onPress={() => onClick(at)}>
-        {children}
-      </Flex>
-      {/* What buys the chosen label, on its foot, as the pick's Take button: a tap or a click on a label only chooses it, so it
-          can be read and its text scrolled first. Enter does the same. */}
-      {buy && (
-        <Flex y={-BUY_TUCK}>
-          <TapButton label="Buy" onPress={onBuy} />
+    <Flex width={PLACE_W} direction="column" alignItems="center" y={-PLACE_DROP * (1 - drop)} opacity={opacity}>
+      <Flex width={PLACE_W} direction="column" alignItems="center" focusable={false} onPress={() => onClick(at)}>
+        <Flex height={NAME_H} direction="row" justifyContent="center">
+          <Text color={chosen ? GOLD : LIGHT} shadow={INK} shadowX={2} shadowY={2}>
+            {name}
+          </Text>
         </Flex>
-      )}
-    </Flex>
-  );
-}
-
-/** An offer's name and its rule text, under its picture. The text takes what is left of the label, and scrolls when it is longer. */
-function Words({ name, text }: { name: string; text: string }) {
-  return (
-    <Flex height="grow" direction="column" alignItems="center">
-      <Text width={CARD_W - 12} maxWidth={CARD_W - 12} align="center" color={INK}>
-        {name}
-      </Text>
-      <Flex width={CARD_W - 12} height="grow" direction="column" alignItems="center" overflow="scroll" scrollbarColor={INK_SOFT}>
-        <RuleText x={0} y={0} width={CARD_W - 20} text={text} color={INK_SOFT} accent={KEYWORD} />
+        <Flex paddingX={FRAME} paddingTop={FRAME} backgroundImage={chosen ? SELECT : undefined} slice={CARD_SLICE}>
+          {children}
+        </Flex>
+      </Flex>
+      <Flex height={TAG_H} direction="row" alignItems="center" justifyContent="center" gap={6} y={STALL_H}>
+        {price !== null && <Price price={price} afford={afford} color={LIGHT} />}
+        {price !== null && chosen && <TapButton label="Buy" onPress={onBuy} />}
+        {price === null && <Sprite image={SOLD} />}
       </Flex>
     </Flex>
   );
@@ -266,23 +240,25 @@ function ActionSign({ chosen, go = false, label, price, afford, onPoint, onPress
   );
 }
 
-/** Whether the shop's place `at` has something for sale: a fruit or the item not yet bought (not an action, nor none). */
-function forSaleAt(shop: ShopState, at: number): boolean {
-  if (at >= 0 && at < SHOP_ITEM) return shop.fruits[at] != null;
-  if (at === SHOP_GLAZE) return shop.glaze !== null;
-  return at === SHOP_ITEM && shop.item !== null;
+/**
+ * Whether a place's tooltip is up: its own while it is the chosen one, none while another place on the stall is (two would lie
+ * over each other), and otherwise while the mouse is over it (the tooltip's own rule: `undefined`). Never when `hidden`: under
+ * the pause menu, or the board for choosing a fruit.
+ */
+function tipShown(at: number, chosen: number, hidden: boolean): boolean | undefined {
+  return hidden ? false : chosen === at ? true : chosen >= 0 && chosen <= SHOP_GLAZE ? false : undefined;
 }
 
-
-/** How far above its place a card starts as the shop comes in, and how far below theirs the actions start, in pixels. */
-const CARD_DROP = 260;
+/** How far above its place a thing on the stall starts as the shop comes in, and how far below theirs the actions start, in pixels. */
+const PLACE_DROP = 260;
 const ACTION_RISE = 120;
 
 /**
- * The shop between two cycles: a market stall over the dimmed kitchen. A striped awning across the top; three fruit in baskets
- * and an item on a cloth, each on a jam-jar label with its price in the corner, standing on the stall's counter; wooden signs
- * for removal, a reroll and the way out; and a bar along the foot with the pool, the coins and what just happened. The chosen
- * label has its Buy button under it, as the pick's chosen card has its Take button. No keys are shown
+ * The shop between two cycles: a market stall over the dimmed kitchen. A striped awning across the top; three fruit in baskets,
+ * an item on a cloth and a pot of glaze standing on the stall's counter, each under its name, with its price on the counter's
+ * front; wooden signs for removal, a reroll and the way out; and a bar along the foot with the pool, the coins and what just
+ * happened. What a thing does is said beside it, when the mouse is over it or it is chosen. The chosen one has its Buy button
+ * beside its price, as the pick's chosen card has its Take button. No keys are shown
  * on it: the arrows, Enter, Space and D work as on the play screen. The rules (rules/jar.ts, `Shop`) hold what is for sale and
  * where the cursor is; this draws them.
  */
@@ -300,7 +276,6 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
   // The place the cursor is on, or none while a fruit is being chosen to take out.
   const chosen = choosing ? -1 : shop.cursor;
   // Whether the chosen place on the shelf has something for sale, for the Buy button: not an action, a sold place, or none.
-  const forSale = forSaleAt(shop, chosen);
   const awning = -AWNING_H * (1 - popIn(time, 0, ENTER.pop));
   return (
     <Entity>
@@ -310,50 +285,42 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
       {/* A bloop for each card as it drops in, and one for the actions. */}
       <Bloops start={ENTER.pop * 0.6} gap={ENTER.gap} count={SHOP_GLAZE + 2} />
 
-      {/* The stall's counter, which the labels stand on. */}
+      {/* The stall's counter, which the goods stand on. */}
       <Sprite image={STALL} x={0} y={STALL_Y} />
 
-      {/* The stall: three fruit and the item. A tap or a click chooses a label and a second buys it; the pointer coming over one
-          does not choose it (see the pick). */}
-      <Flex left={0} right={0} top={STALL_Y + 2 - CARD_H - CARD_LIFT} direction="row" justifyContent="center" gap={CARD_GAP} onPressOutside={onAway}>
+      {/* The stall: three fruit, the item and a glaze. What one does opens beside it while the mouse is over it, or while it is
+          the chosen one (then only its own: a tap or a click chooses, as do the arrows). The pointer coming over one does not
+          choose it (see the pick). */}
+      <Flex left={0} right={0} top={STALL_Y - PICTURE_H - FRAME - NAME_H} direction="row" justifyContent="center" gap={PLACE_GAP} onPressOutside={onAway}>
         {placed(shop.fruits).map((slot) => (
-          <Offer key={slot.at} at={slot.at} chosen={chosen === slot.at} item={false} drop={popIn(time, slot.at * ENTER.gap, ENTER.pop)} opacity={entered(time, slot.at)} onClick={onClick} buy={forSale && chosen === slot.at} onBuy={onConfirm}>
+          <Offer key={slot.at} at={slot.at} chosen={chosen === slot.at} name={slot.card === null ? "" : FRUITS[slot.card].name} price={slot.card === null ? null : FRUIT_PRICE} afford={run.coins >= FRUIT_PRICE} drop={popIn(time, slot.at * ENTER.gap, ENTER.pop)} opacity={entered(time, slot.at)} onClick={onClick} onBuy={onConfirm}>
             {slot.card !== null && (
-              <Tooltip show={!paused && chosen === slot.at} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={coached ? TIP_UNDER : -40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <Tooltip show={tipShown(slot.at, chosen, paused || choosing)} anchor={slot.at < 2 ? "top-left" : "top-right"} to={slot.at < 2 ? "top-right" : "top-left"} offsetX={slot.at < 2 ? 4 : -4} offsetY={coached ? TIP_COACHED : TIP_UP} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                 <FruitTip kind={slot.card} text={cardText(run, slot.card)} />
               </Tooltip>
             )}
-            {slot.card !== null && <Basket kind={slot.card} />}
-            {slot.card !== null && <Words name={FRUITS[slot.card].name} text={cardText(run, slot.card)} />}
-            {slot.card !== null && <OnLabel price={FRUIT_PRICE} afford={run.coins >= FRUIT_PRICE} />}
-            {slot.card === null && <Sold><Basket kind={null} /></Sold>}
+            <Basket kind={slot.card} />
           </Offer>
         ))}
-        <Offer at={SHOP_ITEM} chosen={chosen === SHOP_ITEM} item={true} drop={popIn(time, SHOP_ITEM * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_ITEM)} onClick={onClick} buy={forSale && chosen === SHOP_ITEM} onBuy={onConfirm}>
+        <Offer at={SHOP_ITEM} chosen={chosen === SHOP_ITEM} name={shop.item === null ? "" : ITEMS[shop.item].name} price={shop.item === null ? null : ITEMS[shop.item].price} afford={shop.item !== null && run.coins >= ITEMS[shop.item].price} drop={popIn(time, SHOP_ITEM * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_ITEM)} onClick={onClick} onBuy={onConfirm}>
           {shop.item !== null && (
-            <Tooltip show={!paused && chosen === SHOP_ITEM} anchor="top-right" to="top-left" offsetX={-4} offsetY={coached ? TIP_UNDER : -40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-              <Terms text={ITEMS[shop.item].text} />
+            <Tooltip show={tipShown(SHOP_ITEM, chosen, paused || choosing)} anchor="top-right" to="top-left" offsetX={-4} offsetY={coached ? TIP_COACHED : TIP_UP} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <CardTip name={ITEMS[shop.item].name} text={ITEMS[shop.item].text} />
             </Tooltip>
           )}
-          {shop.item !== null && <OnCloth item={shop.item} />}
-          {shop.item !== null && <Words name={ITEMS[shop.item].name} text={ITEMS[shop.item].text} />}
-          {shop.item !== null && <OnLabel price={ITEMS[shop.item].price} afford={run.coins >= ITEMS[shop.item].price} />}
-          {shop.item === null && <Sold><OnCloth item={null} /></Sold>}
+          <OnCloth item={shop.item} />
         </Offer>
-        <Offer at={SHOP_GLAZE} chosen={chosen === SHOP_GLAZE} item={true} drop={popIn(time, SHOP_GLAZE * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_GLAZE)} onClick={onClick} buy={forSale && chosen === SHOP_GLAZE} onBuy={onConfirm}>
+        <Offer at={SHOP_GLAZE} chosen={chosen === SHOP_GLAZE} name={shop.glaze === null ? "" : GLAZES[shop.glaze].name} price={shop.glaze === null ? null : GLAZE_PRICE} afford={run.coins >= GLAZE_PRICE} drop={popIn(time, SHOP_GLAZE * ENTER.gap, ENTER.pop)} opacity={entered(time, SHOP_GLAZE)} onClick={onClick} onBuy={onConfirm}>
           {shop.glaze !== null && (
-            <Tooltip show={!paused && chosen === SHOP_GLAZE} anchor="top-right" to="top-left" offsetX={-4} offsetY={coached ? TIP_UNDER : -40} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
-              <Terms text={GLAZES[shop.glaze].text} />
+            <Tooltip show={tipShown(SHOP_GLAZE, chosen, paused || choosing)} anchor="top-right" to="top-left" offsetX={-4} offsetY={coached ? TIP_COACHED : TIP_UP} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
+              <CardTip name={`${GLAZES[shop.glaze].name} glaze`} text={GLAZES[shop.glaze].text} />
             </Tooltip>
           )}
-          {shop.glaze !== null && <GlazePot glaze={shop.glaze} />}
-          {shop.glaze !== null && <Words name={`${GLAZES[shop.glaze].name} glaze`} text={GLAZES[shop.glaze].text} />}
-          {shop.glaze !== null && <OnLabel price={GLAZE_PRICE} afford={run.coins >= GLAZE_PRICE} />}
-          {shop.glaze === null && <Sold><GlazePot glaze={null} /></Sold>}
+          <GlazePot glaze={shop.glaze} />
         </Offer>
       </Flex>
 
-      {/* The awning, over the top of the labels. */}
+      {/* The awning, over the head of the stall. */}
       <Sprite image={AWNING} x={0} y={awning} />
       {/* The actions: wooden signs under the stall, the way out painted green. */}
       <Flex left={0} right={0} top={ACTION_Y} direction="row" justifyContent="center" gap={ACTION_GAP} y={ACTION_RISE * (1 - popIn(time, (SHOP_GLAZE + 1) * ENTER.gap, ENTER.pop))} opacity={entered(time, SHOP_GLAZE + 1)}>
