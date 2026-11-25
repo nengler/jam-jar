@@ -11,7 +11,7 @@
  * moves and which fruit it touches (`FruitReport`). The run reads those reports; it never moves a fruit itself, except to give one
  * a kick (a blast), which the fruit's component applies.
  */
-import { APPLE, BANANA, FIG, FRUITS, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, RASPBERRY, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
+import { APPLE, BANANA, FIG, FRUITS, GRAPEFRUIT, OLIVE, PLUM, SPRIG, GOLDEN, GOURD_BURST, GOURD_SIZES, HONEY, LEGENDARY, LEGENDARY_CHANCE, MELON_CHANCE, OFFERABLE, pumpkinSprout, QUINCE, RASPBERRY, SLICES, SPROUTS, type FruitKind } from "./fruits.ts";
 import { FIZZY_LINKS, GLAZE_KINDS, GLAZE_PRICE, GLAZES, glazeFits, ripened, SPICY, type Glaze } from "./glazes.ts";
 import { ITEMS, keepingJar, offerable, type ItemKind } from "./items.ts";
 import { Rng } from "./rng.ts";
@@ -288,6 +288,8 @@ export interface Fruit {
   pickled: boolean;
   /** Frozen by a Snow Pear: its component pins its ball, so it is held where it is, and an explosion does not destroy it. */
   frozen: boolean;
+  /** The fruit a Kumquat stood to the left of in the tray: it scores its landing twice (Echo). */
+  echo?: boolean;
   /** While it is frozen: how many turns of ice it has left (`FROZEN_TURNS` when it froze). */
   ice?: number;
   /** Coated in honey (a Honeydew, or a fruit one has honeyed): it scores at every Resolve. */
@@ -1119,6 +1121,9 @@ function order(run: Run, keys: Keys): void {
     run.queueGlazes = run.handGlazes.slice(0, count);
     run.discard.push(...run.hand.slice(count));
     run.discardGlazes.push(...run.handGlazes.slice(count));
+    // An Olive left in the basket scores for sitting the turn out (in the Blind jar too, where it is luck).
+    const olives = run.hand.slice(count).filter((kind) => kind === "olive").length;
+    for (let k = 0; k < olives; k++) score(run, OLIVE.benched, JAR.right - 24, RIM + 16 + k * 14, { label: "Benched", earner: FRUITS.olive.name });
     run.hand = [];
     run.handGlazes = [];
     run.holding = false;
@@ -1205,6 +1210,13 @@ function trayRelease(run: Run, flip: boolean): void {
     run.discard.push(dealt);
     run.discardGlazes.push(glaze);
   });
+  // A Kumquat's Echo: the fruit to its right in the tray (the one to its left, when it is the last) scores its landing twice.
+  const dropped = run.fruits.slice(run.fruits.length - run.queue.length);
+  dropped.forEach((f, at) => {
+    if (f.kind !== "kumquat") return;
+    const beside = dropped[at + 1] ?? dropped[at - 1];
+    if (beside !== undefined) beside.echo = true;
+  });
   run.seed = rng.seed;
   run.queue = [];
   run.queueGlazes = [];
@@ -1267,6 +1279,8 @@ function land(run: Run): void {
       if (f.kind === "raspberry" && !f.rotten) run.clusterBonus += RASPBERRY.cluster;
       // Landing is the commonest score: only a doubled one lights anything up.
       if (earned !== null && !earned.doubled) f.pulse = 0;
+      // Beside a Kumquat in the tray: it scores its landing again.
+      if (f.echo === true) earn(run, near, i, def.points + (f.kind === "raspberry" ? run.clusterBonus : 0), "Echo");
     }
     if (lying && f.kind !== "peach") {
       // A fruit that lands on the floor (the lid, turned over) hops once, a little, so it does not just stop dead.
@@ -1885,6 +1899,11 @@ function simmer(run: Run, tally: Tally): void {
     } else if (f.kind === "quince") {
       // By the size of the biggest fruit it touches: a Cherry 1, up to a Watermelon (or bigger) 5.
       points = QUINCE.perSize * Math.max(0, ...touched.map((o) => sizeStep(o)));
+    } else if (f.kind === "grapefruit") {
+      // For each fruit under it: lower than it and overlapping it across, as a Durian counts what lies over it.
+      points = GRAPEFRUIT.perFruit * run.fruits.filter((o) => o !== f && o.landed && o.y > f.y + f.r * 0.5 && Math.abs(o.x - f.x) < f.r + o.r).length;
+    } else if (f.kind === "cranberry") {
+      points = soaked(run, f) ? FRUITS.cranberry.points : 0;
     }
     if (f.honeyed) points += HONEY_POINTS;
     // Each Simmer score is a link of the chain, so a garden reaches the tiers at its tally.
@@ -2027,6 +2046,40 @@ function ageAndRot(run: Run, tally: Tally): void {
   }
 }
 
+/**
+ * Each Sprig grows a Cherry beside it, on the side with more room, unless the pile already reaches within `SPRIG.room` of the
+ * rim: five more Cherries a cycle would spill a full jar, and a Sprig that never stopped would run away with a chain.
+ */
+function sprigsBud(run: Run): void {
+  const top = Math.min(JAR.floor, ...run.fruits.filter((f) => f.landed).map((f) => f.y - f.r));
+  if (top < RIM + SPRIG.room) return;
+  const born: Fruit[] = [];
+  for (const f of run.fruits) {
+    if (f.kind !== "sprig" || f.rotten || !f.landed) continue;
+    const r = FRUITS.cherry.radius;
+    const side = f.x < (JAR.left + JAR.right) / 2 ? 1 : -1;
+    const cherry = makeFruit(run, "cherry", inside(f.x + side * (f.r + r), r), f.y + f.r - r);
+    cherry.landed = true;
+    pulse(cherry);
+    born.push(cherry);
+  }
+  run.fruits.push(...born);
+}
+
+/**
+ * Each Plum scores for the links of the turn's chain, once every other score of the turn has added its own. It adds no link and
+ * is not multiplied by the chain's tier: the chain already paid for itself in what it multiplied.
+ */
+function plumsCount(run: Run, tally: Tally): void {
+  if (run.chainLinks === 0) return;
+  const near = links(run.fruits);
+  run.fruits.forEach((f, i) => {
+    if (f.kind !== "plum" || f.rotten || !f.landed) return;
+    const earned = earn(run, near, i, PLUM.perLink * run.chainLinks, "Links");
+    if (earned !== null) stage(tally, earned.popup, earned.fruits, earned.links);
+  });
+}
+
 /** The loop cap lasts a turn: what Slices made may Merge again next turn. */
 function uncap(run: Run): void {
   for (const f of run.fruits) f.remerged = false;
@@ -2047,7 +2100,9 @@ const END_OF_TURN: readonly ((run: Run, tally: Tally) => void)[] = [
   iceThaws,
   snowPearsFreeze,
   honeydewsHoney,
+  sprigsBud,
   ageAndRot,
+  plumsCount,
   uncap,
 ];
 
