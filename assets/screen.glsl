@@ -1,6 +1,7 @@
 // The whole screen, as the last thing drawn (src/Main.tsx). Two things are always on: the corners fall away into the dark, as a
-// kitchen lit by one lamp, and every pixel is put on the screen's palette (the `lookup`, assets/screen-palette.png: fifteen of
-// the art's 46 colours, tools/palette/screen.hex), with a
+// kitchen lit by one lamp, and every pixel is put on the screen's palette (the `lookup`, assets/screen-palette.png: 26 of
+// the art's 46 colours, tools/palette/screen.hex: fifteen for everything, and eleven more that only the fruit are drawn in, so
+// the fruit keep their colours), with a
 // dither where a colour lies between two of them, so what the game blends (a dimmed screen, a tint, a flash) is still drawn
 // in the art's own colours. Two more come and go with the run:
 //
