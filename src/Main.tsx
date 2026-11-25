@@ -1,7 +1,7 @@
-import { Game, Layer, Route, Router, Screen, useMutable, useUpdate, useWindowSize } from "@tsengine/runtime/jsx";
+import { Game, Layer, Route, Router, Screen, Shape, useMutable, useUpdate, useWindowSize } from "@tsengine/runtime/jsx";
 
 import { useGame } from "./GameState.ts";
-import { fadeThrough, SCREEN_FADE, screenParams } from "./layout.ts";
+import { fadeThrough, opening, SCREEN_FADE, screenParams } from "./layout.ts";
 import { NIGHT } from "./theme.ts";
 import { Play } from "./Play.tsx";
 import { Rotate } from "./Rotate.tsx";
@@ -27,8 +27,10 @@ export default function Main() {
   // And the boss jar's look: how long the play screen has been at this boss jar, and since its gravity last turned over.
   const boss = useGame((s) => s.boss);
   const flipped = useGame((s) => s.flipped);
-  const fx = useMutable({ mood: "", time: 0, boss: 0, bossTime: 0, flipped: false, flipTime: 99 });
+  const fx = useMutable({ mood: "", time: 0, boss: 0, bossTime: 0, flipped: false, flipTime: 99, up: 0 });
   useUpdate((dt) => {
+    // How long the game has been up: its first screen comes out of the dark (`opening`).
+    fx.up += dt;
     if (mood !== fx.mood) {
       fx.mood = mood;
       fx.time = 0;
@@ -64,6 +66,8 @@ export default function Main() {
               <Play />
             </Route>
           </Router>
+          {/* The game opens out of the dark, as a change of screen does: the dark over its first screen, lifting. Only drawn. */}
+          {opening(fx.up) > 0 && <Shape kind="rect" x={0} y={0} width={640} height={360} color={NIGHT} opacity={opening(fx.up)} />}
           {upright && <Rotate />}
         </Layer>
       </Screen>

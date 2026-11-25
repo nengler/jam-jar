@@ -597,3 +597,11 @@ export const SCREEN_FADE = 0.5;
 export function fadeThrough(progress: number): { fromVisible: boolean; toVisible: boolean; cover: number } {
   return { fromVisible: progress < 0.5, toVisible: progress >= 0.5, cover: 1 - Math.abs(progress * 2 - 1) };
 }
+
+/** Seconds the game's first screen takes to come out of the dark when the game starts, after a beat of dark. */
+const OPENING = { dark: 0.15, lift: 0.6 } as const;
+
+/** How dark the screen still is `time` seconds after the game started, 1 (all dark) to 0: the title fades in. */
+export function opening(time: number): number {
+  return Math.max(0, Math.min(1, 1 - (time - OPENING.dark) / OPENING.lift));
+}
