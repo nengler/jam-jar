@@ -117,16 +117,18 @@ vec4 effect(vec2 uv) {
     // The inside of the jar (its glass's own dark tint) takes none of that light: added to the glass it lay half way between
     // two colours, and the whole jar was dithered from wall to wall, right behind the fruit. The glass is shaded instead, in
     // rings: clear in the middle of the jar, then bands of dither each denser than the last, through the glass's next tone
-    // and on toward the one after it in the corners. The rings' edges wander (the paper's grain, again), so they are not
-    // drawn ovals.
+    // and on toward the one after it in the corners.
     vec3 glass = rgb - vec3(0.125, 0.180, 0.216);
     if (dot(glass, glass) > 0.0004) {
       rgb += pool * 0.075 * vec3(1.0, 0.85, 0.6);
     } else {
-      float out_ = length((at - vec2(params[7], 228.0)) / vec2(96.0, 116.0)) + (grain(at / 24.0) - 0.5) * 0.34 + (grain(at / 9.0) - 0.5) * 0.14;
-      // How shaded, 0 in the middle to about 1.5 in the corners, in six steps: each step is one band.
-      float shade = smoothstep(0.42, 1.3, out_);
-      shade = floor(shade * shade * 1.6 * 6.0 + 0.5) / 6.0;
+      // How far out, 0 in the middle to 1 at the walls: by a rounded square, so the bands follow the jar's own shape and not
+      // an oval's, and by a slow wander of a few pixels, so their edges are drawn by hand and not by compasses.
+      vec2 off = abs(at - vec2(params[7], 228.0)) / vec2(96.0, 116.0);
+      float out_ = pow(off.x * off.x * off.x + off.y * off.y * off.y, 1.0 / 3.0) + (grain(at / 30.0) - 0.5) * 0.14;
+      // How shaded, 0 in the middle to about 1.3 in the corners, in five steps: each step is one band.
+      float shade = smoothstep(0.52, 1.1, out_);
+      shade = floor(pow(shade, 1.6) * 1.3 * 5.0 + 0.5) / 5.0;
       vec3 next = vec3(0.224, 0.290, 0.314);
       rgb = shade <= 1.0 ? mix(rgb, next, shade) : mix(next, vec3(0.341, 0.447, 0.467), shade - 1.0);
     }
