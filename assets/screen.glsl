@@ -114,7 +114,10 @@ vec4 effect(vec2 uv) {
   if (params[7] > 0.0) {
     vec2 from = (at - vec2(params[7], 200.0)) / vec2(190.0, 230.0);
     float pool = 1.0 - smoothstep(0.25, 1.0, length(from));
-    rgb += pool * 0.075 * vec3(1.0, 0.85, 0.6);
+    // Not on the inside of the jar (its glass's own dark tint): lit, it lay between two colours and was dithered from wall to
+    // wall, right behind the fruit. It stays flat, and the light falls on the wall round it.
+    vec3 glass = rgb - vec3(0.125, 0.180, 0.216);
+    if (dot(glass, glass) > 0.0004) rgb += pool * 0.075 * vec3(1.0, 0.85, 0.6);
   }
 
   // The lamp: the corners fall away into the dark.
