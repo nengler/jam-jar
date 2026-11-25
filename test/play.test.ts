@@ -80,7 +80,8 @@ test("Escape pauses the run, and the pause menu's Resume plays on", () => {
 
 test("Settings: left turns the sounds down, the next row is the speed, and Escape goes back", () => {
   // The music's row is out while there is no music, so the sounds' is the first.
-  const frames = parseInputScript("_*2, down, _*2, Enter, _*3, left, _*2, left, _*2, down, _*2, right, _*2, Escape, _*3", { bindings });
+  // The settings come up through a fade of half a second, which is waited out before its rows are pressed.
+  const frames = parseInputScript("_*2, down, _*2, Enter, _*35, left, _*2, left, _*2, down, _*2, right, _*2, Escape, _*3", { bindings });
   const { states } = runScript(gameConfig, frames, () => useGame.getState());
   assert.equal(settings.get().effects, 0.6, "two steps down from 0.8");
   assert.equal(settings.get().music, 0.4, "the music's level is kept, untouched");
@@ -227,7 +228,9 @@ test("the title shows a jar filling up by itself, and it does not touch what is 
   for (const frame of parseInputScript("_*600", { bindings })) {
     backend.queueInput(frame);
     player.step();
-    const demo = findComponent("DemoJar", player.world.root) as unknown as { s: { run: Run } };
+    // The jar is not there until it falls in, half a second after the title comes up.
+    const demo = findComponent("DemoJar", player.world.root) as unknown as { s: { run: Run } } | null;
+    if (demo === null) continue;
     most = Math.max(most, demo.s.run.fruits.length);
     for (const f of demo.s.run.fruits) assert.ok(f.x - f.r >= JAR.left - 0.5 && f.x + f.r <= JAR.right + 0.5, "inside its walls, wherever the jar is drawn");
     const fruit = findComponent("Fruit", player.world.root) as unknown as { s: { turn: number } } | null;
@@ -317,7 +320,8 @@ test("the hand is reordered by dragging: a fruit follows the pointer along the s
       player.step();
     }
   };
-  step("_*2, Enter, _*5");
+  // The game comes up through a fade of half a second, and hears no pointer until it shows: it is waited out.
+  step("_*2, Enter, _*35");
   const play = findComponent("Play", player.world.root) as unknown as { s: { run: Run; tip: boolean } };
   play.s.run = { ...play.s.run, hand: ["cherry", "grape", "orange", "apple"] };
   // The four stand 48 apart, centred on 320: at 248, 296, 344 and 392, on the shelf at about y = 30. A step sees the frame
