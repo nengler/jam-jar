@@ -1,10 +1,10 @@
-import { Entity, Flex, Shape, Text, Tooltip } from "@tsengine/runtime/jsx";
+import { Flex, Layer, Shape, Text, Tooltip, useTime } from "@tsengine/runtime/jsx";
 
 import { Letters } from "./Board.tsx";
 import { Coach } from "./Coach.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { TapButton } from "./KeyHint.tsx";
-import { placed, cardText, pickHeading } from "./layout.ts";
+import { dissolved, placed, cardText, pickHeading } from "./layout.ts";
 import { RuleText } from "./RuleText.tsx";
 import { Terms } from "./Terms.tsx";
 import { FRUITS } from "./rules/fruits.ts";
@@ -62,6 +62,8 @@ interface PickBoardProps {
  * card, and the chosen card stands at the top of its place with its Take button under it.
  */
 export function PickBoard({ run, paused, hints, keys, coached, onChoose, onAway, onTake, onSkip, onLessonNext, onLessonSkip, peek, onPeek }: PickBoardProps) {
+  // The pick fills in from the top as it comes up (assets/dissolve.glsl): how long it has been up.
+  const time = useTime();
   // Put aside: the jar, the rent and the pool as they are, and the way back.
   if (peek)
     return (
@@ -70,7 +72,7 @@ export function PickBoard({ run, paused, hints, keys, coached, onChoose, onAway,
       </Flex>
     );
   return (
-    <Entity>
+    <Layer shader="dissolve.glsl" params={[dissolved(time)]}>
       <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
       <Flex left={0} right={0} top={12} bottom={0} direction="column" alignItems="center" gap={8}>
         <Flex direction="row" justifyContent="center" height={32}>
@@ -124,6 +126,6 @@ export function PickBoard({ run, paused, hints, keys, coached, onChoose, onAway,
           <TapButton label="See the jar" keyName={keys ? "J" : ""} onPress={onPeek} />
         </Flex>
       )}
-    </Entity>
+    </Layer>
   );
 }

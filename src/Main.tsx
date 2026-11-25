@@ -23,12 +23,23 @@ export default function Main() {
   // The whole screen is drawn through one shader (assets/screen.glsl), which the run's mood plays on: how long the mood has lasted.
   const styled = useGame((s) => s.styled);
   const mood = useGame((s) => s.mood);
-  const fx = useMutable({ mood: "", time: 0 });
+  // And the boss jar's look: how long the play screen has been at this boss jar, and since its gravity last turned over.
+  const boss = useGame((s) => s.boss);
+  const flipped = useGame((s) => s.flipped);
+  const fx = useMutable({ mood: "", time: 0, boss: 0, bossTime: 0, flipped: false, flipTime: 99 });
   useUpdate((dt) => {
     if (mood !== fx.mood) {
       fx.mood = mood;
       fx.time = 0;
     } else fx.time += dt;
+    if (boss !== fx.boss) {
+      fx.boss = boss;
+      fx.bossTime = 0;
+    } else fx.bossTime += dt;
+    if (flipped !== fx.flipped) {
+      fx.flipped = flipped;
+      fx.flipTime = 0;
+    } else fx.flipTime += dt;
   });
   const upright = window.height > window.width;
   return (
@@ -39,7 +50,7 @@ export default function Main() {
         {/* No music for now: the only tracks on hand are loops of a few seconds, which wear thin at once. `<Music src="theme.ogg"
             fade={1} />` here, outside the screens, plays one on from the title into a run. */}
         {/* Everything is in one layer, drawn through the screen's shader; where shaders do not run it is drawn as it is. */}
-        <Layer shader="screen.glsl" lookup="apollo.png" params={screenParams(styled, mood, mood === fx.mood ? fx.time : 0)}>
+        <Layer shader="screen.glsl" lookup="apollo.png" params={screenParams(styled, mood, mood === fx.mood ? fx.time : 0, { boss: fx.boss, bossTime: fx.bossTime, flipped: fx.flipped, flipTime: fx.flipTime })}>
           {screen === "title" && <Title name="Jam Jar" />}
           {screen === "settings" && <Settings />}
           {screen === "play" && <Play />}

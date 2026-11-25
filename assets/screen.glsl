@@ -7,6 +7,14 @@
 // params[1]  the last turn of a cycle, 0 to 1: the edges of the screen darken and warm.
 // params[2]  the rent missed, 0 to 1: the colour drains out of the screen.
 //
+// params[3]  the boss jar of the cycle: 0 none, 1 the Peg jar, 2 the Blind jar, 3 the Tilted jar, 4 the Flip jar; and
+// params[4]  how far its look has come in, 0 to 1:
+//              Peg: the dark closes in from both sides, as the post's two halves.
+//              Blind: the dark closes in all round, to a small lit middle.
+//              Tilted: the light falls from the low side: the high side is dark and the low one warm.
+//              Flip: the dark hangs from the side the pile falls away from (params[5]: 1 while gravity is turned over), and
+// params[6]    the screen smears up and down for a moment as gravity turns, 1 fading to 0.
+//
 // It works by the art's pixels (two game pixels square), so the dither is as coarse as the art.
 
 const vec2 GAME = vec2(640.0, 360.0);
@@ -55,6 +63,17 @@ vec4 effect(vec2 uv) {
   float out_ = length(d);
   vec3 rgb = c.rgb;
 
+  // The Flip jar, as gravity turns: the picture is dragged up and down for a moment.
+  float smear = params[6];
+  if (smear > 0.0) {
+    vec3 dragged = vec3(0.0);
+    for (int i = 1; i <= 3; i++) {
+      float far = float(i) * 10.0 * smear;
+      dragged += texture(image, uvOf(vec2(place.x, place.y - far))).rgb + texture(image, uvOf(vec2(place.x, place.y + far))).rgb;
+    }
+    rgb = mix(rgb, dragged / 6.0, 0.65 * smear);
+  }
+
   // The last turn: the edges darken and warm, as the light goes.
   float last = params[1] * smoothstep(0.6, 1.3, out_);
   rgb = mix(rgb, rgb * vec3(1.05, 0.62, 0.42), last * 0.75);
@@ -62,6 +81,24 @@ vec4 effect(vec2 uv) {
   // The lamp: the corners fall away into the dark.
   float dark = smoothstep(0.95, 1.5, out_) * 0.5;
   rgb = mix(rgb, vec3(0.035, 0.039, 0.078), dark);
+
+  // The boss jar's own dark, over the lamp's.
+  int boss = int(params[3] + 0.5);
+  float come = params[4];
+  vec3 night = vec3(0.035, 0.039, 0.078);
+  if (boss == 1) {
+    rgb = mix(rgb, night, come * 0.6 * smoothstep(0.55, 1.05, abs(d.x)));
+  } else if (boss == 2) {
+    rgb = mix(rgb, night, come * 0.7 * smoothstep(0.6, 1.2, out_));
+  } else if (boss == 3) {
+    // From the high side (the left) to the low one, leaning as the jar does.
+    float side = d.x * 0.85 + d.y * 0.35;
+    rgb = mix(rgb, night, come * 0.55 * smoothstep(0.25, 1.1, -side));
+    rgb = mix(rgb, rgb * vec3(1.08, 0.86, 0.66), come * 0.6 * smoothstep(0.35, 1.1, side));
+  } else if (boss == 4) {
+    float away = params[5] > 0.5 ? d.y : -d.y;
+    rgb = mix(rgb, night, come * 0.6 * smoothstep(0.3, 1.0, away));
+  }
 
   // The rent missed: the colour drains away, and the screen dims a little.
   float drained = params[2];

@@ -33,7 +33,7 @@ export function Title({ name }: { name: string }) {
   const time = useTime();
   return (
     <Entity>
-      <Backdrop />
+      <Backdrop swirl />
       {/* The entrance's sounds: the name lands, the jar lands, and a bloop for each button as it slides in. */}
       <Thud at={LANDS} />
       <Thud at={ENTER.jar + LANDS} />

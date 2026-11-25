@@ -41,6 +41,9 @@ export const useGame = createGameState(
     styled: styledScreen(),
     /** What the run is going through that the whole screen shows; the play screen says (`setMood`). */
     mood: "" as Mood,
+    /** The boss jar the play screen is at, as the screen's shader numbers it (0 for none; `bossCode`), and whether its gravity is turned over. */
+    boss: 0,
+    flipped: false,
     learned: learnedMoments(),
     /** The step of the first game's tutorial the player is at (rules/tutorial.ts); past the last lesson once it is over. */
     tutorial: tutorialStep(),
@@ -82,9 +85,16 @@ export const useGame = createGameState(
     setMood(s, mood: Mood) {
       s.mood = mood;
     },
+    /** The boss jar the play screen is at (0 for none), and whether its gravity is turned over: what the screen's shader shows of it. */
+    setBoss(s, boss: number, flipped: boolean) {
+      s.boss = boss;
+      s.flipped = flipped;
+    },
     start(s) {
       s.speed = 1;
       s.mood = "";
+      s.boss = 0;
+      s.flipped = false;
       learn("title");
       s.savedRun = null;
       s.screen = "play";
@@ -99,6 +109,8 @@ export const useGame = createGameState(
     toTitle(s) {
       s.speed = 1;
       s.mood = "";
+      s.boss = 0;
+      s.flipped = false;
       s.holding = -1;
       if (s.screen === "settings") learn("settings");
       s.screen = "title";

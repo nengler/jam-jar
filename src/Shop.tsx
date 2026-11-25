@@ -1,10 +1,10 @@
-import { Entity, Flex, Shape, Sprite, Text, Tooltip, useTime, type Child } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Layer, Shape, Sprite, Text, Tooltip, useTime, type Child } from "@tsengine/runtime/jsx";
 
 import { Dialog } from "./Board.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { useGame } from "./GameState.ts";
 import { TapButton } from "./KeyHint.tsx";
-import { chosenName, ENTER, entered, placed, popIn, poolRows, cardText } from "./layout.ts";
+import { chosenName, dissolved, ENTER, entered, placed, popIn, poolRows, cardText, SHOP_SWIRL } from "./layout.ts";
 import { FRUITS, type FruitKind } from "./rules/fruits.ts";
 import { ITEMS, type ItemKind } from "./rules/items.ts";
 import { Bloops } from "./Sounds.tsx";
@@ -28,6 +28,7 @@ import {
   INK,
   INK_SOFT,
   LIGHT,
+  NIGHT,
   SELECT,
   SHADE,
   SIGN_SLICE,
@@ -301,10 +302,13 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
   // Whether the chosen place on the shelf has something for sale, for the Buy button: not an action, a sold place, or none.
   const awning = -AWNING_H * (1 - popIn(time, 0, ENTER.pop));
   return (
-    <Entity>
-      {/* Shaded twice: the shop covers the whole screen, and the boards behind it should not show through. */}
-      <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
-      <Shape kind="rect" x={0} y={0} width={640} height={360} color={SHADE} />
+    <Layer shader="dissolve.glsl" params={[dissolved(time)]}>
+      {/* Behind the stall, over the whole kitchen: a slow swirl of paint in the awning's reds, kept dark (assets/swirl.glsl).
+          Where shaders do not run it is the dark it is painted on. The whole shop fills in from the top as it comes up
+          (assets/dissolve.glsl). */}
+      <Layer shader="swirl.glsl" params={SHOP_SWIRL}>
+        <Shape kind="rect" x={0} y={0} width={640} height={360} color={NIGHT} />
+      </Layer>
       {/* A bloop for each card as it drops in, and one for the actions. */}
       <Bloops start={ENTER.pop * 0.6} gap={ENTER.gap} count={SHOP_GLAZE + 2} />
 
@@ -413,6 +417,6 @@ export function Shop({ run, shop, onPoint, onClick, onAway, onConfirm, onSpace, 
           </Flex>
         </Entity>
       )}
-    </Entity>
+    </Layer>
   );
 }
