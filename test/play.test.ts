@@ -632,6 +632,17 @@ test("the first game's tutorial: a card says one thing at a time and moves on as
   assert.equal(runOf(game).phase, "settle");
   assert.equal(JSON.stringify(runOf(game)), held, "nothing moved while the card was up");
   assert.equal(step(), 3, "and it is still up");
+  // The game's clock stands still with the jar, so the card must not be waiting on it to show (a card that faded in by that
+  // clock stayed clear, and with it the Got it that lets the jar go).
+  const firstBox = (object: GameObject): Flex | null => {
+    if (object instanceof Flex) return object;
+    for (const child of object.children) {
+      const found = firstBox(child);
+      if (found !== null) return found;
+    }
+    return null;
+  };
+  assert.equal(firstBox(coach() as unknown as GameObject)?.opacity, 1, "the card shows while the jar is held");
   // Enter is its Got it, at a keyboard: the jar plays on.
   game.input("Enter, _*3");
   assert.equal(step(), 4, "put away: on to the pick, which waits for it");
