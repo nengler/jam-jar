@@ -39,7 +39,7 @@ export default function Main() {
         {/* No music for now: the only tracks on hand are loops of a few seconds, which wear thin at once. `<Music src="theme.ogg"
             fade={1} />` here, outside the screens, plays one on from the title into a run. */}
         {/* Everything is in one layer, drawn through the screen's shader; where shaders do not run it is drawn as it is. */}
-        <Layer shader="screen.glsl" params={screenParams(styled, mood, mood === fx.mood ? fx.time : 0)}>
+        <Layer shader="screen.glsl" lookup="apollo.png" params={screenParams(styled, mood, mood === fx.mood ? fx.time : 0)}>
           {screen === "title" && <Title name="Jam Jar" />}
           {screen === "settings" && <Settings />}
           {screen === "play" && <Play />}

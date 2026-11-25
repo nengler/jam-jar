@@ -1,8 +1,6 @@
 import type { FruitKind } from "./rules/fruits.ts";
 import type { Glaze } from "./rules/glazes.ts";
-import { handSlots, JAR, RIM, slotsOf, type Run } from "./rules/jar.ts";
-import type { Lesson, LessonTarget } from "./rules/tutorial.ts";
-import { biggestFruit } from "./theme.ts";
+import { handSlots, JAR, slotsOf, type Run } from "./rules/jar.ts";
 
 /** Where things stand on the play screen, for Play.tsx and the parts of it in their own files. */
 
@@ -45,44 +43,4 @@ export function shelfOf(run: Run): ShelfRow {
   const cards = run.phase === "order" ? run.hand : run.queue;
   const glazes = run.phase === "order" ? run.handGlazes : run.queueGlazes;
   return { cards, glazes, spans: cards.map((kind) => slotsOf(kind)), left: JAR_MID - (handSlots(cards) * SLOT) / 2 };
-}
-
-/** How far above the plank the hand reaches, a lifted fruit with its frame included: what the shelf's drag box and its lesson cover. */
-export function shelfTall(cards: readonly FruitKind[]): number {
-  return Math.max(44, biggestFruit(cards) + SHELF_FOOT + HOLD_LIFT + 4);
-}
-
-/** What is picked out on the play screen: what the lesson is about, or the jar while a Preserves Jar's fruit are chosen. */
-export function litOf(lesson: Lesson | null, preserving: boolean): LessonTarget {
-  return lesson !== null ? lesson.target : preserving ? "jar" : null;
-}
-
-/** A box on the screen. */
-export interface Box {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-/** The rent board's height, from its heading's line to its foot (it is as tall as what is on it, which does not change). */
-const RENT_BOARD_H = 132;
-
-/**
- * Where a part of the play screen a lesson picks out is, as the amber frame goes round it (`Frame` in Coach.tsx, with the same
- * room round each box): the hole the dark leaves (`Dim`). It is worked out here, not read from the part's own box, because
- * the dark is drawn after everything it dims, and nothing drawn tells another where it was laid out.
- */
-export function litBox(target: LessonTarget, run: Run): Box {
-  if (target === "jar") return { x: JAR.left - 8, y: RIM - 40, width: JAR.right - JAR.left + 16, height: 280 };
-  // The rent board with its heading, which is lettered on the wall above its box.
-  if (target === "rent") return { x: HUD_X - 6, y: BOARD_Y - 22, width: BOARD_W + 12, height: RENT_BOARD_H + 32 };
-  if (target === "pool") return { x: ROLL_FROM - BASKET_W / 2 - 8, y: SHELF_Y - BASKET_H - 8, width: BASKET_W + 40 + 16, height: BASKET_H + 12 };
-  if (target === "shelf") {
-    const shelf = shelfOf(run);
-    const tall = shelfTall(shelf.cards);
-    return { x: shelf.left - 8, y: SHELF_Y - tall - 2, width: handSlots(shelf.cards) * SLOT + 16, height: tall + 8 + 4 };
-  }
-  // Nothing is picked out: no hole (and the dark is not drawn).
-  return { x: 0, y: 0, width: 0, height: 0 };
 }
