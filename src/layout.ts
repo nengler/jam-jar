@@ -1,7 +1,7 @@
 import type { Mood } from "./GameState.ts";
 import { BANANA, FRUITS, pumpkinSeedText, type FruitKind } from "./rules/fruits.ts";
 import { GLAZES, type Glaze } from "./rules/glazes.ts";
-import { BOSS_NAME, bossNow, COCONUT_TURNS, FROZEN_TURNS, JAR, TURNS_PER_CYCLE, newRun, OPENING_PICKS, RENT, withGlazes, type Run } from "./rules/jar.ts";
+import { BOSS_NAME, bossNow, COCONUT_TURNS, FROZEN_TURNS, JAR, TURNS_PER_CYCLE, newRun, OPENING_PICKS, RENT, withGlazes, type Boss, type Run } from "./rules/jar.ts";
 import { KEYWORDS, keywordsIn } from "./rules/terms.ts";
 
 /** One kind of fruit in the pool, and how many of it the pool holds. */
@@ -528,14 +528,38 @@ export function blastParams(blasts: readonly { x: number; y: number; age: number
 /** Seconds the last turn's light takes to go, and the colour takes to drain when the rent is missed. */
 const MOOD_TIME: Readonly<Record<Mood, number>> = { "": 0, last: 0.8, over: 1.2 };
 
+/** Seconds a boss jar's look takes to come over the screen, and the smear lasts as the Flip jar's gravity turns. */
+const BOSS_TIME = 1.2;
+const SMEAR_TIME = 0.35;
+/** The boss jars as the screen's shader numbers them (assets/screen.glsl); 0 is none. */
+const BOSS_CODE: Readonly<Record<Boss, number>> = { peg: 1, blind: 2, tilt: 3, flip: 4 };
+
+/** What the screen's shader is told of the run besides its mood: the boss jar, how long it has been that one, whether gravity is turned over and how long since it turned. */
+export interface BossLook {
+  boss: number;
+  bossTime: number;
+  flipped: boolean;
+  flipTime: number;
+}
+
 /**
- * What the whole screen's shader is given (assets/screen.glsl): whether it is on, and how far each of the run's moods has come,
- * `time` seconds after the mood began. A missed rent comes at the end of a last turn, so its edges stay dark while it drains.
+ * What the whole screen's shader is given (assets/screen.glsl): whether it is on, how far each of the run's moods has come,
+ * `time` seconds after the mood began, and the boss jar's look. A missed rent comes at the end of a last turn, so its edges
+ * stay dark while it drains.
  */
-export function screenParams(styled: boolean, mood: Mood, time: number): number[] {
-  if (!styled) return [0, 0, 0];
+export function screenParams(styled: boolean, mood: Mood, time: number, look: BossLook): number[] {
+  if (!styled) return [0];
   const through = mood === "" ? 0 : Math.max(0, Math.min(1, time / MOOD_TIME[mood]));
-  return [1, mood === "last" ? through : mood === "over" ? 1 : 0, mood === "over" ? through : 0];
+  const come = look.boss === 0 ? 0 : Math.min(1, look.bossTime / BOSS_TIME);
+  const smear = look.boss === BOSS_CODE.flip && look.flipTime < SMEAR_TIME ? 1 - look.flipTime / SMEAR_TIME : 0;
+  return [1, mood === "last" ? through : mood === "over" ? 1 : 0, mood === "over" ? through : 0, look.boss, come, look.flipped ? 1 : 0, smear];
+}
+
+/** The boss jar a run is at while its jar is on screen (not in the shop or on the rent's board), as the screen's shader numbers it: 0 for none. */
+export function bossCode(run: Run): number {
+  const boss = bossNow(run);
+  const shown = run.phase === "order" || run.phase === "drop" || run.phase === "settle" || run.phase === "tally" || run.phase === "pick" || run.phase === "preserve";
+  return boss !== null && shown ? BOSS_CODE[boss] : 0;
 }
 
 /** The mood of a run, for the whole screen: its last turn while it is played, or the rent missed (from the moment the jar settles short of it). */
@@ -546,4 +570,19 @@ export function moodOf(run: Run): Mood {
   // Resolve has counted the next turn by the tally: the turn being tallied is the one before.
   const turn = run.phase === "tally" && after !== "rent" ? run.turn - 1 : run.turn;
   return playing && turn >= TURNS_PER_CYCLE ? "last" : "";
+}
+
+/** The four colours of the swirl behind a screen (assets/swirl.glsl), darkest first, as the numbers its shader takes, then how fast it turns. */
+function swirlOf(colours: readonly [string, string, string, string], speed: number): number[] {
+  return [...colours.flatMap((hex) => [parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255]), speed];
+}
+
+/** The title's swirl: the kitchen wall's navy blues. And the shop's: the awning's reds, in the dark. */
+export const TITLE_SWIRL = swirlOf(["#10141f", "#172038", "#253a5e", "#3c5e8b"], 1);
+export const SHOP_SWIRL = swirlOf(["#090a14", "#241527", "#411d31", "#602c2c"], 0.7);
+
+/** Seconds a board takes to fill in as it comes up (assets/dissolve.glsl), and how far it has come `time` seconds after. */
+const DISSOLVE_TIME = 0.4;
+export function dissolved(time: number): number {
+  return Math.min(1, time / DISSOLVE_TIME);
 }

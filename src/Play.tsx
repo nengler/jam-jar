@@ -10,7 +10,7 @@ import { dropRun, keepRun, useGame } from "./GameState.ts";
 import { PauseButton } from "./KeyHint.tsx";
 import { Lanes } from "./Lanes.tsx";
 import { LastTurn } from "./LastTurn.tsx";
-import { atRest, crossed, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, moodOf, opensAt, shelfSlot, startingRun } from "./layout.ts";
+import { atRest, bossCode, crossed, LANDS, TILT_TIME, tilted, rolledIn, SWEEP_TIME, blastJolt, INTRO, jarDrop, popIn, leaned, moment, moodOf, opensAt, shelfSlot, startingRun } from "./layout.ts";
 import { Pause } from "./Pause.tsx";
 import { PickBoard } from "./PickBoard.tsx";
 import { BOARD_W, HUD_X, JAR_MID, SHELF_Y, shelfOf, SLOT } from "./places.ts";
@@ -77,7 +77,9 @@ export function Play() {
   const device = useInputDevice();
   const keys = device === "keyboard";
   const speed = useGame((g) => g.speed);
-  const { pause, toTitle, setSpeed, setMood, start, toLesson, hold } = useGame.actions();
+  const { pause, toTitle, setSpeed, setMood, setBoss, start, toLesson, hold } = useGame.actions();
+  const boss = useGame((g) => g.boss);
+  const flipped = useGame((g) => g.flipped);
   const mood = useGame((g) => g.mood);
   // The first game's tutorial: which lesson the player is at (rules/tutorial.ts).
   const tutorial = useGame((g) => g.tutorial);
@@ -250,6 +252,8 @@ export function Play() {
     if (pace !== speed) setSpeed(pace);
     // What the whole screen shows of the run (Main.tsx): its last turn, the rent missed.
     if (moodOf(s.run) !== mood) setMood(moodOf(s.run));
+    // And the boss jar it is at, with which way its gravity is.
+    if (bossCode(s.run) !== boss || s.run.flipped !== flipped) setBoss(bossCode(s.run), s.run.flipped);
     const heard = s.run.sounds;
     // Each at its own level; the engine scales them all by the player's sounds setting.
     if (heard.includes("land")) playLand(0.4);
