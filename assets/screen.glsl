@@ -24,6 +24,9 @@
 
 const vec2 GAME = vec2(640.0, 360.0);
 
+// How much the dither is turned down: 1 is every shade dithered in proportion; more leaves the faint ones flat.
+const float CALM = 1.25;
+
 // The 4 x 4 ordered dither: which of two colours a pixel takes when its own lies between them.
 const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
 
@@ -53,6 +56,9 @@ vec3 onPalette(vec3 rgb, vec2 q) {
   // How far along the way from the nearest to the next this colour is, against this pixel's place in the pattern.
   vec3 way = second - first;
   float along = clamp(dot(rgb - first, way) / max(dot(way, way), 0.000001), 0.0, 1.0);
+  // The dither is turned down a little (`CALM`): a colour near one of the two takes it outright, so a faint shade is flat and
+  // only what is well between two colours is dithered.
+  along = clamp(0.5 + (along - 0.5) * CALM, 0.0, 1.0);
   int at = int(mod(q.x, 4.0)) + int(mod(q.y, 4.0)) * 4;
   return along > (BAYER[at] + 0.5) / 16.0 ? second : first;
 }
@@ -112,9 +118,10 @@ vec4 effect(vec2 uv) {
   }
 
   // The lamp: the corners fall away into the dark.
-  // Only what is dark already goes darker: a heading or a number in a corner stays as clean as one in the middle.
+  // What is light goes darker by a third as much: a heading or a number in a corner keeps its colour, with a little of the
+  // dither on it, and is not muddied as the wall behind it is darkened.
   float bright = dot(rgb, vec3(0.299, 0.587, 0.114));
-  float dark = smoothstep(0.95, 1.5, out_) * 0.5 * (1.0 - smoothstep(0.4, 0.7, bright));
+  float dark = smoothstep(0.95, 1.5, out_) * 0.5 * mix(1.0, 0.35, smoothstep(0.4, 0.7, bright));
   rgb = mix(rgb, vec3(0.035, 0.039, 0.078), dark);
 
   // The boss jar's own dark, over the lamp's.
