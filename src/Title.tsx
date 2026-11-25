@@ -33,12 +33,14 @@ export function Title({ name }: { name: string }) {
   const time = useTime();
   return (
     <Entity>
-      <Backdrop swirl />
+      <Backdrop />
       {/* The entrance's sounds: the name lands, the jar lands, and a bloop for each button as it slides in. */}
       <Thud at={LANDS} />
       <Thud at={ENTER.jar + LANDS} />
       <Bloops start={MENU_AT} gap={ENTER.gap} count={hasSave ? 3 : 2} />
-      <DemoJar x={JAR_SHIFT} lift={time < ENTER.jar ? 400 : jarDrop(time - ENTER.jar, 400)} wait={ENTER.jar + INTRO.fall} />
+      {/* The jar is not there until it falls in: while the screen before this one fades out, its walls would stand in that
+          screen's jar (both are in the world while one gives way to the other). */}
+      {time >= ENTER.jar && <DemoJar x={JAR_SHIFT} lift={jarDrop(time - ENTER.jar, 400)} wait={INTRO.fall} />}
       <Flex direction="column" width={MENU_W} height={324} alignItems="center" justifyContent="center" gap={hasSave ? 6 : 12}>
         {/* The name keeps its room in the column while it falls into it. */}
         <Flex height={NAME_H} direction="row" justifyContent="center">

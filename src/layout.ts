@@ -577,12 +577,23 @@ function swirlOf(colours: readonly [string, string, string, string], speed: numb
   return [...colours.flatMap((hex) => [parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255]), speed];
 }
 
-/** The title's swirl: the kitchen wall's navy blues. And the shop's: the awning's reds, in the dark. */
-export const TITLE_SWIRL = swirlOf(["#10141f", "#172038", "#253a5e", "#3c5e8b"], 1);
+/** The kitchen wall's swirl, behind the title, the settings and the game: navy blues. And the shop's: the awning's reds, in the dark. */
+export const WALL_SWIRL = swirlOf(["#10141f", "#172038", "#253a5e", "#3c5e8b"], 1);
 export const SHOP_SWIRL = swirlOf(["#090a14", "#241527", "#411d31", "#602c2c"], 0.7);
 
 /** Seconds a board takes to fill in as it comes up (assets/dissolve.glsl), and how far it has come `time` seconds after. */
 const DISSOLVE_TIME = 0.4;
 export function dissolved(time: number): number {
   return Math.min(1, time / DISSOLVE_TIME);
+}
+
+/** Seconds a change of screen takes (the title, the settings, the game), and the dark it fades through. */
+export const SCREEN_FADE = 0.5;
+
+/**
+ * A change of screen fades through the dark: the screen being left goes under it in the first half, and the one being entered
+ * comes out of it in the second. (The whole screen's shader then draws the fade in the palette's colours, dithered.)
+ */
+export function fadeThrough(progress: number): { fromVisible: boolean; toVisible: boolean; cover: number } {
+  return { fromVisible: progress < 0.5, toVisible: progress >= 0.5, cover: 1 - Math.abs(progress * 2 - 1) };
 }

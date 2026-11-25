@@ -1,7 +1,8 @@
-import { Game, Layer, Screen, useMutable, useUpdate, useWindowSize } from "@tsengine/runtime/jsx";
+import { Game, Layer, Route, Router, Screen, useMutable, useUpdate, useWindowSize } from "@tsengine/runtime/jsx";
 
 import { useGame } from "./GameState.ts";
-import { screenParams } from "./layout.ts";
+import { fadeThrough, SCREEN_FADE, screenParams } from "./layout.ts";
+import { NIGHT } from "./theme.ts";
 import { Play } from "./Play.tsx";
 import { Rotate } from "./Rotate.tsx";
 import { Settings } from "./Settings.tsx";
@@ -51,9 +52,18 @@ export default function Main() {
             fade={1} />` here, outside the screens, plays one on from the title into a run. */}
         {/* Everything is in one layer, drawn through the screen's shader; where shaders do not run it is drawn as it is. */}
         <Layer shader="screen.glsl" lookup="apollo.png" params={screenParams(styled, mood, mood === fx.mood ? fx.time : 0, { boss: fx.boss, bossTime: fx.bossTime, flipped: fx.flipped, flipTime: fx.flipTime })}>
-          {screen === "title" && <Title name="Jam Jar" />}
-          {screen === "settings" && <Settings />}
-          {screen === "play" && <Play />}
+          {/* One screen at a time, and a change of screen fades through the dark. */}
+          <Router route={screen} transition={fadeThrough} duration={SCREEN_FADE} coverColor={NIGHT}>
+            <Route name="title">
+              <Title name="Jam Jar" />
+            </Route>
+            <Route name="settings">
+              <Settings />
+            </Route>
+            <Route name="play">
+              <Play />
+            </Route>
+          </Router>
           {upright && <Rotate />}
         </Layer>
       </Screen>
