@@ -61,6 +61,8 @@ changes them.
 
 The screens word their prompts by what the player is using, whichever was pressed last: a keyboard is told its keys, a
 mouse or a finger to tap and drag, and no key is named to a player who has not pressed one (the engine's `useInputDevice`).
+The whole screen is drawn through a shader (`assets/screen.glsl`): the corners fall away into the dark, every pixel is put back on the palette with a dither, the edges warm on a cycle's last turn, a band of gold crosses when the rent is paid, and the colour drains when it is missed. The settings' Screen row turns it off (Plain). Special fruit and blasts have shaders of their own (`assets/fruit.glsl`, `assets/blast.glsl`). `tse screenshot --gpu` shows them; the plain `tse screenshot` and the tests run none.
+
 For a player at a keyboard, the keys for the pick and the shop are on screen the first time each comes up and not again;
 the pause menu always lists them. That, and the two volumes on the settings screen (music and sounds, 0 to 10), are the
 player's settings (`src/settings.ts`), which the engine keeps between launches.

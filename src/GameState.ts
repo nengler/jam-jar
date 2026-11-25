@@ -1,10 +1,16 @@
 import { createGameState, createSave } from "@tsengine/runtime";
 
 import type { Run } from "./rules/jar.ts";
-import { effectsLevel, fastPlay, learn, learnedMoments, musicLevel, settings, setTutorialStep, stepVolume, toggleFast, tutorialStep } from "./settings.ts";
+import { effectsLevel, fastPlay, learn, learnedMoments, musicLevel, settings, setTutorialStep, stepVolume, styledScreen, toggleFast, toggleStyled, tutorialStep } from "./settings.ts";
 import { LESSONS } from "./rules/tutorial.ts";
 
 type Screen = "title" | "settings" | "play";
+
+/**
+ * What the run is going through that the whole screen shows (assets/screen.glsl): the last turn of a cycle, the rent missed, the
+ * rent paid, or nothing.
+ */
+export type Mood = "" | "last" | "over" | "paid";
 
 /**
  * The game's state, in one place: which screen shows and whether play is paused. A component reads one value with
@@ -31,6 +37,10 @@ export const useGame = createGameState(
     music: musicLevel(),
     effects: effectsLevel(),
     fast: fastPlay(),
+    /** Whether the whole screen is drawn through its shader (the settings' Screen row). */
+    styled: styledScreen(),
+    /** What the run is going through that the whole screen shows; the play screen says (`setMood`). */
+    mood: "" as Mood,
     learned: learnedMoments(),
     /** The step of the first game's tutorial the player is at (rules/tutorial.ts); past the last lesson once it is over. */
     tutorial: tutorialStep(),
@@ -48,6 +58,7 @@ export const useGame = createGameState(
       s.music = musicLevel();
       s.effects = effectsLevel();
       s.fast = fastPlay();
+      s.styled = styledScreen();
       s.learned = learnedMoments();
       s.tutorial = tutorialStep();
       // The settings are read when the player's files become readable, which is also the first moment a save can be seen.
@@ -68,8 +79,12 @@ export const useGame = createGameState(
     setSpeed(s, speed: number) {
       s.speed = speed;
     },
+    setMood(s, mood: Mood) {
+      s.mood = mood;
+    },
     start(s) {
       s.speed = 1;
+      s.mood = "";
       learn("title");
       s.savedRun = null;
       s.screen = "play";
@@ -83,6 +98,7 @@ export const useGame = createGameState(
     },
     toTitle(s) {
       s.speed = 1;
+      s.mood = "";
       s.holding = -1;
       if (s.screen === "settings") learn("settings");
       s.screen = "title";
@@ -103,6 +119,9 @@ export const useGame = createGameState(
     },
     changeSpeed() {
       toggleFast();
+    },
+    changeStyled() {
+      toggleStyled();
     },
     /** A lesson that holds the jar is up: the world stands still until the tutorial moves on from this step. */
     hold(s, step: number) {
