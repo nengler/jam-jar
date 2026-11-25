@@ -82,6 +82,7 @@ FRUIT_SIZES = {
     "raspberry": 16,
     "olive": 16,
     "plum": 20,
+    "persimmon": 20,
     "kumquat": 16,
     "grapefruit": 24,
     "sprig": 16,

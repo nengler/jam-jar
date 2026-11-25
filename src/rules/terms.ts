@@ -29,6 +29,7 @@ export type Keyword =
   | "echo"
   | "bud"
   | "afloat"
+  | "swell"
   | "heavy"
   | "double"
   | "spoil"
@@ -89,8 +90,9 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   grow: { name: "Grow", text: "That kind scores this much more, all run." },
   benched: { name: "Benched", text: "On a turn it sits out, left in the basket." },
   link: { name: "Link", text: "Each link of the turn's chain. Not multiplied." },
-  echo: { name: "Echo", text: "Drops as a copy of the fruit on its right." },
+  echo: { name: "Echo", text: "Drops as a copy of the fruit in the basket." },
   bud: { name: "Bud", text: "Grows a Cherry beside it, if the jar has room." },
+  swell: { name: "Swell", text: "This one fruit scores this more, all run." },
   afloat: { name: "Afloat", text: "While it sits in juice or milk." },
   cluster: { name: "Cluster", text: "Landing, its kind scores this more till rent." },
   heavy: { name: "Heavy", text: "Shoulders lighter fruit aside." },
@@ -101,7 +103,7 @@ export const KEYWORDS: Readonly<Record<Keyword, KeywordDef>> = {
   copy: { name: "Copy", text: "Becomes the first fruit it lands on." },
   bouncy: { name: "Bouncy", text: "Shoves its neighbours: each one is 2 links." },
   crack: { name: "Crack", text: "After this many turns, or hit hard, it opens:" },
-  juice: { name: "Juice", text: "Pours juice in the jar. Fruit in it float." },
+  juice: { name: "Juice", text: "Pours juice. Fruit in it float and score +6." },
   milk: { name: "Milk", text: "Pours milk in the jar. Fruit in it score x2." },
   skip: { name: "Skip", text: "A Merge touching it skips a size." },
   legendary: { name: "Legendary", text: "Rare, and never in the shop." },

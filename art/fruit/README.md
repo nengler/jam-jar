@@ -13,7 +13,7 @@ and a pixel of any other colour, or half see-through, stops the script with wher
 | Size | Fruit |
 | --- | --- |
 | 16 x 16 | cherry, apple, blueberry, chili, lemon, prune, seed, gourd, fruitfly, pumpkinseed, goldenapple, raspberry, olive, kumquat, sprig, cranberry |
-| 20 x 20 | grape, banana, fig, kiwi, lime, peach, pitaya, pomegranate, slice, snowpear, quince, medlar, plum |
+| 20 x 20 | grape, banana, fig, kiwi, lime, peach, pitaya, pomegranate, slice, snowpear, quince, medlar, plum, persimmon |
 | 24 x 24 | orange, coconut, dragonfruit, durian, honeydew, grapefruit |
 | 28 x 28 | melon |
 | 32 x 32 | watermelon |
@@ -29,5 +29,5 @@ cut off by the top of the screen, and a Melon's by 2 pixels.
 The pictures here now are placeholders, cut from the fruit sheet in `tools/fruit/` (its README says what is known of where it
 came from): each sprite was snapped to Apollo and scaled to its fruit's art size with no smoothing. No sprite exists for a
 Durian (the Pineapple stands in), a Seed (the brown Kiwi), a Melon (the round green one), a Prune (the Blackberry), a Fig (the
-Aubergine) or a Honeydew (the golden Apple). The Fruit Fly, the Pumpkin Seed, the Raspberry, the Olive, the Plum, the Kumquat, the Grapefruit, the Sprig and the Cranberry were drawn for the game; the Golden Apple is the Apple recoloured gold. The Quince and the
+Aubergine) or a Honeydew (the golden Apple). The Fruit Fly, the Pumpkin Seed, the Raspberry, the Olive, the Plum, the Kumquat, the Grapefruit, the Sprig, the Cranberry and the Persimmon were drawn for the game; the Golden Apple is the Apple recoloured gold. The Quince and the
 Medlar were drawn for the game as stand-ins too; the Medlar is not in the game yet (it is held back until it is redesigned).
