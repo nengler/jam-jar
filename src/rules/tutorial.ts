@@ -39,8 +39,8 @@ export const LESSONS: readonly Lesson[] = [
   {
     id: "order",
     title: "Placement",
-    text: "Each fruit falls straight down from its spot and scores by what it touches. Drag to move.",
-    keysText: "Each fruit falls straight down from its spot. Enter picks one up to move it.",
+    text: "Four fall straight down from their spots. The one in the basket sits out. Drag to move.",
+    keysText: "Four fall from their spots; the one in the basket sits out. Enter picks one up to move.",
     target: "shelf",
   },
   {
@@ -77,8 +77,8 @@ export const LESSONS: readonly Lesson[] = [
   {
     id: "pool",
     title: "Your pool",
-    text: "Your fruit wait in the basket. Each turn deals four; empty, it refills. Tap it to see all.",
-    keysText: "Your fruit wait in the basket. Each turn deals four; empty, it refills. D shows them all.",
+    text: "Your fruit wait in the basket. Each turn deals five; empty, it refills. Tap it to see all.",
+    keysText: "Your fruit wait in the basket. Each turn deals five; empty, it refills. D shows them all.",
     target: "pool",
     told: true,
   },

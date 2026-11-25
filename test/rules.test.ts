@@ -47,6 +47,9 @@ import {
   rentFor,
   resolve,
   rollPool,
+  DEAL_SIZE,
+  HAND_SIZE,
+  dropping,
   COCONUT_TURNS,
   FROZEN_TURNS,
   PEACH_LINKS,
@@ -162,7 +165,7 @@ test("an opening pick skipped pays a coin and goes on to the next, then to the h
   run = advance(run, 1 / 60, { ...NO_KEYS, drop: true }, []);
   assert.deepEqual([run.phase, run.opening, run.coins, run.pool.length], ["pick", 1, 1, 6]);
   run = advance(run, 1 / 60, { ...NO_KEYS, drop: true }, []);
-  assert.deepEqual([run.phase, run.opening, run.coins, run.pool.length, run.hand.length], ["order", 0, 2, 6, 4]);
+  assert.deepEqual([run.phase, run.opening, run.coins, run.pool.length, run.hand.length], ["order", 0, 2, 6, DEAL_SIZE]);
 });
 
 test("the same seed and keys play the same run", () => {
@@ -440,7 +443,7 @@ test("missing rent ends the run; paying it moves to the next cycle with an empty
   assert.equal(rich.shop, null);
   assert.equal(rich.cycle, 2);
   assert.equal(rich.fruits.length, 0);
-  assert.equal(rich.hand.length, 4);
+  assert.equal(rich.hand.length, DEAL_SIZE);
 });
 
 test("poolRows groups the pool by kind, in the fruit table's order", () => {
@@ -859,7 +862,8 @@ test("the Blind jar: the hand cannot be chosen from or reordered, only dropped",
   assert.deepEqual(run.hand, hand);
   run = press(run, { drop: true });
   assert.equal(run.phase, "drop");
-  assert.deepEqual(run.queue.concat(run.fruits.map((f) => f.kind)).sort(), hand.slice().sort());
+  assert.deepEqual(run.queue.concat(run.fruits.map((f) => f.kind)).sort(), hand.slice(0, HAND_SIZE).sort(), "the first four drop");
+  assert.deepEqual(run.discard.slice(-1), hand.slice(HAND_SIZE), "and the fifth sits the turn out");
 });
 
 test("a Pitaya eats a Cherry it touches each turn, and every Pitaya scores 1 more from then on", () => {
@@ -1327,7 +1331,7 @@ test("leaving the shop clears the jar: its fruit pop one by one, left to right, 
     popped.push(run.fruits.map((f) => f.id));
   }
   assert.ok(popped.some((ids) => ids.join() === "1"), "then the middle one");
-  assert.deepEqual([run.phase, run.cycle, run.cycleScore, run.fruits.length, run.hand.length], ["order", cycle + 1, 0, 0, 4]);
+  assert.deepEqual([run.phase, run.cycle, run.cycleScore, run.fruits.length, run.hand.length], ["order", cycle + 1, 0, 0, DEAL_SIZE]);
   assert.ok(Math.abs(frames * DT - CLEAR_TIME) < 0.05, `it takes ${CLEAR_TIME} s (${frames} frames)`);
 });
 
@@ -1567,30 +1571,56 @@ test("the shelf's sounds: the cursor ticks, and a held fruit changing place is a
 
 // The Ladder set: merge up, smash down.
 
-test("a Wide Pumpkin takes two places on the shelf: a hand fills four places, and one that would not fit waits for the next hand", () => {
+test("a Wide Pumpkin takes two places on the shelf: a hand fills five places, and one that would not fit waits for the next hand", () => {
   const run = newRun(3);
   run.draw = ["cherry", "pumpkin", "grape", "pumpkin", "apple", "cherry"];
   run.hand = [];
   run.phase = "rent";
-  // Deal by hand, as the next turn would: draw until the shelf's four places are full.
+  // Deal by hand, as the next turn would: draw until the shelf's five places are full.
   const dealt = advance({ ...run, phase: "pick", offers: ["apple", "apple", "apple"], offerCursor: -1 }, DT, { ...NO_KEYS, drop: true });
-  assert.deepEqual(dealt.hand, ["cherry", "pumpkin", "grape"]);
-  assert.equal(handSlots(dealt.hand), 4);
-  // The next Pumpkin is on top, and with it only two more places are left: an Apple, then the Cherry.
+  assert.deepEqual(dealt.hand, ["cherry", "pumpkin", "grape", "apple"], "the second Pumpkin does not fit; the Apple under it does");
+  assert.equal(handSlots(dealt.hand), DEAL_SIZE);
+  // The Pumpkin is on top, and after it only the Cherry is left.
   const next = advance({ ...dealt, phase: "pick", offers: ["apple", "apple", "apple"], offerCursor: -1 }, DT, { ...NO_KEYS, drop: true });
-  assert.deepEqual(next.hand, ["pumpkin", "apple", "cherry"]);
+  assert.deepEqual(next.hand, ["pumpkin", "cherry"]);
 });
 
 test("a Wide fruit that would not fit in the last place waits on top, and the next fruit that fits fills the hand", () => {
   const run = newRun(3);
-  run.draw = ["cherry", "grape", "cherry", "pumpkin", "apple", "cherry", "grape"];
+  run.draw = ["cherry", "grape", "cherry", "apple", "pumpkin", "cherry", "grape"];
   run.hand = [];
   run.phase = "rent";
   const dealt = advance({ ...run, phase: "pick", offers: ["apple", "apple", "apple"], offerCursor: -1 }, DT, { ...NO_KEYS, drop: true });
-  assert.deepEqual(dealt.hand, ["cherry", "grape", "cherry", "apple"], "the Apple under the Pumpkin takes the last place");
+  assert.deepEqual(dealt.hand, ["cherry", "grape", "cherry", "apple", "cherry"], "the Cherry under the Pumpkin takes the last place");
   // The Pumpkin is still first in line, so the next hand opens with it.
   const next = advance({ ...dealt, phase: "pick", offers: ["apple", "apple", "apple"], offerCursor: -1 }, DT, { ...NO_KEYS, drop: true });
-  assert.deepEqual(next.hand, ["pumpkin", "cherry", "grape"]);
+  assert.deepEqual(next.hand, ["pumpkin", "grape"]);
+});
+
+test("five are dealt and four drop: the last of the hand, as it is left, sits the turn out and goes back with the dealt fruit", () => {
+  assert.deepEqual([HAND_SIZE, DEAL_SIZE], [4, 5]);
+  assert.equal(dropping(["cherry", "grape", "apple", "orange", "cherry"]), 4);
+  assert.equal(dropping(["cherry", "pumpkin", "grape", "apple"]), 3, "a Pumpkin's two places and two more");
+  assert.equal(dropping(["cherry", "grape", "apple", "pumpkin"]), 3, "the tray has one place left, and a Pumpkin needs two: it sits out");
+  assert.equal(dropping(["cherry", "grape"]), 2);
+
+  let run = newRun(3);
+  run.hand = ["cherry", "grape", "apple", "orange", "banana"];
+  run.handGlazes = [null, null, null, null, "ripe"];
+  run.discard = [];
+  run.discardGlazes = [];
+  // Move the Banana from the last place to the first: then the Orange is the one that sits out.
+  run = press(run, { right: true });
+  run = press(run, { right: true });
+  run = press(run, { right: true });
+  run = press(run, { right: true });
+  run = press(run, { confirm: true });
+  for (let i = 0; i < 4; i++) run = press(run, { left: true });
+  assert.deepEqual(run.hand, ["banana", "cherry", "grape", "apple", "orange"]);
+  run = press(run, { drop: true });
+  assert.deepEqual(run.queue.concat(run.fruits.map((f) => f.kind)).sort(), ["apple", "banana", "cherry", "grape"]);
+  assert.deepEqual(run.discard, ["orange"]);
+  assert.deepEqual(run.discardGlazes, [null], "its glaze goes back with it");
 });
 
 test("the tray drops a Wide Pumpkin down the middle of its two lanes", () => {
