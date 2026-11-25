@@ -1,4 +1,4 @@
-import { Entity, Flex, Text, useTime, type Child } from "@tsengine/runtime/jsx";
+import { Entity, Flex, Sprite, Text, useTime, type Child } from "@tsengine/runtime/jsx";
 
 import { popIn, ripple } from "./layout.ts";
 
@@ -19,6 +19,7 @@ export function Panel({ title, image = PANEL, gap = 0, children }: { title?: str
       {/* The shadow, pinned a little down and right of the frame; then the frame over it. */}
       <Flex left={4} right={-4} top={(title === undefined ? 0 : TITLE_ROOM) + 4} bottom={-4} background={BOARD_SHADOW} />
       <Flex direction="column" alignItems="stretch" gap={gap} paddingX={16} paddingTop={6} paddingBottom={10} backgroundImage={image} slice={PANEL_SLICE}>
+        {image === PANEL && <Grain seed={title === undefined ? 0 : title.length} />}
         {children}
       </Flex>
       {title !== undefined && (
@@ -51,6 +52,7 @@ export function Dialog({ title, gap = 6, still = false, children }: { title: str
     <Flex direction="column" alignItems="stretch" paddingTop={SIGN_ABOVE}>
       <Flex left={4} right={-4} top={SIGN_ABOVE + 4} bottom={-4} background={BOARD_SHADOW} />
       <Flex direction="column" alignItems="stretch" gap={gap} paddingX={20} paddingTop={SIGN_H - SIGN_ABOVE + 10} paddingBottom={16} backgroundImage={PANEL} slice={PANEL_SLICE}>
+        <Grain seed={title.length * 3} />
         {children}
       </Flex>
       <Flex left={0} right={0} top={0} height={SIGN_H} direction="row" justifyContent="center" y={still ? 0 : -SIGN_DROP * (1 - popIn(time, 0, SIGN_DROP_TIME))}>
@@ -58,6 +60,23 @@ export function Dialog({ title, gap = 6, still = false, children }: { title: str
           <Letters text={title} seed={title.length * 5} />
         </Flex>
       </Flex>
+    </Flex>
+  );
+}
+
+/** How far in from the edge of the parchment's frame (assets/frame.png) its paper starts, on every side. */
+const PAPER_INSET = 5;
+
+/**
+ * The paper's grain (assets/grain.png, tools/make-assets.py): patches a little darker, dithered in the paper's two tones, over the
+ * paper of the parchment's frame and under what is on it. Put it first in the `<Flex>` whose background is the frame: it takes no
+ * room, is cut to the paper, and moves with it, so a board sliding in carries its grain with it. `seed` starts one paper's grain
+ * somewhere else in the picture than another's, so two side by side are not alike.
+ */
+export function Grain({ seed = 0 }: { seed?: number }) {
+  return (
+    <Flex left={PAPER_INSET} right={PAPER_INSET} top={PAPER_INSET} bottom={PAPER_INSET} overflow="hidden">
+      <Sprite image="grain.png" x={-PAPER_INSET - ((seed * 37) % 100) * 2} y={-PAPER_INSET - ((seed * 19) % 60) * 2} />
     </Flex>
   );
 }

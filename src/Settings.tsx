@@ -1,6 +1,7 @@
 import { Entity, Flex, Menu, Text, useInputDevice } from "@tsengine/runtime/jsx";
 
 import { Backdrop } from "./Backdrop.tsx";
+import { Grain } from "./Board.tsx";
 import { PushButton } from "./PushButton.tsx";
 import { useGame } from "./GameState.ts";
 import { KeyHint } from "./KeyHint.tsx";
@@ -23,6 +24,7 @@ export function Settings() {
       <Backdrop />
       <Flex direction="column" width={640} height={320} alignItems="center" justifyContent="center" gap={12}>
         <Menu gap={8} padding={16} paddingTop={10} backgroundImage={PANEL} slice={PANEL_SLICE} alignItems="stretch" width={288} onBack={toTitle}>
+          <Grain seed={4} />
           <Flex direction="row" justifyContent="center" height={30}>
             <Text font={DISPLAY} size={DISPLAY_SIZE} color={INK}>
               Settings

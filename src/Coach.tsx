@@ -57,7 +57,7 @@ const RAISED = 1;
 /** Its children, drawn above the dark while `id` is what is picked out. */
 export function Raise({ id, children }: { id: LessonTarget; children: Child }) {
   const lit = useContext(Lit);
-  return <Entity z={lit !== null && lit === id ? RAISED : 0}>{children}</Entity>;
+  return <Entity z={lit.includes(id) ? RAISED : 0}>{children}</Entity>;
 }
 
 /**
@@ -70,7 +70,7 @@ export function Frame({ id, pad, padTop, padBottom }: { id: LessonTarget; pad: n
   // Always there, and clear while `id` is not picked out: as the component's own box, it is a child of the `<Flex>` it is put in,
   // which is what its edges are measured from.
   return (
-    <Flex left={-pad} right={-pad} top={-(padTop ?? pad)} bottom={-(padBottom ?? pad)} backgroundImage={SELECT} slice={CARD_SLICE} opacity={lit !== null && lit === id ? 0.55 + 0.45 * Math.sin(time * 5) : 0} />
+    <Flex left={-pad} right={-pad} top={-(padTop ?? pad)} bottom={-(padBottom ?? pad)} backgroundImage={SELECT} slice={CARD_SLICE} opacity={lit.includes(id) ? 0.55 + 0.45 * Math.sin(time * 5) : 0} />
   );
 }
 
@@ -80,5 +80,5 @@ export function Frame({ id, pad, padTop, padBottom }: { id: LessonTarget; pad: n
  */
 export function Dim() {
   const lit = useContext(Lit);
-  return <Flex left={0} right={0} top={0} bottom={0} background={DIM} opacity={lit !== null ? 1 : 0} />;
+  return <Flex left={0} right={0} top={0} bottom={0} background={DIM} opacity={lit.length > 0 ? 1 : 0} />;
 }

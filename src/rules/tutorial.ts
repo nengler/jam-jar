@@ -9,8 +9,8 @@ import { CHAIN_TIERS, type Run } from "./jar.ts";
  */
 export type LessonId = "shelf" | "order" | "drop" | "score" | "pick" | "rent" | "pool" | "shop" | "chain";
 
-/** What a lesson's frame is drawn around on the play screen, if anything. */
-export type LessonTarget = "shelf" | "jar" | "rent" | "pool" | null;
+/** A part of the play screen a lesson's frame can be drawn around. */
+export type LessonTarget = "shelf" | "jar" | "rent" | "pool";
 
 export interface Lesson {
   id: LessonId;
@@ -18,7 +18,8 @@ export interface Lesson {
   /** What the card says to a player using the pointer (a mouse or a finger), and at a keyboard. */
   text: string;
   keysText: string;
-  target: LessonTarget;
+  /** What its frame is drawn around on the play screen: one part, several, or nothing. */
+  target: LessonTarget | readonly LessonTarget[] | null;
   /** It asks for nothing, only tells: its card has a "Got it" to put it away with. The others go when the player does what they say. */
   told?: boolean;
   /**
@@ -48,7 +49,8 @@ export const LESSONS: readonly Lesson[] = [
     title: "Drop them in",
     text: "Happy with the tray? Tap the jar to drop them in.",
     keysText: "Happy with the tray? Press Space to drop them in.",
-    target: "jar",
+    // The tray it asks about and the jar it goes into.
+    target: ["shelf", "jar"],
   },
   {
     id: "score",
@@ -101,9 +103,15 @@ export const LESSONS: readonly Lesson[] = [
   },
 ];
 
-/** Whether a lesson (if one is up) is about `target`: what its frame is drawn around. */
+/** The parts a lesson (if one is up) picks out: what its frame is drawn around. */
+export function targets(lesson: Lesson | null): readonly LessonTarget[] {
+  const target = lesson === null ? null : lesson.target;
+  return target === null ? [] : typeof target === "string" ? [target] : target;
+}
+
+/** Whether a lesson (if one is up) is about `target`, among whatever else it picks out. */
 export function about(lesson: Lesson | null, target: LessonTarget): boolean {
-  return lesson !== null && lesson.target === target;
+  return targets(lesson).includes(target);
 }
 
 /** The lesson at a step of the tutorial, or null once it is over. */

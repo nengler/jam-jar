@@ -18,7 +18,7 @@ import { PoolBasket, PoolBasketBack } from "./PoolBasket.tsx";
 import { PoolBoard } from "./PoolBoard.tsx";
 import { PreserveBoard } from "./PreserveBoard.tsx";
 import { RentBoard } from "./RentBoard.tsx";
-import { about, lessonAt, lessonDone, lessonNow, lessonShows, LESSONS } from "./rules/tutorial.ts";
+import { about, lessonAt, lessonDone, lessonNow, lessonShows, LESSONS, targets, type LessonTarget } from "./rules/tutorial.ts";
 import { Lit } from "./lit.ts";
 import { learn } from "./settings.ts";
 import { Shelf, ShelfTips } from "./Shelf.tsx";
@@ -416,7 +416,7 @@ export function Play() {
   /** The slate that says what just happened shows when there is something to say and no lesson in its place. */
   const noted = coached === null && run.message !== "" && run.phase !== "shop";
   /** What is picked out (Coach.tsx): what the lesson is about, or the jar while a Preserves Jar's fruit are chosen. */
-  const lit = coached !== null ? coached.target : preserving ? "jar" : null;
+  const lit: readonly LessonTarget[] = coached !== null ? targets(coached) : preserving ? ["jar"] : [];
 
   /** The lanes mean something: a fruit comes down under its place on the shelf. */
   const guided = bossNow(run) === null || bossNow(run) === "peg";

@@ -1,6 +1,6 @@
 import { Flex, Layer, Shape, Text, Tooltip, useTime } from "@tsengine/runtime/jsx";
 
-import { Letters } from "./Board.tsx";
+import { Grain, Letters } from "./Board.tsx";
 import { Coach } from "./Coach.tsx";
 import { FruitBall } from "./FruitBall.tsx";
 import { TapButton } from "./KeyHint.tsx";
@@ -85,6 +85,8 @@ export function PickBoard({ run, paused, hints, keys, coached, onChoose, onAway,
                   chooses a card, and the Take button under it takes it. The pointer coming over a card does not choose it: on
                   a touchscreen the pointer stays where the last tap was, which would choose a card before the player had. */}
               <Flex width={OFFER_W} height={OFFER_H} direction="column" alignItems="center" paddingTop={18} paddingBottom={offer.at === run.offerCursor ? OFFER_FOOT + TAKE_TUCK : OFFER_FOOT} gap={4} backgroundImage={cardFor(offer.at === run.offerCursor)} slice={CARD_SLICE} focusable={false} onPress={() => onChoose(offer.at)}>
+                {/* The chosen card's frame is gold all through, with no paper to grain. */}
+                {offer.at !== run.offerCursor && <Grain seed={offer.at + 1} />}
                 <Tooltip show={!paused && offer.at === run.offerCursor} anchor={offer.at < 2 ? "top-left" : "top-right"} to={offer.at < 2 ? "top-right" : "top-left"} offsetX={offer.at < 2 ? 4 : -4} offsetY={-44} background="#00000000" borderWidth={0} paddingX={0} paddingY={0}>
                   <Terms text={cardText(run, offer.card)} />
                 </Tooltip>
