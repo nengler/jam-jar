@@ -903,6 +903,15 @@ test("a Coconut cracks at its second Resolve and is gone, leaving milk; fruit th
   assert.equal(run.popups.find((p) => p.points === 18)!.text, "+18 x2");
 });
 
+test("a Lime pours its juice as it lands, and a Cranberry afloat in it scores", () => {
+  const run = jarWith([{ ...fruit(1, "lime", 300, JAR.floor - FRUITS.lime.radius), landed: false }, fruit(2, "cranberry", 400, JAR.floor - FRUITS.cranberry.radius)]);
+  simulate(run, DT);
+  assert.deepEqual([run.juice, run.lime], [LIME_JUICE, true]);
+  run.turn = 1;
+  resolve(run);
+  assert.equal(run.earned["Cranberry"], FRUITS.cranberry.points);
+});
+
 test("a Lime that is Exploded or Crushed leaves lime juice, which rises with each and is gone with the rent", () => {
   const y = JAR.floor - 18;
   let run = jarWith([fruit(1, "lime", 300, y), fruit(2, "lime", 330, y)]);
@@ -1256,7 +1265,8 @@ test("a Legendary is offered now and then, in the last place of a pick", () => {
     assert.ok(!run.offers.slice(0, 2).includes("dragonfruit"));
     if (run.offers[2] === "dragonfruit") seen += 1;
   }
-  assert.ok(seen > 10 && seen < 70, `${seen} in 400 picks`);
+  // 4% of 400.
+  assert.ok(seen > 5 && seen < 32, `${seen} in 400 picks`);
 });
 
 test("a Melon is offered now and then, in the middle place of a pick, and never in the shop", () => {
@@ -1269,8 +1279,8 @@ test("a Melon is offered now and then, in the middle place of a pick, and never 
     assert.ok(run.offers[0] !== "melon" && run.offers[2] !== "melon");
     if (run.offers[1] === "melon") seen += 1;
   }
-  // 10% of 400.
-  assert.ok(seen > 20 && seen < 65, `${seen} in 400 picks`);
+  // 5% of 400.
+  assert.ok(seen > 8 && seen < 36, `${seen} in 400 picks`);
   assert.ok(!OFFERABLE.includes("melon"), "the shop sells only what a pick offers by default");
 });
 

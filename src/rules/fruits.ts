@@ -178,7 +178,7 @@ export const FRUITS: Readonly<Record<FruitKind, FruitDef>> = {
   honeydew: { name: "Honeydew", radius: FRUIT_ART.honeydew.radius, points: 2, scoring: "simmer", touchWeight: 1, text: "Honeyed. Each turn, Honey a neighbour." },
   pitaya: { name: "Pitaya", radius: FRUIT_ART.pitaya.radius, points: 4, scoring: "simmer", touchWeight: 1, text: "Simmer 4. Each turn, Eat a Cherry: Grow 1." },
   coconut: { name: "Coconut", radius: FRUIT_ART.coconut.radius, points: 8, scoring: "fresh", touchWeight: 1, heavy: 5, text: "Fresh 8. Heavy. Crack 2: Milk." },
-  lime: { name: "Lime", radius: FRUIT_ART.lime.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Exploded or Crushed: Juice." },
+  lime: { name: "Lime", radius: FRUIT_ART.lime.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Landed, Exploded or Crushed: Juice." },
   dragonfruit: { name: "Dragonfruit", radius: FRUIT_ART.dragonfruit.radius, points: 0, scoring: "booster", touchWeight: 1, legendary: true, text: "Legendary. Booster. Skip." },
   snowpear: { name: "Snow Pear", radius: FRUIT_ART.snowpear.radius, points: 8, scoring: "fresh", touchWeight: 1, text: "Fresh 8. Each turn, it and one neighbour turn Frozen." },
   seed: { name: "Seed", radius: FRUIT_ART.seed.radius, points: 6, scoring: "fresh", touchWeight: 1, text: "Fresh 6. Exploded: Sprout." },
@@ -237,12 +237,14 @@ export const SPROUTS: readonly FruitKind[] = ["cherry", "grape", "orange"];
 
 /** The Legendary fruit, and the chance that one takes the last place among a pick's three offers. */
 export const LEGENDARY: readonly FruitKind[] = ["dragonfruit"];
-export const LEGENDARY_CHANCE = 0.08;
+export const LEGENDARY_CHANCE = 0.04;
 
 /**
  * The chance that a Melon takes the middle place among a pick's three offers. A starter, otherwise only made by merging, offered
  * now and then so a Ladder build can aim for Watermelons and a Giant Pumpkin. Tuned with the balance bots: at 10% a player who
  * takes every Melon sees a Giant Pumpkin in about 10 runs of 24 and scores about what a Durian player does; offered as often as
- * any other fruit (in about 15% of picks, and in the shop), it made the strongest pick the bots had found.
+ * any other fruit (in about 15% of picks, and in the shop), it made the strongest pick the bots had found. Halved to 5% when a
+ * run went from about 10 picks to about 22: at 10% a run showed two Melons or more, which is what a Melon needs, and taking
+ * every one was worth 688 points a run. The Legendary's chance was halved with it, for the same reason.
  */
-export const MELON_CHANCE = 0.1;
+export const MELON_CHANCE = 0.05;

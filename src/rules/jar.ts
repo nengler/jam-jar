@@ -1296,6 +1296,9 @@ function land(run: Run): void {
         if (!f.rotten) for (let k = 0; k < PEACH_LINKS; k++) addLink(run);
       }
     }
+    // A Lime pours its juice as it lands (and again if it is blown up or crushed): it needed a blast or the Juicer to pour
+    // at all, so a jar seldom had juice in it, and what scores afloat (a Cranberry) seldom floated.
+    if (f.kind === "lime" && !f.rotten) pour(run, "lime", LIME_JUICE);
     // A Dense fruit lands as that many links: a Blueberry is three.
     if (FRUITS[f.kind].touchWeight > 1 && !f.rotten) for (let k = 0; k < FRUITS[f.kind].touchWeight; k++) addLink(run);
     // A Coconut landing on a Coconut cracks the one under it.
