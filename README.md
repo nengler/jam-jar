@@ -550,6 +550,26 @@ set one blast off with another. x3 and x4 are rare (5% of turns at most), so the
 usual turn. The rent curve has not been changed: medians rose by about 30 to 50 a cycle, and no build makes the last rent
 in more than 5 runs of 24.
 
+### A fixed rent payout (26 November)
+
+A rent now pays 4 coins (5 in a boss jar) and 1 for each turn to spare, where it paid a coin for every 10 points over it.
+The bots still play every turn (`CYCLE.stopAtRent` off) and are paid what the cycle would have paid had it stopped at the
+turn that made the real rent. 40 seeds each, the same players on the old payout and the new; a run's points (and the pool
+at the end, and fruit bought a run):
+
+| Player | A run, old / new | Pool at the end, old / new | Fruit bought, old / new |
+| --- | --- | --- | --- |
+| Never picks, thins the pool | 1751 / 1623 | 5.5 / 4.5 | — |
+| Picks at random, shop | 1209 / 1445 | 26.0 / 30.6 | 7.0 / 2.6 |
+| Boom (Chili, Blueberry, Durian), shop and thin | 1564 / 1868 | 10.0 / 10.7 | 1.1 / 0.5 |
+| Garden (Golden Apple, Apple, Banana), shop | 1163 / 1189 | 13.8 / 12.6 | 1.5 / 0.6 |
+
+Coins come earlier and steadier: a cycle that makes its rent on turn 3 or 4 pays 5 to 6 from the first shop, where the old
+payout gave a narrow pass 2 or 3 and a big late cycle 30. So the first removals come sooner (the thinning bot ends with a
+smaller pool), and the random shopper, which bought whatever it could afford and bloated its pool, buys less and scores more.
+Every run that buys anything changes what the seed deals after it, so a row's two runs are not the same luck, and the
+differences of 2% to 20% here are inside what 40 seeds can tell apart; no build's late coins run away now, which was the point.
+
 ### Bots that shop (23 November)
 
 `/shop` makes a bot buy the fruit it would pick from the shop's shelf while its coins last ("random/shop" buys whatever is
