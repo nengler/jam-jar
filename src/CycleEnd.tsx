@@ -3,7 +3,7 @@ import { Flex, Layer, Shape, Text, useTime } from "@tsengine/runtime/jsx";
 import { Dialog, Rule } from "./Board.tsx";
 import { EndBoard } from "./EndBoard.tsx";
 import { TapButton } from "./KeyHint.tsx";
-import { RENT, rentFor, type Run } from "./rules/jar.ts";
+import { EARLY_PAY, RENT, rentFor, type Run } from "./rules/jar.ts";
 import { dissolved } from "./layout.ts";
 import { GOOD, INK_SOFT, SHADE_SOFT } from "./theme.ts";
 
@@ -34,19 +34,35 @@ export function CycleEnd({ run, keys, onGoOn, onAgain, onTitle }: CycleEndProps)
                 <Text color={INK_SOFT}>This cycle</Text>
                 <Text color={GOOD}>{`${run.cycleScore} of ${rent}`}</Text>
               </Flex>
+              {/* What the coins were for: the rent, the turns to spare, the Golden Apples; then all of them. */}
               <Flex direction="row" justifyContent="space-between">
-                <Text color={INK_SOFT}>Coins</Text>
-                <Text color={GOOD}>{`+${run.rentCoins}`}</Text>
+                <Text color={INK_SOFT}>Rent paid</Text>
+                <Text color={INK_SOFT}>{`+${run.rentBase}`}</Text>
               </Flex>
+              {run.rentEarly > 0 && (
+                <Flex direction="row" justifyContent="space-between">
+                  <Text color={INK_SOFT}>{run.rentEarly === 1 ? "1 turn to spare" : `${run.rentEarly} turns to spare`}</Text>
+                  <Text color={INK_SOFT}>{`+${run.rentEarly * EARLY_PAY}`}</Text>
+                </Flex>
+              )}
               {run.rentGolden > 0 && (
                 <Flex direction="row" justifyContent="space-between">
                   <Text color={INK_SOFT}>From Golden Apples</Text>
                   <Text color={INK_SOFT}>{`+${run.rentGolden}`}</Text>
                 </Flex>
               )}
+              <Flex direction="row" justifyContent="space-between">
+                <Text color={INK_SOFT}>Coins</Text>
+                <Text color={GOOD}>{`+${run.rentCoins}`}</Text>
+              </Flex>
+              {run.owedPicks > 0 && (
+                <Flex direction="row" justifyContent="center">
+                  <Text color={INK_SOFT}>{run.owedPicks === 1 ? "A pick before the shop" : `${run.owedPicks} picks before the shop`}</Text>
+                </Flex>
+              )}
               <Rule />
               <Flex direction="row" justifyContent="center" paddingTop={4}>
-                <TapButton label={run.cycle >= RENT.length ? "Go on" : "Shop"} onPress={onGoOn} />
+                <TapButton label={run.cycle >= RENT.length || run.owedPicks > 0 ? "Go on" : "Shop"} onPress={onGoOn} />
               </Flex>
             </Dialog>
           </Flex>

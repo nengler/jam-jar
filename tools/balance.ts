@@ -21,7 +21,8 @@
  * that the glaze fits, else on the glaze's own choice (`GLAZE_ON`). BALANCE_GLAZE=spicy makes every shop's glaze that one.
  * The others buy nothing.
  * The flags combine ("random/tray/best/thin"). A player with "@" owns those items from the start ("skip@juicer",
- * "random@shaker+lid"). The rent is ignored (set to 0), so every run plays all its cycles.
+ * "random@shaker+lid"). The rent is ignored (set to 0), so every run plays all its cycles, and every turn of each
+ * (`CYCLE.stopAtRent` off): a bot is paid the coins a cycle stopped at the turn that made the real rent would have paid.
  *
  *     node tools/balance.ts [runs per player, default 20] [players, e.g. skip,random,chili] [full] [first seed, default 1]
  *     BALANCE_BOSS=flip node tools/balance.ts 18 skip     (every run meets that boss jar)
@@ -44,7 +45,7 @@ import { setTutorialStep } from "../src/settings.ts";
 import { BANANA, FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
 import { GLAZE_PRICE, type Glaze } from "../src/rules/glazes.ts";
-import { arrangeHand, bossNow, CHAIN_TIERS, FRUIT_PRICE, glazeKinds, POINTS_PER_COIN, SHOP_GLAZE, removalPrice, RENT, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
+import { arrangeHand, BOSS_RENT_PAY, bossNow, CHAIN_TIERS, CYCLE, EARLY_PAY, FRUIT_PRICE, glazeKinds, SHOP_GLAZE, removalPrice, RENT, RENT_PAY, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
 
 type Strategy = string;
@@ -251,6 +252,8 @@ const maxCycles = Number(env("BALANCE_CYCLES") ?? 99);
 // BALANCE_RENT=225,245,270,300,340: the rents the bots' coins and the "makes rent" counts are worked out from.
 const rent = env("BALANCE_RENT")?.split(",").map(Number) ?? RENT.slice();
 (RENT as number[]).fill(0);
+// And every turn of a cycle is played, as it was before a cycle stopped at its rent: what a full one scores is the measure.
+CYCLE.stopAtRent = false;
 
 /** One run: each cycle's score, the pool's size at the end, and how long each turn's settle took. */
 /**
@@ -296,6 +299,8 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   let glazed = 0;
   let wait = 0;
   let coins = 0;
+  // The turn of this cycle whose score reached the real rent (0 until one does): what a cycle stopped there would have paid.
+  let made = 0;
   const [plan = "", owned = ""] = strategy.split("@");
   const thin = plan.includes("/thin");
   const shopping = plan.includes("/shop");
@@ -370,14 +375,20 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
       queued = [SPACE];
     }
     else if (run.phase === "pick") {
+      // A pick follows each turn but the last: the score the turn just played (`run.turn - 1`) left.
+      if (made === 0 && run.opening === 0 && run.cycleScore >= (rent[scores.length] as number)) made = run.turn - 1;
       const wanted = picks.split("+");
       const at = picks === "random" ? rng.int(0, 2) : run.offers.findIndex((kind) => wanted.includes(kind));
       // No card is chosen at first: one press of Right goes to the first, so the card at `at` is `at + 1` presses away.
       queued = at < 0 ? [SPACE] : [...Array<typeof NONE>(at + 1).fill(RIGHT).flatMap((f) => [f, NONE]), ENTER];
     } else if (run.phase === "rent") {
-      // The coins the real rent would have left (the run itself was paid for a rent of 0).
+      // The coins the real rent would have paid, had the cycle stopped at the turn that made it (the run itself was paid for a
+      // rent of 0 on its last turn). The Golden Apples' are left out, as they were.
       const due = rent[scores.length] as number;
-      found.s.run = { ...run, coins: coins + Math.max(0, Math.floor((run.cycleScore - due) / POINTS_PER_COIN)) };
+      if (made === 0 && run.cycleScore >= due) made = run.turn;
+      const paid = made === 0 ? 0 : (bossNow(run) === null ? RENT_PAY : BOSS_RENT_PAY) + (run.turn - made) * EARLY_PAY;
+      found.s.run = { ...run, coins: coins + paid };
+      made = 0;
       scores.push(run.cycleScore);
       earnedAt.push({ ...run.earned });
       if (scores.length >= maxCycles) break;

@@ -71,8 +71,8 @@ export const LESSONS: readonly Lesson[] = [
   {
     id: "rent",
     title: "The rent",
-    text: "Score the rent within 5 turns or you are evicted. Every 10 points over it is a coin.",
-    keysText: "Score the rent within 5 turns or you are evicted. Every 10 points over it is a coin.",
+    text: "Make the rent in 5 turns or you are evicted. It pays 4 coins, +1 a turn to spare.",
+    keysText: "Make the rent in 5 turns or you are evicted. It pays 4 coins, +1 a turn to spare.",
     target: "rent",
     told: true,
   },
