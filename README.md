@@ -567,8 +567,8 @@ at the end, and fruit bought a run):
 Coins come earlier and steadier: a cycle that makes its rent on turn 3 or 4 pays 5 to 6 from the first shop, where the old
 payout gave a narrow pass 2 or 3 and a big late cycle 30. So the first removals come sooner (the thinning bot ends with a
 smaller pool), and the random shopper, which bought whatever it could afford and bloated its pool, buys less and scores more.
-Every run that buys anything changes what the seed deals after it, so a row's two runs are not the same luck, and the
-differences of 2% to 20% here are inside what 40 seeds can tell apart; no build's late coins run away now, which was the point.
+Every run that buys anything changes what the seed deals after it, so a row's two runs are not the same luck: read the
+differences as a direction, not a size. No build's late coins run away now, which was the point.
 
 ### Bots that shop (23 November)
 
