@@ -3,7 +3,7 @@
 A roguelike where you build a pool of fruit and the jar plays it. Each turn you're dealt 5 fruits from your pool, and you arrange
 four of them on a tray over the jar; the fifth, the one you leave in the basket at the end of the shelf, sits the turn out. They all drop together, each straight down from its slot with a small wobble, physics settles the pile, merges and blasts score, and then Simmer fruit score at
 Resolve. A run opens with two picks of 1 of 3 new fruits, and after every turn but a cycle's last you pick again, or skip for a coin (four picks a cycle). Five turns make a rent cycle; miss rent and the run ends.
-Between cycles the shop sells fruit, an item, a removal and rerolls for the coins the rent left over.
+A cycle stops at the turn that makes its rent, and the picks its unplayed turns would have had come before the shop. Between cycles the shop sells fruit, an item, a removal and rerolls for the coins the rent paid.
 
 Built on the [tse engine](https://github.com/nengler/tse). The design doc is the "Jam Jar: Game Design Outline" artifact.
 
@@ -147,7 +147,7 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
   Rent went from 120, 180, 240, 320, 400 to 225, 250, 300, 350, 400 (`RENT`). What is picked and how a hand is ordered now
   decide the first cycle, and the cycles' medians rise through a run for a player who picks well, where they were flat. The
   bots buy nothing, and a shop's removals were worth 25 to 45% more points in cycles 2 to 5 in earlier runs, so a player
-  does better than these late on. A cycle that scores 300 leaves 7 coins where it left 18: the first shop is tighter.
+  does better than these late on. A cycle that scores 300 left 7 coins where it had left 18: the first shop was tighter. (A rent now pays a fixed 4 to 5, and a coin a turn to spare: "Rent: ..." below.)
 - The merge ladder: Cherry → Grape → Orange → Melon → Watermelon → Giant Pumpkin.
 - Fresh fruit score when they land or are made by a merge. Simmer fruit (Apple, Banana) score at every Resolve. Lemon is a
   Booster: fruit touching it score double, and it blocks merges next to it.
@@ -436,7 +436,14 @@ at most four keywords, which is what a tooltip has room for. Tests hold the card
     jar's own frame, with a steady sideways pull, and the jar is drawn turned about its low corner.
   - The Flip jar has a lid on, and its gravity turns over after every second drop: the pile falls to the lid, then back to
     the floor, and each fruit starts inside the jar at the end it will fall away from. Nothing spills from it.
-- Rent: 120, 180, 240, 320 and 400 over 5 cycles. Points over rent become coins (1 per 10).
+- Rent: 225, 250, 300, 350 and 400 over 5 cycles (`RENT`). A paid rent pays a fixed sum, as a Balatro blind does: 4 coins
+  (`RENT_PAY`), 5 in a boss jar (`BOSS_RENT_PAY`), and 1 more for each turn of the cycle left unplayed (`EARLY_PAY`), plus
+  the Golden Apples in the jar. It was a coin for every 10 points over the rent, with no cap, so the run already ahead bought
+  the most (a late cycle of big chains paid 30 and more). The cycle stops at the turn that makes the rent: the "Rent paid"
+  board says what it paid and for what, and then the picks the turns left would have had are offered one after another
+  (`owedPicks`), each one skippable for a coin as usual, before the shop. The last cycle owes none: it wins the run. A cycle
+  paid on turn 3 pays 4 + 2 and owes 2 picks. Simmer and other turn-by-turn fruit lose turns when a cycle stops early: that
+  is the cost of a fast build's coins.
 - The shop, after each rent but the last: three fruit (3 coins each), one item, taking a fruit out of your pool (4 coins, one fruit a shop; the
   pool keeps at least one hand of 4) and a new shelf (1 coin). Each costs more every time you buy it (a removal by 2 coins,
   a new shelf by 1), and the price stays where it has got to for the rest of the run.
@@ -542,6 +549,26 @@ tally, as the design doc expected. Boom chains least: a blast is one link howeve
 set one blast off with another. x3 and x4 are rare (5% of turns at most), so they are the "whoa" moments rather than the
 usual turn. The rent curve has not been changed: medians rose by about 30 to 50 a cycle, and no build makes the last rent
 in more than 5 runs of 24.
+
+### A fixed rent payout (26 November)
+
+A rent now pays 4 coins (5 in a boss jar) and 1 for each turn to spare, where it paid a coin for every 10 points over it.
+The bots still play every turn (`CYCLE.stopAtRent` off) and are paid what the cycle would have paid had it stopped at the
+turn that made the real rent. 40 seeds each, the same players on the old payout and the new; a run's points (and the pool
+at the end, and fruit bought a run):
+
+| Player | A run, old / new | Pool at the end, old / new | Fruit bought, old / new |
+| --- | --- | --- | --- |
+| Never picks, thins the pool | 1751 / 1623 | 5.5 / 4.5 | — |
+| Picks at random, shop | 1209 / 1445 | 26.0 / 30.6 | 7.0 / 2.6 |
+| Boom (Chili, Blueberry, Durian), shop and thin | 1564 / 1868 | 10.0 / 10.7 | 1.1 / 0.5 |
+| Garden (Golden Apple, Apple, Banana), shop | 1163 / 1189 | 13.8 / 12.6 | 1.5 / 0.6 |
+
+Coins come earlier and steadier: a cycle that makes its rent on turn 3 or 4 pays 5 to 6 from the first shop, where the old
+payout gave a narrow pass 2 or 3 and a big late cycle 30. So the first removals come sooner (the thinning bot ends with a
+smaller pool), and the random shopper, which bought whatever it could afford and bloated its pool, buys less and scores more.
+Every run that buys anything changes what the seed deals after it, so a row's two runs are not the same luck: read the
+differences as a direction, not a size. No build's late coins run away now, which was the point.
 
 ### Bots that shop (23 November)
 

@@ -119,8 +119,19 @@ export function bossNow(run: Run, cycle = run.cycle): Boss | null {
  * orders in 1 of 14 and 1 of 10 (the README's bots, "The opening").
  */
 export const RENT: readonly number[] = [225, 250, 300, 350, 400];
-/** Points over the rent that make one coin. */
-export const POINTS_PER_COIN = 10;
+/**
+ * What a paid rent pays, in coins: a fixed sum, as a Balatro blind does, more in a boss jar, and `EARLY_PAY` for each turn of the
+ * cycle left unplayed. It was a coin for every 10 points over the rent, with no cap, so a run already ahead bought the most:
+ * a late cycle of big chains paid 30 coins and more. Now 4 to 5, plus the early turns, buys one good thing a shop.
+ */
+export const RENT_PAY = 4;
+export const BOSS_RENT_PAY = 5;
+export const EARLY_PAY = 1;
+/**
+ * A cycle can stop at its rent: the "Rent paid" board's own switch, on in the game. The balance bots turn it off
+ * (`tools/balance.ts`), so they play every turn of a cycle and measure what a full one scores, as they did before.
+ */
+export const CYCLE = { stopAtRent: true };
 /** Seconds between releases of the tray, at the least. In the Flip jar a release also waits for the pile to have been calm for
  * `DROP_CALM` seconds, but no longer than `DROP_LIMIT` since the last (a pile that will not rest cannot stall a hand). */
 const DROP_GAP = 0.35;
@@ -484,9 +495,16 @@ export interface Run {
   popups: Popup[];
   links: Link[];
   effects: Effect[];
-  /** What the last rent paid out in coins (the points over it, and the Golden Apples), and how many of those the Golden Apples paid. */
+  /**
+   * What the last rent paid out in coins, all told, and its parts: the rent's own (`RENT_PAY`, or `BOSS_RENT_PAY` in a boss
+   * jar), the turns left unplayed (`EARLY_PAY` each, `rentEarly` turns), and the Golden Apples.
+   */
   rentCoins: number;
+  rentBase: number;
+  rentEarly: number;
   rentGolden: number;
+  /** The picks a cycle paid early still owes: the ones its unplayed turns would have had, offered after the rent board. */
+  owedPicks: number;
   /**
    * One line about what just happened that the screen does not already show: a jar event, a boss's rule, why a tap did
    * nothing. What the player just did and can see done (a fruit taken, bought or taken out, a new shelf) says nothing.
@@ -681,6 +699,9 @@ export function newRun(seed: number, opening = false, learning = false): Run {
     links: [],
     effects: [],
     rentCoins: 0,
+    rentBase: 0,
+    rentEarly: 0,
+    owedPicks: 0,
     rentGolden: 0,
     message: "",
     sounds: [],
@@ -777,6 +798,9 @@ export function withGlazes(run: Run): Run {
     opening: run.opening ?? 0,
     learning: run.learning ?? false,
     clusterBonus: run.clusterBonus ?? 0,
+    rentBase: run.rentBase ?? 0,
+    rentEarly: run.rentEarly ?? 0,
+    owedPicks: run.owedPicks ?? 0,
     shop: run.shop === null ? null : { ...run.shop, glaze: run.shop.glaze ?? null, glazing: run.shop.glazing ?? false, removed: run.shop.removed ?? false },
   };
 }
@@ -2214,18 +2238,38 @@ function timeTally(run: Run, tally: Tally, popupsBefore: number): void {
   run.tallyTime = run.popups.length > popupsBefore || tally.slot > 0 ? tally.slot * step + TALLY_HOLD : 0;
 }
 
-/** After the cycle's last turn the rent is due: paid, what is over it becomes coins; missed, the run is over. */
+/** How many picks follow the turns after `turn` of a cycle (a pick follows every `PICK_EVERY`th turn but the last). */
+export function picksAfter(turn: number): number {
+  let picks = 0;
+  for (let t = turn; t < TURNS_PER_CYCLE; t++) if (t % PICK_EVERY === 0) picks += 1;
+  return picks;
+}
+
+/** Whether the turn just played ends the cycle: it was the last, or (`CYCLE.stopAtRent`) the rent is made. */
+function cycleOver(run: Run): boolean {
+  return run.turn >= TURNS_PER_CYCLE || (CYCLE.stopAtRent && run.cycleScore >= rentFor(run));
+}
+
+/**
+ * The rent is due: after the cycle's last turn, or the turn that made it. Paid, it pays `RENT_PAY` (`BOSS_RENT_PAY` in a boss
+ * jar), `EARLY_PAY` for each turn left, and the Golden Apples in the jar; and the picks those turns would have had are owed,
+ * to be taken after the board (none after the last cycle, which ends the run). Missed, the run is over.
+ */
 function dueRent(run: Run): void {
   run.phase = "rent";
   const rent = rentFor(run);
   if (run.cycleScore >= rent) {
-    const earned = Math.floor((run.cycleScore - rent) / POINTS_PER_COIN);
-    run.coins += earned;
+    const base = bossNow(run) === null ? RENT_PAY : BOSS_RENT_PAY;
+    const early = TURNS_PER_CYCLE - run.turn;
     // Each Golden Apple in the jar pays too.
     const golden = run.fruits.reduce((sum, f) => sum + payGolden(run, f), 0);
+    run.coins += base + early * EARLY_PAY;
     // The rent board says so, and what it paid (CycleEnd.tsx).
-    run.rentCoins = earned + golden;
+    run.rentBase = base;
+    run.rentEarly = early;
     run.rentGolden = golden;
+    run.rentCoins = base + early * EARLY_PAY + golden;
+    run.owedPicks = run.cycle >= RENT.length ? 0 : picksAfter(run.turn);
     run.message = "";
     sound(run, "rent");
   } else {
@@ -2275,7 +2319,7 @@ export function resolve(run: Run): void {
   run.bestTurn = Math.max(run.bestTurn, run.turnScore);
   run.turnScore = 0;
 
-  if (run.turn >= TURNS_PER_CYCLE) {
+  if (cycleOver(run)) {
     dueRent(run);
     run.tallyTime = Math.max(run.tallyTime, lastScore + COVER_HOLD);
     return;
@@ -2354,9 +2398,13 @@ function join(run: Run, kind: FruitKind): number {
   return id;
 }
 
-/** After a pick is taken or skipped: the next of the picks that open a run, or the hand. */
+/** After a pick is taken or skipped: the next of the picks that open a run or that a rent paid early owes, or the hand, or the shop. */
 function afterPick(run: Run): void {
-  if (run.opening > 1) {
+  if (run.owedPicks > 0) {
+    run.owedPicks -= 1;
+    if (run.owedPicks > 0) offer(run);
+    else openShop(run);
+  } else if (run.opening > 1) {
     run.opening -= 1;
     offer(run);
   } else {
@@ -2386,8 +2434,14 @@ export function removalPrice(run: Run): number {
   return REMOVAL_PRICE + REMOVAL_STEP * run.removals;
 }
 
-/** After the rent is paid: the last cycle wins the run, any other opens the shop. */
+/** After the rent is paid: the picks it owes (`owedPicks`), then the shop; the last cycle wins the run. */
 function leaveRent(run: Run): void {
+  if (run.owedPicks > 0) offer(run);
+  else openShop(run);
+}
+
+/** The last cycle wins the run, any other opens the shop. */
+function openShop(run: Run): void {
   if (run.cycle >= RENT.length) {
     run.phase = "won";
     run.message = "";

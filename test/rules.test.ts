@@ -39,7 +39,10 @@ import {
   newRun,
   NO_KEYS,
   onEdge,
-  POINTS_PER_COIN,
+  RENT_PAY,
+  BOSS_RENT_PAY,
+  EARLY_PAY,
+  picksAfter,
   REMOVAL_PRICE,
   REMOVAL_STEP,
   removalPrice,
@@ -368,11 +371,11 @@ test("a Golden Apple pays its coins when the Juicer Crushes it", () => {
 test("each Golden Apple in the jar when the rent is paid pays its coins on top of the rent's", () => {
   const run = jarWith([fruit(1, "goldenapple", 260, JAR.floor - 18), fruit(2, "goldenapple", 340, JAR.floor - 18)]);
   run.turn = 5;
-  run.cycleScore = RENT[0]! + 3 * POINTS_PER_COIN;
+  run.cycleScore = RENT[0]! + 30;
   resolve(run);
   assert.equal(run.phase, "rent");
-  assert.equal(run.coins, 3 + 2 * GOLDEN);
-  assert.equal(run.rentCoins, 3 + 2 * GOLDEN);
+  assert.equal(run.coins, RENT_PAY + 2 * GOLDEN);
+  assert.equal(run.rentCoins, RENT_PAY + 2 * GOLDEN);
   assert.equal(run.rentGolden, 2 * GOLDEN);
   const missed = jarWith([fruit(1, "goldenapple", 260, JAR.floor - 18)]);
   missed.turn = 5;
@@ -434,10 +437,11 @@ test("missing rent ends the run; paying it moves to the next cycle with an empty
 
   let rich = jarWith([fruit(1, "cherry", 160, JAR.floor - 5)]);
   rich.turn = 5;
-  rich.cycleScore = RENT[0]! + 3 * POINTS_PER_COIN + 4;
+  rich.cycleScore = RENT[0]! + 34;
   resolve(rich);
   assert.equal(rich.phase, "rent");
-  assert.equal(rich.coins, 3, "a coin for every 10 points over the rent");
+  assert.equal(rich.coins, RENT_PAY, "a fixed sum, however far over the rent");
+  assert.deepEqual([rich.rentBase, rich.rentEarly, rich.owedPicks], [RENT_PAY, 0, 0]);
   rich = press(rich, { confirm: true });
   assert.equal(rich.phase, "shop");
   rich = cleared(press(rich, { drop: true }));
@@ -446,6 +450,65 @@ test("missing rent ends the run; paying it moves to the next cycle with an empty
   assert.equal(rich.cycle, 2);
   assert.equal(rich.fruits.length, 0);
   assert.equal(rich.hand.length, DEAL_SIZE);
+});
+
+test("a cycle stops at the turn that makes its rent, pays a coin for each turn to spare, then offers the picks those turns would have had", () => {
+  let run = jarWith([]);
+  run.turn = 3;
+  run.cycleScore = RENT[0]!;
+  resolve(run);
+  assert.equal(run.phase, "rent");
+  assert.equal(run.turn, 3, "the turn is not moved on");
+  assert.deepEqual([run.rentBase, run.rentEarly, run.coins, run.rentCoins], [RENT_PAY, 2, RENT_PAY + 2 * EARLY_PAY, RENT_PAY + 2 * EARLY_PAY]);
+  // Picks follow turns 3 and 4: both are owed.
+  assert.equal(run.owedPicks, picksAfter(3));
+  assert.equal(run.owedPicks, 2);
+  run = press(run, { confirm: true });
+  assert.equal(run.phase, "pick");
+  const pool = run.pool.length;
+  run = press(run, { right: true });
+  run = press(run, { confirm: true });
+  assert.deepEqual([run.phase, run.pool.length, run.owedPicks], ["pick", pool + 1, 1], "taken, and the next pick");
+  const coins = run.coins;
+  run = press(run, { drop: true });
+  assert.deepEqual([run.phase, run.coins, run.owedPicks], ["shop", coins + 1, 0], "the last skipped for a coin, then the shop");
+});
+
+test("short of the rent, a turn before the last goes on to its pick", () => {
+  const run = jarWith([]);
+  run.turn = 3;
+  run.cycleScore = RENT[0]! - 1;
+  resolve(run);
+  assert.deepEqual([run.phase, run.turn], ["pick", 4]);
+});
+
+test("a boss jar's rent pays more; a rent paid on the first turn owes every pick of the cycle", () => {
+  const run = jarWith([]);
+  run.cycle = 3;
+  run.turn = 1;
+  run.cycleScore = RENT[2]!;
+  resolve(run);
+  assert.deepEqual([run.phase, run.rentBase, run.rentEarly, run.owedPicks], ["rent", BOSS_RENT_PAY, 4, 4]);
+});
+
+test("the last cycle's rent paid early wins the run with no picks owed", () => {
+  let run = jarWith([]);
+  run.cycle = RENT.length;
+  run.turn = 2;
+  run.cycleScore = RENT[RENT.length - 1]!;
+  resolve(run);
+  assert.deepEqual([run.phase, run.owedPicks], ["rent", 0]);
+  run = press(run, { confirm: true });
+  assert.equal(run.phase, "won");
+});
+
+test("a run kept before the rent stopped early reads with nothing owed", () => {
+  const old = { ...newRun(1) } as Partial<Run>;
+  delete old.owedPicks;
+  delete old.rentBase;
+  delete old.rentEarly;
+  const run = withGlazes(old as Run);
+  assert.deepEqual([run.owedPicks, run.rentBase, run.rentEarly], [0, 0, 0]);
 });
 
 test("poolRows groups the pool by kind, in the fruit table's order", () => {
