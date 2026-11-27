@@ -570,6 +570,34 @@ smaller pool), and the random shopper, which bought whatever it could afford and
 Every run that buys anything changes what the seed deals after it, so a row's two runs are not the same luck: read the
 differences as a direction, not a size. No build's late coins run away now, which was the point.
 
+### The bots play the game as it is (27 November)
+
+`BALANCE_REAL=1` leaves the rent due and a cycle stopping at it, so a bot takes the picks a rent owes before the shop, is paid
+the run's own coins (the Golden Apples' too) and is out on a missed rent. `BALANCE_STOP=off` with it plays every turn against
+the same rent, which pays no turn to spare: the game without the early stop. "/order" bots over 40 seeds and "/best" over 16
+(a "/best" bot sees each turn's luck, so it is more than a player can do); runs that paid every rent, the mean turn a rent was
+made on in cycles 1 and 5, and the coins a paid rent gave, with the stop / without:
+
+| Player | Paid every rent | Rent made on turn, cycle 1 / 5 | Coins a paid rent |
+| --- | --- | --- | --- |
+| `skip/order/thin` | 4 / 7 of 40 | 4.6 / 5.0 | 4.6 / 4.2 |
+| `random/order/shop` | 2 / 1 of 40 | 4.4 / 4.5 | 5.3 / 4.4 |
+| `chili+blueberry+durian/order/shop/thin` | 5 / 8 of 40 | 4.3 / 4.2 | 4.8 / 4.2 |
+| `goldenapple+apple+banana/order/shop` | 1 / 0 of 40 | 4.5 / 5.0 | 5.9 / 5.3 |
+| `random/best/shop` | 5 / 4 of 16 | 4.1 / 4.4 | 5.2 / 4.6 |
+| `chili+blueberry+durian/best/shop/thin` | 10 / 10 of 16 | 3.8 / 4.1 | 5.3 / 4.2 |
+| `goldenapple+apple+banana/best/shop` | 0 / 1 of 16 | 4.2 / none paid | 6.7 / 6.4 |
+
+- Of the 408 rents paid with the stop, 193 were made on the last turn, 175 on turn 4, 36 on turn 3, 4 on turn 2 and none
+  on turn 1. So the stop is worth 0.6 of a coin a paid rent, and it owes two picks or more in a row in at most 1 paid
+  cycle of 10.
+- It reaches the last cycles: the Boom bot with "/best" made the 400 on turn 4 in 7 of its 10 wins. A bot that only orders
+  its hand makes a late rent on the last turn more often than not.
+- Runs that paid every rent do not move by more than chance, either way: 27 with the stop and 31 without, of 208 each. The
+  first cycle is the same play in both (the same runs pay it), and a run's luck differs after its first shop.
+- The Garden bot loses nearly every run with the stop and without it, and its Golden Apples paid about the same either way (1.7 coins
+  a paid rent with it, 1.8 without). What ails it is its score, not the turns a stop takes.
+
 ### Bots that shop (23 November)
 
 `/shop` makes a bot buy the fruit it would pick from the shop's shelf while its coins last ("random/shop" buys whatever is
