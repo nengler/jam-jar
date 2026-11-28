@@ -540,6 +540,7 @@ test("the shop: a fruit costs coins, joins the pool and leaves a gap on the shel
   run = press(run, { right: true });
   run = press(run, { confirm: true });
   assert.equal(run.coins, 10 - FRUIT_PRICE);
+  assert.deepEqual(run.sounds, ["buy"], "the till, not the sound of a fruit taken at the pick");
   assert.equal(run.pool.length, before + 1);
   assert.equal(run.pool[before], kind);
   assert.equal(run.shop!.fruits[1], null);
@@ -554,6 +555,14 @@ test("the shop: without the coins nothing is bought", () => {
   assert.equal(run.pool.length, before);
   assert.equal(run.coins, FRUIT_PRICE - 1);
   assert.notEqual(run.shop!.fruits[0], null);
+});
+
+test("the shop's no has its own sound, which is not the missed rent's", () => {
+  let run = inShop(FRUIT_PRICE - 1);
+  run = press(run, { right: true });
+  run = press(run, { confirm: true });
+  assert.equal(run.coins, FRUIT_PRICE - 1);
+  assert.deepEqual(run.sounds, ["deny"]);
 });
 
 test("the shop: a new shelf costs one more each time, all run, and restocks the shelf", () => {
@@ -971,6 +980,7 @@ test("a Lime pours its juice as it lands, and a Cranberry afloat in it scores", 
   const run = jarWith([{ ...fruit(1, "lime", 300, JAR.floor - FRUITS.lime.radius), landed: false }, fruit(2, "cranberry", 400, JAR.floor - FRUITS.cranberry.radius)]);
   simulate(run, DT);
   assert.deepEqual([run.juice, run.lime], [LIME_JUICE, true]);
+  assert.ok(run.sounds.includes("pour"), "and it is heard");
   run.turn = 1;
   resolve(run);
   assert.equal(run.earned["Cranberry"], FRUITS.cranberry.points + JUICE_BONUS, "and the juice's own 2 with it");

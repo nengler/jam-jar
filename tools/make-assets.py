@@ -12,6 +12,7 @@ Lays out the game's assets/ from art/ and tools/kenney/:
   - screen/: pictures with detail finer than the art's pixel (the Kenney frames and explosion), copied at screen size as they
     are until they are redrawn at art size and moved to another folder.
 - tools/kenney/: the sounds (Kenney, CC0), copied as they are; the tally's notes and the entrance sounds are made here.
+- tools/plinkfx/: three more sounds (plinkfx, CC0), copied as they are.
 
 The text is the engine's built-in fonts (m5x7 and Jersey 10), so there is no font file.
 
@@ -35,6 +36,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
 ART = ROOT / "art"
 KENNEY = ROOT / "tools" / "kenney"
+PLINKFX = ROOT / "tools" / "plinkfx"
 SIZES_FILE = ROOT / "src" / "rules" / "sizes.ts"
 
 # Every picture is drawn at twice its size on the screen: an art pixel is 2 x 2 screen pixels.
@@ -305,6 +307,14 @@ SOUNDS = {
     "theme.ogg": "music-loops-farm-frolics.ogg",
 }
 
+# And from tools/plinkfx/: the shop's two sounds (the others here did for both a fruit taken and a thing bought, and for
+# both a missed rent and a "no"), and the jar's liquid, which had none.
+PLINKFX_SOUNDS = {
+    "buy.wav": "pickup-ka-ching.wav",
+    "deny.wav": "ui-deny.wav",
+    "pour.wav": "world-splash.wav",
+}
+
 
 def write_palette() -> None:
     """The screen's palette as a picture one pixel high, a colour a pixel: what the screen's shader snaps every colour to
@@ -376,11 +386,13 @@ def main() -> None:
     write_grain()
     for name, source in SOUNDS.items():
         shutil.copyfile(KENNEY / source, ASSETS / name)
+    for name, source in PLINKFX_SOUNDS.items():
+        shutil.copyfile(PLINKFX / source, ASSETS / name)
     write_score_notes()
     write_last_turn()
     write_entrance_sounds()
     write_chain_tier()
-    print(f"wrote {pictures} pictures and {len(SOUNDS)} sounds (the music among them), and made the paper's grain, the tally's notes, the chain's tier and the entrance sounds")
+    print(f"wrote {pictures} pictures and {len(SOUNDS) + len(PLINKFX_SOUNDS)} sounds (the music among them), and made the paper's grain, the tally's notes, the chain's tier and the entrance sounds")
 
 
 if __name__ == "__main__":

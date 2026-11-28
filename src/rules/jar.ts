@@ -514,8 +514,11 @@ export interface Run {
   sounds: Sound[];
 }
 
-/** "score" is one of the tally's scores showing (which one it is in the tally is `Run.scoreNote`). "tick" is the cursor going somewhere or a fruit picked up or put down; "move" a held fruit changing its place on the shelf. */
-export type Sound = "land" | "merge" | "boom" | "pick" | "rent" | "lose" | "tick" | "move" | "score";
+/**
+ * "score" is one of the tally's scores showing (which one it is in the tally is `Run.scoreNote`). "tick" is the cursor going somewhere or a fruit picked up or put down; "move" a held fruit changing its place on the shelf.
+ * "buy" is coins spent in the shop on something to keep, and "deny" the shop saying no; "pour" is juice or milk going into the jar.
+ */
+export type Sound = "land" | "merge" | "boom" | "pick" | "rent" | "lose" | "tick" | "move" | "score" | "buy" | "deny" | "pour";
 
 declare global {
   /** What each ball and collider tag carries, so a fruit's `contacts("fruit")` has typed `data` (the engine's `ColliderData`). */
@@ -1057,6 +1060,7 @@ export function soaked(run: Run, f: Fruit): boolean {
 function pour(run: Run, what: "lime" | "milk", depth: number): void {
   run.juice = Math.min(JUICE_MOST, run.juice + depth);
   run[what] = true;
+  sound(run, "pour");
 }
 
 /** A score a fruit earned: its popup, whether a Booster doubled it, and the fruit it lit up (itself and those Boosters). */
@@ -2483,7 +2487,7 @@ export function glazeOne(run: Run, kind: FruitKind, glaze: Glaze): boolean {
 function pay(run: Run, price: number): boolean {
   if (run.coins < price) {
     run.message = `Not enough coins: that costs ${price}`;
-    sound(run, "lose");
+    sound(run, "deny");
     return false;
   }
   run.coins -= price;
@@ -2508,7 +2512,7 @@ function shopStep(run: Run, keys: Keys): void {
       const kind = kinds[shop.removeCursor] as FruitKind;
       if (pay(run, GLAZE_PRICE) && glazeOne(run, kind, glaze)) {
         run.message = "";
-        sound(run, "pick");
+        sound(run, "buy");
         shop.glaze = null;
         shop.glazing = false;
       }
@@ -2541,7 +2545,7 @@ function shopStep(run: Run, keys: Keys): void {
         const [gone] = run.poolIds.splice(at, 1);
         if (gone !== undefined) delete run.grown[gone];
         run.message = "";
-        sound(run, "pick");
+        sound(run, "buy");
         shop.removing = false;
         shop.removed = true;
       }
@@ -2579,7 +2583,7 @@ function shopStep(run: Run, keys: Keys): void {
     join(run, kind);
     shop.fruits[shop.cursor] = null;
     run.message = "";
-    sound(run, "pick");
+    sound(run, "buy");
   } else if (shop.cursor === SHOP_ITEM) {
     if (shop.item === null || !pay(run, ITEMS[shop.item].price)) return;
     // An upgrade takes the place of what it upgrades.
@@ -2588,7 +2592,7 @@ function shopStep(run: Run, keys: Keys): void {
     run.items.push(shop.item);
     run.message = "";
     shop.item = null;
-    sound(run, "pick");
+    sound(run, "buy");
   } else if (shop.cursor === SHOP_GLAZE) {
     // The glaze is paid for once it is on a fruit, so backing out of choosing one costs nothing.
     if (shop.glaze === null) return;
@@ -2596,7 +2600,7 @@ function shopStep(run: Run, keys: Keys): void {
       pay(run, GLAZE_PRICE);
     } else if (glazeKinds(run, shop.glaze).length === 0) {
       run.message = `Nothing in your pool can take a ${GLAZES[shop.glaze].name} glaze`;
-      sound(run, "lose");
+      sound(run, "deny");
     } else {
       shop.glazing = true;
       shop.removeCursor = -1;
@@ -2606,10 +2610,10 @@ function shopStep(run: Run, keys: Keys): void {
   } else if (shop.cursor === SHOP_REMOVE) {
     if (shop.removed) {
       run.message = "One fruit out a shop";
-      sound(run, "lose");
+      sound(run, "deny");
     } else if (run.pool.length <= HAND_SIZE) {
       run.message = `Your pool needs at least ${HAND_SIZE} fruit`;
-      sound(run, "lose");
+      sound(run, "deny");
     } else if (run.coins < removalPrice(run)) {
       pay(run, removalPrice(run));
     } else {

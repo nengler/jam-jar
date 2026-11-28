@@ -55,6 +55,9 @@ const LINE_H = 30;
 const LINE_BAND = "#090a14d0";
 /** How loud the chain's tier sound is, of the sounds' volume. */
 const TIER_VOLUME = 0.6;
+/** And the shop's till, and juice or milk pouring into the jar. */
+const BUY_VOLUME = 0.8;
+const POUR_VOLUME = 0.5;
 /** The chain on the jar: where its words stand (their middle, just over the rim), and how much bigger they are at each tier past the first. */
 const CHAIN_Y = RIM - 24;
 const CHAIN_GROW = 0.1;
@@ -96,6 +99,9 @@ export function Play() {
   const playLose = useSound("lose.wav");
   const playTick = useSound("tick.wav");
   const playLast = useSound("last.wav");
+  const playBuy = useSound("buy.wav");
+  const playDeny = useSound("deny.wav");
+  const playPour = useSound("pour.wav");
   // Things arriving: the boards and the shelf popping in as a run opens, the jar landing, and each fruit rolling to its place.
   const playPop0 = useSound("pop-0.wav");
   const playPop1 = useSound("pop-1.wav");
@@ -264,6 +270,10 @@ export function Play() {
     if (heard.includes("boom")) playBoom();
     if (heard.includes("pick")) playPick();
     if (heard.includes("rent")) playRent();
+    if (heard.includes("buy")) playBuy(BUY_VOLUME);
+    if (heard.includes("deny")) playDeny();
+    // Under the fruit's own landing, which a Lime's pour comes with.
+    if (heard.includes("pour")) playPour(POUR_VOLUME);
     // The chain: each link heard rings the tally's bell a note higher than the last (the top one again past the eighth), and each
     // tier it reaches rings its own chord. The tally's scores are links too: each rings as it shows.
     const linked = shownLinks(s.run);
