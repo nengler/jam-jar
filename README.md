@@ -692,6 +692,8 @@ saved data and reads none.
   sounds and the music (Farm Frolics, from Music Loops). The pictures were recoloured onto Apollo and are in `art/`; the
   frames and the explosion have finer detail than the art's pixel, so they are in `art/screen/` at screen size. The full bundle
   is on this repo's `Assets` release; `tools/kenney/README.md` says which file each came from.
+- [plinkfx](https://github.com/maximilianfeix/plinkfx) sounds, CC0: the shop's till and its "no", and juice or milk pouring
+  into the jar. They are synthesised, not recorded; `tools/plinkfx/README.md` says which each is and how to render one again.
 - The backdrop moves a little: the wallpaper drifts slowly, and a few motes of dust rise through the air (`src/Backdrop.tsx`).
   No shader: the engine's software renderer, which the tests and `tse screenshot` use, runs none, and a shader would blend
   colours off the palette.
