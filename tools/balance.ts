@@ -24,10 +24,17 @@
  * "random@shaker+lid"). The rent is ignored (set to 0), so every run plays all its cycles, and every turn of each
  * (`CYCLE.stopAtRent` off): a bot is paid the coins a cycle stopped at the turn that made the real rent would have paid.
  *
+ * BALANCE_REAL=1 plays the game as it is instead: the rent is due, a cycle stops at the turn that makes it, the picks it owes
+ * come before the shop, a missed rent ends the run, and the coins are the run's own (the Golden Apples' too). Each player then
+ * has a table of its cycles: how many runs reached each, how many paid its rent and on which turn, and what it paid.
+ * BALANCE_STOP=off with it plays every turn of a cycle against the real rent, which pays no turns to spare: the game without
+ * the early stop, to hold against the game with it.
+ *
  *     node tools/balance.ts [runs per player, default 20] [players, e.g. skip,random,chili] [full] [first seed, default 1]
  *     BALANCE_BOSS=flip node tools/balance.ts 18 skip     (every run meets that boss jar)
  *     BALANCE_JSON=out.json node tools/balance.ts ...      (also writes every run's cycle scores, for tools/compare.ts)
  *     BALANCE_CHAINS=off node tools/balance.ts ...         (the chain multiplies nothing, to compare with the rule before it)
+ *     BALANCE_REAL=1 node tools/balance.ts 40 random/order/shop   (the game as it is: rent due, cycles that stop at it)
  *
  * Each player's second line also says how long its chains ran (`CHAIN_TIERS` in jar.ts): links a turn on average, the share of
  * turns that reached each tier, and the longest.
@@ -45,7 +52,7 @@ import { setTutorialStep } from "../src/settings.ts";
 import { BANANA, FRUITS, OFFERABLE, type FruitKind } from "../src/rules/fruits.ts";
 import type { ItemKind } from "../src/rules/items.ts";
 import { GLAZE_PRICE, type Glaze } from "../src/rules/glazes.ts";
-import { arrangeHand, BOSS_RENT_PAY, bossNow, CHAIN_TIERS, CYCLE, EARLY_PAY, FRUIT_PRICE, glazeKinds, SHOP_GLAZE, removalPrice, RENT, RENT_PAY, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, type Boss, type Run } from "../src/rules/jar.ts";
+import { arrangeHand, BOSS_RENT_PAY, bossNow, CHAIN_TIERS, CYCLE, EARLY_PAY, FRUIT_PRICE, glazeKinds, SHOP_GLAZE, removalPrice, RENT, RENT_PAY, SETTLE_LIMIT, SHOP_REMOVE, SPOTS, TRAY, TURNS_PER_CYCLE, type Boss, type Run } from "../src/rules/jar.ts";
 import { Rng } from "../src/rules/rng.ts";
 
 type Strategy = string;
@@ -251,9 +258,25 @@ const maxCycles = Number(env("BALANCE_CYCLES") ?? 99);
 
 // BALANCE_RENT=225,245,270,300,340: the rents the bots' coins and the "makes rent" counts are worked out from.
 const rent = env("BALANCE_RENT")?.split(",").map(Number) ?? RENT.slice();
-(RENT as number[]).fill(0);
-// And every turn of a cycle is played, as it was before a cycle stopped at its rent: what a full one scores is the measure.
-CYCLE.stopAtRent = false;
+// BALANCE_REAL=1: the game as it is. The rent is due (BALANCE_RENT's, if given), and a cycle stops at it unless BALANCE_STOP=off.
+const real = env("BALANCE_REAL") === "1";
+if (real) {
+  (RENT as number[]).splice(0, RENT.length, ...rent);
+  CYCLE.stopAtRent = env("BALANCE_STOP") !== "off";
+} else {
+  (RENT as number[]).fill(0);
+  // And every turn of a cycle is played, as it was before a cycle stopped at its rent: what a full one scores is the measure.
+  CYCLE.stopAtRent = false;
+}
+
+/** A cycle of a BALANCE_REAL run: whether its rent was paid, the turn it ended on, and the coins the rent paid, by part. */
+interface Cycle {
+  paid: boolean;
+  turn: number;
+  coins: number;
+  early: number;
+  golden: number;
+}
 
 /** One run: each cycle's score, the pool's size at the end, and how long each turn's settle took. */
 /**
@@ -273,7 +296,7 @@ interface Events {
   glazed: number;
 }
 
-function play(seed: number, strategy: Strategy): { scores: number[]; pool: number; settles: number[]; mismatches: number; events: Events; start: FruitKind[]; earnedAt: Record<string, number>[] } {
+function play(seed: number, strategy: Strategy): { scores: number[]; cycles: Cycle[]; pool: number; settles: number[]; mismatches: number; events: Events; start: FruitKind[]; earnedAt: Record<string, number>[] } {
   // The opening picks are chosen as the bot picks: the first offer it wants, or any for "random".
   let start: FruitKind[] | null = null;
   const earnedAt: Record<string, number>[] = [];
@@ -285,6 +308,7 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
   useGame.setState({ screen: "title", paused: false, seed, tutorial: LESSONS.length });
   const rng = new Rng(seed * 7919);
   const scores: number[] = [];
+  const cycles: Cycle[] = [];
   let pool = 0;
   const settles: number[] = [];
   let settling = -1;
@@ -381,6 +405,15 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
       const at = picks === "random" ? rng.int(0, 2) : run.offers.findIndex((kind) => wanted.includes(kind));
       // No card is chosen at first: one press of Right goes to the first, so the card at `at` is `at + 1` presses away.
       queued = at < 0 ? [SPACE] : [...Array<typeof NONE>(at + 1).fill(RIGHT).flatMap((f) => [f, NONE]), ENTER];
+    } else if (real && run.phase === "rent") {
+      // The game's own rent, paid: the board waits for its tally, so a cycle is written down the first time it is seen.
+      if (scores.length < run.cycle) {
+        scores.push(run.cycleScore);
+        earnedAt.push({ ...run.earned });
+        cycles.push({ paid: true, turn: run.turn, coins: run.rentCoins, early: run.rentEarly, golden: run.rentGolden });
+        if (scores.length >= maxCycles) break;
+      }
+      queued = [ENTER];
     } else if (run.phase === "rent") {
       // The coins the real rent would have paid, had the cycle stopped at the turn that made it (the run itself was paid for a
       // rent of 0 on its last turn). The Golden Apples' are left out, as they were.
@@ -423,11 +456,18 @@ function play(seed: number, strategy: Strategy): { scores: number[]; pool: numbe
       coins = run.coins;
     }
     else if (run.phase === "preserve") queued = [SPACE];
-    else if (run.phase === "won" || run.phase === "over") break;
+    else if (run.phase === "won" || run.phase === "over") {
+      // A missed rent, in the game as it is: the cycle the run ended in.
+      if (real && run.phase === "over" && scores.length < run.cycle) {
+        scores.push(run.cycleScore);
+        cycles.push({ paid: false, turn: run.turn, coins: 0, early: 0, golden: 0 });
+      }
+      break;
+    }
     else wait = 0;
   }
   player.close();
-  return { scores, pool, settles, mismatches, start: start ?? [], earnedAt, // Giant Pumpkins by the points they scored: "/best" and "/fair" play their turns out of this loop's sight, so ids miss them.
+  return { scores, cycles, pool, settles, mismatches, start: start ?? [], earnedAt, // Giant Pumpkins by the points they scored: "/best" and "/fair" play their turns out of this loop's sight, so ids miss them.
     events: { earned: { ...earned }, giants: Math.max(giants.size, Math.round((earned["Giant Pumpkin"] ?? 0) / FRUITS.giantpumpkin.points)), smashes: slices.size / 4 + pieces.size / 2, chains: chains.slice(), bought, glazed } };
 }
 
@@ -439,6 +479,7 @@ const players = (process.argv[3]?.split(",") ?? ["skip", "random", ...OFFERABLE]
 const written: Record<string, { seed: number; scores: number[]; start: FruitKind[]; earnedAt: Record<string, number>[] }[]> = {};
 for (const strategy of players) {
   const all: number[][] = [];
+  const allCycles: Cycle[][] = [];
   let pool = 0;
   let mismatches = 0;
   const settles: number[] = [];
@@ -447,6 +488,7 @@ for (const strategy of players) {
   for (let seed = firstSeed; seed < firstSeed + runs; seed++) {
     const result = play(seed, strategy);
     all.push(result.scores);
+    allCycles.push(result.cycles);
     pool += result.pool;
     mismatches += result.mismatches;
     settles.push(...result.settles);
@@ -460,7 +502,11 @@ for (const strategy of players) {
   // A frame short of the limit counts: the settle gives up on the frame that reaches it.
   const stuck = settles.filter((t) => t >= SETTLE_LIMIT - 0.05).length;
   const settle = `settle ${(settles[Math.floor(settles.length / 2)] ?? 0).toFixed(1)}s, 90% ${(settles[Math.floor(settles.length * 0.9)] ?? 0).toFixed(1)}s, ${stuck}/${settles.length} hit ${SETTLE_LIMIT}s`;
-  const median = (cycle: number) => all.map((s) => s[cycle] ?? 0).sort((a, b) => a - b)[Math.floor(runs / 2)];
+  // In the game as it is a run can end before a cycle: its median is of the runs that reached it (0 when none did).
+  const median = (cycle: number) => {
+    const scores = all.flatMap((s) => (cycle < s.length ? s.slice(cycle, cycle + 1) : real ? [] : [0])).sort((a, b) => a - b);
+    return scores[Math.floor(scores.length / 2)] ?? 0;
+  };
   console.log(`${strategy.padEnd(34)} pool ${(pool / runs).toFixed(1).padStart(4)}  medians ${rent.map((_, c) => String(median(c)).padStart(4)).join(" ")}  ${settle}`);
   // The Ladder set's checks: how often its big-fruit events happen, their share of the points, and how much spills.
   const per = (label: string) => events.reduce((sum, e) => sum + (e.earned[label] ?? 0), 0) / runs;
@@ -479,6 +525,23 @@ for (const strategy of players) {
       `${tiers.map((at, k) => `x${k + 2} in ${reached(at)}`).join(", ")} of turns, longest ${Math.max(0, ...turns)}; ` +
       `fruit bought a run ${(events.reduce((a, e) => a + e.bought, 0) / runs).toFixed(1)}, glazed ${(events.reduce((a, e) => a + e.glazed, 0) / runs).toFixed(1)}`
   );
+  if (real) {
+    // The game as it is: of the runs that reached a cycle, how many paid its rent, on which turn, and what the rent paid.
+    const won = allCycles.filter((c) => c.length === rent.length && c.every((cycle) => cycle.paid)).length;
+    const mean = (values: number[]) => (values.length === 0 ? "   -" : (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1).padStart(4));
+    console.log(`${"".padEnd(34)} the game as it is${CYCLE.stopAtRent ? "" : " but for the early stop"}: ${won}/${runs} runs paid every rent`);
+    for (let c = 0; c < rent.length; c++) {
+      const reached = allCycles.flatMap((cycles) => cycles.slice(c, c + 1));
+      const paid = reached.filter((cycle) => cycle.paid);
+      // The turn that made the rent: with the early stop off, the turns to spare are not known, and every cycle ends on its last.
+      const onTurn = Array.from({ length: TURNS_PER_CYCLE }, (_, at) => at + 1).map((turn) => String(paid.filter((cycle) => cycle.turn === turn).length).padStart(2)).join(" ");
+      console.log(
+        `${"".padEnd(34)}   cycle ${c + 1} (rent ${String(rent[c]).padStart(3)}): reached ${String(reached.length).padStart(2)}, paid ${String(paid.length).padStart(2)}; ` +
+          `on turn 1-${TURNS_PER_CYCLE}: ${onTurn} (mean ${mean(paid.map((cycle) => cycle.turn))}); coins ${mean(paid.map((cycle) => cycle.coins))}, ` +
+          `of them to spare ${mean(paid.map((cycle) => cycle.early * EARLY_PAY))}, Golden Apples ${mean(paid.map((cycle) => cycle.golden))}`
+      );
+    }
+  }
   if (process.argv[4] !== "full") continue;
   // What earned the points, a run on average, the most first.
   const labels = [...new Set(events.flatMap((e) => Object.keys(e.earned)))].map((label) => ({ label, points: per(label) })).sort((a, b) => b.points - a.points);
